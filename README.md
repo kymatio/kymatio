@@ -12,7 +12,7 @@ e.g. Chainer, Theano or Tensorflow.
 
 Previous version of the code can be found at <https://github.com/edouardoyallon/scatwave>
 
-# Installation
+## Installation
 
 The software was tested on Linux with anaconda Python 2.7 and
 various GPUs, including Titan X and Titan X Pascal.
@@ -25,11 +25,11 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
-# Contribution
+## Contribution
 
 All contributions are welcome.
 
 
-# Authors
+## Authors
 
 Edouard Oyallon, Eugene Belilovsky, Sergey Zagoruyko
