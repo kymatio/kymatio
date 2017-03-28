@@ -1,7 +1,6 @@
 """
-This code belongs to its three authors, and only to them, e.g.:
-Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
-Copyright 2017
+Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
+All rights reserved, 2017.
 """
 
 __all__ = ['Scattering']
