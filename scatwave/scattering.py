@@ -26,19 +26,14 @@ class Scattering(object):
     """
     def __init__(self, M, N, J, pre_pad=False, jit=True):
         super(Scattering, self).__init__()
-        self.training = False
-        self.J = J
-        self.M = M
-        self.N = N
+        self.M, self.N, self.J = M, N, J
         self.pre_pad = pre_pad
-        self.size_batch = torch.Size((1, 1, M, N))
         self.jit = jit
-
         self.fft = Fft()
         self.modulus = Modulus(jit=jit)
         self.periodize = Periodize(jit=jit)
 
-        self._prepare_padding_size()
+        self._prepare_padding_size([1, 1, M, N])
 
         self.padding_module = pad_function(2**J)
 
@@ -63,8 +58,7 @@ class Scattering(object):
     def cpu(self):
         return self._type(torch.FloatTensor)
 
-    def _prepare_padding_size(self):
-        s = list(self.size_batch)
+    def _prepare_padding_size(self, s):
         M = s[-2]
         N = s[-1]
 
