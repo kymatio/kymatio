@@ -10,6 +10,7 @@ but it should be trivial to copy Scattering outputs to CPU (or run on CPU and
 convert to `numpy.ndarray` via `.numpy()`) to use with other frameworks,
 e.g. Chainer, Theano or Tensorflow.
 
+Previous version of the code can be found at <https://github.com/edouardoyallon/scatwave>
 
 ### Installation
 
