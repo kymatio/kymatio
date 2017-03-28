@@ -1,0 +1,6 @@
+cupy
+torch >= 0.1.10
+numpy
+scikit-cuda
+scipy
+pynvrtc
