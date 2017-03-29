@@ -12,10 +12,6 @@ from cupy.cuda.function import Module
 from cupy.cuda import device
 
 
-import ctypes
-THC = ctypes.cdll.LoadLibrary('libTHC.so.1')
-THC.THCState_getCurrentBlasHandle.restype = ctypes.c_void_p
-
 Stream = namedtuple('Stream', ['ptr'])
 
 
@@ -285,7 +281,7 @@ def cdgmm(A, B, jit=True, inplace=False):
         lda = m
         ldc = m
         incx = 1
-        handle = THC.THCState_getCurrentBlasHandle(torch.cuda._state_cdata) #torch.cuda.current_blas_handle()
+        handle = torch.cuda.current_blas_handle()
         stream = torch.cuda.current_stream()._as_parameter_
         cublas.cublasSetStream(handle, stream)
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
