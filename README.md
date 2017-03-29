@@ -26,6 +26,7 @@ https://github.com/edouardoyallon/scalingscattering/
 We do some simple comparisons to the previous implementation of scattering (ScatnetLight). We benchmark the software using a 1080 GPU. Below we show input sizes (WxHx3xBatchSize) and speed:
 
 32 × 32 × 3 × 128 (J=2)- 0.03s (speed of 8x vs ScatNetLight)
+
 256 × 256 × 3 × 128 (J=2) - 0.71 s (speed up of 225x vs ScatNetLight)
 
 ## Installation
