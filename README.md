@@ -3,7 +3,7 @@ PyScatWave
 
 CuPy/PyTorch Scattering implementation
 
-A scattering network is a CNN with filters predefined to wavelets that are not learned and it can be used in vision task such as classification of images.
+A scattering network is a Convolutional Network with filters predefined to be wavelets that are not learned and it can be used in vision task such as classification of images. The scattering transform can drastically reduce the spatial resolution of the input (e.g. 224x224->14x14) with demonstrably neglible loss in dicriminative power.  
 
 The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
 
