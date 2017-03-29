@@ -7,10 +7,7 @@ A scattering network is a Convolutional Network with filters predefined to be wa
 
 The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
 
-We used PyTorch for running experiments in <https://arxiv.org/abs/1703.08961>,
-but it should be trivial to copy Scattering outputs to CPU (or run on CPU and
-convert to `numpy.ndarray` via `.numpy()`) to use with other frameworks,
-e.g. Chainer, Theano or Tensorflow.
+
 
 Previous version of the code can be found at <https://github.com/edouardoyallon/scatwave>
 
@@ -21,6 +18,9 @@ E. Oyallon, E. Belilovsky, S. Zagoruyko *Scaling the Scattering Transform: Deep 
 
 You can find experiments from the paper in the following repository:
 https://github.com/edouardoyallon/scalingscattering/
+
+We used PyTorch for running experiments in <https://arxiv.org/abs/1703.08961>,
+but it is possible to use scattering with other frameworks (e.g. Chainer, Theano or Tensorflow) if one copies Scattering outputs to CPU (or run on CPU and convert to `numpy.ndarray` via `.numpy()`).
 
 ## Benchmarks
 We do some simple timings and comparisons to the previous (multi-core CPU) implementation of scattering (ScatnetLight). We benchmark the software using a 1080 GPU. Below we show input sizes (WxHx3xBatchSize) and speed:
