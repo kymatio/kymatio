@@ -22,6 +22,12 @@ E. Oyallon, E. Belilovsky, S. Zagoruyko *Scaling the Scattering Transform: Deep 
 You can find experiments from the paper in the following repository:
 https://github.com/edouardoyallon/scalingscattering/
 
+## Benchmarks
+We do some simple comparisons to the previous implementation of scattering (ScatnetLight). We benchmark the software using a 1080 GPU. Below we show input sizes (WxHx3xBatchSize) and speed:
+
+32 × 32 × 3 × 128 (J=2)- 0.03s (speed of 8x vs ScatNetLight)
+256 × 256 × 3 × 128 (J=2) - 0.71 s (speed up of 225x vs ScatNetLight)
+
 ## Installation
 
 The software was tested on Linux with anaconda Python 2.7 and
