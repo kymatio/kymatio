@@ -10,6 +10,7 @@ from pynvrtc.compiler import Program
 import numpy as np
 from cupy.cuda.function import Module
 from cupy.cuda import device
+from string import Template
 
 
 Stream = namedtuple('Stream', ['ptr'])
@@ -23,18 +24,11 @@ def getDtype(t):
 
 
 def get_compute_arch(t):
-    cc = device.Device().compute_capability
-    return 'compute_%s' % cc
+    return 'compute_%s' % device.Device().compute_capability
 
 
 def iscomplex(input):
     return input.size(-1) == 2
-
-
-def Templet(s, **params):
-    for k, v in params.items():
-        s = s.replace('${%s}' % k, str(v))
-    return str.encode(s)
 
 
 class Periodize(object):
@@ -95,7 +89,7 @@ class Periodize(object):
             W = input.size(-2)
             H = input.size(-3)
             k = input.size(-2) // out.size(-2)
-            kernel = Templet(kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(input))
+            kernel = Template(kernel).substitute(B=B, H=H, W=W, k=k, Dtype=getDtype(input))
             name = str(input.get_device())+'-'+str(B)+'-'+str(k)+'-'+str(H)+'-'+str(W)+'-periodize.cu'
             print(name)
             prog = Program(kernel, name.encode())
