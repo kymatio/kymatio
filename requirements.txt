@@ -1,5 +1,5 @@
 cupy
-torch >= 0.1.10
+torch >= 0.1.11
 numpy
 scikit-cuda
 scipy
