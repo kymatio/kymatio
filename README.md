@@ -14,6 +14,13 @@ e.g. Chainer, Theano or Tensorflow.
 
 Previous version of the code can be found at <https://github.com/edouardoyallon/scatwave>
 
+If using this code for your research please cite our paper:
+E. Oyallon, E. Belilovsky, S. Zagoruyko *Scaling the Scattering Transform: Deep Hybrid Networks*
+<https://arxiv.org/abs/1703.08961>
+
+You can find experiments from the paper in the following repository:
+https://github.com/edouardoyallon/scalingscattering/
+
 ## Installation
 
 The software was tested on Linux with anaconda Python 2.7 and
