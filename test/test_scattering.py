@@ -69,7 +69,7 @@ class TestScattering(unittest.TestCase):
             u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
             v = y.narrow(3, 0, 1)
 
-            self.assertAlmostEqual(linfnorm(u, v), 0, places=6)
+            self.assertLess((u - v).abs().max(), 1e-6)
 
 
     def testPeriodization(self):
