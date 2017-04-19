@@ -6,4 +6,5 @@ __all__ = ['Scattering']
 
 
 from .scattering import Scattering
+from .differentiable import scattering
 from . import utils
