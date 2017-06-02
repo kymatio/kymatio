@@ -103,7 +103,7 @@ def ifft_c2c(input):
 
 def ifft_c2r(input):
     # return FFT_C2R()(input)
-    return FFT_C2C()(input).select(input.dim()-1, 0)
+    return FFT_iC2C()(input).select(input.dim()-1, 0)
 
 def fft_r2c(input):
     return FFT_R2C()(input)
