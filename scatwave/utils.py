@@ -45,13 +45,13 @@ class Periodize(object):
     def __call__(self, input, k):
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
 
-        if not self.jit or isinstance(input, (torch.FloatTensor, torch.DoubleTensor)):
+        if not self.jit or not input.is_cuda:
             y = input.view(input.size(0), input.size(1),
                            input.size(2)//out.size(2), out.size(2),
                            input.size(3)//out.size(3), out.size(3),
                            2)
 
-            out = y.mean(4).squeeze(4).mean(2).squeeze(2)
+            out = y.mean(4, keepdim=False).mean(2, keepdim=False)
             return out
 
         if not iscomplex(input):
@@ -118,7 +118,7 @@ class Modulus(object):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
     def __call__(self, input):
-        if not self.jit or not isinstance(input, torch.cuda.FloatTensor):
+        if not self.jit or not input.is_cuda:
             norm = input.norm(2, input.dim() - 1)
             return torch.cat([norm, norm.new(norm.size()).zero_()], input.dim() - 1)
 
@@ -254,7 +254,7 @@ def cdgmm(A, B, jit=True, inplace=False):
     if type(A) is not type(B):
         raise RuntimeError('A and B should be same type!')
 
-    if not jit or isinstance(A, (torch.FloatTensor, torch.DoubleTensor)):
+    if not jit or not A.is_cuda:
         C = A.new(A.size())
 
         A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
