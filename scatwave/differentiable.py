@@ -54,7 +54,7 @@ def periodize(input, k):
 
 def modulus(input):
     # return input.norm(2, input.dim()-1).expand_as(input).contiguous()
-    norm = input.norm(2, input.dim() - 1)
+    norm = input.norm(2, input.dim() - 1).unsqueeze(input.dim()-1)
     return torch.cat([norm, Variable(norm.data.new(norm.size()).zero_())], input.dim() - 1)
 
 
