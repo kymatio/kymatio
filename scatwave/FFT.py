@@ -1,3 +1,4 @@
+from __future__ import print_function
 import torch
 from torch.autograd import Function
 from collections import defaultdict, namedtuple
@@ -19,7 +20,7 @@ class FFTcache(object):
         ostride = istride
         odist = idist
         rank = 2
-        print rank, n.ctypes.data, n.ctypes.data, istride, idist, n.ctypes.data, ostride, odist, type, batch
+        print(rank, n.ctypes.data, n.ctypes.data, istride, idist, n.ctypes.data, ostride, odist, type, batch)
         plan = cufft.cufftPlanMany(rank, n.ctypes.data, n.ctypes.data, istride, idist, n.ctypes.data, ostride, odist, type, batch)
         self.fft_cache[(input.size(),type,input.get_device())] = plan
 
