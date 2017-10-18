@@ -44,7 +44,7 @@ class Scattering(object):
 
     def _type(self, _type):
         for key, item in enumerate(self.Psi):
-            for key2, item2 in self.Psi[key].iteritems():
+            for key2, item2 in self.Psi[key].items():
                 if torch.is_tensor(item2):
                     self.Psi[key][key2] = item2.type(_type)
         self.Phi = [v.type(_type) for v in self.Phi]
