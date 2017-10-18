@@ -12,7 +12,7 @@ import scipy.fftpack as fft
 
 
 
-def filters_bank(M, N, J, L=8):
+def filters_bank_real(M, N, J, L=8):
     filters = {}
     filters['psi'] = []
 
@@ -42,6 +42,41 @@ def filters_bank(M, N, J, L=8):
         filters['phi'][res].div_(M*N // 2 ** (2 * J))
 
     return filters
+
+
+def filters_bank(M, N, J, L=8, cache=False):
+    '''
+    Cache filters to a file
+
+    cache: string or False
+        path to filter bank. 
+        If parameters (M, N, J, L) match, load from cache, otherwise, recompute and overwrite.
+    '''
+    if not cache:
+        return filters_bank_real(M, N, J, L)
+    try:
+        print 'Attempting to load from {} ...'.format(cache)
+        data = torch.load(cache)
+        assert M == data['M'], 'M mismatch'
+        assert N == data['N'], 'N mismatch'
+        assert J == data['J'], 'J mismatch'
+        assert L == data['L'], 'L mismatch'
+        filters = data['filters']
+        print 'Loaded.'
+        return filters
+    except Exception as e:
+        print 'Load Error: {}'.format(e)
+        print '(Re-)computing filters.'
+        filters = filters_bank_real(M, N, J, L)
+        print 'Attempting to save to {} ...'.format(cache)
+        try:
+            with open(cache, 'wb') as fp:
+                data = {'M':M, 'N':N, 'J':J, 'L':L, 'filters':filters}
+            torch.save(data, cache)
+            print 'Saved.'
+        except Exception as f:
+            print 'Save Error: {}'.format(f)
+        return filters
 
 
 def crop_freq(x, res):
