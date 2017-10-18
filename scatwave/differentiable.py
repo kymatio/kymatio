@@ -1,3 +1,4 @@
+from __future__ import print_function
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
@@ -15,7 +16,7 @@ def prepare_padding_size(M, N, J):
 
 def cast(Psi, Phi, _type):
     for key, item in enumerate(Psi):
-        for key2, item2 in Psi[key].iteritems():
+        for key2, item2 in Psi[key].items():
             if torch.is_tensor(item2):
                 Psi[key][key2] = Variable(item2.type(_type))
     Phi = [Variable(v.type(_type)) for v in Phi]
@@ -53,9 +54,8 @@ def periodize(input, k):
 
 
 def modulus(input):
-    # return input.norm(2, input.dim()-1).expand_as(input).contiguous()
-    norm = input.norm(2, input.dim() - 1).unsqueeze(input.dim()-1)
-    return torch.cat([norm, Variable(norm.data.new(norm.size()).zero_())], input.dim() - 1)
+    norm = input.norm(p=2, dim=-1, keepdim=True)
+    return torch.cat([norm, Variable(norm.data.new(norm.size()).zero_())], -1)
 
 
 def scattering(input, psi, phi, J):
@@ -128,4 +128,4 @@ if __name__ == '__main__':
     scat = Scattering(M, N, J).cuda()
     S_scat = scat(input.data)
 
-    print scat(input.data) - S.data
+    print(scat(input.data) - S.data)

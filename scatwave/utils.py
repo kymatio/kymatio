@@ -6,11 +6,16 @@ from collections import defaultdict, namedtuple
 
 import torch
 from skcuda import cublas, cufft
-from pynvrtc.compiler import Program
 import numpy as np
-from cupy.cuda.function import Module
-from cupy.cuda import device
+import cupy
 from string import Template
+
+
+@cupy.util.memoize(for_each_device=True)
+def load_kernel(kernel_name, code, **kwargs):
+    code = Template(code).substitute(**kwargs)
+    kernel_code = cupy.cuda.compile_with_cache(code)
+    return kernel_code.get_function(kernel_name)
 
 
 Stream = namedtuple('Stream', ['ptr'])
@@ -23,10 +28,6 @@ def getDtype(t):
         return 'double'
 
 
-def get_compute_arch(t):
-    return 'compute_%s' % device.Device().compute_capability
-
-
 def iscomplex(input):
     return input.size(-1) == 2
 
@@ -35,7 +36,6 @@ class Periodize(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
     def __init__(self, jit=True):
-        self.periodize_cache = defaultdict(lambda: None)
         self.block = (32, 32, 1)
         self.jit = jit
 
@@ -59,48 +59,39 @@ class Periodize(object):
 
         input = input.contiguous()
 
-        if (self.periodize_cache[(input.size(), out.size(), input.get_device())] is None):
-            kernel = '''
-            #define NW ${W} / ${k}
-            #define NH ${H} / ${k}
-            extern "C"
-            __global__ void periodize(const ${Dtype}2 *input, ${Dtype}2 *output)
+        kernel = '''
+        #define NW ${W} / ${k}
+        #define NH ${H} / ${k}
+        extern "C"
+        __global__ void periodize(const ${Dtype}2 *input, ${Dtype}2 *output)
+        {
+          int tx = blockIdx.x * blockDim.x + threadIdx.x;
+          int ty = blockIdx.y * blockDim.y + threadIdx.y;
+          int tz = blockIdx.z * blockDim.z + threadIdx.z;
+          if(tx >= NW || ty >= NH || tz >= ${B})
+            return;
+          input += tz * ${H} * ${W} + ty * ${W} + tx;
+          ${Dtype}2 res = make_${Dtype}2(0.f, 0.f);
+          for (int j=0; j<${k}; ++j)
+            for (int i=0; i<${k}; ++i)
             {
-              int tx = blockIdx.x * blockDim.x + threadIdx.x;
-              int ty = blockIdx.y * blockDim.y + threadIdx.y;
-              int tz = blockIdx.z * blockDim.z + threadIdx.z;
-              if(tx >= NW || ty >= NH || tz >= ${B})
-                return;
-              input += tz * ${H} * ${W} + ty * ${W} + tx;
-              ${Dtype}2 res = make_${Dtype}2(0.f, 0.f);
-              for (int j=0; j<${k}; ++j)
-                for (int i=0; i<${k}; ++i)
-                {
-                  const ${Dtype}2 &c = input[j * NH * ${W} + i * NW];
-                  res.x += c.x;
-                  res.y += c.y;
-                }
-              res.x /= ${k} * ${k};
-              res.y /= ${k} * ${k};
-              output[tz * NH * NW + ty * NW + tx] = res;
+              const ${Dtype}2 &c = input[j * NH * ${W} + i * NW];
+              res.x += c.x;
+              res.y += c.y;
             }
-            '''
-            B = input.nelement() // (2*input.size(-2) * input.size(-3))
-            W = input.size(-2)
-            H = input.size(-3)
-            k = input.size(-2) // out.size(-2)
-            kernel = Template(kernel).substitute(B=B, H=H, W=W, k=k, Dtype=getDtype(input))
-            name = str(input.get_device())+'-'+str(B)+'-'+str(k)+'-'+str(H)+'-'+str(W)+'-periodize.cu'
-            print(name)
-            prog = Program(kernel, name.encode())
-            ptx = prog.compile(['-arch='+get_compute_arch(input)])
-            module = Module()
-            module.load(bytes(ptx.encode()))
-            self.periodize_cache[(input.size(), out.size(), input.get_device())] = module
+          res.x /= ${k} * ${k};
+          res.y /= ${k} * ${k};
+          output[tz * NH * NW + ty * NW + tx] = res;
+        }
+        '''
+        B = input.nelement() // (2*input.size(-2) * input.size(-3))
+        W = input.size(-2)
+        H = input.size(-3)
+        k = input.size(-2) // out.size(-2)
+        periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(input))
         grid = (self.GET_BLOCKS(out.size(-3), self.block[0]),
                 self.GET_BLOCKS(out.size(-2), self.block[1]),
                 self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
-        periodize = self.periodize_cache[(input.size(), out.size(), input.get_device())].get_function('periodize')
         periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
@@ -110,7 +101,6 @@ class Modulus(object):
     """This class builds a wrapper to the moduli kernels and cache them.
         """
     def __init__(self, jit=True):
-        self.modulus_cache = defaultdict(lambda: None)
         self.CUDA_NUM_THREADS = 1024
         self.jit = jit
 
@@ -119,8 +109,8 @@ class Modulus(object):
 
     def __call__(self, input):
         if not self.jit or not input.is_cuda:
-            norm = input.norm(2, input.dim() - 1)
-            return torch.cat([norm, norm.new(norm.size()).zero_()], input.dim() - 1)
+            norm = input.norm(p=2, dim=-1, keepdim=True)
+            return torch.cat([norm, norm.new(norm.size()).zero_()], -1)
 
         out = input.new(input.size())
         input = input.contiguous()
@@ -128,25 +118,18 @@ class Modulus(object):
         if not iscomplex(input):
             raise TypeError('The input and outputs should be complex')
 
-        if (self.modulus_cache[input.get_device()] is None):
-            kernel = b"""
-            extern "C"
-            __global__ void abs_complex_value(const float * x, float2 * z, int n)
-            {
-                int i = blockIdx.x * blockDim.x + threadIdx.x;
-            if (i >= n)
-                return;
-            z[i] = make_float2(normf(2, x + 2*i), 0);
+        kernel = """
+        extern "C"
+        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype}2 * z, int n)
+        {
+            int i = blockIdx.x * blockDim.x + threadIdx.x;
+        if (i >= n)
+            return;
+        z[i] = make_${Dtype}2(normf(2, x + 2*i), 0);
 
-            }
-            """
-            print('modulus.cu')
-            prog = Program(kernel, b'modulus.cu')
-            ptx = prog.compile(['-arch='+get_compute_arch(input)])
-            module = Module()
-            module.load(bytes(ptx.encode()))
-            self.modulus_cache[input.get_device()] = module
-        fabs = self.modulus_cache[input.get_device()].get_function('abs_complex_value')
+        }
+        """
+        fabs = load_kernel('abs_complex_value', kernel, Dtype=getDtype(input))
         fabs(grid=(self.GET_BLOCKS(int(out.nelement())//2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
              args=[input.data_ptr(), out.data_ptr(), out.numel() // 2],
