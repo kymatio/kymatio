@@ -55,27 +55,27 @@ def filters_bank(M, N, J, L=8, cache=False):
     if not cache:
         return filters_bank_real(M, N, J, L)
     try:
-        print 'Attempting to load from {} ...'.format(cache)
+        print('Attempting to load from ',cache,' ...')
         data = torch.load(cache)
         assert M == data['M'], 'M mismatch'
         assert N == data['N'], 'N mismatch'
         assert J == data['J'], 'J mismatch'
         assert L == data['L'], 'L mismatch'
         filters = data['filters']
-        print 'Loaded.'
+        print('Loaded.')
         return filters
     except Exception as e:
-        print 'Load Error: {}'.format(e)
-        print '(Re-)computing filters.'
+        print('Load Error: ',e)
+        print('(Re-)computing filters.')
         filters = filters_bank_real(M, N, J, L)
-        print 'Attempting to save to {} ...'.format(cache)
+        print('Attempting to save to ',cache,' ...')
         try:
             with open(cache, 'wb') as fp:
                 data = {'M':M, 'N':N, 'J':J, 'L':L, 'filters':filters}
             torch.save(data, cache)
-            print 'Saved.'
+            print('Saved.')
         except Exception as f:
-            print 'Save Error: {}'.format(f)
+            print('Save Error: ',f)
         return filters
 
 
