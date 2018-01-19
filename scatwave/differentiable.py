@@ -41,8 +41,8 @@ def cdgmm(A, B):
     B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
     B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
 
-    C[..., 0] = A_r * B_r - A_i * B_i
-    C[..., 1] = A_r * B_i + A_i * B_r
+    C[..., 0] = (A_r * B_r - A_i * B_i).view(A.shape[:-1])
+    C[..., 1] = (A_r * B_i + A_i * B_r).view(A.shape[:-1])
     return C
 
 
