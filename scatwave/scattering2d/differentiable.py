@@ -2,9 +2,7 @@ from __future__ import print_function
 import torch
 from torch.autograd import Variable
 import torch.nn.functional as F
-from scatwave.FFT import fft_c2c, ifft_c2r, ifft_c2c
-from scatwave.filters_bank import filters_bank
-from scatwave.scattering import Scattering
+from .FFT import fft_c2c, ifft_c2r, ifft_c2c
 
 
 def prepare_padding_size(M, N, J):
@@ -106,26 +104,4 @@ def scattering(input, psi, phi, J):
     return S
 
 
-if __name__ == '__main__':
-    M, N = 32, 32
-    J = 2
 
-    M_padded, N_padded = prepare_padding_size(M, N, J)
-
-    filters = filters_bank(M_padded, N_padded, J)
-
-    Psi = filters['psi']
-    Phi = [filters['phi'][j] for j in range(J)]
-
-    Psi, Phi = cast(Psi, Phi, torch.cuda.FloatTensor)
-
-    input = Variable(torch.randn(1, 3, 32, 32).cuda())
-    input.requires_grad = True
-
-    S = scattering(input, Psi, Phi, J)
-    S.sum().backward()
-
-    scat = Scattering(M, N, J).cuda()
-    S_scat = scat(input.data)
-
-    print(scat(input.data) - S.data)
