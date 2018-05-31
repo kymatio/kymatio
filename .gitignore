@@ -1,0 +1,4 @@
+*.swp
+*.swo
+*__pycache__*
+scatwave.egg-info

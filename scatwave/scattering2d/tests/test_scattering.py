@@ -2,13 +2,13 @@
 
 import torch
 import unittest
-from scatwave.scattering import Scattering
-from scatwave import utils as sl
+from scatwave.scattering2d import Scattering2D
+from scatwave.scattering2d import utils as sl
 
 def linfnorm(x,y):
     return torch.max(torch.abs(x-y))
 
-class TestScattering(unittest.TestCase):
+class TestScattering2D(unittest.TestCase):
     def testFFTCentralFreq(self):
         # Checked the 0 frequency
         for gpu in [True, False]:
@@ -110,17 +110,17 @@ class TestScattering(unittest.TestCase):
 
             self.assertLess((y-z).abs().max(), 1e-6)
 
-    def testScattering(self):
+    def testScattering2D(self):
         data = torch.load('test/test_data.pt')
         x = data['x']
         S = data['S']
-        scat = Scattering(128, 128, 4, pre_pad=False,jit=True)
+        scat = Scattering2D(128, 128, 4, pre_pad=False,jit=True)
         scat.cuda()
         x = x.cuda()
         S = S.cuda()
         self.assertLess(((S - scat(x))).abs().max(), 1e-6)
 
-        scat = Scattering(128, 128, 4, pre_pad=False, jit=False)
+        scat = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
         Sg = []
         Sc = []
         for gpu in [True, False]:
