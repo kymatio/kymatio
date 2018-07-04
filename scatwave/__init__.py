@@ -1,10 +1,14 @@
 __all__ = [
             'Scattering2D',
-            'Scattering'
+            'Scattering',
+            'Scattering1D'
             ]
 
 from .scattering2d.scattering2d import Scattering2D
+from .scattering1d import Scattering1D
 
+from .datasets import fetch_fsdd
+from .caching import get_cache_dir
 
 
 
