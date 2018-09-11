@@ -36,7 +36,7 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
 
 def show_signal(x, s, order0, order1, order2):
     fig, axarr = plt.subplots(4, 1, figsize=(8, 16))
-    axarr[0].plot(x.data[0, 0])
+    axarr[0].plot(x)
     axarr[0].set_title('Original signal')
     axarr[1].plot(s[order0][0])
     axarr[1].set_title('Scattering Order 0')
@@ -65,4 +65,6 @@ if __name__ == '__main__':
     # harmonic signal
     x = generate_harmonic_signal(T)
     s = scattering.forward(x).data[0]
-    show_signal(x, s, order0, order1, order2)
+    show_signal(x.data.numpy().ravel(), s.numpy(),
+                order0.numpy(), order1.numpy(), order2.numpy())
+

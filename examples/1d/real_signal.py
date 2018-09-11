@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import Variable
 from scatwave import Scattering1D
-from scatwave import fetch_fsdd
+from scatwave.datasets import fetch_fsdd
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 import numpy as np
@@ -22,7 +22,7 @@ def loadfile(path_file):
 
 def show_signal(x, s, order0, order1, order2):
     fig, axarr = plt.subplots(4, 1, figsize=(8, 16))
-    axarr[0].plot(x.data[0, 0])
+    axarr[0].plot(x)
     axarr[0].set_title('Original signal')
     axarr[1].plot(s[order0][0])
     axarr[1].set_title('Scattering Order 0')
@@ -35,7 +35,7 @@ def show_signal(x, s, order0, order1, order2):
 
 if __name__ == '__main__':
     # fetch the dataset and get the signal
-    info_dataset = fetch_fsdd(base_dir='fsdd', verbose=True)
+    info_dataset = fetch_fsdd(verbose=True)
     filepath = os.path.join(info_dataset['path_dataset'],
                             sorted(info_dataset['files'])[0])
 
@@ -61,4 +61,4 @@ if __name__ == '__main__':
     s = scattering.forward(x_th).data.numpy()[0]
 
     # show it
-    show_signal(x_th, s, order0, order1, order2)
+    show_signal(x, s, order0.numpy(), order1.numpy(), order2.numpy())

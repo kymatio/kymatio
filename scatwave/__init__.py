@@ -7,9 +7,6 @@ __all__ = [
 from .scattering2d.scattering2d import Scattering2D
 from .scattering1d import Scattering1D
 
-from .datasets import fetch_fsdd
-from .caching import get_cache_dir
-
 
 
 # Make sure that DeprecationWarning within this package always gets printed
