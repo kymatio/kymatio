@@ -14,7 +14,9 @@ import torch
 from torch.nn import Linear, NLLLoss, LogSoftmax, Sequential
 from torch.optim import Adam
 from torch.autograd import Variable
-from scatwave import Scattering1D, fetch_fsdd, get_cache_dir
+from scatwave import Scattering1D
+from scatwave.datasets import fetch_fsdd
+from scatwave.caching import get_cache_dir
 import numpy as np
 from scipy.io import wavfile
 import os
@@ -261,7 +263,7 @@ def compute_scattering_coefs(T, J, Q, use_cuda=True, cache_name='fsdd',
         ensure reproducibility.
     """
     # 1) Download the dataset (if not existing)
-    info_data = fetch_fsdd(base_dir=cache_name, verbose=verbose)
+    info_data = fetch_fsdd(verbose=verbose)
     files = sorted(info_data['files'])
     path_data = info_data['path_dataset']
     # 2) Preprocess with the scattering
@@ -358,7 +360,7 @@ def compute_loss_and_accuracy(net, criterion, x, y):
     all_successes = []
     for i in range(x.shape[0]):
         resp = net.forward(x[i].unsqueeze(0))
-        loss = criterion(resp, y[i])
+        loss = criterion(resp, y[i:i+1])
         all_losses.append(loss.data.cpu()[0])
         # find the argmax of resp
         sub_resp = torch.squeeze(resp.data.cpu()).numpy()

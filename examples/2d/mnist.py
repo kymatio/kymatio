@@ -1,4 +1,3 @@
-from tqdm import tqdm
 import math
 import torch
 import torch.optim
@@ -7,11 +6,14 @@ from torchvision.datasets.mnist import MNIST
 from torchnet.engine import Engine
 from torch.autograd import Variable
 import torch.nn.functional as F
-from scatwave.scattering import Scattering
+from scatwave import Scattering2D as Scattering
+
+from scatwave.datasets import get_dataset_dir
 
 
 def get_iterator(mode):
-    ds = MNIST(root='./', download=True, train=mode)
+    mnist_dir = get_dataset_dir("mnist", create=True)
+    ds = MNIST(root=mnist_dir, download=True, train=mode)
     data = getattr(ds, 'train_data' if mode else 'test_data')
     labels = getattr(ds, 'train_labels' if mode else 'test_labels')
     tds = tnt.dataset.TensorDataset([data, labels])
@@ -84,16 +86,12 @@ def main():
                      torch.LongTensor(state['sample'][1]))
         meter_loss.add(state['loss'].data[0])
 
-    def on_start_epoch(state):
-        classerr.reset()
-        state['iterator'] = tqdm(state['iterator'])
-
     def on_end_epoch(state):
-        print 'Training accuracy:', classerr.value()
+        print('Training accuracy:', classerr.value())
 
     def on_end(state):
-        print 'Training' if state['train'] else 'Testing', 'accuracy'
-        print classerr.value()
+        print('Training' if state['train'] else 'Testing', 'accuracy')
+        print(classerr.value())
 
     optimizer = torch.optim.SGD(params.values(), lr=0.01, momentum=0.9,
                                 weight_decay=0.0005)
@@ -101,12 +99,12 @@ def main():
     engine = Engine()
     engine.hooks['on_sample'] = on_sample
     engine.hooks['on_forward'] = on_forward
-    engine.hooks['on_start_epoch'] = on_start_epoch
     engine.hooks['on_end_epoch'] = on_end_epoch
     engine.hooks['on_end'] = on_end
-    print 'Training:'
+    print('Training:')
+
     engine.train(h, get_iterator(True), 10, optimizer)
-    print 'Testing:'
+    print('Testing:')
     engine.test(h, get_iterator(False))
 
 
