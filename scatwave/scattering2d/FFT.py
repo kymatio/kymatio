@@ -38,9 +38,11 @@ class FFTcache(object):
         if isinstance(input, torch.cuda.FloatTensor):
             ffttype = cufft.CUFFT_C2C
             exec_to_use = cufft.cufftExecC2C
-        else:  # underlying assumption: torch.cuda.DoubleTensor
+        elif isinstance(input, torch.cuda.DoubleTensor):
             ffttype = cufft.CUFFT_Z2Z
             exec_to_use = cufft.cufftExecZ2Z
+        else:
+            raise TypeError('Unsupported type for input' + str(type(input)))
         if (self.fft_cache[(input.size(), ffttype, input.get_device())] is None):
             self.buildCache(input, ffttype)
         exec_to_use(self.fft_cache[(input.size(), ffttype, input.get_device())],
@@ -52,9 +54,11 @@ class FFTcache(object):
         if isinstance(input, torch.cuda.FloatTensor):
             ffttype = cufft.CUFFT_C2R
             exec_to_use = cufft.cufftExecC2R
-        else:  # underlying assumption: torch.cuda.DoubleTensor
+        elif isinstance(input, torch.cuda.DoubleTensor):
             ffttype = cufft.CUFFT_Z2D
             exec_to_use = cufft.cufftExecZ2D
+        else:
+            raise TypeError('Unsupported type for input' + str(type(input)))
         if(self.fft_cache[(input.size(), ffttype, input.get_device())] is None):
             self.buildCache(input, ffttype)
         exec_to_use(self.fft_cache[(input.size(), ffttype, input.get_device())],
