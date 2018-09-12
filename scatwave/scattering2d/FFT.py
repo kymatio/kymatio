@@ -35,19 +35,34 @@ class FFTcache(object):
         assert input.is_contiguous()
         output = input.new(input.size())
         flag = cufft.CUFFT_INVERSE if inverse else cufft.CUFFT_FORWARD
-        ffttype = cufft.CUFFT_C2C if isinstance(input, torch.cuda.FloatTensor) else cufft.CUFFT_Z2Z
+        if isinstance(input, torch.cuda.FloatTensor):
+            ffttype = cufft.CUFFT_C2C
+            exec_to_use = cufft.cufftExecC2C
+        elif isinstance(input, torch.cuda.DoubleTensor):
+            ffttype = cufft.CUFFT_Z2Z
+            exec_to_use = cufft.cufftExecZ2Z
+        else:
+            raise TypeError('Unsupported type for input' + str(type(input)))
         if (self.fft_cache[(input.size(), ffttype, input.get_device())] is None):
             self.buildCache(input, ffttype)
-        cufft.cufftExecC2C(self.fft_cache[(input.size(), ffttype, input.get_device())],
-                           input.data_ptr(), output.data_ptr(), flag)
+        exec_to_use(self.fft_cache[(input.size(), ffttype, input.get_device())],
+                    input.data_ptr(), output.data_ptr(), flag)
         return output
 
     def c2r(self, input):
         output = input.new(input.size()[:-1])
-        if(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())] is None):
-            self.buildCache(input, cufft.CUFFT_C2R)
-        cufft.cufftExecC2R(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())],
-                           input.data_ptr(), output.data_ptr())
+        if isinstance(input, torch.cuda.FloatTensor):
+            ffttype = cufft.CUFFT_C2R
+            exec_to_use = cufft.cufftExecC2R
+        elif isinstance(input, torch.cuda.DoubleTensor):
+            ffttype = cufft.CUFFT_Z2D
+            exec_to_use = cufft.cufftExecZ2D
+        else:
+            raise TypeError('Unsupported type for input' + str(type(input)))
+        if(self.fft_cache[(input.size(), ffttype, input.get_device())] is None):
+            self.buildCache(input, ffttype)
+        exec_to_use(self.fft_cache[(input.size(), ffttype, input.get_device())],
+                    input.data_ptr(), output.data_ptr())
         return output
 
     def r2c(self, input):

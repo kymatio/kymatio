@@ -160,8 +160,10 @@ class FFT1DCache(object):
         # adapt the FFT type to Float or Double
         if isinstance(x, torch.cuda.FloatTensor):
             ffttype = cufft.CUFFT_C2C
+            exec_to_use = cufft.cufftExecC2C
         elif isinstance(x, torch.cuda.DoubleTensor):
             ffttype = cufft.CUFFT_Z2Z  # double
+            exec_to_use = cufft.cufftExecZ2Z
         else:
             raise ValueError("Unsupported type for x:", type(x))
         # build and store the cache if not existing
@@ -169,8 +171,8 @@ class FFT1DCache(object):
         if self.fft_cache[path_input] is None:
             self.createStorePlanCache(x, ffttype)
         # Execute the FFT transform and store it in output
-        cufft.cufftExecC2C(self.fft_cache[path_input],
-                           x.data_ptr(), output.data_ptr(), flag)
+        exec_to_use(self.fft_cache[path_input],
+                    x.data_ptr(), output.data_ptr(), flag)
         return output
 
     def c2c_cpu(self, x, inverse=False):
@@ -256,9 +258,9 @@ class FFT1DCache(object):
             output 4D tensor on the same device as x and of same size,
             where output[i, j] contains the desired FFT of x[i, j]
         """
-        if isinstance(x, torch.FloatTensor):
+        if isinstance(x, torch.FloatTensor) or isinstance(x, torch.DoubleTensor):
             return self.c2c_cpu(x, inverse=inverse)
-        elif isinstance(x, torch.cuda.FloatTensor):
+        elif isinstance(x, torch.cuda.FloatTensor) or isinstance(x, torch.cuda.DoubleTensor):
             return self.c2c_cuda(x, inverse=inverse)
         else:
             raise TypeError('Unsupported type for input x' + str(type(x)))
