@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import Variable
-from scatwave import Scattering1D
-from scatwave.datasets import fetch_fsdd
+from scattering import Scattering1D
+from scattering.datasets import fetch_fsdd
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 import numpy as np

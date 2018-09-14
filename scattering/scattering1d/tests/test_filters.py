@@ -1,15 +1,15 @@
 """
 Testing all functions in filters_bank
 """
-from scatwave.scattering1d.filter_bank import adaptative_choice_P
-from scatwave.scattering1d.filter_bank import periodize_filter_fft
-from scatwave.scattering1d.filter_bank import get_normalizing_factor
-from scatwave.scattering1d.filter_bank import compute_sigma_psi
-from scatwave.scattering1d.filter_bank import compute_xi_max
-from scatwave.scattering1d.filter_bank import morlet1D
-from scatwave.scattering1d.filter_bank import calibrate_scattering_filters
-from scatwave.scattering1d.filter_bank import get_max_dyadic_subsampling
-from scatwave.scattering1d.filter_bank import gauss1D
+from scattering.scattering1d.filter_bank import adaptative_choice_P
+from scattering.scattering1d.filter_bank import periodize_filter_fft
+from scattering.scattering1d.filter_bank import get_normalizing_factor
+from scattering.scattering1d.filter_bank import compute_sigma_psi
+from scattering.scattering1d.filter_bank import compute_xi_max
+from scattering.scattering1d.filter_bank import morlet1D
+from scattering.scattering1d.filter_bank import calibrate_scattering_filters
+from scattering.scattering1d.filter_bank import get_max_dyadic_subsampling
+from scattering.scattering1d.filter_bank import gauss1D
 import numpy as np
 from sklearn.utils import check_random_state
 import math
