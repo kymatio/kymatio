@@ -1,8 +1,8 @@
 """ This script will test the submodules used by the scattering module"""
 
 import torch
-from scatwave.scattering2d import Scattering2D
-from scatwave.scattering2d import utils as sl
+from scattering.scattering2d import Scattering2D
+from scattering.scattering2d import utils as sl
 
 
 def linfnorm(x,y):

@@ -14,9 +14,9 @@ import torch
 from torch.nn import Linear, NLLLoss, LogSoftmax, Sequential
 from torch.optim import Adam
 from torch.autograd import Variable
-from scatwave import Scattering1D
-from scatwave.datasets import fetch_fsdd
-from scatwave.caching import get_cache_dir
+from scattering import Scattering1D
+from scattering.datasets import fetch_fsdd
+from scattering.caching import get_cache_dir
 import numpy as np
 from scipy.io import wavfile
 import os

@@ -1,6 +1,6 @@
 import torch
 from torch.autograd import Variable
-from scatwave.scattering1d.fft_wrapper import fft1d_c2c, ifft1d_c2c_normed
+from scattering.scattering1d.fft_wrapper import fft1d_c2c, ifft1d_c2c_normed
 
 
 def test_correctness_fft(random_state=42, test_cuda=None):

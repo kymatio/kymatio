@@ -6,9 +6,9 @@ from torchvision.datasets.mnist import MNIST
 from torchnet.engine import Engine
 from torch.autograd import Variable
 import torch.nn.functional as F
-from scatwave import Scattering2D as Scattering
+from scattering import Scattering2D as Scattering
 
-from scatwave.datasets import get_dataset_dir
+from scattering.datasets import get_dataset_dir
 
 
 def get_iterator(mode):

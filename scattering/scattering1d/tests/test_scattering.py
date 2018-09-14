@@ -1,6 +1,6 @@
 import torch
 from torch.autograd import Variable
-from scatwave import Scattering1D
+from scattering import Scattering1D
 import math
 from sklearn.utils import check_random_state
 

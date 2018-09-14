@@ -4,7 +4,7 @@ Demo code for the module
 import torch
 from torch.autograd import Variable
 from time import time
-from scatwave import Scattering1D
+from scattering import Scattering1D
 
 
 def mydemo(T, J, Q, batch_size=8, order2=False, cuda=False):

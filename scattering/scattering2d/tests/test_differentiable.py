@@ -1,10 +1,10 @@
 import numpy as np
 import torch
 from torch.autograd import Variable
-from scatwave import Scattering2D
-from scatwave.scattering2d.differentiable import scattering
-from scatwave.scattering2d.differentiable import prepare_padding_size, cast
-from scatwave.scattering2d.filters_bank import filters_bank
+from scattering import Scattering2D
+from scattering.scattering2d.differentiable import scattering
+from scattering.scattering2d.differentiable import prepare_padding_size, cast
+from scattering.scattering2d.filters_bank import filters_bank
 
 
 def test_output_similarity_differentiable():

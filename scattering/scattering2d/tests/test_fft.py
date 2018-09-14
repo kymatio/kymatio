@@ -1,7 +1,7 @@
 import torch
 from torch.autograd import Variable
 import numpy as np
-from scatwave.scattering2d.FFT import fft_c2c, ifft_c2c, ifft_c2r, fft_r2c
+from scattering.scattering2d.FFT import fft_c2c, ifft_c2c, ifft_c2r, fft_r2c
 
 
 def fft_c2c_cpu(x, inverse=False):
