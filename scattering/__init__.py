@@ -1,4 +1,5 @@
 __all__ = [
+            'Scattering3D',
             'Scattering2D',
             'Scattering',
             'Scattering1D'
@@ -6,8 +7,7 @@ __all__ = [
 
 from .scattering2d.scattering2d import Scattering2D
 from .scattering1d import Scattering1D
-
-
+from .scattering3d.scattering3d import Scattering3D
 
 # Make sure that DeprecationWarning within this package always gets printed
 ### Snippet copied from sklearn.__init__
