@@ -9,8 +9,7 @@ Scattering
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
    quickstart
-   installation
    userguide
-   developerguide
 
