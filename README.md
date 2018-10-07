@@ -35,9 +35,9 @@ various GPUs, including Titan X, 1080s, 980s, K20s, and Titan X Pascal.
 The first step is to install pytorch following instructions from
 <http://pytorch.org>, then you can run `pip`:
 
-sudo apt-get install libfftw3-dev
 
 ```
+sudo apt-get install libfftw3-dev
 pip install -r requirements.txt
 python setup.py install
 ```
