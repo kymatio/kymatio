@@ -12,6 +12,7 @@ import torch.nn.functional as F
 from scattering import Scattering2D
 import torch
 import argparse
+import math
 
 class View(nn.Module):
     def __init__(self, *args):
@@ -65,29 +66,34 @@ def main():
         The model achieves XX testing accuracy after 10 epochs.
     """
     parser = argparse.ArgumentParser(description='MNIST scattering  + hybrid examples')
-    parser.add_argument('--mode', type=int, default=2,help='scattering 1st or 2nd order')
-    parser.add_argument('--classifier', type=str, default='linear',help='classifier model')
+    parser.add_argument('--mode', type=int, default=1,help='scattering 1st or 2nd order')
+    parser.add_argument('--classifier', type=str, default='cnn',help='classifier model')
     args = parser.parse_args()
     assert(args.classifier in ['linear','mlp','cnn'])
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    scat = Scattering2D(M=28, N=28, J=2)
+    if args.mode == 1:
+        scat = Scattering2D(M=28, N=28, J=2,order2=False)
+        K = 17
+    else:
+        scat = Scattering2D(M=28, N=28, J=2)
+        K = 81
     if use_cuda:
         scat = scat.cuda()
 
-    K = 81
+
 
 
     if args.classifier == 'cnn':
         model = nn.Sequential(
             View(K, 7, 7),
             nn.BatchNorm2d(K),
-            nn.Conv2d(K, 32, 3,padding=1), nn.ReLU(),
-            nn.Conv2d(K, 32, 3,padding=1), nn.ReLU(),
+            nn.Conv2d(K, 64, 3,padding=1), nn.ReLU(),
+            nn.Conv2d(64, 64, 3,padding=1), nn.ReLU(),
             View(64*7*7),
-            nn.Linear(32 * 7 * 7, 512), nn.ReLU(),
+            nn.Linear(64 * 7 * 7, 512), nn.ReLU(),
             nn.Linear(512, 10)
         ).to(device)
 
@@ -113,6 +119,16 @@ def main():
 
     model.to(device)
 
+    #initialize
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            n = m.kernel_size[0] * m.kernel_size[1] * m.in_channels
+            m.weight.data.normal_(0, 2./math.sqrt(n))
+            m.bias.data.zero_()
+        if isinstance(m, nn.Linear):
+            m.weight.data.normal_(0, 2./math.sqrt(m.in_features))
+            m.bias.data.zero_()
+
     # DataLoaders
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
@@ -133,7 +149,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9,
                                 weight_decay=0.0005)
 
-    for epoch in range(1, 16):
+    for epoch in range(1, 10):
         train( model, device, train_loader, optimizer, epoch, scat)
         test(model, device, test_loader, scat)
 
