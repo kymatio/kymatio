@@ -4,7 +4,6 @@ numpy
 scikit-cuda
 scipy
 pynvrtc
-tqdm
 git+git://github.com/pytorch/tnt.git#egg=tnt
 pyfftw
 scikit-learn
