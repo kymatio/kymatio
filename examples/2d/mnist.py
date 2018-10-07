@@ -64,9 +64,13 @@ def main():
         scattering 1st order can also be set by the mode
         Scattering features are normalized by batch normalization.
         The model achieves XX testing accuracy after 10 epochs.
+
+        scatter + linear achieves 99.15% in 15 epochs
+        scatter + cnn achieves 99.3% in 15 epochs
+
     """
     parser = argparse.ArgumentParser(description='MNIST scattering  + hybrid examples')
-    parser.add_argument('--mode', type=int, default=1,help='scattering 1st or 2nd order')
+    parser.add_argument('--mode', type=int, default=2,help='scattering 1st or 2nd order')
     parser.add_argument('--classifier', type=str, default='cnn',help='classifier model')
     args = parser.parse_args()
     assert(args.classifier in ['linear','mlp','cnn'])
@@ -91,7 +95,6 @@ def main():
             View(K, 7, 7),
             nn.BatchNorm2d(K),
             nn.Conv2d(K, 64, 3,padding=1), nn.ReLU(),
-            nn.Conv2d(64, 64, 3,padding=1), nn.ReLU(),
             View(64*7*7),
             nn.Linear(64 * 7 * 7, 512), nn.ReLU(),
             nn.Linear(512, 10)
@@ -109,8 +112,8 @@ def main():
 
     elif args.classifier == 'linear':
         model = nn.Sequential(
-           # View(K, 7, 7),
-            #nn.BatchNorm2d(K),
+            View(K, 7, 7),
+            nn.BatchNorm2d(K),
             View(K * 7 * 7),
             nn.Linear(K * 7 * 7, 10)
         )
@@ -132,14 +135,14 @@ def main():
     # DataLoaders
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=True, download=True,
+        datasets.MNIST('./data', train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
         batch_size=128, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('../data', train=False, transform=transforms.Compose([
+        datasets.MNIST('./data', train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])),
@@ -149,7 +152,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9,
                                 weight_decay=0.0005)
 
-    for epoch in range(1, 10):
+    for epoch in range(1, 16):
         train( model, device, train_loader, optimizer, epoch, scat)
         test(model, device, test_loader, scat)
 
