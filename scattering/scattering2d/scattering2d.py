@@ -83,9 +83,10 @@ class Scattering2D(object):
      to False.
 
     """
-    def __init__(self, M, N, J, L=8, pre_pad=False):
+    def __init__(self, M, N, J, L=8, pre_pad=False, order2=True):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
+        self.order2 = order2
         self.build()
 
     def build(self):
@@ -97,7 +98,6 @@ class Scattering2D(object):
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(self.J)]
-
 
     def _type(self, _type):
         for key, item in enumerate(self.Psi):
@@ -159,10 +159,13 @@ class Scattering2D(object):
         subsample_fourier = self.subsample_fourier
         modulus = self.modulus
         pad = self.pad
+        output_size = 1 + self.L*J
+        if self.order2:
+            output_size += self.L*self.L*J*(J - 1) // 2
 
         S = input.new(input.size(0),
                       input.size(1),
-                      1 + self.L*J + self.L*self.L*J*(J - 1) // 2,
+                      output_size,
                       self.M_padded//(2**J)-2,
                       self.N_padded//(2**J)-2)
         U_r = pad(input)
@@ -190,19 +193,20 @@ class Scattering2D(object):
             S[..., n, :, :] = unpad(U_J_r)
             n = n + 1
 
-            for n2 in range(len(psi)):
-                j2 = psi[n2]['j']
-                if(j1 < j2):
-                    U_2_c = subsample_fourier(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
-                    U_2_c = fft(U_2_c, 'C2C', inverse=True)
-                    U_2_c = fft(modulus(U_2_c), 'C2C')
-
-                    # Third low pass filter
-                    U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
-                    U_J_r = fft(U_2_c, 'C2R')
-
-                    S[..., n, :, :] = unpad(U_J_r)
-                    n = n + 1
+            if self.order2:
+                for n2 in range(len(psi)):
+                    j2 = psi[n2]['j']
+                    if(j1 < j2):
+                        U_2_c = subsample_fourier(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
+                        U_2_c = fft(U_2_c, 'C2C', inverse=True)
+                        U_2_c = fft(modulus(U_2_c), 'C2C')
+    
+                        # Third low pass filter
+                        U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
+                        U_J_r = fft(U_2_c, 'C2R')
+    
+                        S[..., n, :, :] = unpad(U_J_r)
+                        n = n + 1
 
         return S
 
