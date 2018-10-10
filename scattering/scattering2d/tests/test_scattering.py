@@ -8,32 +8,6 @@ from scattering.scattering2d import utils as sl
 def linfnorm(x,y):
     return torch.max(torch.abs(x-y))
 
-def test_FFTCentralFreq(gpu=False):
-    # Checked the 0 frequency
-    x = torch.FloatTensor(10, 10, 2).fill_(0)
-    x.narrow(2, 0, 1).fill_(1)
-    if gpu:
-        x = x.cuda()
-
-    a = x.sum()
-    fft = sl.Fft()
-    fft(x, inplace=True)
-    b = x[0,0,0]
-    assert (a - b).abs().max() < 1e-6
-
-def test_FFTCentralFreqBatch(gpu=False):
-    # Same for batches
-    x = torch.FloatTensor(3,10,10,2).fill_(0)
-    x.narrow(3,0,1).fill_(1)
-    if gpu:
-        x = x.cuda()
-
-    a = x.sum()
-    fft = sl.Fft()
-    fft(x, inplace=True)
-    c = x[:,0,0,0].sum()
-    assert (a - c).abs().max() < 1e-6
-
 
 def test_FFTUnormalized(gpu=False):
     # Check for a random tensor:
