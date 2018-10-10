@@ -137,65 +137,17 @@ class Modulus(object):
         return out
 
 
+
+
+
 class Fft(object):
     """This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
         """
-
-    def __init__(self):
-        self.fft_cache = defaultdict(lambda: None)
-
-    def buildCache(self, input, type):
-        k = input.ndimension() - 3
-        n = np.asarray([input.size(k), input.size(k+1)], np.int32)
-        batch = input.nelement() // (2*input.size(k) * input.size(k + 1))
-        idist = input.size(k) * input.size(k + 1)
-        istride = 1
-        ostride = istride
-        odist = idist
-        rank = 2
-        plan = cufft.cufftPlanMany(rank, n.ctypes.data, n.ctypes.data, istride,
-                                   idist, n.ctypes.data, ostride, odist, type, batch)
-        self.fft_cache[(input.size(), type, input.get_device())] = plan
-
-    def __del__(self):
-        for keys in self.fft_cache:
-            try:
-                cufft.cufftDestroy(self.fft_cache[keys])
-            except:
-                pass
-
-    def __call__(self, input, direction='C2C', inplace=False, inverse=False):
+    def __call__(self, input, direction='C2C', inverse=False):
         if direction == 'C2R':
             inverse = True
-
-        if not isinstance(input, torch.cuda.FloatTensor):
-            if not isinstance(input, (torch.FloatTensor, torch.DoubleTensor)):
-                raise(TypeError('The input should be a torch.cuda.FloatTensor, \
-                                torch.FloatTensor or a torch.DoubleTensor'))
-            else:
-                input_np = input[..., 0].numpy() + 1.0j * input[..., 1].numpy()
-                f = lambda x: np.stack((np.real(x), np.imag(x)), axis=len(x.shape))
-                out_type = input.numpy().dtype
-
-                if direction == 'C2R':
-                    out = np.real(np.fft.ifft2(input_np)).astype(out_type)*input.size(-2)*input.size(-3)
-                    return torch.from_numpy(out)
-
-                if inplace:
-                    if inverse:
-                        out = f(np.fft.ifft2(input_np)).astype(out_type)*input.size(-2)*input.size(-3)
-                    else:
-                        out = f(np.fft.fft2(input_np)).astype(out_type)
-                    input.copy_(torch.from_numpy(out))
-                    return
-                else:
-                    if inverse:
-                        out = f(np.fft.ifft2(input_np)).astype(out_type)*input.size(-2)*input.size(-3)
-                    else:
-                        out = f(np.fft.fft2(input_np)).astype(out_type)
-                    return torch.from_numpy(out)
 
         if not iscomplex(input):
             raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
@@ -203,21 +155,15 @@ class Fft(object):
         if (not input.is_contiguous()):
             raise (RuntimeError('Tensors must be contiguous!'))
 
+        output = []
         if direction == 'C2R':
-            output = input.new(input.size()[:-1])
-            if(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())] is None):
-                self.buildCache(input, cufft.CUFFT_C2R)
-            cufft.cufftExecC2R(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())],
-                               input.data_ptr(), output.data_ptr())
-            return output
+            output = torch.irfft(input,2,normalized=False, onesided=False,signal_sizes=input.size())
         elif direction == 'C2C':
-            output = input.new(input.size()) if not inplace else input
-            flag = cufft.CUFFT_INVERSE if inverse else cufft.CUFFT_FORWARD
-            if (self.fft_cache[(input.size(), cufft.CUFFT_C2C, input.get_device())] is None):
-                self.buildCache(input, cufft.CUFFT_C2C)
-            cufft.cufftExecC2C(self.fft_cache[(input.size(), cufft.CUFFT_C2C, input.get_device())],
-                               input.data_ptr(), output.data_ptr(), flag)
-            return output
+            if inverse:
+                output = torch.ifft(input, 2, normalized=False)
+            else:
+                output = torch.ifft(input, 2, normalized=False)
+        return output
 
 
 def cdgmm(A, B, jit=True, inplace=False):
