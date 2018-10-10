@@ -23,7 +23,7 @@ def filters_bank_real(M, N, J, L=8):
             psi = {}
             psi['j'] = j
             psi['theta'] = theta
-            psi_signal = morlet_2d(M, N, 0.8 * 2**j, (int(L-L/2-1)-theta) * np.pi / L, 3.0 / 4.0 * np.pi /2**j,offset=offset_unpad) # The 5 is here just to match the LUA implementation :)
+            psi_signal = morlet_2d(M, N, 0.8 * 2**j, (int(L-L/2-1)-theta) * np.pi / L, 3.0 / 4.0 * np.pi /2**j,offset=offset_unpad)
             psi_signal_fourier = fft.fft2(psi_signal)
             for res in range(j + 1):
                 psi_signal_fourier_res = crop_freq(psi_signal_fourier, res)
