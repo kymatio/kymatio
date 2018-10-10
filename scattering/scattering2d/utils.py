@@ -145,18 +145,6 @@ class Fft(object):
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
         """
-
-    def __init__(self, jit=True):
-        self.fft_cache = defaultdict(lambda: None)
-
-
-    def __del__(self):
-        for keys in self.fft_cache:
-            try:
-                cufft.cufftDestroy(self.fft_cache[keys])
-            except:
-                pass
-
     def __call__(self, input, direction='C2C', inverse=False):
         if direction == 'C2R':
             inverse = True
