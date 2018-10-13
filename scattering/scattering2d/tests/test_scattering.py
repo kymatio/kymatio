@@ -85,3 +85,4 @@ def test_Scattering2D():
             scattering.cpu()
             Sg = scattering(x)
         assert (Sg - S).abs().max() < 1e-6
+
