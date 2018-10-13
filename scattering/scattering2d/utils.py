@@ -141,10 +141,10 @@ class Modulus(object):
 
 """
 class Fft(object):
-    """This class builds a wrapper to the FFTs kernels and cache them.
+    """"""This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
-        """
+        """"""
     def __call__(self, input, direction='C2C', inverse=False, inplace=False):
         if direction == 'C2R':
             inverse = True
@@ -258,7 +258,7 @@ class Fft(object):
                                input.data_ptr(), output.data_ptr(), flag)
             z = torch.irfft(input, 2, normalized=False, onesided=False) - output
             print('C2C')
-            
+
             print(z.abs().max())
             return output
 
