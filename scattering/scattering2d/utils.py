@@ -145,7 +145,7 @@ class Fft(object):
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
         """
-    def __call__(self, input, direction='C2C', inverse=False):
+    def __call__(self, input, direction='C2C', inverse=False, inplace=False):
         if direction == 'C2R':
             inverse = True
 
