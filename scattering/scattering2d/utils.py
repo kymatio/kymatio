@@ -245,14 +245,9 @@ class Fft(object):
             cufft.cufftExecC2R(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())],
                                input.data_ptr(), output.data_ptr())
 
-            print(input.size())
+
             z = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
-            print(input.size())
-            print(z.size())
-            print(z.abs().max()/output.abs().max())
-            z = z - output
-            print('C2R')
-            #print(z.abs().max())
+            output = z
 
             return output
         elif direction == 'C2C':
@@ -267,9 +262,7 @@ class Fft(object):
                 z = torch.ifft(input, 2, normalized=False)
             else:
                 z = torch.fft(input, 2, normalized=False)
-            z = z - output
-            print('C2C')
-            #print(z.abs().max())
+            output = z
             return output
 
 
