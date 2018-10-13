@@ -139,12 +139,11 @@ class Modulus(object):
 
 
 
-"""
 class Fft(object):
-    """"""This class builds a wrapper to the FFTs kernels and cache them.
+    """This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
-        """"""
+        """
     def __call__(self, input, direction='C2C', inverse=False, inplace=False):
         if direction == 'C2R':
             inverse = True
@@ -156,27 +155,22 @@ class Fft(object):
             raise (RuntimeError('Tensors must be contiguous!'))
 
         output = []
-        input_ = input#.view(input.size(0)*input.size(1),input.size(2),input.size(3),input.size(4))
         if direction == 'C2R':
-            output = torch.irfft(input_,2,normalized=False, onesided=False)
+            output = torch.irfft(input,2,normalized=False, onesided=False)*input.size(-2)*input.size(-3)
         elif direction == 'C2C':
             if inverse:
-                output = torch.ifft(input_, 2, normalized=False)
+                output = torch.ifft(input, 2, normalized=False)
             else:
-                output = torch.fft(input_, 2, normalized=False)
+                output = torch.fft(input, 2, normalized=False)
 
-        output = output * output.size(3)*output.size(2)
-        #print(output.size())
-        #print(input.size())
-        #output = output.view(input.size(0), input.size(1), input.size(2), input.size(3), input.size(4))
         return output
 """
 
 
 class Fft(object):
-    """This class builds a wrapper to the FFTs kernels and cache them.
+    This class builds a wrapper to the FFTs kernels and cache them.
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
-        """
+
 
     def __init__(self):
         self.fft_cache = defaultdict(lambda: None)
@@ -264,7 +258,7 @@ class Fft(object):
                 z = torch.fft(input, 2, normalized=False)
             output = z
             return output
-
+"""
 
 def cdgmm(A, B, jit=True, inplace=False):
     """This function uses the C-wrapper to use cuBLAS.
