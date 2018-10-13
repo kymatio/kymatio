@@ -258,9 +258,9 @@ class Fft(object):
                                input.data_ptr(), output.data_ptr(), flag)
             z = []
             if inverse:
-                z = torch.ifft(input, 2, normalized=False, onesided=False)
+                z = torch.ifft(input, 2, normalized=False)
             else:
-                z = torch.fft(input, 2, normalized=False, onesided=False)
+                z = torch.fft(input, 2, normalized=False)
             print(z.size())
             print(output.size())
             z = z - output
