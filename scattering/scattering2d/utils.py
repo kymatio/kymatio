@@ -157,7 +157,7 @@ class Fft(object):
 
         output = []
         if direction == 'C2R':
-            output = torch.irfft(input,2,normalized=False, onesided=False,signal_sizes=input.size())
+            output = torch.irfft(input,2,normalized=False, onesided=False)#,signal_sizes=input.size())
         elif direction == 'C2C':
             if inverse:
                 output = torch.ifft(input, 2, normalized=False)
