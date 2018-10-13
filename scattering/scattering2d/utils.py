@@ -249,7 +249,7 @@ class Fft(object):
             print(z.abs().max()/output.abs().max())
             z = z - output
             print('C2R')
-            print(z.abs().max())
+            #print(z.abs().max())
 
             return output
         elif direction == 'C2C':
@@ -266,7 +266,7 @@ class Fft(object):
                 z = torch.fft(input, 2, normalized=False)
             z = z - output
             print('C2C')
-            print(z.abs().max())
+            #print(z.abs().max())
             return output
 
 
