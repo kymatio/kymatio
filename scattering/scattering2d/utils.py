@@ -156,12 +156,12 @@ class Fft(object):
 
         output = []
         if direction == 'C2R':
-            output = torch.irfft(input,2,normalized=False, onesided=False)*input.size(-2)*input.size(-3)
+            output = torch.irfft(input.clone(),2,normalized=False, onesided=False)*input.size(-2)*input.size(-3)
         elif direction == 'C2C':
             if inverse:
-                output = torch.ifft(input, 2, normalized=False)
+                output = torch.ifft(input.clone(), 2, normalized=False)
             else:
-                output = torch.fft(input, 2, normalized=False)
+                output = torch.fft(input.clone(), 2, normalized=False)
 
         return output
 """
