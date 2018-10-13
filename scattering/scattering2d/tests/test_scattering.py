@@ -76,7 +76,7 @@ def test_Scattering2D():
     # Then, let's check when using pure pytorch code
     scat = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
     Sg = []
-    Sc = []
+
     for gpu in [True, False]:
         if gpu:
             x = x.cuda()
