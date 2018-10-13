@@ -140,10 +140,10 @@ class Modulus(object):
 
 
 class Fft(object):
-    """"""This class builds a wrapper to the FFTs kernels and cache them.
+    """This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
-        """"""
+        """
     def __call__(self, input, direction='C2C', inverse=False, inplace=False):
         if direction == 'C2R':
             inverse = True
@@ -272,6 +272,8 @@ class Fft(object):
             print(z.abs().max())
 
             return output
+
+"""
 
 
 def cdgmm(A, B, jit=True, inplace=False):
