@@ -163,7 +163,7 @@ class Fft(object):
             if inverse:
                 output = torch.ifft(input_, 2, normalized=True)
             else:
-                output = torch.fft(input_, 2, normalized=Trues)
+                output = torch.fft(input_, 2, normalized=True)
         #print(output.size())
         #print(input.size())
         #output = output.view(input.size(0), input.size(1), input.size(2), input.size(3), input.size(4))
