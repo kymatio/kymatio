@@ -200,8 +200,8 @@ def cdgmm(A, B, jit=True, inplace=False):
         print(B_i.size())
         print(C.size())
 
-        C[..., 0].copy_(A_r * B_r - A_i * B_i)
-        C[..., 1].copy_(A_r * B_i + A_i * B_r)
+        C[..., 0].view(-1, C.size(-2)*C.size(-3)).copy_(A_r * B_r - A_i * B_i)
+        C[..., 1].view(-1, C.size(-2)*C.size(-3)).copy_(A_r * B_i + A_i * B_r)
 
         # faster if B is actually real
         #B[...,1] = B[...,0]
