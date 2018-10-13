@@ -109,14 +109,18 @@ def test_Cublas():
 
 def test_Scattering2D():
     data = torch.load('test_data.pt')
-    x = data['x']
-    S = data['S']
+    x = data['x'].view([7,3, 128, 128])
+    S = data['S'].view([7,3, 417, 8, 8])
+
+    # First, let's check the Jit
     scat = Scattering2D(128, 128, 4, pre_pad=False,jit=True)
     scat.cuda()
     x = x.cuda()
     S = S.cuda()
-    assert ((S - scat(x))).abs().max() < 1e-6
+    y = scat(x)
+    assert ((S - y)).abs().max() < 1e-6
 
+    # Then, let's check when using pure pytorch code
     scat = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
     Sg = []
     Sc = []
@@ -124,14 +128,17 @@ def test_Scattering2D():
         if gpu:
             x = x.cuda()
             scat.cuda()
+            S = S.cuda()
             Sg = scat(x)
         else:
             x = x.cpu()
+            S = S.cpu()
             scat.cpu()
-            Sc = scat(x)
-    """there are huge round off errors with fftw, numpy fft, cufft...
-    and the kernels of periodization. We do not wish to play with that as it is meaningless."""
-    assert (Sg.cpu()-Sc).abs().max() < 1e-1
+            Sg = scat(x)
+            """there are huge round off errors with fftw, numpy fft, cufft...
+            and the kernels of periodization. We do not wish to play with that as it is meaningless."""
+        print((Sg - S).abs().max())
+        assert (Sg-S).abs().max() < 1e-1
 
 
 
