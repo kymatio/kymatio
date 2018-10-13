@@ -163,9 +163,9 @@ class Fft(object):
             if inverse:
                 output = torch.ifft(input_, 2, normalized=False)
             else:
-                output = torch.ifft(input_, 2, normalized=False)
-        print(output.size())
-        print(input.size())
+                output = torch.fft(input_, 2, normalized=False)
+        #print(output.size())
+        #print(input.size())
         #output = output.view(input.size(0), input.size(1), input.size(2), input.size(3), input.size(4))
         return output
 
@@ -174,7 +174,6 @@ def cdgmm(A, B, jit=True, inplace=False):
     """This function uses the C-wrapper to use cuBLAS.
         """
     A, B = A.contiguous(), B.contiguous()
-
     if A.size()[-3:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication!')
 
