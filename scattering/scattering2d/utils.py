@@ -256,7 +256,11 @@ class Fft(object):
                 self.buildCache(input, cufft.CUFFT_C2C)
             cufft.cufftExecC2C(self.fft_cache[(input.size(), cufft.CUFFT_C2C, input.get_device())],
                                input.data_ptr(), output.data_ptr(), flag)
-            z = torch.irfft(input, 2, normalized=False, onesided=False)
+            z = []
+            if inverse:
+                z = torch.ifft(input, 2, normalized=False, onesided=False)
+            else:
+                z = torch.fft(input, 2, normalized=False, onesided=False)
             print(z.size())
             print(output.size())
             z = z - output
