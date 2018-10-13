@@ -245,7 +245,7 @@ class Fft(object):
             cufft.cufftExecC2R(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())],
                                input.data_ptr(), output.data_ptr())
 
-            z = torch.irfft(input, 2, normalized=False, onesided=False)
+            z = torch.irfft(input, 2, normalized=True, onesided=False)
             print(z.abs().max()/output.abs().max())
             z = z - output
             print('C2R')
