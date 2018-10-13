@@ -109,7 +109,7 @@ def test_Cublas():
 
 def test_Scattering2D():
     data = torch.load('test_data.pt')
-    x = data['x'].view([7, 3, 128, 128])
+    x = data['x'].view([7* 3, 128, 128])
     S = data['S'].view([7*3, 417, 8, 8])
     print(S.size())
     print(x.size())
