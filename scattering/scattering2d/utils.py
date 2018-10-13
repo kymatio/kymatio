@@ -165,7 +165,7 @@ class Fft(object):
             else:
                 output = torch.fft(input_, 2, normalized=False)
 
-        output = output * output.nelement()
+        output = output * output.size(3)*output.size(2)
         #print(output.size())
         #print(input.size())
         #output = output.view(input.size(0), input.size(1), input.size(2), input.size(3), input.size(4))
