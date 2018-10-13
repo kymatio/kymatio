@@ -246,7 +246,7 @@ class Fft(object):
                                input.data_ptr(), output.data_ptr())
 
             print(input.size())
-            z = torch.irfft(input, 2, normalized=None, onesided=False)*input.size(-2)*input.size(-3)
+            z = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
             print(input.size())
             print(z.size())
             print(z.abs().max()/output.abs().max())
