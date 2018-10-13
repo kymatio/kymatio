@@ -9,28 +9,6 @@ def linfnorm(x,y):
     return torch.max(torch.abs(x-y))
 
 
-def test_FFTUnormalized(gpu=False):
-    # Check for a random tensor:
-    x = torch.FloatTensor(25, 17, 3, 2).bernoulli_(0.5)
-
-    if gpu:
-        x=x.cuda()
-    else:
-        x=x.cpu()
-    x.narrow(3,1,1).fill_(0)
-
-    fft=sl.Fft()
-    y = fft(x)
-    z = fft(y, direction='C2R')
-
-    z /= 17*3 # FFTs are unnormalized
-
-
-    assert (linfnorm(x.select(3,0), z) - 0).abs().max() < 1e-6
-
-
-
-
 # Checkked the modulus
 def test_Modulus():
     for jit in [True, False]:
@@ -81,6 +59,7 @@ def test_Cublas():
 
         assert (y-z).abs().max() < 1e-6
 
+# Check the scattering
 def test_Scattering2D():
     data = torch.load('test_data.pt')
     x = data['x'].view([7,3, 128, 128])
