@@ -158,12 +158,14 @@ class Fft(object):
         output = []
         input_ = input#.view(input.size(0)*input.size(1),input.size(2),input.size(3),input.size(4))
         if direction == 'C2R':
-            output = torch.irfft(input_,2,normalized=True, onesided=False)
+            output = torch.irfft(input_,2,normalized=False, onesided=False)
         elif direction == 'C2C':
             if inverse:
-                output = torch.ifft(input_, 2, normalized=True)
+                output = torch.ifft(input_, 2, normalized=False)
             else:
-                output = torch.fft(input_, 2, normalized=True)
+                output = torch.fft(input_, 2, normalized=False)
+
+        output = output * output.nelement()
         #print(output.size())
         #print(input.size())
         #output = output.view(input.size(0), input.size(1), input.size(2), input.size(3), input.size(4))
