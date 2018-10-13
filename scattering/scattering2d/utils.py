@@ -261,7 +261,7 @@ As a try, the library will purely work with complex data. The FFTS are UNORMALIZ
                     print('in place iC2C')
                 else:
                     print('iC2C')
-                z = torch.ifft(input_, 2, normalized=False)
+                z = torch.ifft(input_, 2, normalized=True)
             else:
                 if inplace:
                     print('in place C2C')
