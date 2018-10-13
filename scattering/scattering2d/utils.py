@@ -156,8 +156,11 @@ class Fft(object):
             raise (RuntimeError('Tensors must be contiguous!'))
 
         output = []
+        print(input.size())
         if direction == 'C2R':
-            output = torch.irfft(input,2,normalized=False, onesided=False)#,signal_sizes=input.size())
+            output = torch.irfft(input.view(input.size(0)*input.size(1),input.size(2),input.size(3),input.size(4)),2,normalized=False, onesided=False)
+            output = output.view(input.size(0),input.size(1),)
+            #,signal_sizes=input.size())
         elif direction == 'C2C':
             if inverse:
                 output = torch.ifft(input, 2, normalized=False)
