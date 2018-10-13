@@ -111,6 +111,8 @@ def test_Scattering2D():
     data = torch.load('test_data.pt')
     x = data['x']
     S = data['S']
+    print(S.size())
+    print(x.size())
     scat = Scattering2D(128, 128, 4, pre_pad=False,jit=True)
     scat.cuda()
     x = x.cuda()
