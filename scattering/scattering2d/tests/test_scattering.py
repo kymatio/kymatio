@@ -119,6 +119,7 @@ def test_Scattering2D():
     S = S.cuda()
     y = scat(x)
     print(y.size())
+    print(((S - y)).abs().max())
     assert ((S - y)).abs().max() < 1e-6
 
     scat = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
