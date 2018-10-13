@@ -257,12 +257,20 @@ As a try, the library will purely work with complex data. The FFTS are UNORMALIZ
 
             z = []
             if inverse:
+                if inplace:
+                    print('in place iC2C')
+                else:
+                    print('iC2C')
                 z = torch.ifft(input_, 2, normalized=False)
             else:
+                if inplace:
+                    print('in place C2C')
+                else:
+                    print('C2C')
                 z = torch.fft(input_, 2, normalized=False)
 
             z = z - output
-            print('C2C')
+
             print(z.abs().max())
 
             return output
