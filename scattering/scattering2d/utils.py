@@ -198,6 +198,7 @@ def cdgmm(A, B, jit=True, inplace=False):
         print(A_i.size())
         print(B_r.size())
         print(B_i.size())
+        print(C.size())
 
         C[..., 0].copy_(A_r * B_r - A_i * B_i)
         C[..., 1].copy_(A_r * B_i + A_i * B_r)
