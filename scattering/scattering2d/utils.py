@@ -3,10 +3,8 @@ Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
 All rights reserved, 2017.
 """
 from collections import defaultdict, namedtuple
-
 import torch
-from skcuda import cublas, cufft
-import numpy as np
+from skcuda import cublas
 import cupy
 from string import Template
 
@@ -35,17 +33,21 @@ def iscomplex(input):
 class Periodize(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
-    def __init__(self, jit=True):
+    def __init__(self, backend='skcuda'):
         self.block = (32, 32, 1)
-        self.jit = jit
+        self.backend = backend
 
     def GET_BLOCKS(self, N, threads):
         return (N + threads - 1) // threads
 
     def __call__(self, input, k):
+        if not input.is_cuda and self.backend == 'skcuda':
+            raise RuntimeError('Use the torch backend for cpu tensors!')
+
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
 
-        if not self.jit or not input.is_cuda:
+
+        if self.backend == 'torch':
             y = input.view(input.size(0), input.size(1),
                            input.size(2)//out.size(2), out.size(2),
                            input.size(3)//out.size(3), out.size(3),
@@ -100,15 +102,19 @@ class Periodize(object):
 class Modulus(object):
     """This class builds a wrapper to the moduli kernels and cache them.
         """
-    def __init__(self, jit=True):
+    def __init__(self, backend='skcuda'):
         self.CUDA_NUM_THREADS = 1024
-        self.jit = jit
+        self.backend = backend
 
     def GET_BLOCKS(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
     def __call__(self, input):
-        if not self.jit or not input.is_cuda:
+
+        if not input.is_cuda and self.backend=='skcuda':
+            raise RuntimeError('Use the torch backend for cpu tensors!')
+
+        if self.backend=='torch':
             norm = input.norm(p=2, dim=-1, keepdim=True)
             return torch.cat([norm, norm.new(norm.size()).zero_()], -1)
 
@@ -155,7 +161,7 @@ class Fft(object):
             raise (RuntimeError('Tensors must be contiguous!'))
 
         if direction == 'C2R':
-            output = torch.irfft(input,2,normalized=False, onesided=False)*input.size(-2)*input.size(-3)
+            output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
         elif direction == 'C2C':
             if inverse:
                 output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
@@ -167,7 +173,7 @@ class Fft(object):
 
 
 
-def cdgmm(A, B, jit=True, inplace=False):
+def cdgmm(A, B, backend='skcuda', inplace=False):
     """This function uses the C-wrapper to use cuBLAS.
         """
     A, B = A.contiguous(), B.contiguous()
@@ -183,7 +189,10 @@ def cdgmm(A, B, jit=True, inplace=False):
     if type(A) is not type(B):
         raise RuntimeError('A and B should be same type!')
 
-    if not jit or not A.is_cuda:
+    if not A.is_cuda and backend=='skcuda':
+        raise RuntimeError('Use the torch backend for cpu tensors!')
+
+    if backend=='torch':
         C = A.new(A.size())
 
         A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
@@ -195,9 +204,6 @@ def cdgmm(A, B, jit=True, inplace=False):
         C[..., 0].view(-1, C.size(-2)*C.size(-3)).copy_(A_r * B_r - A_i * B_i)
         C[..., 1].view(-1, C.size(-2)*C.size(-3)).copy_(A_r * B_i + A_i * B_r)
 
-        # faster if B is actually real
-        #B[...,1] = B[...,0]
-        #C = A * B.unsqueeze(0).expand_as(A)
         return C if not inplace else A.copy_(C)
     else:
         C = A.new(A.size()) if not inplace else A
