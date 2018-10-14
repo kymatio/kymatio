@@ -23,10 +23,11 @@ class Scattering2D(object):
         pre_pad: if set to True, module expect pre-padded images
         jit: compile kernels on the fly for speed
     """
-    def __init__(self, M, N, J, pre_pad=False, jit=True):
+    def __init__(self, M, N, J, L=8, pre_pad=False, jit=True):
         self.M, self.N, self.J = M, N, J
         self.pre_pad = pre_pad
         self.jit = jit
+        self.L = L
         self.fft = Fft()
         self.modulus = Modulus(jit=jit)
         self.periodize = Periodize(jit=jit)
@@ -36,7 +37,7 @@ class Scattering2D(object):
         self.padding_module = pad_function(2**J)
 
         # Create the filters
-        filters = filters_bank(self.M_padded, self.N_padded, J)
+        filters = filters_bank(self.M_padded, self.N_padded, J, L)
 
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
@@ -113,7 +114,7 @@ class Scattering2D(object):
 
         S = input.new(input.size(0),
                       input.size(1),
-                      1 + 8*J + 8*8*J*(J - 1) // 2,
+                      1 + self.L*J + self.L*self.L*J*(J - 1) // 2,
                       self.M_padded//(2**J)-2,
                       self.N_padded//(2**J)-2)
         U_r = pad(input)
