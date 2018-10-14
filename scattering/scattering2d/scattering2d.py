@@ -133,7 +133,7 @@ class Scattering2D(object):
             U_1_c = cdgmm(U_0_c, psi[n1][0], jit=self.jit)
             if(j1 > 0):
                 U_1_c = periodize(U_1_c, k=2 ** j1)
-            U_1_c = fft(U_1_c, 'C2C', inverse=True, inplace=True)
+            U_1_c = fft(U_1_c, 'C2C', inverse=True)
             U_1_c = fft(modulus(U_1_c), 'C2C')
 
             # Second low pass filter
@@ -146,7 +146,7 @@ class Scattering2D(object):
                 j2 = psi[n2]['j']
                 if(j1 < j2):
                     U_2_c = periodize(cdgmm(U_1_c, psi[n2][j1], jit=self.jit), k=2 ** (j2-j1))
-                    U_2_c = fft(U_2_c, 'C2C', inverse=True, inplace=True)
+                    U_2_c = fft(U_2_c, 'C2C', inverse=True)
                     U_2_c = fft(modulus(U_2_c), 'C2C')
 
                     # Third low pass filter
