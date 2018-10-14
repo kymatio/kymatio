@@ -49,7 +49,7 @@ def test_Cublas():
 
         for i in range(100):
             y[i,:,:,0]=x[i,:,:,0] * filter[:,:,0]-x[i,:,:,1] * filter[:,:,1]
-            y[i, :, :, 1] = x[i, :, :, 1] * filter[:, :, 0] + x[i, :, :, 0] *filter[:, :, 1]
+            y[i, :, :, 1] = x[i, :, :, 1] * filter[:, :, 0] + x[i, :, :, 0] * filter[:, :, 1]
         z = sl.cdgmm(x, filter, jit=jit)
 
         assert (y-z).abs().max() < 1e-6
@@ -57,35 +57,35 @@ def test_Cublas():
 # Check the scattering
 def test_Scattering2D():
     data = torch.load('test_data.pt')
-    x = data['x'].view([7,3, 128, 128])
-    S = data['S'].view([7,3, 417, 8, 8])
+    x = data['x'].view(7, 3, 128, 128)
+    S = data['S'].view(7, 3, 417, 8, 8)
 
     # First, let's check the Jit
-    scat = Scattering2D(128, 128, 4, pre_pad=False,jit=True)
-    scat.cuda()
+    scattering = Scattering2D(128, 128, 4, pre_pad=False, jit=True)
+    scattering.cuda()
     x = x.cuda()
     S = S.cuda()
-    y = scat(x)
+    y = scattering(x)
+    print((S - y).abs().max())
     assert ((S - y)).abs().max() < 1e-6
 
     # Then, let's check when using pure pytorch code
-    scat = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
+    scattering = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
     Sg = []
 
     for gpu in [True, False]:
         if gpu:
             x = x.cuda()
-            scat.cuda()
+            scattering.cuda()
             S = S.cuda()
-            Sg = scat(x)
+            Sg = scattering(x)
         else:
             x = x.cpu()
             S = S.cpu()
-            scat.cpu()
-            Sg = scat(x)
-            """there are huge round off errors with fftw, numpy fft, cufft...
-            and the kernels of periodization. We do not wish to play with that as it is meaningless."""
+            scattering.cpu()
+            Sg = scattering(x)
         print((Sg - S).abs().max())
-        assert (Sg-S).abs().max() < 1e-1
+        assert (Sg - S).abs().max() < 1e-6
+
 
 
