@@ -8,7 +8,7 @@ from scattering.scattering2d import utils as sl
 def test_Modulus():
     for jit in [True, False]:
         modulus = sl.Modulus(jit=jit)
-        x = torch.cuda.FloatTensor(100,10,4,2).copy_(torch.rand(100,10,4,2))
+        x = torch.cuda.FloatTensor(100, 10, 4, 2).copy_(torch.rand(100, 10, 4, 2))
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
         v = y.narrow(3, 0, 1)
@@ -41,11 +41,11 @@ def test_Periodization():
 # Check the CUBLAS routines
 def test_Cublas():
     for jit in [True, False]:
-        x = torch.rand(100,128,128,2).cuda()
-        filter = torch.rand(128,128,2).cuda()
+        x = torch.rand(100, 128, 128, 2).cuda()
+        filter = torch.rand(128, 128, 2).cuda()
         filter[..., 1] = 0
-        y = torch.ones(100,128,128,2).cuda()
-        z = torch.Tensor(100,128,128,2).cuda()
+        y = torch.ones(100, 128, 128, 2).cuda()
+        z = torch.Tensor(100, 128, 128, 2).cuda()
 
         for i in range(100):
             y[i,:,:,0]=x[i,:,:,0] * filter[:,:,0]-x[i,:,:,1] * filter[:,:,1]
@@ -87,6 +87,5 @@ def test_Scattering2D():
             and the kernels of periodization. We do not wish to play with that as it is meaningless."""
         print((Sg - S).abs().max())
         assert (Sg-S).abs().max() < 1e-1
-
 
 
