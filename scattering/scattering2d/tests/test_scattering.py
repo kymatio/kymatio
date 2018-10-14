@@ -4,12 +4,7 @@ import torch
 from scattering.scattering2d import Scattering2D
 from scattering.scattering2d import utils as sl
 
-
-def linfnorm(x,y):
-    return torch.max(torch.abs(x-y))
-
-
-# Checkked the modulus
+# Checked the modulus
 def test_Modulus():
     for jit in [True, False]:
         modulus = sl.Modulus(jit=jit)
