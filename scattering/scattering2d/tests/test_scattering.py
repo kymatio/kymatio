@@ -6,8 +6,8 @@ from scattering.scattering2d import utils as sl
 
 # Checked the modulus
 def test_Modulus():
-    for jit in [True, False]:
-        modulus = sl.Modulus(jit=jit)
+    for backend in ['pytorch', 'skcuda']:
+        modulus = sl.Modulus(backend=backend)
         x = torch.cuda.FloatTensor(100, 10, 4, 2).copy_(torch.rand(100, 10, 4, 2))
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
@@ -17,7 +17,7 @@ def test_Modulus():
 
 
 def test_Periodization():
-    for jit in [True, False]:
+    for backend in ['torch', 'skcuda']:
         x = torch.rand(100, 1, 128, 128, 2).cuda().double()
         y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
 
@@ -29,7 +29,7 @@ def test_Periodization():
 
         y = y / (16*16)
 
-        periodize = sl.Periodize(jit=jit)
+        periodize = sl.Periodize(backend=backend)
 
         z = periodize(x, k=16)
         assert (y - z).abs().max() < 1e-8
@@ -40,7 +40,7 @@ def test_Periodization():
 
 # Check the CUBLAS routines
 def test_Cublas():
-    for jit in [True, False]:
+    for backend in ['pytorch', 'skcuda']:
         x = torch.rand(100, 128, 128, 2).cuda()
         filter = torch.rand(128, 128, 2).cuda()
         filter[..., 1] = 0
@@ -50,7 +50,7 @@ def test_Cublas():
         for i in range(100):
             y[i,:,:,0]=x[i,:,:,0] * filter[:,:,0]-x[i,:,:,1] * filter[:,:,1]
             y[i, :, :, 1] = x[i, :, :, 1] * filter[:, :, 0] + x[i, :, :, 0] * filter[:, :, 1]
-        z = sl.cdgmm(x, filter, jit=jit)
+        z = sl.cdgmm(x, filter, backend=backend)
 
         assert (y-z).abs().max() < 1e-6
 
@@ -61,7 +61,7 @@ def test_Scattering2D():
     S = data['S'].view(7, 3, 417, 8, 8)
 
     # First, let's check the Jit
-    scattering = Scattering2D(128, 128, 4, pre_pad=False, jit=True)
+    scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='skcuda')
     scattering.cuda()
     x = x.cuda()
     S = S.cuda()
@@ -70,7 +70,7 @@ def test_Scattering2D():
     assert ((S - y)).abs().max() < 1e-6
 
     # Then, let's check when using pure pytorch code
-    scattering = Scattering2D(128, 128, 4, pre_pad=False, jit=False)
+    scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='torch')
     Sg = []
 
     for gpu in [True, False]:
