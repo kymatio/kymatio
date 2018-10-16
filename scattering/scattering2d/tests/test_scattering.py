@@ -12,7 +12,8 @@ def test_Modulus():
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
         v = y.narrow(3, 0, 1)
-
+        u = u.squeeze()
+        v = v.squeeze()
         assert (u - v).abs().max() < 1e-6
 
 
@@ -33,9 +34,9 @@ def test_Periodization():
 
         z = periodize(x, k=16)
         assert (y - z).abs().max() < 1e-8
-
-        z = periodize(x.cpu(), k=16)
-        assert (y.cpu() - z).abs().max() < 1e-8
+        if backend == 'torch':
+            z = periodize(x.cpu(), k=16)
+            assert (y.cpu() - z).abs().max() < 1e-8
 
 
 # Check the CUBLAS routines
@@ -66,7 +67,6 @@ def test_Scattering2D():
     x = x.cuda()
     S = S.cuda()
     y = scattering(x)
-    print((S - y).abs().max())
     assert ((S - y)).abs().max() < 1e-6
 
     # Then, let's check when using pure pytorch code
@@ -84,8 +84,4 @@ def test_Scattering2D():
             S = S.cpu()
             scattering.cpu()
             Sg = scattering(x)
-        print((Sg - S).abs().max())
         assert (Sg - S).abs().max() < 1e-6
-
-
-
