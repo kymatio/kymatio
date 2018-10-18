@@ -201,8 +201,8 @@ def cdgmm(A, B, backend='skcuda', inplace=False):
         B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
         B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
 
-        C[..., 0].view(-1, C.size(-2)*C.size(-3)).copy_(A_r * B_r - A_i * B_i)
-        C[..., 1].view(-1, C.size(-2)*C.size(-3)).copy_(A_r * B_i + A_i * B_r)
+        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
 
         return C if not inplace else A.copy_(C)
     else:
