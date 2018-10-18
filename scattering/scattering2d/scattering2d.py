@@ -124,7 +124,7 @@ class Scattering2D(object):
 
         U_J_r = fft(U_1_c, 'C2R')
 
-        S[..., n, :, :].copy_(unpad(U_J_r))
+        S[..., n, :, :] = unpad(U_J_r)
         n = n + 1
 
         for n1 in range(len(psi)):
@@ -138,7 +138,7 @@ class Scattering2D(object):
             # Second low pass filter
             U_2_c = periodize(cdgmm(U_1_c, phi[j1], backend=self.backend), k=2**(J-j1))
             U_J_r = fft(U_2_c, 'C2R')
-            S[..., n, :, :].copy_(unpad(U_J_r))
+            S[..., n, :, :] = unpad(U_J_r)
             n = n + 1
 
             for n2 in range(len(psi)):
@@ -152,7 +152,7 @@ class Scattering2D(object):
                     U_2_c = periodize(cdgmm(U_2_c, phi[j2], backend=self.backend), k=2 ** (J-j2))
                     U_J_r = fft(U_2_c, 'C2R')
 
-                    S[..., n, :, :].copy_(unpad(U_J_r))
+                    S[..., n, :, :] = unpad(U_J_r)
                     n = n + 1
 
         return S
