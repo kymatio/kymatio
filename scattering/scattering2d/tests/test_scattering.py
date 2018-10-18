@@ -8,7 +8,7 @@ from scattering.scattering2d import utils as sl
 def test_Modulus():
     for backend in ['pytorch', 'skcuda']:
         modulus = sl.Modulus(backend=backend)
-        x = torch.cuda.FloatTensor(100, 10, 4, 2).copy_(torch.rand(100, 10, 4, 2))
+        x = torch.rand(100, 10, 4, 2).cuda().float()
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
         v = y.narrow(3, 0, 1)
