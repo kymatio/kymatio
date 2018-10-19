@@ -116,7 +116,7 @@ class Modulus(object):
 
         if self.backend=='torch':
             norm = input.norm(p=2, dim=-1, keepdim=True)
-            return torch.cat([norm, norm.new(norm.size()).zero_()], -1)
+            return torch.cat([norm, torch.zeros_like(norm)], -1)
 
         out = input.new(input.size())
         input = input.contiguous()
