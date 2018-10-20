@@ -13,17 +13,30 @@ from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 
 class Scattering2D(object):
-    """Scattering module.
-
-    Runs scattering on an input image in NCHW format
-
-    Input args:
-        M, N: input image size
-        J: number of layers
-        pre_pad: if set to True, module expect pre-padded images
-        jit: compile kernels on the fly for speed
-    """
     def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
+        """ 2D Scattering Transform, with backends
+
+                An object from this class permits to computing a Scattering Transform.
+                The class has an attribute backend that changes the algorithm used
+                 to compute the Scattering Coefficients.
+                Only batches of 3D tensors can be used in the forward.
+
+                Example
+                -------
+                scattering = Scattering2D(128, 128, 4)
+                x = torch.randn(1, 3, 128 128)
+                S = scattering(x)
+
+                Parameters
+                ----------
+                M, N : int
+                    MxN corresponds to the image length.
+                J : int
+                    J corresponds
+
+                Attributes
+                ---------
+                """
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
         self.backend = backend
