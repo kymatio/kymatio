@@ -5,6 +5,5 @@ scikit-cuda
 scipy
 pynvrtc
 git+git://github.com/pytorch/tnt.git#egg=tnt
-pyfftw
 scikit-learn
 matplotlib
