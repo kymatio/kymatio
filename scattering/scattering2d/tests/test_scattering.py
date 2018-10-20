@@ -1,5 +1,6 @@
 """ This script will test the submodules used by the scattering module"""
 
+import os
 import torch
 from scattering.scattering2d import Scattering2D
 from scattering.scattering2d import utils as sl
@@ -57,7 +58,8 @@ def test_Cublas():
 
 # Check the scattering
 def test_Scattering2D():
-    data = torch.load('test_data.pt')
+    test_data_dir = os.path.dirname(__file__)
+    data = torch.load(os.path.join(test_data_dir, 'test_data.pt'))
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
