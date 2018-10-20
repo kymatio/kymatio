@@ -3,3 +3,5 @@
 *__pycache__*
 scatwave.egg-info
 doc/build/*
+.pytest_cache
+scattering.egg-info
