@@ -3,10 +3,8 @@ Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
 All rights reserved, 2017.
 """
 from collections import defaultdict, namedtuple
-
 import torch
-from skcuda import cublas, cufft
-import numpy as np
+from skcuda import cublas
 import cupy
 from string import Template
 
@@ -35,17 +33,21 @@ def iscomplex(input):
 class Periodize(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
-    def __init__(self, jit=True):
+    def __init__(self, backend='skcuda'):
         self.block = (32, 32, 1)
-        self.jit = jit
+        self.backend = backend
 
     def GET_BLOCKS(self, N, threads):
         return (N + threads - 1) // threads
 
     def __call__(self, input, k):
+        if not input.is_cuda and self.backend == 'skcuda':
+            raise RuntimeError('Use the torch backend for cpu tensors!')
+
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
 
-        if not self.jit or not input.is_cuda:
+
+        if self.backend == 'torch':
             y = input.view(input.size(0), input.size(1),
                            input.size(2)//out.size(2), out.size(2),
                            input.size(3)//out.size(3), out.size(3),
@@ -100,17 +102,21 @@ class Periodize(object):
 class Modulus(object):
     """This class builds a wrapper to the moduli kernels and cache them.
         """
-    def __init__(self, jit=True):
+    def __init__(self, backend='skcuda'):
         self.CUDA_NUM_THREADS = 1024
-        self.jit = jit
+        self.backend = backend
 
     def GET_BLOCKS(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
     def __call__(self, input):
-        if not self.jit or not input.is_cuda:
+
+        if not input.is_cuda and self.backend=='skcuda':
+            raise RuntimeError('Use the torch backend for cpu tensors!')
+
+        if self.backend=='torch':
             norm = input.norm(p=2, dim=-1, keepdim=True)
-            return torch.cat([norm, norm.new(norm.size()).zero_()], -1)
+            return torch.cat([norm, torch.zeros_like(norm)], -1)
 
         out = input.new(input.size())
         input = input.contiguous()
@@ -137,65 +143,16 @@ class Modulus(object):
         return out
 
 
+
+
 class Fft(object):
     """This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
         """
-
-    def __init__(self):
-        self.fft_cache = defaultdict(lambda: None)
-
-    def buildCache(self, input, type):
-        k = input.ndimension() - 3
-        n = np.asarray([input.size(k), input.size(k+1)], np.int32)
-        batch = input.nelement() // (2*input.size(k) * input.size(k + 1))
-        idist = input.size(k) * input.size(k + 1)
-        istride = 1
-        ostride = istride
-        odist = idist
-        rank = 2
-        plan = cufft.cufftPlanMany(rank, n.ctypes.data, n.ctypes.data, istride,
-                                   idist, n.ctypes.data, ostride, odist, type, batch)
-        self.fft_cache[(input.size(), type, input.get_device())] = plan
-
-    def __del__(self):
-        for keys in self.fft_cache:
-            try:
-                cufft.cufftDestroy(self.fft_cache[keys])
-            except:
-                pass
-
-    def __call__(self, input, direction='C2C', inplace=False, inverse=False):
+    def __call__(self, input, direction='C2C', inverse=False):
         if direction == 'C2R':
             inverse = True
-
-        if not isinstance(input, torch.cuda.FloatTensor):
-            if not isinstance(input, (torch.FloatTensor, torch.DoubleTensor)):
-                raise(TypeError('The input should be a torch.cuda.FloatTensor, \
-                                torch.FloatTensor or a torch.DoubleTensor'))
-            else:
-                input_np = input[..., 0].numpy() + 1.0j * input[..., 1].numpy()
-                f = lambda x: np.stack((np.real(x), np.imag(x)), axis=len(x.shape))
-                out_type = input.numpy().dtype
-
-                if direction == 'C2R':
-                    out = np.real(np.fft.ifft2(input_np)).astype(out_type)*input.size(-2)*input.size(-3)
-                    return torch.from_numpy(out)
-
-                if inplace:
-                    if inverse:
-                        out = f(np.fft.ifft2(input_np)).astype(out_type)*input.size(-2)*input.size(-3)
-                    else:
-                        out = f(np.fft.fft2(input_np)).astype(out_type)
-                    input.copy_(torch.from_numpy(out))
-                    return
-                else:
-                    if inverse:
-                        out = f(np.fft.ifft2(input_np)).astype(out_type)*input.size(-2)*input.size(-3)
-                    else:
-                        out = f(np.fft.fft2(input_np)).astype(out_type)
-                    return torch.from_numpy(out)
 
         if not iscomplex(input):
             raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
@@ -204,27 +161,22 @@ class Fft(object):
             raise (RuntimeError('Tensors must be contiguous!'))
 
         if direction == 'C2R':
-            output = input.new(input.size()[:-1])
-            if(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())] is None):
-                self.buildCache(input, cufft.CUFFT_C2R)
-            cufft.cufftExecC2R(self.fft_cache[(input.size(), cufft.CUFFT_C2R, input.get_device())],
-                               input.data_ptr(), output.data_ptr())
-            return output
+            output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
         elif direction == 'C2C':
-            output = input.new(input.size()) if not inplace else input
-            flag = cufft.CUFFT_INVERSE if inverse else cufft.CUFFT_FORWARD
-            if (self.fft_cache[(input.size(), cufft.CUFFT_C2C, input.get_device())] is None):
-                self.buildCache(input, cufft.CUFFT_C2C)
-            cufft.cufftExecC2C(self.fft_cache[(input.size(), cufft.CUFFT_C2C, input.get_device())],
-                               input.data_ptr(), output.data_ptr(), flag)
-            return output
+            if inverse:
+                output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
+            else:
+                output = torch.fft(input, 2, normalized=False)
+
+        return output
 
 
-def cdgmm(A, B, jit=True, inplace=False):
+
+
+def cdgmm(A, B, backend='skcuda', inplace=False):
     """This function uses the C-wrapper to use cuBLAS.
         """
     A, B = A.contiguous(), B.contiguous()
-
     if A.size()[-3:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication!')
 
@@ -237,7 +189,10 @@ def cdgmm(A, B, jit=True, inplace=False):
     if type(A) is not type(B):
         raise RuntimeError('A and B should be same type!')
 
-    if not jit or not A.is_cuda:
+    if not A.is_cuda and backend=='skcuda':
+        raise RuntimeError('Use the torch backend for cpu tensors!')
+
+    if backend=='torch':
         C = A.new(A.size())
 
         A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
@@ -246,12 +201,9 @@ def cdgmm(A, B, jit=True, inplace=False):
         B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
         B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
 
-        C[..., 0].copy_(A_r * B_r - A_i * B_i)
-        C[..., 1].copy_(A_r * B_i + A_i * B_r)
+        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
 
-        # faster if B is actually real
-        #B[...,1] = B[...,0]
-        #C = A * B.unsqueeze(0).expand_as(A)
         return C if not inplace else A.copy_(C)
     else:
         C = A.new(A.size()) if not inplace else A
