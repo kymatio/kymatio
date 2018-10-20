@@ -4,7 +4,17 @@ from collections import defaultdict
 import torch
 from skcuda import cufft
 import numpy as np
-import pyfftw
+try:
+    import pyfftw
+except:
+    pass
+    # XXX This is try/excepted in order to not hard require pyfftw installed
+    # This can be turned into a scipy fftpack import
+    # But the current state of this file requires substantial
+    # modification of the CPU functionality, because scipy fftpack
+    # does not store plans and would have to function in a different way.
+    # To be seen whether we might be able to get away with pytorch CPU fft
+
 import warnings
 
 
