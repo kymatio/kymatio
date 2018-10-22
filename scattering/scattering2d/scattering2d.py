@@ -14,7 +14,7 @@ from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 class Scattering2D(object):
      """
-        Main module implementing the scattering transform in 1D.
+        Main module implementing the scattering transform in 2D.
 
         The scattering transform computes two wavelet transform followed
         by modulus non-linearity.
@@ -26,7 +26,7 @@ class Scattering2D(object):
         S_J^2 x =
             [||x star psi^1_lambda| star psi^2_mu| star phi_J]_{lambda, mu}
 
-        where star denotes the convolution (in time),
+        where star denotes the convolution (in space),
         phi_J is a low pass filter, psi^1_lambda is a family of band pass
         filters and psi^2_lambda is another family of band pass filters.
 
@@ -38,26 +38,21 @@ class Scattering2D(object):
         Example
         -------
         # 1) Define a Scatterer object as:
-        s = Scattering1D(T, J, Q)
-        #    where T is the temporal size, 2**J the scale of the scattering
-        #    and Q the number of intermediate scales per octave
-        # N.B.: the design of the filters is optimized for values of Q >= 6
-        # 2) (optional) Change its arguments with
-        s.set_default_arguments(**kwargs)
-        # (especially for second order, etc)
-        # 3) Forward on an input Variable x of shape B x 1 x T,
+        s = Scattering2D(M, N, J)
+        #    where (M, N) are the image sizes and 2**J the scale of the scattering
+        # 2) Forward on an input Variable x of shape B x 1 x M x N,
         #     where B is the batch size.
-        result_s = s.forward(x)
+        result_s = s(x)
 
 
         Parameters
         ----------
-        T : int
-            temporal support of the inputs
+        M, N : int
+            spatial support of the input
         J : int
             logscale of the scattering
-        Q : int
-            number of filters per octave (an integer >= 1)
+        L : int, optional
+            N.B.: the design of the filters is optimized for the value L=8
         normalize : string, optional
             normalization type for the wavelets.
             Only 'l2' or 'l1' normalizations are supported.
