@@ -11,12 +11,11 @@ from scattering import Scattering1D
 ```
 
 Or
+
 ```python
 import torch
 from scattering import Scattering2D
-scattering = Scattering2D()
-signal = torch.randn(1, 32, 32)
+scattering = Scattering2D(32, 32, 2)
+signal = torch.randn(1, 1, 32, 32)
 output = scattering(signal)
 ```
-
-
