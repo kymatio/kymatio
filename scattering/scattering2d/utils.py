@@ -7,6 +7,7 @@ import torch
 from skcuda import cublas
 import cupy
 from string import Template
+from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 
 @cupy.util.memoize(for_each_device=True)
@@ -28,6 +29,50 @@ def getDtype(t):
 
 def iscomplex(input):
     return input.size(-1) == 2
+
+
+def pad(input, pre_pad):
+    """
+        Padding which allows to simultaneously pad in a reflection fashion
+        and map to complex.
+
+        Parameters
+        ----------
+        x : tensor_like
+            input tensor (or variable), 4D with spatial variables in the last 2 axes.
+        prepad : boolean
+            if set to true, then there is no padding, one simply adds the imaginarty part.
+
+        Returns
+        -------
+        output : tensor_like
+            A padded signal, possibly transformed into a 5D tensor
+            with the last axis equal to 2.
+    """
+    if (pre_pad):
+        output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
+        output.narrow(output.ndimension() - 1, 0, 1).copy_(input)
+    else:
+        out_ = self.padding_module.updateOutput(input)
+        output = input.new(*(out_.size() + (2,))).fill_(0)
+        output.select(4, 0).copy_(out_)
+    return output
+
+
+def unpad(in_):
+    """
+    Slices the input tensor at indices between 1::-1
+
+    Parameters
+    ----------
+    in_ : tensor_like
+        input tensor
+
+    Returns
+    -------
+    in_[..., 1:-1, 1:-1]
+    """
+    return in_[..., 1:-1, 1:-1]
 
 
 class Subsample_fourier(object):

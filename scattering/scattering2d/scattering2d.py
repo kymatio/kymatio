@@ -7,9 +7,8 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .utils import cdgmm, Modulus, Subsample_fourier, Fft
+from .utils import cdgmm, Modulus, Subsample_fourier, Fft, pad, unpad
 from .filters_bank import filters_bank
-from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 
 class Scattering2D(object):
@@ -157,45 +156,7 @@ class Scattering2D(object):
         s[-2] = self.M_padded
         s[-1] = self.N_padded
 
-    def _pad(self, input):
-        """
-            Padding which allows to simultaneously pad in a reflection fashion
-            and map to complex.
 
-            Parameters
-            ----------
-            x : tensor_like
-                input tensor (or variable), 4D with spatial variables in the last 2 axes.
-
-            Returns
-            -------
-            output : tensor_like
-                A padded signal, possibly transformed into a 5D tensor
-                with the last axis equal to 2.
-        """
-        if(self.pre_pad):
-            output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
-            output.narrow(output.ndimension()-1, 0, 1).copy_(input)
-        else:
-            out_ = self.padding_module.updateOutput(input)
-            output = input.new(*(out_.size() + (2,))).fill_(0)
-            output.select(4, 0).copy_(out_)
-        return output
-
-    def _unpad(self, in_):
-        """
-        Slices the input tensor at indices between 1::-1
-
-        Parameters
-        ----------
-        in_ : tensor_like
-            input tensor
-
-        Returns
-        -------
-        in_[..., 1:-1, 1:-1]
-        """
-        return in_[..., 1:-1, 1:-1]
 
     def forward(self, input):
         """
@@ -236,15 +197,13 @@ class Scattering2D(object):
         fft = self.fft
         subsample_fourier = self.subsample_fourier
         modulus = self.modulus
-        pad = self._pad
-        unpad = self._unpad
 
         S = input.new(input.size(0),
                       input.size(1),
                       1 + self.L*J + self.L*self.L*J*(J - 1) // 2,
                       self.M_padded//(2**J)-2,
                       self.N_padded//(2**J)-2)
-        U_r = pad(input)
+        U_r = pad(input, self.pre_pad)
         U_0_c = fft(U_r, 'C2C')  # We trick here with U_r and U_2_c
 
         # First low pass filter
