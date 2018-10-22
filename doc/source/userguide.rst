@@ -7,5 +7,8 @@ Scattering transforms build invariant, stable and informative representations th
   It is  designed for building representations that incorporate invariants w.r.t. geometrical transformations such as
   translations, rotations or more generally Euclidean transformations.
 
-In practice, Scattering coefficients extend MFSCs or SIFT descriptors, by incorporate second order coefficients that are
- stable but more discriminative than their first order counter part.
+In practice, Scattering coefficients extend MFSCs or SIFT descriptors, by incorporating second order coefficients that are
+ stable but more discriminative than their first order counter part. The wavelets employed are adapted to signals such as
+ natural images or audio sounds.
+
+ In this software, we propose an extension of the implementation 
