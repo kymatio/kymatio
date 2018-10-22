@@ -8,7 +8,7 @@ __all__ = ['Scattering']
 import warnings
 import torch
 from .utils import cdgmm, Modulus, Subsample_fourier, Fft, pad, unpad, compute_padding
-from .filters_bank import filters_bank
+from .filters_bank import scattering_filter_factory
 
 
 class Scattering2D(object):
@@ -80,10 +80,10 @@ class Scattering2D(object):
             backend used
         Psi : dictionary
             countaining the wavelets filters at all resolutions. See
-            filters_bank.filters_bank_real for an exact description.
+            filters_bank.scattering_filter_factory for an exact description.
         Psi : dictionary
             countaining the low-pass filters at all resolutions. See
-            filters_bank.filters_bank_real for an exact description.
+            filters_bank.scattering_filter_factory for an exact description.
         fft : class
             FFT class
         modulus : class
@@ -109,7 +109,7 @@ class Scattering2D(object):
         self.padding_module = pad_function(2**J)
 
         # Create the filters
-        filters = filters_bank(self.M_padded, self.N_padded, J, L)
+        filters = scattering_filter_factory(self.M_padded, self.N_padded, J, L)
 
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]

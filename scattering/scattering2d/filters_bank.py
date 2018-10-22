@@ -12,7 +12,30 @@ import scipy.fftpack as fft
 
 
 
-def filters_bank_real(M, N, J, L=8):
+def scattering_filter_factory_real(M, N, J, L=8):
+    """
+    Builds in Fourier the Morlet filters used for the scattering transform.
+
+    Each single filter is provided as a dictionary with the following keys:
+    * 'j' : scale
+    * 'theta' : angle used
+
+    Parameters
+    ----------
+    M, N : int
+        spatial support of the input
+    J : int
+        logscale of the scattering
+    L : int, optional
+        number of angles used for the wavelet transform
+        N.B.: the design of the filters is optimized for the value L = 8
+
+    Returns
+    -------
+    filters : list
+        A two list of dictionary containing respectively the low-pass and
+         wavelet filters.
+    """
     filters = {}
     filters['psi'] = []
 
@@ -44,14 +67,35 @@ def filters_bank_real(M, N, J, L=8):
     return filters
 
 
-def filters_bank(M, N, J, L=8, cache=False):
-    '''
-    Cache filters to a file
+def scattering_filter_factory(M, N, J, L=8, cache=False):
+    """
+    Builds in Fourier the Morlet filters used for the scattering transform.
 
-    cache: string or False
-        path to filter bank. 
-        If parameters (M, N, J, L) match, load from cache, otherwise, recompute and overwrite.
-    '''
+    Each single filter is provided as a dictionary with the following keys:
+    * 'j' : scale
+    * 'theta' : angle used
+
+    Parameters
+    ----------
+    M, N : int
+        spatial support of the input
+    J : int
+        logscale of the scattering
+    L : int, optional
+        number of angles used for the wavelet transform
+        N.B.: the design of the filters is optimized for the value L = 8
+    cache : string or false
+        If False, returnes the same as scattering_filter_factory_real. Otherwise,
+        it stores the computed filters in the string cache. It is particularly
+         useful when the filters are large and avoids recomputing them at each call
+         to the package.
+
+    Returns
+    -------
+    filters : list
+        A two list of dictionary containing respectively the low-pass and
+         wavelet filters.
+    """
     if not cache:
         return filters_bank_real(M, N, J, L)
     try:
@@ -80,6 +124,21 @@ def filters_bank(M, N, J, L=8, cache=False):
 
 
 def crop_freq(x, res):
+    """
+    Parameters
+    ----------
+    x : numpy array
+        signal to periodize in Fourier
+    res :
+        resolution to which the signal is cropped.
+
+    Returns
+    -------
+    crop : numpy array
+        It returns a crop version of the filter, assuming that
+         the convolutions will be done via compactly supported signals.
+
+    """
     M = x.shape[0]
     N = x.shape[1]
 
