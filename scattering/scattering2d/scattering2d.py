@@ -150,6 +150,21 @@ class Scattering2D(object):
 
     # This function copies and view the real to complex
     def _pad(self, input):
+        """
+            Padding which allows to simultaneously pad in a reflection fashion
+            and map to complex.
+
+            Parameters
+            ----------
+            x : tensor_like
+                input tensor (or variable), 4D with spatial variables in the last 2 axes.
+
+            Returns
+            -------
+            output : tensor_like
+                A padded signal, possibly transformed into a 5D tensor
+                with the last axis equal to 2.
+            """
         if(self.pre_pad):
             output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
             output.narrow(output.ndimension()-1, 0, 1).copy_(input)
@@ -160,9 +175,36 @@ class Scattering2D(object):
         return output
 
     def _unpad(self, in_):
+        """
+        Slices the input tensor at indices between 1::-1
+
+        Parameters
+        ----------
+        in_ : tensor_like
+            input tensor
+
+        Returns
+        -------
+        in_[..., 1:-1, 1:-1]
+        """
         return in_[..., 1:-1, 1:-1]
 
     def forward(self, input):
+        """
+            Forward pass of the scattering.
+
+            Parameters
+            ----------
+            x : Tensor
+                torch Variable with 3 dimensions (B, C, M, N) where (B, C) are arbitrary.
+                B typically is the batch size, whereas C is the number of input channels.
+
+            Returns
+            -------
+            S : Variable tensor or dictionary.
+                scattering of the input x, a 4D tensor (B, C, D, M', N') where D corresponds
+                to a new channel dimension and (M', N') are downsampled sizes by a factor 2^J.
+            """
         if not torch.is_tensor(input):
             raise(TypeError('The input should be a torch.cuda.FloatTensor, a torch.FloatTensor or a torch.DoubleTensor'))
 
