@@ -94,6 +94,8 @@ class Scattering2D(object):
             in the spatial domain.
         padding_module : function
             function used to pad input signals. Currently, it relies on torch.legacy
+        M_padded, N_padded : int
+             spatial support of the padded input
     """
     def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
         self.M, self.N, self.J, self.L = M, N, J, L
@@ -135,6 +137,14 @@ class Scattering2D(object):
         return self._type(torch.FloatTensor)
 
     def _prepare_padding_size(self, s):
+        """
+            It precomputes padding size.
+
+            Parameters
+            ----------
+            s : 2-elements list
+                It corresponds to M, N
+        """
         M = s[-2]
         N = s[-1]
 
@@ -146,9 +156,7 @@ class Scattering2D(object):
 
         s[-2] = self.M_padded
         s[-1] = self.N_padded
-        self.padded_size_batch = torch.Size([a for a in s])
 
-    # This function copies and view the real to complex
     def _pad(self, input):
         """
             Padding which allows to simultaneously pad in a reflection fashion
@@ -164,7 +172,7 @@ class Scattering2D(object):
             output : tensor_like
                 A padded signal, possibly transformed into a 5D tensor
                 with the last axis equal to 2.
-            """
+        """
         if(self.pre_pad):
             output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
             output.narrow(output.ndimension()-1, 0, 1).copy_(input)
