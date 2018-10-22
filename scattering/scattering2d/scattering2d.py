@@ -13,16 +13,127 @@ from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 
 class Scattering2D(object):
-    """Scattering module.
+     """
+        Main module implementing the scattering transform in 1D.
 
-    Runs scattering on an input image in NCHW format
+        The scattering transform computes two wavelet transform followed
+        by modulus non-linearity.
+        It can be summarized as:
+        S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
+        where
+        S_J^0 x = x star phi_J
+        S_J^1 x = [|x star psi^1_lambda| star phi_J]_lambda
+        S_J^2 x =
+            [||x star psi^1_lambda| star psi^2_mu| star phi_J]_{lambda, mu}
 
-    Input args:
-        M, N: input image size
-        J: number of layers
-        pre_pad: if set to True, module expect pre-padded images
-        jit: compile kernels on the fly for speed
-    """
+        where star denotes the convolution (in time),
+        phi_J is a low pass filter, psi^1_lambda is a family of band pass
+        filters and psi^2_lambda is another family of band pass filters.
+
+        Only Morlet filters are used in this implementation.
+
+        Convolutions are efficiently performed in the Fourier domain
+        with this implementation.
+
+        Example
+        -------
+        # 1) Define a Scatterer object as:
+        s = Scattering1D(T, J, Q)
+        #    where T is the temporal size, 2**J the scale of the scattering
+        #    and Q the number of intermediate scales per octave
+        # N.B.: the design of the filters is optimized for values of Q >= 6
+        # 2) (optional) Change its arguments with
+        s.set_default_arguments(**kwargs)
+        # (especially for second order, etc)
+        # 3) Forward on an input Variable x of shape B x 1 x T,
+        #     where B is the batch size.
+        result_s = s.forward(x)
+
+
+        Parameters
+        ----------
+        T : int
+            temporal support of the inputs
+        J : int
+            logscale of the scattering
+        Q : int
+            number of filters per octave (an integer >= 1)
+        normalize : string, optional
+            normalization type for the wavelets.
+            Only 'l2' or 'l1' normalizations are supported.
+            Defaults to 'l1'
+        criterion_amplitude: float, optional
+            controls the padding size (the larger
+            criterion amplitude, the smaller the padding size).
+            Measures the amount of the Gaussian mass (in l1) which can be
+            ignored after padding. Defaults to 1e-3
+        r_psi : float, optional
+            Should be >0 and <1. Controls the redundancy of the filters
+            (the larger r_psi, the larger the overlap between adjacent
+            wavelets). Defaults to sqrt(0.5).
+        sigma0 : float, optional
+            parameter controlling the frequential width of the
+            low-pass filter at J_scattering=0; at a an absolute J_scattering,
+            it is equal to sigma0 / 2**J_scattering. Defaults to 1e-1
+        alpha : float, optional
+            tolerance factor for the aliasing after subsampling.
+            The larger alpha, the more conservative the value of maximal
+            subsampling is. Defaults to 5.
+        P_max : int, optional
+            maximal number of periods to use to make sure that the
+            FFT of the filters is periodic. P_max = 5 is more than enough for
+            double precision. Defaults to 5
+        eps : float, optional
+            required machine precision for the periodization (single
+            floating point is enough for deep learning applications).
+            Defaults to 1e-7
+        order2 : boolean, optional
+            whether to compute the 2nd order scattering or not.
+            Defaults to True.
+        average_U1 : boolean, optional
+            whether to return an averaged first order
+            (proper scattering) or simply the |x star psi^1_lambda|.
+            Defaults to True.
+        oversampling : boolean, optional
+            integer >= 0 contrlling the relative
+            oversampling relative to the default downsampling by 2**J after
+            convolution with phi_J, so that the value 2**(J-oversampling)
+            is used. Defaults to 0
+        vectorize : boolean, optional
+            whether to return a vectorized scattering or
+            not (in which case the output is a dictionary).
+            Defaults to True.
+
+        Attributes
+        ----------
+        T : int
+            temporal support of the inputs
+        J : int
+            logscale of the scattering
+        Q : int
+            number of filters per octave (an integer >= 1)
+        J_pad : int
+            log2 of the support on which the signal is padded (is a power
+            of 2 for efficient FFT implementation)
+        pad_left : int
+            amount which is padded on the left of the original temporal support
+        pad_right : int
+            amount which is padded on the right of the original support
+        phi_fft : dictionary
+            countaining the low-pass filter at all resolutions
+            See filters_bank.scat_filters_factory for an exact description
+        psi1_fft : dictionary
+            Countaining the filters of the 1st order at all
+            resolutions. See filters_bank.scat_filters_factory for an exact
+            description
+        psi1_fft : dictionary
+            countaining the filters of the 2nd order at all
+            resolutions. See filters_bank.scat_filters_factory for an exact
+            description
+        default_args : dictionary
+            Countains the default arguments with which the scattering should
+            be computed
+        """
     def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
