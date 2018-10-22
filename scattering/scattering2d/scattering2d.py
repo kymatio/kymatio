@@ -52,16 +52,20 @@ class Scattering2D(object):
         J : int
             logscale of the scattering
         L : int, optional
-            N.B.: the design of the filters is optimized for the value L=8
-        normalize : string, optional
-            normalization type for the wavelets.
-            Only 'l2' or 'l1' normalizations are supported.
-            Defaults to 'l1'
-        criterion_amplitude: float, optional
-            controls the padding size (the larger
-            criterion amplitude, the smaller the padding size).
-            Measures the amount of the Gaussian mass (in l1) which can be
-            ignored after padding. Defaults to 1e-3
+            number of angles used for the wavelet transform
+            N.B.: the design of the filters is optimized for the value L = 8
+        pre_pad : boolean, optional
+            controls the padding: if set to False, a symmetric padding is applied
+            on the signal. If set to true, the software will assume the signal was
+            padded externally. This is particularly useful when doing crops of a
+            bigger image because the padding is then extremely accurate. Defaults
+            to False.
+        backend : string, optional
+            backend used, which affects substantially functionality and
+            performances. When backend is set to 'torch', one can access to the
+            gradient w.r.t. the inputs, using pure torch routines. However, this
+            can be substantially slower than using 'skcuda' backend that uses
+            optimized cuda kernels but is not differentiable. Defaults to 'torch'.
         r_psi : float, optional
             Should be >0 and <1. Controls the redundancy of the filters
             (the larger r_psi, the larger the overlap between adjacent
