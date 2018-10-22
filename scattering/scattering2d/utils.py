@@ -273,8 +273,30 @@ class Fft(object):
 
 
 def cdgmm(A, B, backend='skcuda', inplace=False):
-    """This function uses the C-wrapper to use cuBLAS.
-        """
+    """
+    Complex dotwise multiplication between (batched) tensor A and tensor B.
+
+    Parameters
+    ----------
+    A : tensor
+        input tensor with size (B, C, M, N, 2)
+    B : tensor
+        B is a complex tensor of size (M, N, 2)
+    backend : string, optional
+        backend used, which affects substantially functionality and
+        performances. When backend is set to 'torch', one can access to the
+        gradient w.r.t. the inputs, using pure torch routines. However, this
+        can be substantially slower than using 'skcuda' backend that uses
+        optimized cuda kernels but is not differentiable. Defaults to 'torch'.
+    inplace : boolean, optional
+        if set to True, all the operations are performed inplace
+
+    Returns
+    -------
+    C : tensor
+        output tensor of size (B, C, M, N, 2) such that:
+        C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
+    """
     A, B = A.contiguous(), B.contiguous()
     if A.size()[-3:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication!')

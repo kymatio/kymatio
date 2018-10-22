@@ -27,7 +27,7 @@ class Scattering2D(object):
 
         where star denotes the convolution (in space),
         phi_J is a low pass filter, psi^1_lambda is a family of band pass
-        filters and psi^2_lambda is another family of band pass filters.
+        filters and psi^2_mu is another family of band pass filters.
 
         Only Morlet filters are used in this implementation.
 
