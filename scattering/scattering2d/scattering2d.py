@@ -13,7 +13,7 @@ from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 
 class Scattering2D(object):
-     """
+    """
         Main module implementing the scattering transform in 2D.
 
         The scattering transform computes two wavelet transform followed
@@ -66,73 +66,35 @@ class Scattering2D(object):
             gradient w.r.t. the inputs, using pure torch routines. However, this
             can be substantially slower than using 'skcuda' backend that uses
             optimized cuda kernels but is not differentiable. Defaults to 'torch'.
-        r_psi : float, optional
-            Should be >0 and <1. Controls the redundancy of the filters
-            (the larger r_psi, the larger the overlap between adjacent
-            wavelets). Defaults to sqrt(0.5).
-        sigma0 : float, optional
-            parameter controlling the frequential width of the
-            low-pass filter at J_scattering=0; at a an absolute J_scattering,
-            it is equal to sigma0 / 2**J_scattering. Defaults to 1e-1
-        alpha : float, optional
-            tolerance factor for the aliasing after subsampling.
-            The larger alpha, the more conservative the value of maximal
-            subsampling is. Defaults to 5.
-        P_max : int, optional
-            maximal number of periods to use to make sure that the
-            FFT of the filters is periodic. P_max = 5 is more than enough for
-            double precision. Defaults to 5
-        eps : float, optional
-            required machine precision for the periodization (single
-            floating point is enough for deep learning applications).
-            Defaults to 1e-7
-        order2 : boolean, optional
-            whether to compute the 2nd order scattering or not.
-            Defaults to True.
-        average_U1 : boolean, optional
-            whether to return an averaged first order
-            (proper scattering) or simply the |x star psi^1_lambda|.
-            Defaults to True.
-        oversampling : boolean, optional
-            integer >= 0 contrlling the relative
-            oversampling relative to the default downsampling by 2**J after
-            convolution with phi_J, so that the value 2**(J-oversampling)
-            is used. Defaults to 0
-        vectorize : boolean, optional
-            whether to return a vectorized scattering or
-            not (in which case the output is a dictionary).
-            Defaults to True.
 
         Attributes
         ----------
-        T : int
-            temporal support of the inputs
+        M, N : int
+            spatial support of the input
         J : int
             logscale of the scattering
-        Q : int
-            number of filters per octave (an integer >= 1)
-        J_pad : int
-            log2 of the support on which the signal is padded (is a power
-            of 2 for efficient FFT implementation)
-        pad_left : int
-            amount which is padded on the left of the original temporal support
-        pad_right : int
-            amount which is padded on the right of the original support
-        phi_fft : dictionary
-            countaining the low-pass filter at all resolutions
-            See filters_bank.scat_filters_factory for an exact description
-        psi1_fft : dictionary
-            Countaining the filters of the 1st order at all
-            resolutions. See filters_bank.scat_filters_factory for an exact
-            description
-        psi1_fft : dictionary
-            countaining the filters of the 2nd order at all
-            resolutions. See filters_bank.scat_filters_factory for an exact
-            description
-        default_args : dictionary
-            Countains the default arguments with which the scattering should
-            be computed
-        """
+        L : int, optional
+            number of angles used for the wavelet transform
+        pre_pad : boolean
+            controls the padding
+        backend : string
+            backend used
+        Psi : dictionary
+            countaining the wavelets filters at all resolutions. See
+            filters_bank.filters_bank_real for an exact description.
+        Psi : dictionary
+            countaining the low-pass filters at all resolutions. See
+            filters_bank.filters_bank_real for an exact description.
+        fft : class
+            FFT class
+        modulus : class
+            complex module class
+        periodize : class
+            periodize class for fourier signals. It acts as a downsampling
+            in the spatial domain.
+        padding_module : function
+            function used to pad input signals. Currently, it relies on torch.legacy
+    """
     def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
