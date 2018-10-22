@@ -123,9 +123,15 @@ class Scattering2D(object):
         return self
 
     def cuda(self):
+        """
+            Moves the parameters of the scattering to the GPU
+        """
         return self._type(torch.cuda.FloatTensor)
 
     def cpu(self):
+        """
+            Moves the parameters of the scattering to the CPU
+        """
         return self._type(torch.FloatTensor)
 
     def _prepare_padding_size(self, s):
