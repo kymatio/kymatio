@@ -179,8 +179,7 @@ class Modulus(object):
 
     Parameters
     ---------
-    x: input tensor (embedded in a Variable), with last dimension = 2 for
-        complex numbers
+    x: input tensor, with last dimension = 2 for complex numbers
 
     Returns
     -------
@@ -231,9 +230,24 @@ class Modulus(object):
 
 
 class Fft(object):
-    """This class builds a wrapper to the FFTs kernels and cache them.
+    """ Interface with torch FFT routines for 2D signals.
 
-    As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
+        Example
+        -------
+        fft = Fft()
+        x = torch.randn(128, 1, 4096, 2)
+        x_fft = fft1d.c2c(x)
+
+        Parameters
+        ----------
+        input : tensor
+            complex input for the FFT
+        direction : string
+            'C2R' for complex to real, 'C2C' for complex to complex
+        inverse : bool
+            True for computing the inverse FFT.
+            NB : if direction is equal to 'C2R', then the transform
+            is automatically inverse.
         """
     def __call__(self, input, direction='C2C', inverse=False):
         if direction == 'C2R':
