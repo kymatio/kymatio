@@ -11,4 +11,4 @@ In practice, Scattering coefficients extend MFSCs or SIFT descriptors, by incorp
  stable but more discriminative than their first order counter part. The wavelets employed are adapted to signals such as
  natural images or audio sounds.
 
- In this software, we propose an extension of the implementation 
+ In this software, we propose an extension of the implementation provided by REFERENCE
