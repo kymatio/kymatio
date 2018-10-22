@@ -30,7 +30,7 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
-class Periodize(object):
+class Subsample_fourier(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
     def __init__(self, backend='skcuda'):
@@ -100,8 +100,28 @@ class Periodize(object):
 
 
 class Modulus(object):
-    """This class builds a wrapper to the moduli kernels and cache them.
-        """
+    """
+    This class implements a modulus transform for complex numbers.
+
+    Usage
+    -----
+    modulus = Modulus()
+    x_mod = modulus(x)
+
+    Docstring for modulus
+    ---------------------
+    Function performing a modulus transform
+
+    Parameters
+    ---------
+    x: input tensor (embedded in a Variable), with last dimension = 2 for
+        complex numbers
+
+    Returns
+    -------
+    output: a tensor with imaginary part set to 0, real part set equal to
+    the modulus of x.
+    """
     def __init__(self, backend='skcuda'):
         self.CUDA_NUM_THREADS = 1024
         self.backend = backend
