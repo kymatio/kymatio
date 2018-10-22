@@ -7,7 +7,7 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .utils import cdgmm, Modulus, Subsample_fourier, Fft, pad, unpad
+from .utils import cdgmm, Modulus, Subsample_fourier, Fft, pad, unpad, compute_padding
 from .filters_bank import filters_bank
 
 
@@ -104,7 +104,7 @@ class Scattering2D(object):
         self.modulus = Modulus(backend=backend)
         self.subsample_fourier = Subsample_fourier(backend=backend)
 
-        self._prepare_padding_size([1, 1, M, N])
+        self.M_padded, self.N_padded = compute_padding(M, N, J)
 
         self.padding_module = pad_function(2**J)
 
@@ -134,29 +134,6 @@ class Scattering2D(object):
             Moves the parameters of the scattering to the CPU
         """
         return self._type(torch.FloatTensor)
-
-    def _prepare_padding_size(self, s):
-        """
-            It precomputes padding size.
-
-            Parameters
-            ----------
-            s : 2-elements list
-                It corresponds to M, N
-        """
-        M = s[-2]
-        N = s[-1]
-
-        self.M_padded = ((M + 2 ** (self.J))//2**self.J+1)*2**self.J
-        self.N_padded = ((N + 2 ** (self.J))//2**self.J+1)*2**self.J
-
-        if self.pre_pad:
-            warnings.warn('Make sure you padded the input before to feed it!', RuntimeWarning, stacklevel=2)
-
-        s[-2] = self.M_padded
-        s[-1] = self.N_padded
-
-
 
     def forward(self, input):
         """

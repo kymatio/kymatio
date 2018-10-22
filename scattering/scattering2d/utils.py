@@ -31,6 +31,27 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
+def compute_padding(M, N, J):
+    """
+    It precomputes the future padded size.
+
+    Parameters
+    ----------
+    M, N : int
+        input size
+
+    Returns
+    -------
+    M, N : int
+        padded size
+    """
+
+    M_padded = ((M + 2 ** J) // 2 ** J + 1) * 2 ** J
+    N_padded = ((N + 2 ** J) // 2 ** J + 1) * 2 ** J
+
+    return M_padded, N_padded
+
+
 def pad(input, pre_pad):
     """
         Padding which allows to simultaneously pad in a reflection fashion
