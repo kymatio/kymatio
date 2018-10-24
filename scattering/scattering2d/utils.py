@@ -7,7 +7,7 @@ import torch
 
 
 CUDA_AVAILABLE = True
-if not torch.is_cuda():
+if not torch.cuda.is_available():
     CUDA_AVAILABLE = False
 try:
     from skcuda import cublas
