@@ -40,12 +40,28 @@ setup_info = dict(
 )
 
 
-setup(**setup_info)
-
-
 def create_version_file():
     global version, cwd
     print('-- Building version ' + version)
     version_path = os.path.join(cwd, 'version.py')
     with open(version_path, 'w') as f:
-        f.write("IS_CUDA = TRUE")
+        f.write("CUDA_AVAILABLE = TRUE")
+
+setup(**setup_info)
+
+
+
+CUDA_AVAILABLE = True
+if not torch.cuda.is_available():
+    CUDA_AVAILABLE = False
+try:
+    from skcuda import cublas
+except:
+    CUDA_AVAILABLE = False
+try:
+    import cupy
+except:
+    CUDA_AVAILABLE = False
+
+if CUDA_AVAILABLE:
+    create_version_file()

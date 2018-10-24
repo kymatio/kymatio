@@ -6,18 +6,6 @@ from collections import defaultdict, namedtuple
 import torch
 
 
-CUDA_AVAILABLE = True
-if not torch.cuda.is_available():
-    CUDA_AVAILABLE = False
-try:
-    from skcuda import cublas
-except:
-    CUDA_AVAILABLE = False
-try:
-    import cupy
-except:
-    CUDA_AVAILABLE = False
-
 from string import Template
 
 if CUDA_AVAILABLE:
