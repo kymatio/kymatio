@@ -2,7 +2,6 @@
 from collections import defaultdict
 
 import torch
-from skcuda import cufft
 import numpy as np
 import warnings
 

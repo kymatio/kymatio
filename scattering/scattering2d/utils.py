@@ -196,7 +196,7 @@ def cdgmm(A, B, backend='skcuda', inplace=False):
         raise ('CUDA is not available on this machine, please switch to torch backend.')
 
     A, B = A.contiguous(), B.contiguous()
-    
+
     if A.size()[-3:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication!')
 
