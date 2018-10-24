@@ -146,78 +146,23 @@ def to_complex(input):
     output[..., 0] = input
     return output
 
-"""
+
 class Fft3d(object):
-    This class builds a wrapper to 3D FFTW on CPU / cuFFT on nvidia GPU.
-
-    def __init__(self, n_fftw_threads=8):
-        self.n_fftw_threads = n_fftw_threads
-        self.fftw_cache = defaultdict(lambda: None)
-        self.cufft_cache = defaultdict(lambda: None)
-
-    def buildCufftCache(self, input, type):
-        batch_size, M, N, O, _ = input.size()
-        signal_dims = np.asarray([M, N, O], np.int32)
-        batch = batch_size
-        idist = M * N * O
-        istride = 1
-        ostride = istride
-        odist = idist
-        rank = 3
-        plan = cufft.cufftPlanMany(rank, signal_dims.ctypes.data,
-                                         signal_dims.ctypes.data,
-                                   istride, idist, signal_dims.ctypes.data, 
-                                   ostride, odist, type, batch)
-        self.cufft_cache[(input.size(), type, input.get_device())] = plan
-
-    def buildFftwCache(self, input, inverse):
-        direction = 'FFTW_BACKWARD' if inverse else 'FFTW_FORWARD'
-        batch_size, M, N, O, _ = input.size()
-        fftw_input_array = pyfftw.empty_aligned(
-            (batch_size, M, N, O), dtype='complex64')
-        fftw_output_array = pyfftw.empty_aligned(
-            (batch_size, M, N, O), dtype='complex64')
-        fftw_object = pyfftw.FFTW(fftw_input_array, fftw_output_array,
-                                  axes=(1, 2, 3), direction=direction,
-                                  threads=self.n_fftw_threads)
-        self.fftw_cache[(input.size(), inverse)] = (
-            fftw_input_array, fftw_output_array, fftw_object)
-
     def __call__(self, input, inverse=False, normalized=False):
-        if not isinstance(input, torch.cuda.FloatTensor):
-            if not isinstance(input, (torch.FloatTensor, torch.DoubleTensor)):
-                raise(TypeError('The input should be a torch.cuda.FloatTensor, \
-                                torch.FloatTensor or a torch.DoubleTensor'))
-            else:
-                def f(x): return np.stack([x.real, x.imag], axis=len(x.shape))
-                if(self.fftw_cache[(input.size(), inverse)] is None):
-                    self.buildFftwCache(input, inverse)
-                input_arr, output_arr, fftw_obj = self.fftw_cache[(
-                    input.size(), inverse)]
-
-                input_arr.real[:] = input[..., 0]
-                input_arr.imag[:] = input[..., 1]
-                fftw_obj()
-
-                return torch.from_numpy(f(output_arr))
-
+        if not isinstance(input, torch.cuda.FloatTensor) or not isinstance(input, (torch.FloatTensor, torch.DoubleTensor)):
+            raise (TypeError('The input should be a torch.cuda.FloatTensor, \
+                            torch.FloatTensor or a torch.DoubleTensor'))
         if not input.is_contiguous():
-            raise(RuntimeError("input is not contiguous"))
-
-        output = input.new(input.size())
-        flag = cufft.CUFFT_INVERSE if inverse else cufft.CUFFT_FORWARD
-        ffttype = cufft.CUFFT_C2C if isinstance(
-            input, torch.cuda.FloatTensor) else cufft.CUFFT_Z2Z
-        if self.cufft_cache[
-                    (input.size(), ffttype, input.get_device())] is None:
-            self.buildCufftCache(input, ffttype)
-        cufft.cufftExecC2C(self.cufft_cache[(input.size(), ffttype, 
-                    input.get_device())], input.data_ptr(),
-                    output.data_ptr(), flag)
+            raise (RuntimeError("input is not contiguous"))
+        if inverse:
+            output = torch.ifft(input, 3, normalized=False)
+        else:
+            output = torch.fft(input, 3, normalized=False)*input.size(-2)*input.size(-3)*input.size(-4)
         if normalized:
-            output /= input.size(1) * input.size(2) * input.size(3)
+            output = output*input.size(-2)*input.size(-3)*input.size(-4)
         return output
-"""
+
+
 
 
 def cdgmm3d(A, B):
