@@ -146,9 +146,9 @@ def to_complex(input):
     output[..., 0] = input
     return output
 
-
+"""
 class Fft3d(object):
-    """This class builds a wrapper to 3D FFTW on CPU / cuFFT on nvidia GPU."""
+    This class builds a wrapper to 3D FFTW on CPU / cuFFT on nvidia GPU.
 
     def __init__(self, n_fftw_threads=8):
         self.n_fftw_threads = n_fftw_threads
@@ -217,6 +217,7 @@ class Fft3d(object):
         if normalized:
             output /= input.size(1) * input.size(2) * input.size(3)
         return output
+"""
 
 
 def cdgmm3d(A, B):
