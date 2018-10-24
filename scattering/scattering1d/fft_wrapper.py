@@ -1,5 +1,11 @@
 import torch
-from skcuda import cufft
+CUDA_AVAILABLE = True
+if not torch.cuda.is_available():
+    CUDA_AVAILABLE = False
+try:
+    from skcuda import cufft
+except:
+    CUDA_AVAILABLE = False
 import numpy as np
 from collections import defaultdict
 
@@ -153,6 +159,8 @@ class FFT1DCache(object):
             raise ValueError('The last dim of input array x should be 2!')
         if not x.is_contiguous():
             raise ValueError("Input array x must be contiguous")
+        if not CUDA_AVAILABLE:
+            raise ('CUDA is not available on this machine, please switch to cpu backend.')
         # create a new tensor on the same device with the same size
         output = x.new(x.shape)
         # adapt the flag depending on the inverse or not
