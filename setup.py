@@ -39,4 +39,13 @@ setup_info = dict(
     ]
 )
 
+
 setup(**setup_info)
+
+
+def create_version_file():
+    global version, cwd
+    print('-- Building version ' + version)
+    version_path = os.path.join(cwd, 'version.py')
+    with open(version_path, 'w') as f:
+        f.write("IS_CUDA = TRUE")

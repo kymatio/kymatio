@@ -1,11 +1,8 @@
 import torch
-CUDA_AVAILABLE = True
-if not torch.cuda.is_available():
-    CUDA_AVAILABLE = False
-try:
+
+if CUDA_AVAILABLE:
     from skcuda import cufft
-except:
-    CUDA_AVAILABLE = False
+
 import numpy as np
 from collections import defaultdict
 

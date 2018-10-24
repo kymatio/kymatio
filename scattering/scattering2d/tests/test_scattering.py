@@ -5,11 +5,21 @@ import torch
 from scattering.scattering2d import Scattering2D
 from scattering.scattering2d import utils as sl
 
+
+if CUDA_AVAILABLE:
+    gpus = [True, False]
+    backends = ['pytorch', 'skcuda']
+else:
+    gpus = [False]
+    backends = ['pytorch']
 # Checked the modulus
 def test_Modulus():
-    for backend in ['pytorch', 'skcuda']:
+    for backend in backends:
         modulus = sl.Modulus(backend=backend)
-        x = torch.rand(100, 10, 4, 2).cuda().float()
+        x = torch.rand(100, 10, 4, 2).float()
+        if CUDA_AVAILABLE:
+            x =  x.cuda()
+
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
         v = y.narrow(3, 0, 1)
@@ -19,9 +29,13 @@ def test_Modulus():
 
 
 def test_Periodization():
-    for backend in ['torch', 'skcuda']:
-        x = torch.rand(100, 1, 128, 128, 2).cuda().double()
-        y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
+    for backend in backends:
+        x = torch.rand(100, 1, 128, 128, 2).double()
+        y = torch.zeros(100, 1, 8, 8, 2).double()
+
+        if CUDA_AVAILABLE:
+            x = x.cuda()
+            y = y.cuda()
 
         for i in range(8):
             for j in range(8):
@@ -42,12 +56,15 @@ def test_Periodization():
 
 # Check the CUBLAS routines
 def test_Cublas():
-    for backend in ['pytorch', 'skcuda']:
-        x = torch.rand(100, 128, 128, 2).cuda()
-        filter = torch.rand(128, 128, 2).cuda()
+    for backend in backends:
+        x = torch.rand(100, 128, 128, 2)
+        filter = torch.rand(128, 128, 2)
         filter[..., 1] = 0
-        y = torch.ones(100, 128, 128, 2).cuda()
-        z = torch.Tensor(100, 128, 128, 2).cuda()
+        y = torch.ones(100, 128, 128, 2)
+        if CUDA_AVAILABLE:
+            x = x.cuda()
+            filter = filter.cuda()
+            y = y.cuda()
 
         for i in range(100):
             y[i,:,:,0]=x[i,:,:,0] * filter[:,:,0]-x[i,:,:,1] * filter[:,:,1]
@@ -58,24 +75,26 @@ def test_Cublas():
 
 # Check the scattering
 def test_Scattering2D():
+
     test_data_dir = os.path.dirname(__file__)
     data = torch.load(os.path.join(test_data_dir, 'test_data.pt'))
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
-    # First, let's check the Jit
-    scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='skcuda')
-    scattering.cuda()
-    x = x.cuda()
-    S = S.cuda()
-    y = scattering(x)
-    assert ((S - y)).abs().max() < 1e-6
+    if 'skcuda' in backends:
+        # First, let's check the Jit
+        scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='skcuda')
+        scattering.cuda()
+        x = x.cuda()
+        S = S.cuda()
+        y = scattering(x)
+        assert ((S - y)).abs().max() < 1e-6
 
     # Then, let's check when using pure pytorch code
     scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='torch')
     Sg = []
 
-    for gpu in [True, False]:
+    for gpu in gpus:
         if gpu:
             x = x.cuda()
             scattering.cuda()
