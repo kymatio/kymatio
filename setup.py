@@ -3,6 +3,7 @@ import os
 import shutil
 import sys
 from setuptools import setup, find_packages
+import torch
 
 VERSION = '0.0.1'
 
@@ -39,13 +40,18 @@ setup_info = dict(
     ]
 )
 
+cwd = os.path.dirname(os.path.abspath(__file__))
 
-def create_version_file():
+def create_version_file(cuda):
     global version, cwd
-    print('-- Building version ' + version)
-    version_path = os.path.join(cwd, 'version.py')
+    print('-- Building version ' + VERSION)
+    version_path = os.path.join(cwd,'build', 'lib', 'version.py')
+    print(version_path)
     with open(version_path, 'w') as f:
-        f.write("CUDA_AVAILABLE = TRUE")
+        if cuda:
+            f.write("CUDA_AVAILABLE = TRUE")
+        else:
+            f.write("CUDA_AVAILABLE = TRUE")
 
 setup(**setup_info)
 
@@ -63,5 +69,4 @@ try:
 except:
     CUDA_AVAILABLE = False
 
-if CUDA_AVAILABLE:
-    create_version_file()
+create_version_file(CUDA_AVAILABLE)
