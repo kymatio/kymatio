@@ -4,8 +4,20 @@ All rights reserved, 2017.
 """
 from collections import defaultdict, namedtuple
 import torch
-from skcuda import cublas
-import cupy
+
+
+CUDA_AVAILABLE = True
+if not torch.is_cuda():
+    CUDA_AVAILABLE = False
+try:
+    from skcuda import cublas
+except:
+    CUDA_AVAILABLE = False
+try:
+    import cupy
+except:
+    CUDA_AVAILABLE = False
+
 from string import Template
 
 
@@ -36,6 +48,8 @@ class Periodize(object):
     def __init__(self, backend='skcuda'):
         self.block = (32, 32, 1)
         self.backend = backend
+        if not CUDA_AVAILABLE and backend == 'skcuda':
+            raise('CUDA is not available on this machine, please switch to torch backend.')
 
     def GET_BLOCKS(self, N, threads):
         return (N + threads - 1) // threads
@@ -105,6 +119,8 @@ class Modulus(object):
     def __init__(self, backend='skcuda'):
         self.CUDA_NUM_THREADS = 1024
         self.backend = backend
+        if not CUDA_AVAILABLE and backend == 'skcuda':
+            raise ('CUDA is not available on this machine, please switch to torch backend.')
 
     def GET_BLOCKS(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
@@ -176,7 +192,11 @@ class Fft(object):
 def cdgmm(A, B, backend='skcuda', inplace=False):
     """This function uses the C-wrapper to use cuBLAS.
         """
+    if not CUDA_AVAILABLE and backend == 'skcuda':
+        raise ('CUDA is not available on this machine, please switch to torch backend.')
+
     A, B = A.contiguous(), B.contiguous()
+    
     if A.size()[-3:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication!')
 
