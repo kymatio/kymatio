@@ -3,6 +3,8 @@ from torch.autograd import Variable
 import numpy as np
 import math
 
+import warnings
+
 from .utils import pad, unpad, real, subsample_fourier, modulus_complex
 from .utils import compute_padding, compute_border_indices
 from .utils import cast_psi, cast_phi
@@ -290,6 +292,9 @@ class Scattering1D(object):
             not (in which case the output is a dictionary).
             Defaults to True.
         """
+        if vectorize and not(average_U1):
+            warnings.warn('Setting average_U1 to False and vectorize to True' +
+                          ' will raise an error at runtime.')
         self.default_args = {'order2': order2, 'average_U1': average_U1,
                              'oversampling': oversampling,
                              'vectorize': vectorize}
@@ -359,6 +364,10 @@ class Scattering1D(object):
             order2, average_U1, oversampling, vectorize)
         # treat the arguments
         if vectorize:
+            if not(average_U1):
+                raise ValueError(
+                    'Options average_U1=False and vectorize=True are ' +
+                    'mutually incompatible. Please set vectorize to False.')
             size_scat = self.precompute_size_scattering(
                 self.J, self.Q, order2=order2, detail=False)
         else:
@@ -557,7 +566,8 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
             S1_J = unpad(real(ifft1d_c2c_normed(S1_J_hat)),
                          ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
-            S1_J = U1_hat
+            S1_J = unpad(real(ifft1d_c2c_normed(U1_hat)),
+                         ind_start[k1], ind_end[k1])
         if vectorize:
             S[:, cc, :] = S1_J.squeeze(dim=1)
             cc += 1

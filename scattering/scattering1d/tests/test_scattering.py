@@ -62,6 +62,29 @@ def test_sample_scattering():
 
     assert (Sx - Sx0).abs().max() < 1e-6
 
+def test_computation_Ux(random_state=42):
+    """
+    Checks the computation of the U transform (no averaging for 1st order)
+    """
+    rng = check_random_state(random_state)
+    J = 6
+    Q = 8
+    T = 2**12
+    scattering = Scattering1D(T, J, Q, normalize='l1', average_U1=False,
+                              order2=False, vectorize=False)
+    # random signal
+    x = Variable(torch.from_numpy(rng.randn(1, 1, T)).float())
+    s = scattering.forward(x)
+    # check that the keys in s correspond to the order 0 and second order
+    for k in scattering.psi1_fft.keys():
+        assert k in s.keys()
+    for k in s.keys():
+        if k != 0:
+            assert k in scattering.psi1_fft.keys()
+        else:
+            assert True
+
+
 # Technical tests
 
 def test_scattering_GPU_CPU(random_state=42, test_cuda=None):
