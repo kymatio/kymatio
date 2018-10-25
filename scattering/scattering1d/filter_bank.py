@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import math
+import warnings
 
 
 def adaptative_choice_P(sigma, eps=1e-7):
@@ -272,6 +273,10 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
     The resulting value T used to pad the signals to avoid boundary effects
     and numerical errors.
 
+    If the support is too small, no such T might exist.
+    In this case, T is defined as the half of the support of h, and a
+    UserWarning is raised.
+
     Parameters
     ----------
     h_fft : array_like
@@ -295,8 +300,16 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
     l1_residual = np.fliplr(
         np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
     # find the first point above criterion_amplitude
-    T = np.min(
-        np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0]) + 1
+    if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
+        # if it is possible
+        T = np.min(
+            np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
+            + 1
+    else:
+        # if there is none:
+        T = half_support
+        # Raise a warning to say that there will be border effects
+        warnings.warn('Signal support is too small to avoid border effects')
     return T
 
 
