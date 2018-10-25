@@ -28,13 +28,16 @@ def scattering_filter_factory_real(M, N, J, L=8):
         logscale of the scattering
     L : int, optional
         number of angles used for the wavelet transform
-        N.B.: the design of the filters is optimized for the value L = 8
 
     Returns
     -------
     filters : list
         A two list of dictionary containing respectively the low-pass and
          wavelet filters.
+
+    Notes
+    -----
+    The design of the filters is optimized for the value L = 8
     """
     filters = {}
     filters['psi'] = []
@@ -169,7 +172,7 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=False):
     A Morlet filter is the sum of a Gabor filter and a low-pass filter
     to ensure that the sum has exactly zero mean in the temporal domain.
     It is defined by the following formula in space:
-    psi(u) = g_{sigma}(u) (e^{i xi^T u} - beta)
+    psi(u) = g_{sigma}(u) (e^(i xi^T u) - beta)
     where g_{sigma} is a Gaussian envelope, xi is a frequency and beta is
     the cancelling parameter.
 
@@ -208,7 +211,7 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
     Computes a 2D Gabor filter.
 
     A Gabor filter is defined by the following formula in space:
-    psi(u) = g_{sigma}(u) e^{i xi^T u}
+    psi(u) = g_{sigma}(u) e^(i xi^T u)
     where g_{sigma} is a Gaussian envelope and xi is a frequency.
 
     Parameters

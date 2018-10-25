@@ -21,7 +21,6 @@ filters_set = scattering_filter_factory_real(M, M, J)
 
 for filter in filters_set['psi']:
     filter_c = fft.fft2(filter[0])
-    #filter_c = filter_r + 1.0j * filter_i
     phase = np.angle(filter_c)
     amplitude = np.absolute(filter_c)
 
