@@ -473,7 +473,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
 
     Parameters
     ----------
-    x : Variable tensor
+    x : Tensor
         a torch Variable of size (B, 1, T) where T is the temporal size
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (j, n)
