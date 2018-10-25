@@ -96,7 +96,7 @@ def unpad(in_):
     return in_[..., 1:-1, 1:-1]
 
 
-class Subsample_fourier(object):
+class SubsampleFourier(object):
     """
     Subsampling of a 2D image performed in the Fourier domain
 

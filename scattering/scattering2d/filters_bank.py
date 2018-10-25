@@ -195,7 +195,7 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=False):
 
     Returns
     -------
-    morlet_fft : array_like
+    morlet_fft : ndarray
         numpy array of size (M, N)
     """
     wv = gabor_2d(M, N, sigma, theta, xi, slant, offset, fft_shift)
@@ -233,7 +233,7 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
 
     Returns
     -------
-    morlet_fft : array_like
+    morlet_fft : ndarray
         numpy array of size (M, N)
     """
     gab = np.zeros((M, N), np.complex64)

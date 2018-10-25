@@ -7,7 +7,7 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .utils import cdgmm, Modulus, Subsample_fourier, Fft, pad, unpad, compute_padding
+from .utils import cdgmm, Modulus, SubsampleFourier, Fft, pad, unpad, compute_padding
 from .filters_bank import scattering_filter_factory
 
 
@@ -102,7 +102,7 @@ class Scattering2D(object):
         self.backend = backend
         self.fft = Fft()
         self.modulus = Modulus(backend=backend)
-        self.subsample_fourier = Subsample_fourier(backend=backend)
+        self.subsample_fourier = SubsampleFourier(backend=backend)
 
         self.M_padded, self.N_padded = compute_padding(M, N, J)
 
