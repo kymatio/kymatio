@@ -189,7 +189,7 @@ class Scattering1D(object):
             Countaining the filters of the 1st order at all
             resolutions. See filters_bank.scat_filters_factory for an exact
             description
-        psi1_fft : dictionary
+        psi2_fft : dictionary
             countaining the filters of the 2nd order at all
             resolutions. See filters_bank.scat_filters_factory for an exact
             description
