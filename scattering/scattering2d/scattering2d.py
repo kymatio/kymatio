@@ -52,7 +52,6 @@ class Scattering2D(object):
             logscale of the scattering
         L : int, optional
             number of angles used for the wavelet transform
-            N.B.: the design of the filters is optimized for the value L = 8
         pre_pad : boolean, optional
             controls the padding: if set to False, a symmetric padding is applied
             on the signal. If set to true, the software will assume the signal was
@@ -95,6 +94,9 @@ class Scattering2D(object):
             function used to pad input signals. Currently, it relies on torch.legacy
         M_padded, N_padded : int
              spatial support of the padded input
+        Notes
+        -----
+        the design of the filters is optimized for the value L = 8
     """
     def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
         self.M, self.N, self.J, self.L = M, N, J, L
