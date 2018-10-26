@@ -7,9 +7,9 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .backend import cdgmm, Modulus, Periodize, Fft
-from .filters_bank import filters_bank
-from torch.legacy.nn import SpatialReflectionPadding as pad_function
+from .backend import cdgmm, Modulus, SubsampleFourier, fft
+from .filters_bank import filter_bank
+from .utils import compute_padding
 
 
 class Scattering2D(object):
@@ -23,23 +23,20 @@ class Scattering2D(object):
         pre_pad: if set to True, module expect pre-padded images
         jit: compile kernels on the fly for speed
     """
-    def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
+    def __init__(self, M, N, J, L=8, pre_pad=False):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
-        self.backend = backend
-        self.fft = Fft()
+        self.build()
+
+    def build(self):
         self.modulus = Modulus()
-        self.periodize = Periodize()
-
-        self._prepare_padding_size([1, 1, M, N])
-
-        self.padding_module = pad_function(2**J)
-
+        self.subsample_fourier = SubsampleFourier()
         # Create the filters
-        filters = filters_bank(self.M_padded, self.N_padded, J, L)
-
+        self.M_padded, self.N_padded = compute_padding(self.M, self.N)
+        filters = filter_bank(self.M_padded, self.N_padded, J, L)
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
+
 
     def _type(self, _type):
         for key, item in enumerate(self.Psi):
@@ -55,34 +52,6 @@ class Scattering2D(object):
 
     def cpu(self):
         return self._type(torch.FloatTensor)
-
-    def _prepare_padding_size(self, s):
-        M = s[-2]
-        N = s[-1]
-
-        self.M_padded = ((M + 2 ** (self.J))//2**self.J+1)*2**self.J
-        self.N_padded = ((N + 2 ** (self.J))//2**self.J+1)*2**self.J
-
-        if self.pre_pad:
-            warnings.warn('Make sure you padded the input before to feed it!', RuntimeWarning, stacklevel=2)
-
-        s[-2] = self.M_padded
-        s[-1] = self.N_padded
-        self.padded_size_batch = torch.Size([a for a in s])
-
-    # This function copies and view the real to complex
-    def _pad(self, input):
-        if(self.pre_pad):
-            output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
-            output.narrow(output.ndimension()-1, 0, 1).copy_(input)
-        else:
-            out_ = self.padding_module.updateOutput(input)
-            output = input.new(*(out_.size() + (2,))).fill_(0)
-            output.select(4, 0).copy_(out_)
-        return output
-
-    def _unpad(self, in_):
-        return in_[..., 1:-1, 1:-1]
 
     def forward(self, input):
         if not torch.is_tensor(input):
@@ -105,22 +74,19 @@ class Scattering2D(object):
         psi = self.Psi
         n = 0
 
-        fft = self.fft
-        periodize = self.periodize
+        subsample_fourier = self.subsample_fourier
         modulus = self.modulus
-        pad = self._pad
-        unpad = self._unpad
 
         S = input.new(input.size(0),
                       input.size(1),
                       1 + self.L*J + self.L*self.L*J*(J - 1) // 2,
                       self.M_padded//(2**J)-2,
                       self.N_padded//(2**J)-2)
-        U_r = pad(input)
+        U_r = pad(input, self.pre_pad)
         U_0_c = fft(U_r, 'C2C')  # We trick here with U_r and U_2_c
 
         # First low pass filter
-        U_1_c = periodize(cdgmm(U_0_c, phi[0]), k=2**J)
+        U_1_c = subsample_fourier(cdgmm(U_0_c, phi[0]), k=2**J)
 
         U_J_r = fft(U_1_c, 'C2R')
 
@@ -131,12 +97,12 @@ class Scattering2D(object):
             j1 = psi[n1]['j']
             U_1_c = cdgmm(U_0_c, psi[n1][0])
             if(j1 > 0):
-                U_1_c = periodize(U_1_c, k=2 ** j1)
+                U_1_c = subsample_fourier(U_1_c, k=2 ** j1)
             U_1_c = fft(U_1_c, 'C2C', inverse=True)
             U_1_c = fft(modulus(U_1_c), 'C2C')
 
             # Second low pass filter
-            U_2_c = periodize(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
+            U_2_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
             U_J_r = fft(U_2_c, 'C2R')
             S[..., n, :, :] = unpad(U_J_r)
             n = n + 1
@@ -144,12 +110,12 @@ class Scattering2D(object):
             for n2 in range(len(psi)):
                 j2 = psi[n2]['j']
                 if(j1 < j2):
-                    U_2_c = periodize(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
+                    U_2_c = subsample_fourier(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
                     U_2_c = fft(U_2_c, 'C2C', inverse=True)
                     U_2_c = fft(modulus(U_2_c), 'C2C')
 
                     # Third low pass filter
-                    U_2_c = periodize(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
+                    U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
                     U_J_r = fft(U_2_c, 'C2R')
 
                     S[..., n, :, :] = unpad(U_J_r)

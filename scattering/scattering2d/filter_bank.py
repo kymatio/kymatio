@@ -12,7 +12,7 @@ import scipy.fftpack as fft
 
 
 
-def filters_bank_real(M, N, J, L=8):
+def filter_bank_real(M, N, J, L=8):
     filters = {}
     filters['psi'] = []
 
@@ -26,7 +26,7 @@ def filters_bank_real(M, N, J, L=8):
             psi_signal = morlet_2d(M, N, 0.8 * 2**j, (int(L-L/2-1)-theta) * np.pi / L, 3.0 / 4.0 * np.pi /2**j, 4.0/L, offset=offset_unpad)
             psi_signal_fourier = fft.fft2(psi_signal)
             for res in range(j + 1):
-                psi_signal_fourier_res = crop_freq(psi_signal_fourier, res)
+                psi_signal_fourier_res = periodize_filter_fft(psi_signal_fourier, res)
                 psi[res]=torch.FloatTensor(np.stack((np.real(psi_signal_fourier_res), np.imag(psi_signal_fourier_res)), axis=2))
                 # Normalization to avoid doing it with the FFT!
                 psi[res].div_(M*N// 2**(2*j))
@@ -37,14 +37,14 @@ def filters_bank_real(M, N, J, L=8):
     phi_signal_fourier = fft.fft2(phi_signal)
     filters['phi']['j'] = J
     for res in range(J):
-        phi_signal_fourier_res = crop_freq(phi_signal_fourier, res)
+        phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
         filters['phi'][res]=torch.FloatTensor(np.stack((np.real(phi_signal_fourier_res), np.imag(phi_signal_fourier_res)), axis=2))
         filters['phi'][res].div_(M*N // 2 ** (2 * J))
 
     return filters
 
 
-def filters_bank(M, N, J, L=8, cache=False):
+def filter_bank(M, N, J, L=8, cache=False):
     '''
     Cache filters to a file
 
@@ -79,7 +79,7 @@ def filters_bank(M, N, J, L=8, cache=False):
         return filters
 
 
-def crop_freq(x, res):
+def periodize_filter_fft(x, res):
     M = x.shape[0]
     N = x.shape[1]
 
