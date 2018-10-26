@@ -58,10 +58,12 @@ def pad(input, pre_pad):
 def unpad(in_):
     """
         Slices the input tensor at indices between 1::-1
+
         Parameters
         ----------
         in_ : tensor_like
             input tensor
+
         Returns
         -------
         in_[..., 1:-1, 1:-1]
@@ -73,6 +75,7 @@ class SubsampleFourier(object):
         Subsampling of a 2D image performed in the Fourier domain
         Subsampling in the spatial domain amounts to periodization
         in the Fourier domain, hence the formula.
+
         Parameters
         ----------
         x : tensor_like
@@ -81,6 +84,7 @@ class SubsampleFourier(object):
             Ideally, the last dimension should be a power of 2 to avoid errors.
         k : int
             integer such that x is subsampled by 2**k along the spatial variables.
+
         Returns
         -------
         res : tensor_like
@@ -147,16 +151,16 @@ class SubsampleFourier(object):
 class Modulus(object):
     """
         This class implements a modulus transform for complex numbers.
+
         Usage
         -----
         modulus = Modulus()
         x_mod = modulus(x)
-        Docstring for modulus
-        ---------------------
-        Function performing a modulus transform
+
         Parameters
         ---------
         x: input tensor, with last dimension = 2 for complex numbers
+
         Returns
         -------
         output: a tensor with imaginary part set to 0, real part set equal to
@@ -246,21 +250,17 @@ def fft(input, direction='C2C', inverse=False):
 
 def cdgmm(A, B, inplace=False):
     """
-        Complex dotwise multiplication between (batched) tensor A and tensor B.
+        Complex pointwise multiplication between (batched) tensor A and tensor B.
+
         Parameters
         ----------
         A : tensor
             input tensor with size (B, C, M, N, 2)
         B : tensor
             B is a complex tensor of size (M, N, 2)
-        backend : string, optional
-            backend used, which affects substantially functionality and
-            performances. When backend is set to 'torch', one can access to the
-            gradient w.r.t. the inputs, using pure torch routines. However, this
-            can be substantially slower than using 'skcuda' backend that uses
-            optimized cuda kernels but is not differentiable. Defaults to 'torch'.
         inplace : boolean, optional
             if set to True, all the operations are performed inplace
+
         Returns
         -------
         C : tensor
