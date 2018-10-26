@@ -15,70 +15,70 @@ from .utils import compute_padding
 class Scattering2D(object):
     def __init__(self, M, N, J, L=8, pre_pad=False):
         """
-        Main module implementing the scattering transform in 2D.
-        The scattering transform computes two wavelet transform followed
-        by modulus non-linearity.
-        It can be summarized as:
-        S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
-        where
-        S_J^0 x = x star phi_J
-        S_J^1 x = [|x star psi^1_lambda| star phi_J]_lambda
-        S_J^2 x =
-            [||x star psi^1_lambda| star psi^2_mu| star phi_J]_{lambda, mu}
-        where star denotes the convolution (in space),
-        phi_J is a low pass filter, psi^1_lambda is a family of band pass
-        filters and psi^2_mu is another family of band pass filters.
-        Only Morlet filters are used in this implementation.
-        Convolutions are efficiently performed in the Fourier domain
-        with this implementation.
+            Main module implementing the scattering transform in 2D.
+            The scattering transform computes two wavelet transform followed
+            by modulus non-linearity.
+            It can be summarized as:
+            S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
+            where
+            S_J^0 x = x star phi_J
+            S_J^1 x = [|x star psi^1_lambda| star phi_J]_lambda
+            S_J^2 x =
+                [||x star psi^1_lambda| star psi^2_mu| star phi_J]_{lambda, mu}
+            where star denotes the convolution (in space),
+            phi_J is a low pass filter, psi^1_lambda is a family of band pass
+            filters and psi^2_mu is another family of band pass filters.
+            Only Morlet filters are used in this implementation.
+            Convolutions are efficiently performed in the Fourier domain
+            with this implementation.
 
-        Example
-        -------
-        # 1) Define a Scattering object as:
-        s = Scattering2D(M, N, J)
-        #    where (M, N) are the image sizes and 2**J the scale of the scattering
-        # 2) Forward on an input Variable x of shape B x 1 x M x N,
-        #     where B is the batch size.
-        result_s = s(x)
+            Example
+            -------
+            # 1) Define a Scattering object as:
+            s = Scattering2D(M, N, J)
+            #    where (M, N) are the image sizes and 2**J the scale of the scattering
+            # 2) Forward on an input Variable x of shape B x 1 x M x N,
+            #     where B is the batch size.
+            result_s = s(x)
 
-        Parameters
-        ----------
-        M, N : int
-            spatial support of the input
-        J : int
-            logscale of the scattering
-        L : int, optional
-            number of angles used for the wavelet transform
-        pre_pad : boolean, optional
-            controls the padding: if set to False, a symmetric padding is applied
-            on the signal. If set to true, the software will assume the signal was
-            padded externally.
+            Parameters
+            ----------
+            M, N : int
+                spatial support of the input
+            J : int
+                logscale of the scattering
+            L : int, optional
+                number of angles used for the wavelet transform
+            pre_pad : boolean, optional
+                controls the padding: if set to False, a symmetric padding is applied
+                on the signal. If set to true, the software will assume the signal was
+                padded externally.
 
-        Attributes
-        ----------
-        M, N : int
-            spatial support of the input
-        J : int
-            logscale of the scattering
-        L : int, optional
-            number of angles used for the wavelet transform
-        pre_pad : boolean
-            controls the padding
-        Psi : dictionary
-            containing the wavelets filters at all resolutions. See
-            filter_bank.filter_bank for an exact description.
-        Phi : dictionary
-            containing the low-pass filters at all resolutions. See
-            filter_bank.filter_bank for an exact description.
-        M_padded, N_padded : int
-             spatial support of the padded input
+            Attributes
+            ----------
+            M, N : int
+                spatial support of the input
+            J : int
+                logscale of the scattering
+            L : int, optional
+                number of angles used for the wavelet transform
+            pre_pad : boolean
+                controls the padding
+            Psi : dictionary
+                containing the wavelets filters at all resolutions. See
+                filter_bank.filter_bank for an exact description.
+            Phi : dictionary
+                containing the low-pass filters at all resolutions. See
+                filter_bank.filter_bank for an exact description.
+            M_padded, N_padded : int
+                 spatial support of the padded input
 
-        Notes
-        -----
-        1. The design of the filters is optimized for the value L = 8
-        2. pre_pad is particularly useful when doing crops of a
-            bigger image because the padding is then extremely accurate. Defaults
-            to False.
+            Notes
+            -----
+            1. The design of the filters is optimized for the value L = 8
+            2. pre_pad is particularly useful when doing crops of a
+                bigger image because the padding is then extremely accurate. Defaults
+                to False.
         """
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
