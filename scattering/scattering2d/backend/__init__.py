@@ -23,7 +23,8 @@ cp = configparser.ConfigParser()
 
 if os.path.exists(config_file):
     cp.read(config_file)
-    BACKEND = cp.get('general', 'backend', fallback=None)
+    BACKEND = cp.get('general', 'backend_2d', 
+                     fallback=cp.get('general', 'backend', fallback=None))
     if BACKEND is None:
         BACKEND = DEFAULT_BACKEND
         if 'general' not in cp.sections():
