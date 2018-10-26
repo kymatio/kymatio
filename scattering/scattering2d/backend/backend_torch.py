@@ -38,7 +38,7 @@ def pad(input, pre_pad):
 def unpad(in_):
     """
         Slices the input tensor at indices between 1::-1
-        
+
         Parameters
         ----------
         in_ : tensor_like
