@@ -23,10 +23,9 @@ class Scattering2D(object):
         pre_pad: if set to True, module expect pre-padded images
         jit: compile kernels on the fly for speed
     """
-    def __init__(self, M, N, J, L=8, pre_pad=False, backend='torch'):
+    def __init__(self, M, N, J, L=8, pre_pad=False):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
-        self.backend = backend
         self.modulus = Modulus()
         self.subsample_fourier = SubsampleFourier()
         self.build()
