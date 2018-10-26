@@ -12,7 +12,7 @@ import scipy.fftpack as fft
 
 
 
-def filters_bank_real(M, N, J, L=8):
+def filter_bank_real(M, N, J, L=8):
     filters = {}
     filters['psi'] = []
 
@@ -44,7 +44,7 @@ def filters_bank_real(M, N, J, L=8):
     return filters
 
 
-def filters_bank(M, N, J, L=8, cache=False):
+def filter_bank(M, N, J, L=8, cache=False):
     '''
     Cache filters to a file
 

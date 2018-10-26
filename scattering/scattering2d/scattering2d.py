@@ -8,7 +8,7 @@ __all__ = ['Scattering']
 import warnings
 import torch
 from .backend import cdgmm, Modulus, SubsampleFourier, fft
-from .filters_bank import filters_bank
+from .filters_bank import filter_bank
 from .utils import compute_padding
 
 
@@ -34,7 +34,7 @@ class Scattering2D(object):
     def build(self):
         # Create the filters
         self.M_padded, self.N_padded = compute_padding(self.M, self.N)
-        filters = filters_bank(self.M_padded, self.N_padded, J, L)
+        filters = filter_bank(self.M_padded, self.N_padded, J, L)
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
 
