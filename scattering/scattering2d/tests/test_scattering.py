@@ -83,8 +83,6 @@ def test_Scattering2D():
 
     for backend in backends:
         if backend.NAME == 'skcuda':
-            from scattering.scattering2d.backend import backend_skcuda
-
             # First, let's check the Jit
             scattering = Scattering2D(128, 128, 4, pre_pad=False)
             scattering.cuda()
@@ -93,8 +91,6 @@ def test_Scattering2D():
             y = scattering(x)
             assert ((S - y)).abs().max() < 1e-6
         elif backend.NAME == 'torch':
-            from scattering.scattiering2d.backend import backend_torch
-
             # Then, let's check when using pure pytorch code
             scattering = Scattering2D(128, 128, 4, pre_pad=False)
             Sg = []
