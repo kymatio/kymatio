@@ -56,7 +56,12 @@ for filter in filters_set['psi']:
     axs[i//L,i%L].axis('off')
     #amplitude, cmap=phase, aspect='auto')
     #plt.title('lul', fontsize=10, va='bottom', rotation=90
-    i=i+1
+    i = i+1
+
+
+for z in range(L):
+    axs[i // L, i % L].axis('off')
+    i = i+1
 
 
 f_r = filters_set['phi'][0][...,0].numpy()
