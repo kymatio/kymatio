@@ -22,7 +22,7 @@ def pad(input, pre_pad):
 def unpad(self, in_):
     return in_[..., 1:-1, 1:-1]
 
-class Periodize(object):
+class SubsampleFourier(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
 

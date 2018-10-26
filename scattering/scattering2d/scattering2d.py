@@ -7,7 +7,7 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .backend import cdgmm, Modulus, Periodize, fft
+from .backend import cdgmm, Modulus, SubsampleFourier, fft
 from .filters_bank import filters_bank
 from .utils import prepare_padding_size
 
@@ -28,7 +28,7 @@ class Scattering2D(object):
         self.pre_pad = pre_pad
         self.backend = backend
         self.modulus = Modulus()
-        self.periodize = Periodize()
+        self.subsample_fourier = SubsampleFourier()
         self.build()
 
     def build(self):
@@ -75,7 +75,7 @@ class Scattering2D(object):
         psi = self.Psi
         n = 0
 
-        periodize = self.periodize
+        subsample_fourier = self.subsample_fourier
         modulus = self.modulus
 
         S = input.new(input.size(0),
@@ -87,7 +87,7 @@ class Scattering2D(object):
         U_0_c = fft(U_r, 'C2C')  # We trick here with U_r and U_2_c
 
         # First low pass filter
-        U_1_c = periodize(cdgmm(U_0_c, phi[0]), k=2**J)
+        U_1_c = subsample_fourier(cdgmm(U_0_c, phi[0]), k=2**J)
 
         U_J_r = fft(U_1_c, 'C2R')
 
@@ -98,12 +98,12 @@ class Scattering2D(object):
             j1 = psi[n1]['j']
             U_1_c = cdgmm(U_0_c, psi[n1][0])
             if(j1 > 0):
-                U_1_c = periodize(U_1_c, k=2 ** j1)
+                U_1_c = subsample_fourier(U_1_c, k=2 ** j1)
             U_1_c = fft(U_1_c, 'C2C', inverse=True)
             U_1_c = fft(modulus(U_1_c), 'C2C')
 
             # Second low pass filter
-            U_2_c = periodize(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
+            U_2_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
             U_J_r = fft(U_2_c, 'C2R')
             S[..., n, :, :] = unpad(U_J_r)
             n = n + 1
@@ -111,12 +111,12 @@ class Scattering2D(object):
             for n2 in range(len(psi)):
                 j2 = psi[n2]['j']
                 if(j1 < j2):
-                    U_2_c = periodize(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
+                    U_2_c = subsample_fourier(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
                     U_2_c = fft(U_2_c, 'C2C', inverse=True)
                     U_2_c = fft(modulus(U_2_c), 'C2C')
 
                     # Third low pass filter
-                    U_2_c = periodize(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
+                    U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
                     U_J_r = fft(U_2_c, 'C2R')
 
                     S[..., n, :, :] = unpad(U_J_r)
