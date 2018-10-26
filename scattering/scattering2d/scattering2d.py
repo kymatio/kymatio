@@ -67,15 +67,10 @@ class Scattering2D(object):
         controls the padding
     Psi : dictionary
         containing the wavelets filters at all resolutions. See
-        filters_bank.scattering_filter_factory for an exact description.
+        filter_bank.filter_bank for an exact description.
     Phi : dictionary
         containing the low-pass filters at all resolutions. See
-        filters_bank.scattering_filter_factory for an exact description.
-    modulus : class
-        complex module class
-    subsample_fourier : class
-        subsample_fourier class for fourier signals. It acts as a downsampling
-        in the spatial domain.
+        filter_bank.filter_bank for an exact description.
     M_padded, N_padded : int
          spatial support of the padded input
 
