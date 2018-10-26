@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scattering.scattering2d.filters_bank import filters_bank
 import scipy.fftpack as fft
 import numpy as np
+from matplotlib import rc
 
 
 ###########################################################################
@@ -24,7 +25,8 @@ filters_set = filters_bank(M, M, J, L=L)
 
 fig, axs = plt.subplots(J+1, L, sharex=True, sharey=True)
 
-
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
 i=0
 from colorsys import hls_to_rgb
 
@@ -54,6 +56,8 @@ for filter in filters_set['psi']:
     #print(amplitude.shape)
     axs[i//L,i%L].imshow(colorize(filter_c))
     axs[i//L,i%L].axis('off')
+    axs[i//L,i%L].set_title("$j = "+str(i//L)+"$ \n $\\theta="+str(i%L)+"$")
+
     #amplitude, cmap=phase, aspect='auto')
     #plt.title('lul', fontsize=10, va='bottom', rotation=90
     i = i+1
@@ -72,34 +76,7 @@ filter_c = fft.fft2(f)
 filter_c = np.fft.fftshift(filter_c)
 
 axs[J,L//2].imshow(colorize(filter_c))#amplitude, cmap=phase, aspect='auto')
+fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used, with the corresponding low-pass filter.\n The contrast corresponds to the amplitude and the color to the phase.", fontsize=13)
+
 
 plt.show()
-
-"""
-nmaps = len(nilearn_cmaps)
-a = np.outer(np.arange(0, 1, 0.01), np.ones(10))
-# Initialize the figure
-plt.figure(figsize=(10, 4.2))
-plt.subplots_adjust(top=0.4, bottom=0.05, left=0.01, right=0.99)
-for index, cmap in enumerate(nilearn_cmaps):
-    plt.subplot(1, nmaps + 1, index + 1)
-    plt.imshow(a, cmap=nilearn_cmaps[cmap])
-    plt.axis('off')
-    plt.title(cmap, fontsize=10, va='bottom', rotation=90)
-###########################################################################
-# Plot matplotlib color maps
-# --------------------------
-plt.figure(figsize=(10, 5))
-plt.subplots_adjust(top=0.8, bottom=0.05, left=0.01, right=0.99)
-deprecated_cmaps = ['Vega10', 'Vega20', 'Vega20b', 'Vega20c', 'spectral']
-m_cmaps = []
-for m in plt.cm.datad:
-    if not m.endswith("_r") and m not in deprecated_cmaps:
-        m_cmaps.append(m)
-m_cmaps.sort()
-for index, cmap in enumerate(m_cmaps):
-    plt.subplot(1, len(m_cmaps) + 1, index + 1)
-    plt.imshow(a, cmap=plt.get_cmap(cmap), aspect='auto')
-    plt.axis('off')
-    plt.title(cmap, fontsize=10, va='bottom', rotation=90)
-show()"""
