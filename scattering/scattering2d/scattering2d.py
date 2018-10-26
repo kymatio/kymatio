@@ -7,7 +7,7 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .backend import cdgmm, Modulus, Periodize, Fft
+from .backend import cdgmm, Modulus, Periodize, fft
 from .filters_bank import filters_bank
 from .utils import prepare_padding_size
 
@@ -27,7 +27,6 @@ class Scattering2D(object):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
         self.backend = backend
-        self.fft = Fft()
         self.modulus = Modulus()
         self.periodize = Periodize()
         self.build()
@@ -76,7 +75,6 @@ class Scattering2D(object):
         psi = self.Psi
         n = 0
 
-        fft = self.fft
         periodize = self.periodize
         modulus = self.modulus
 

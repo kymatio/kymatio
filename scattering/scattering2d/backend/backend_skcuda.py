@@ -142,30 +142,29 @@ class Modulus(object):
 
 
 
-class Fft(object):
+def fft(input, direction='C2C', inverse=False):
     """This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
         """
-    def __call__(self, input, direction='C2C', inverse=False):
-        if direction == 'C2R':
-            inverse = True
+    if direction == 'C2R':
+        inverse = True
 
-        if not iscomplex(input):
-            raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
+    if not iscomplex(input):
+        raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
 
-        if (not input.is_contiguous()):
-            raise (RuntimeError('Tensors must be contiguous!'))
+    if (not input.is_contiguous()):
+        raise (RuntimeError('Tensors must be contiguous!'))
 
-        if direction == 'C2R':
-            output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
-        elif direction == 'C2C':
-            if inverse:
-                output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
-            else:
-                output = torch.fft(input, 2, normalized=False)
+    if direction == 'C2R':
+        output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
+    elif direction == 'C2C':
+        if inverse:
+            output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
+        else:
+            output = torch.fft(input, 2, normalized=False)
 
-        return output
+    return output
 
 
 
