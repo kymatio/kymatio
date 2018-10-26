@@ -33,7 +33,7 @@ class Scattering2D(object):
 
     Example
     -------
-    # 1) Define a Scatterer object as:
+    # 1) Define a Scattering object as:
     s = Scattering2D(M, N, J)
     #    where (M, N) are the image sizes and 2**J the scale of the scattering
     # 2) Forward on an input Variable x of shape B x 1 x M x N,
@@ -66,10 +66,10 @@ class Scattering2D(object):
     pre_pad : boolean
         controls the padding
     Psi : dictionary
-        countaining the wavelets filters at all resolutions. See
+        containing the wavelets filters at all resolutions. See
         filters_bank.scattering_filter_factory for an exact description.
-    Psi : dictionary
-        countaining the low-pass filters at all resolutions. See
+    Phi : dictionary
+        containing the low-pass filters at all resolutions. See
         filters_bank.scattering_filter_factory for an exact description.
     modulus : class
         complex module class
