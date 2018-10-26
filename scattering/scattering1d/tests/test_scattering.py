@@ -2,6 +2,7 @@ import torch
 from torch.autograd import Variable
 from scattering import Scattering1D
 import math
+import os
 from sklearn.utils import check_random_state
 
 # Signal-related tests
@@ -41,6 +42,26 @@ def test_simple_scatterings(random_state=42):
             if coords[cc]['order'] in ['0', '2']:
                 assert torch.max(torch.abs(s2[:, cc])) < 1e-2
 
+def test_sample_scattering():
+    """
+    Applies scattering on a stored signal to make sure its output agrees with
+    a previously calculated version.
+    """
+    test_data_dir = os.path.dirname(__file__)
+    test_data_filename = os.path.join(test_data_dir, 'test_data_1d.pt')
+    data = torch.load(test_data_filename, map_location='cpu')
+
+    x = data['x']
+    J = data['J']
+    Q = data['Q']
+    Sx0 = data['Sx']
+
+    T = x.numel()
+
+    scattering = Scattering1D(T, J, Q)
+    Sx = scattering.forward(x)
+
+    assert (Sx - Sx0).abs().max() < 1e-6
 
 # Technical tests
 
