@@ -172,7 +172,7 @@ def cdgmm(A, B, inplace=False):
     if type(A) is not type(B):
         raise RuntimeError('A and B should be same type!')
 
-    if not A.is_cuda and backend=='skcuda':
+    if not A.is_cuda:
         raise RuntimeError('Use the torch backend for cpu tensors!')
 
     C = A.new(A.size()) if not inplace else A

@@ -3,6 +3,7 @@
 import os
 import torch
 from scattering.scattering2d import Scattering2D
+from scattering.scattering2d import backend
 
 
 backends = []
@@ -72,34 +73,39 @@ def test_Cublas():
         assert (y-z).abs().max() < 1e-6
 
 # Check the scattering
+# FYI: access the two different tests in here by setting envs
+# SCATTERING_BACKEND=skcuda and SCATTERING_BACKEND=torch
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
     data = torch.load(os.path.join(test_data_dir, 'test_data.pt'))
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
-    # First, let's check the Jit
-    scattering = Scattering2D(128, 128, 4, pre_pad=False)
-    scattering.cuda()
-    x = x.cuda()
-    S = S.cuda()
-    y = scattering(x)
-    assert ((S - y)).abs().max() < 1e-6
 
-    # Then, let's check when using pure pytorch code
-    scattering = Scattering2D(128, 128, 4, pre_pad=False)
-    Sg = []
+    if backend.NAME == 'skcuda':
+        # First, let's check the Jit
+        scattering = Scattering2D(128, 128, 4, pre_pad=False)
+        scattering.cuda()
+        x = x.cuda()
+        S = S.cuda()
+        y = scattering(x)
+        assert ((S - y)).abs().max() < 1e-6
+    elif backend.NAME == 'pytorch':
 
-    for gpu in [True, False]:
-        if gpu:
-            x = x.cuda()
-            scattering.cuda()
-            S = S.cuda()
-            Sg = scattering(x)
-        else:
-            x = x.cpu()
-            S = S.cpu()
-            scattering.cpu()
-            Sg = scattering(x)
-        assert (Sg - S).abs().max() < 1e-6
-
+        # Then, let's check when using pure pytorch code
+        scattering = Scattering2D(128, 128, 4, pre_pad=False)
+        Sg = []
+    
+        for gpu in [True, False]:
+            if gpu:
+                x = x.cuda()
+                scattering.cuda()
+                S = S.cuda()
+                Sg = scattering(x)
+            else:
+                x = x.cpu()
+                S = S.cpu()
+                scattering.cpu()
+                Sg = scattering(x)
+            assert (Sg - S).abs().max() < 1e-6
+    
