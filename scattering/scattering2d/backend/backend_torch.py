@@ -12,12 +12,14 @@ def pad(input, pre_pad):
     """
         Padding which allows to simultaneously pad in a reflection fashion
         and map to complex.
+
         Parameters
         ----------
         x : tensor_like
             input tensor (or variable), 4D with spatial variables in the last 2 axes.
         prepad : boolean
             if set to true, then there is no padding, one simply adds the imaginarty part.
+
         Returns
         -------
         output : tensor_like
@@ -36,6 +38,7 @@ def pad(input, pre_pad):
 def unpad(in_):
     """
         Slices the input tensor at indices between 1::-1
+        
         Parameters
         ----------
         in_ : tensor_like
