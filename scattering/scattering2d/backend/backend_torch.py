@@ -1,4 +1,5 @@
 import torch
+from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 NAME = 'torch'
 
@@ -7,7 +8,21 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
-class Periodize(object):
+# This function copies and view the real to complex
+def pad(input, pre_pad):
+    if(pre_pad):
+        output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
+        output.narrow(output.ndimension()-1, 0, 1).copy_(input)
+    else:
+        out_ = self.padding_module.updateOutput(input)
+        output = input.new(*(out_.size() + (2,))).fill_(0)
+        output.select(4, 0).copy_(out_)
+    return output
+
+def unpad(self, in_):
+    return in_[..., 1:-1, 1:-1]
+
+class SubsampleFourier(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
 
@@ -35,30 +50,30 @@ class Modulus(object):
 
 
 
-class Fft(object):
+
+def fft(input, direction='C2C', inverse=False):
     """This class builds a wrapper to the FFTs kernels and cache them.
 
     As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
         """
-    def __call__(self, input, direction='C2C', inverse=False):
-        if direction == 'C2R':
-            inverse = True
+    if direction == 'C2R':
+        inverse = True
 
-        if not iscomplex(input):
-            raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
+    if not iscomplex(input):
+        raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
 
-        if (not input.is_contiguous()):
-            raise (RuntimeError('Tensors must be contiguous!'))
+    if (not input.is_contiguous()):
+        raise (RuntimeError('Tensors must be contiguous!'))
 
-        if direction == 'C2R':
-            output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
-        elif direction == 'C2C':
-            if inverse:
-                output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
-            else:
-                output = torch.fft(input, 2, normalized=False)
+    if direction == 'C2R':
+        output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
+    elif direction == 'C2C':
+        if inverse:
+            output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
+        else:
+            output = torch.fft(input, 2, normalized=False)
 
-        return output
+    return output
 
 
 
