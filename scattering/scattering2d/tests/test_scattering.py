@@ -3,12 +3,27 @@
 import os
 import torch
 from scattering.scattering2d import Scattering2D
-from scattering.scattering2d import utils as sl
+
+
+backends = []
+try:
+    from scattering.scattering2d.backend import backend_skcuda
+    backends.append(backend_skcuda)
+except:
+    pass
+
+try:
+    from scattering.scattiering2d.backend import backend_torch
+    backends.append(backend_skcuda)
+except:
+    pass
+
+
 
 # Checked the modulus
 def test_Modulus():
-    for backend in ['pytorch', 'skcuda']:
-        modulus = sl.Modulus(backend=backend)
+    for backend in backends:
+        modulus = backend.Modulus()
         x = torch.rand(100, 10, 4, 2).cuda().float()
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
@@ -19,7 +34,7 @@ def test_Modulus():
 
 
 def test_Periodization():
-    for backend in ['torch', 'skcuda']:
+    for backend in backends:
         x = torch.rand(100, 1, 128, 128, 2).cuda().double()
         y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
 
@@ -31,18 +46,18 @@ def test_Periodization():
 
         y = y / (16*16)
 
-        periodize = sl.Periodize(backend=backend)
+        periodize = backend.Periodize()
 
         z = periodize(x, k=16)
         assert (y - z).abs().max() < 1e-8
-        if backend == 'torch':
+        if backend.NAME == 'torch':
             z = periodize(x.cpu(), k=16)
             assert (y.cpu() - z).abs().max() < 1e-8
 
 
 # Check the CUBLAS routines
 def test_Cublas():
-    for backend in ['pytorch', 'skcuda']:
+    for backend in backends:
         x = torch.rand(100, 128, 128, 2).cuda()
         filter = torch.rand(128, 128, 2).cuda()
         filter[..., 1] = 0
@@ -52,7 +67,7 @@ def test_Cublas():
         for i in range(100):
             y[i,:,:,0]=x[i,:,:,0] * filter[:,:,0]-x[i,:,:,1] * filter[:,:,1]
             y[i, :, :, 1] = x[i, :, :, 1] * filter[:, :, 0] + x[i, :, :, 0] * filter[:, :, 1]
-        z = sl.cdgmm(x, filter, backend=backend)
+        z = backend.cdgmm(x, filter)
 
         assert (y-z).abs().max() < 1e-6
 
@@ -64,7 +79,7 @@ def test_Scattering2D():
     S = data['S'].view(7, 3, 417, 8, 8)
 
     # First, let's check the Jit
-    scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='skcuda')
+    scattering = Scattering2D(128, 128, 4, pre_pad=False)
     scattering.cuda()
     x = x.cuda()
     S = S.cuda()
@@ -72,7 +87,7 @@ def test_Scattering2D():
     assert ((S - y)).abs().max() < 1e-6
 
     # Then, let's check when using pure pytorch code
-    scattering = Scattering2D(128, 128, 4, pre_pad=False, backend='torch')
+    scattering = Scattering2D(128, 128, 4, pre_pad=False)
     Sg = []
 
     for gpu in [True, False]:

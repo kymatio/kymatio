@@ -1,13 +1,10 @@
-"""
-Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
-All rights reserved, 2017.
-"""
 from collections import defaultdict, namedtuple
 import torch
 from skcuda import cublas
 import cupy
 from string import Template
 
+NAME = 'skcuda'
 
 @cupy.util.memoize(for_each_device=True)
 def load_kernel(kernel_name, code, **kwargs):
@@ -45,16 +42,6 @@ class Periodize(object):
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
-
-
-        if self.backend == 'torch':
-            y = input.view(input.size(0), input.size(1),
-                           input.size(2)//out.size(2), out.size(2),
-                           input.size(3)//out.size(3), out.size(3),
-                           2)
-
-            out = y.mean(4, keepdim=False).mean(2, keepdim=False)
-            return out
 
         if not iscomplex(input):
             raise (TypeError('The input and outputs should be complex'))
@@ -114,10 +101,6 @@ class Modulus(object):
         if not input.is_cuda and self.backend=='skcuda':
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
-        if self.backend=='torch':
-            norm = input.norm(p=2, dim=-1, keepdim=True)
-            return torch.cat([norm, torch.zeros_like(norm)], -1)
-
         out = input.new(input.size())
         input = input.contiguous()
 
@@ -173,7 +156,7 @@ class Fft(object):
 
 
 
-def cdgmm(A, B, backend='skcuda', inplace=False):
+def cdgmm(A, B, inplace=False):
     """This function uses the C-wrapper to use cuBLAS.
         """
     A, B = A.contiguous(), B.contiguous()
@@ -192,27 +175,17 @@ def cdgmm(A, B, backend='skcuda', inplace=False):
     if not A.is_cuda and backend=='skcuda':
         raise RuntimeError('Use the torch backend for cpu tensors!')
 
-    if backend=='torch':
-        C = A.new(A.size())
+    C = A.new(A.size()) if not inplace else A
+    m, n = B.nelement() // 2, A.nelement() // B.nelement()
+    lda = m
+    ldc = m
+    incx = 1
+    handle = torch.cuda.current_blas_handle()
+    stream = torch.cuda.current_stream()._as_parameter_
+    cublas.cublasSetStream(handle, stream)
+    cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
+    return C
 
-        A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
-        A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
 
-        B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
-        B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
 
-        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
-        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
 
-        return C if not inplace else A.copy_(C)
-    else:
-        C = A.new(A.size()) if not inplace else A
-        m, n = B.nelement() // 2, A.nelement() // B.nelement()
-        lda = m
-        ldc = m
-        incx = 1
-        handle = torch.cuda.current_blas_handle()
-        stream = torch.cuda.current_stream()._as_parameter_
-        cublas.cublasSetStream(handle, stream)
-        cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
-        return C
