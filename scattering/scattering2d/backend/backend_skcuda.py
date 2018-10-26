@@ -3,6 +3,7 @@ import torch
 from skcuda import cublas
 import cupy
 from string import Template
+from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 NAME = 'skcuda'
 
@@ -26,6 +27,19 @@ def getDtype(t):
 def iscomplex(input):
     return input.size(-1) == 2
 
+# This function copies and view the real to complex
+def pad(input, pre_pad):
+    if(pre_pad):
+        output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
+        output.narrow(output.ndimension()-1, 0, 1).copy_(input)
+    else:
+        out_ = self.padding_module.updateOutput(input)
+        output = input.new(*(out_.size() + (2,))).fill_(0)
+        output.select(4, 0).copy_(out_)
+    return output
+
+def unpad(self, in_):
+    return in_[..., 1:-1, 1:-1]
 
 class Periodize(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.

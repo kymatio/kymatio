@@ -1,4 +1,5 @@
 import torch
+from torch.legacy.nn import SpatialReflectionPadding as pad_function
 
 NAME = 'torch'
 
@@ -8,8 +9,8 @@ def iscomplex(input):
 
 
 # This function copies and view the real to complex
-def _pad(input):
-    if(self.pre_pad):
+def pad(input, pre_pad):
+    if(pre_pad):
         output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
         output.narrow(output.ndimension()-1, 0, 1).copy_(input)
     else:
@@ -18,6 +19,8 @@ def _pad(input):
         output.select(4, 0).copy_(out_)
     return output
 
+def unpad(self, in_):
+    return in_[..., 1:-1, 1:-1]
 
 class Periodize(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.

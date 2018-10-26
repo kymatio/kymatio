@@ -9,7 +9,7 @@ import warnings
 import torch
 from .backend import cdgmm, Modulus, Periodize, Fft
 from .filters_bank import filters_bank
-from torch.legacy.nn import SpatialReflectionPadding as pad_function
+
 
 
 class Scattering2D(object):
@@ -33,14 +33,9 @@ class Scattering2D(object):
 
         self._prepare_padding_size([1, 1, M, N])
 
-        self.padding_module = pad_function(2**J)
-
+    def __build__(self):
         # Create the filters
         filters = filters_bank(self.M_padded, self.N_padded, J, L)
-
-
-
-    def __build__(self):
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
 
@@ -58,23 +53,6 @@ class Scattering2D(object):
 
     def cpu(self):
         return self._type(torch.FloatTensor)
-
-    def _prepare_padding_size(self, s):
-        M = s[-2]
-        N = s[-1]
-
-        self.M_padded = ((M + 2 ** (self.J))//2**self.J+1)*2**self.J
-        self.N_padded = ((N + 2 ** (self.J))//2**self.J+1)*2**self.J
-
-        if self.pre_pad:
-            warnings.warn('Make sure you padded the input before to feed it!', RuntimeWarning, stacklevel=2)
-
-        s[-2] = self.M_padded
-        s[-1] = self.N_padded
-        self.padded_size_batch = torch.Size([a for a in s])
-
-    def _unpad(self, in_):
-        return in_[..., 1:-1, 1:-1]
 
     def forward(self, input):
         if not torch.is_tensor(input):
@@ -100,15 +78,13 @@ class Scattering2D(object):
         fft = self.fft
         periodize = self.periodize
         modulus = self.modulus
-        pad = self._pad
-        unpad = self._unpad
 
         S = input.new(input.size(0),
                       input.size(1),
                       1 + self.L*J + self.L*self.L*J*(J - 1) // 2,
                       self.M_padded//(2**J)-2,
                       self.N_padded//(2**J)-2)
-        U_r = pad(input)
+        U_r = pad(input, self.pre_pad)
         U_0_c = fft(U_r, 'C2C')  # We trick here with U_r and U_2_c
 
         # First low pass filter
