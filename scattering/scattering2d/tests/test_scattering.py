@@ -77,7 +77,7 @@ def test_Cublas():
 # SCATTERING_BACKEND=skcuda and SCATTERING_BACKEND=torch
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
-    data = torch.load(os.path.join(test_data_dir, 'test_data.pt'))
+    data = torch.load(os.path.join(test_data_dir, 'test_data.pt'), map_location='cpu')
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
