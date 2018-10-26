@@ -104,12 +104,31 @@ class Scattering2D(object):
         return self
 
     def cuda(self):
+        """
+            Moves the parameters of the scattering to the GPU
+        """
         return self._type(torch.cuda.FloatTensor)
 
     def cpu(self):
+        """
+            Moves the parameters of the scattering to the CPU
+        """
         return self._type(torch.FloatTensor)
 
     def forward(self, input):
+        """
+            Forward pass of the scattering.
+            Parameters
+            ----------
+            x : Tensor
+                torch Variable with 3 dimensions (B, C, M, N) where (B, C) are arbitrary.
+                B typically is the batch size, whereas C is the number of input channels.
+            Returns
+            -------
+            S : Variable tensor or dictionary.
+                scattering of the input x, a 4D tensor (B, C, D, M', N') where D corresponds
+                to a new channel dimension and (M', N') are downsampled sizes by a factor 2^J.
+        """
         if not torch.is_tensor(input):
             raise(TypeError('The input should be a torch.cuda.FloatTensor, a torch.FloatTensor or a torch.DoubleTensor'))
 
