@@ -34,7 +34,7 @@ def test_Modulus():
         assert (u - v).abs().max() < 1e-6
 
 
-def test_Periodization():
+def test_SubsampleFourier():
     for backend in backends:
         x = torch.rand(100, 1, 128, 128, 2).cuda().double()
         y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
@@ -47,12 +47,12 @@ def test_Periodization():
 
         y = y / (16*16)
 
-        periodize = backend.Periodize()
+        subsample_fourier = backend.SubsampleFourier()
 
-        z = periodize(x, k=16)
+        z = subsample_fourier(x, k=16)
         assert (y - z).abs().max() < 1e-8
         if backend.NAME == 'torch':
-            z = periodize(x.cpu(), k=16)
+            z = subsample_fourier(x.cpu(), k=16)
             assert (y.cpu() - z).abs().max() < 1e-8
 
 
@@ -91,7 +91,6 @@ def test_Scattering2D():
             y = scattering(x)
             assert ((S - y)).abs().max() < 1e-6
         elif backend.NAME == 'torch':
-
             # Then, let's check when using pure pytorch code
             scattering = Scattering2D(128, 128, 4, pre_pad=False)
             Sg = []
