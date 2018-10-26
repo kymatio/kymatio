@@ -13,6 +13,7 @@ from .utils import compute_padding
 
 
 class Scattering2D(object):
+    def __init__(self, M, N, J, L=8, pre_pad=False):
     """
     Main module implementing the scattering transform in 2D.
     The scattering transform computes two wavelet transform followed
@@ -51,9 +52,7 @@ class Scattering2D(object):
     pre_pad : boolean, optional
         controls the padding: if set to False, a symmetric padding is applied
         on the signal. If set to true, the software will assume the signal was
-        padded externally. This is particularly useful when doing crops of a
-        bigger image because the padding is then extremely accurate. Defaults
-        to False.
+        padded externally.
 
     Attributes
     ----------
@@ -76,9 +75,11 @@ class Scattering2D(object):
 
     Notes
     -----
-    the design of the filters is optimized for the value L = 8
+    1. The design of the filters is optimized for the value L = 8
+    2. pre_pad is particularly useful when doing crops of a
+        bigger image because the padding is then extremely accurate. Defaults
+        to False.
     """
-    def __init__(self, M, N, J, L=8, pre_pad=False):
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
         self.build()
