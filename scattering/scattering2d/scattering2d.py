@@ -9,7 +9,7 @@ import warnings
 import torch
 from .backend import cdgmm, Modulus, SubsampleFourier, fft
 from .filters_bank import filters_bank
-from .utils import prepare_padding_size
+from .utils import compute_padding
 
 
 class Scattering2D(object):
