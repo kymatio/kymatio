@@ -29,7 +29,7 @@ if os.path.exists(config_file):
         BACKEND = DEFAULT_BACKEND
         if 'general' not in cp.sections():
             cp.add_section('general')
-        cp['general']['backend'] = BACKEND
+        cp['general']['backend_3d'] = BACKEND
         try:
             with open(config_file, "w") as f:
                 cp.write(f)
@@ -44,7 +44,7 @@ else:
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         cp.add_section('general')
-        cp['general']['backend'] = BACKEND
+        cp['general']['backend_3d'] = BACKEND
         with open(config_file, "w") as f:
             cp.write(f)
     except:
