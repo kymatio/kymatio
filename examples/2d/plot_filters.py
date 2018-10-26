@@ -7,7 +7,7 @@ See :ref:`surface-plotting` for surface plotting details.
 """
 import numpy as np
 import matplotlib.pyplot as plt
-from scattering.scattering2d.filter_bank import scattering_filter_factory_real
+from scattering.scattering2d.filter_bank import filter_bank
 
 
 ###########################################################################
@@ -17,7 +17,7 @@ from scattering.scattering2d.filter_bank import scattering_filter_factory_real
 M = 128
 J = 3
 
-filters_set = scattering_filter_factory_real(M, M, J)
+filters_set = filter_bank(M, M, J)
 
 for filter in filters_set['psi']:
     filter_c = fft.fft2(filter[0])
