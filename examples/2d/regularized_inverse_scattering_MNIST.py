@@ -13,7 +13,7 @@ https://arxiv.org/abs/1805.06621
 """
 
 import os
-
+import argparse
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -65,10 +65,17 @@ class Generator(nn.Module):
 
 
 def main():
-    num_epochs = 2
-    load_model = False  # If you have already trained the network, you can load it to produce another path
-    dir_to_save = get_cache_dir()
-    name_dir_path = 'path'  # Change the name of the dir if you have already generated a path
+    parser = argparse.ArgumentParser(description='Regularized inverse scattering')
+    parser.add_argument('--num_epochs', default=2, help='Number of epochs to train')
+    parser.add_argument('--load_model', default=False, help='Load a trained model?')
+    parser.add_argument('--dir_save_images', default='interpolation_images', help='Dir to save the sequence of images')
+    args = parser.parse_args()
+
+    num_epochs = args.num_epochs
+    load_model = args.load_model
+    dir_save_images = args.dir_save_images
+
+    dir_to_save = get_cache_dir('reg_inverse_example')
 
     transforms_to_apply = transforms.Compose([
         transforms.ToTensor(),
@@ -138,8 +145,11 @@ def main():
 
     # We show and store the nonlinear interpolation in the image space
     ##################################################################
-    dir_path = os.path.join(dir_to_save, name_dir_path)
-    os.mkdir(dir_path)
+    dir_path = os.path.join(dir_to_save, dir_save_images)
+
+    if not os.path.exists(dir_path):
+        os.makedirs(dir_path)
+
     for idx_image in range(num_samples):
         current_image = np.uint8(path[idx_image] * 255.0)
         filename = os.path.join(dir_path, '{}.png'.format(idx_image))
