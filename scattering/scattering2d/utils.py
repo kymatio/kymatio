@@ -1,6 +1,6 @@
 def compute_padding(M, N, J):
     """
-         It precomputes the future padded size.
+         Precomputes the future padded size.
 
          Parameters
          ----------

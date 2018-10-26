@@ -86,6 +86,7 @@ def filter_bank(M, N, J, L=8, cache=False):
             it stores the computed filters in the string cache. It is particularly
              useful when the filters are large and avoids recomputing them at each call
              to the package.
+
         Returns
         -------
         filters : list
@@ -127,6 +128,7 @@ def periodize_filter_fft(x, res):
             signal to periodize in Fourier
         res :
             resolution to which the signal is cropped.
+
         Returns
         -------
         crop : numpy array
@@ -156,7 +158,7 @@ def periodize_filter_fft(x, res):
     return crop
 
 
-def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=None):
+def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=False):
     """
         Computes a 2D Morlet filter.
         A Morlet filter is the sum of a Gabor filter and a low-pass filter
@@ -165,6 +167,7 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=None):
         psi(u) = g_{sigma}(u) (e^(i xi^T u) - beta)
         where g_{sigma} is a Gaussian envelope, xi is a frequency and beta is
         the cancelling parameter.
+
         Parameters
         ----------
         M, N : int
@@ -181,6 +184,7 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=None):
             offset by which the signal starts
         fft_shift : boolean
             if true, shift the signal in a numpy style
+
         Returns
         -------
         morlet_fft : ndarray
@@ -194,12 +198,13 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=None):
     return mor
 
 
-def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=None):
+def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
     """
         Computes a 2D Gabor filter.
         A Gabor filter is defined by the following formula in space:
         psi(u) = g_{sigma}(u) e^(i xi^T u)
         where g_{sigma} is a Gaussian envelope and xi is a frequency.
+
         Parameters
         ----------
         M, N : int
@@ -216,6 +221,7 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=None):
             offset by which the signal starts
         fft_shift : boolean
             if true, shift the signal in a numpy style
+
         Returns
         -------
         morlet_fft : ndarray
