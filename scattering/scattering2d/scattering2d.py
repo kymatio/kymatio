@@ -21,11 +21,11 @@ class Scattering2D(object):
             It can be summarized as:
             S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
             where
-            S_J^0 x = x star phi_J
-            S_J^1 x = [|x star psi^1_lambda| star phi_J]_lambda
+            S_J^0 x = x * phi_J
+            S_J^1 x = [|x * psi^1_lambda| * phi_J]_lambda
             S_J^2 x =
-                [||x star psi^1_lambda| star psi^2_mu| star phi_J]_{lambda, mu}
-            where star denotes the convolution (in space),
+                [||x * psi^1_lambda| * psi^2_mu| * phi_J]_{lambda, mu}
+            where * denotes the convolution (in space),
             phi_J is a low pass filter, psi^1_lambda is a family of band pass
             filters and psi^2_mu is another family of band pass filters.
             Only Morlet filters are used in this implementation.
