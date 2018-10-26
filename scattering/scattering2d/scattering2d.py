@@ -38,6 +38,9 @@ class Scattering2D(object):
         # Create the filters
         filters = filters_bank(self.M_padded, self.N_padded, J, L)
 
+
+
+    def __build__(self):
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
 
@@ -69,17 +72,6 @@ class Scattering2D(object):
         s[-2] = self.M_padded
         s[-1] = self.N_padded
         self.padded_size_batch = torch.Size([a for a in s])
-
-    # This function copies and view the real to complex
-    def _pad(self, input):
-        if(self.pre_pad):
-            output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
-            output.narrow(output.ndimension()-1, 0, 1).copy_(input)
-        else:
-            out_ = self.padding_module.updateOutput(input)
-            output = input.new(*(out_.size() + (2,))).fill_(0)
-            output.select(4, 0).copy_(out_)
-        return output
 
     def _unpad(self, in_):
         return in_[..., 1:-1, 1:-1]

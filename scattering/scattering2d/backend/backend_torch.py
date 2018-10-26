@@ -7,6 +7,18 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
+# This function copies and view the real to complex
+def _pad(input):
+    if(self.pre_pad):
+        output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
+        output.narrow(output.ndimension()-1, 0, 1).copy_(input)
+    else:
+        out_ = self.padding_module.updateOutput(input)
+        output = input.new(*(out_.size() + (2,))).fill_(0)
+        output.select(4, 0).copy_(out_)
+    return output
+
+
 class Periodize(object):
     """This class builds a wrapper to the periodiziation kernels and cache them.
         """
