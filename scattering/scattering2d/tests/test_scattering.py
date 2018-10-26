@@ -81,31 +81,31 @@ def test_Scattering2D():
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
+    for backend in backends:
+        if backend.NAME == 'skcuda':
+            # First, let's check the Jit
+            scattering = Scattering2D(128, 128, 4, pre_pad=False)
+            scattering.cuda()
+            x = x.cuda()
+            S = S.cuda()
+            y = scattering(x)
+            assert ((S - y)).abs().max() < 1e-6
+        elif backend.NAME == 'torch':
 
-    if backend.NAME == 'skcuda':
-        # First, let's check the Jit
-        scattering = Scattering2D(128, 128, 4, pre_pad=False)
-        scattering.cuda()
-        x = x.cuda()
-        S = S.cuda()
-        y = scattering(x)
-        assert ((S - y)).abs().max() < 1e-6
-    elif backend.NAME == 'pytorch':
+            # Then, let's check when using pure pytorch code
+            scattering = Scattering2D(128, 128, 4, pre_pad=False)
+            Sg = []
 
-        # Then, let's check when using pure pytorch code
-        scattering = Scattering2D(128, 128, 4, pre_pad=False)
-        Sg = []
-    
-        for gpu in [True, False]:
-            if gpu:
-                x = x.cuda()
-                scattering.cuda()
-                S = S.cuda()
-                Sg = scattering(x)
-            else:
-                x = x.cpu()
-                S = S.cpu()
-                scattering.cpu()
-                Sg = scattering(x)
-            assert (Sg - S).abs().max() < 1e-6
-    
+            for gpu in [True, False]:
+                if gpu:
+                    x = x.cuda()
+                    scattering.cuda()
+                    S = S.cuda()
+                    Sg = scattering(x)
+                else:
+                    x = x.cpu()
+                    S = S.cpu()
+                    scattering.cpu()
+                    Sg = scattering(x)
+                assert (Sg - S).abs().max() < 1e-6
+
