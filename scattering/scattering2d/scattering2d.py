@@ -88,7 +88,7 @@ class Scattering2D(object):
         self.modulus = Modulus()
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
-        self.M_padded, self.N_padded = compute_padding(self.M, self.N)
+        self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         filters = filter_bank(self.M_padded, self.N_padded, J, L)
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
