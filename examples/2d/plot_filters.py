@@ -28,9 +28,9 @@ fig, axs = plt.subplots(J+1, L, sharex=True, sharey=True)
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 i=0
+
+# Thanks to https://stackoverflow.com/questions/17044052/mathplotlib-imshow-complex-2d-array
 from colorsys import hls_to_rgb
-
-
 def colorize(z):
     n,m = z.shape
     c = np.zeros((n,m,3))
@@ -51,15 +51,9 @@ for filter in filters_set['psi']:
     f = f_r + 1j*f_i
     filter_c = fft.fft2(f)
     filter_c = np.fft.fftshift(filter_c)
-    phase = np.angle(filter_c)
-    amplitude = np.absolute(filter_c)
-    #print(amplitude.shape)
     axs[i//L,i%L].imshow(colorize(filter_c))
     axs[i//L,i%L].axis('off')
     axs[i//L,i%L].set_title("$j = "+str(i//L)+"$ \n $\\theta="+str(i%L)+"$")
-
-    #amplitude, cmap=phase, aspect='auto')
-    #plt.title('lul', fontsize=10, va='bottom', rotation=90
     i = i+1
 
 
