@@ -3,9 +3,9 @@
 __all__ = ['Scattering3D']
 
 import torch
-from .utils import (compute_integrals, subsample,
-                    complex_modulus, to_complex)
-from .backend import cdgmm3d, Fft3d 
+from .utils import compute_integrals, subsample
+ 
+from .backend import cdgmm3d, Fft3d, complex_modulus, to_complex
 from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
 
 

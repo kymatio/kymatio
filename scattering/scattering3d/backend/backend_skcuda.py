@@ -1,4 +1,8 @@
+from collections import defaultdict
 from skcuda import cufft
+import torch
+import numpy as np
+
 
 try:
     import pyfftw
@@ -6,6 +10,29 @@ try:
 except:
     import scipy.fftpack as fft
     FFTW = False
+
+
+def getDtype(t):
+    if isinstance(t, torch.cuda.FloatTensor):
+        return 'float'
+    elif isinstance(t, torch.cuda.DoubleTensor):
+        return 'double'
+
+
+def iscomplex(input):
+    return input.size(-1) == 2
+
+
+def to_complex(input):
+    output = input.new(input.size() + (2,)).fill_(0)
+    output[..., 0] = input
+    return output
+
+def complex_modulus(input_array):
+    modulus = torch.zeros_like(input_array)
+    modulus[..., 0] += torch.sqrt((input_array ** 2).sum(-1))
+    return modulus
+
 
 
 class Fft3d(object):

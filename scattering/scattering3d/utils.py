@@ -72,11 +72,6 @@ def subsample(input_array, j):
                      ).unfold(1, 1, 2 ** j).contiguous()
 
 
-def complex_modulus(input_array):
-    modulus = torch.zeros_like(input_array)
-    modulus[..., 0] += torch.sqrt((input_array ** 2).sum(-1))
-    return modulus
-
 
 def compute_integrals(input_array, integral_powers):
     """
@@ -126,23 +121,6 @@ def get_3d_angles(cartesian_grid):
 
 def double_factorial(l):
     return 1 if (l < 1) else np.prod(np.arange(l, 0, -2))
-
-
-def getDtype(t):
-    if isinstance(t, torch.cuda.FloatTensor):
-        return 'float'
-    elif isinstance(t, torch.cuda.DoubleTensor):
-        return 'double'
-
-
-def iscomplex(input):
-    return input.size(-1) == 2
-
-
-def to_complex(input):
-    output = input.new(input.size() + (2,)).fill_(0)
-    output[..., 0] = input
-    return output
 
 
 
