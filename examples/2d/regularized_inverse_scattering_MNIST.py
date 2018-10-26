@@ -12,8 +12,9 @@ Reference:
 https://arxiv.org/abs/1805.06621
 """
 
-import os
 import argparse
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
