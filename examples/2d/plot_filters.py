@@ -1,29 +1,34 @@
+"""
+Plot of the 2D Morlet filters used for the Scattering Transform
+===============================
+See :ref:`filter_bank` for more informations about the used wavelets.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
-from scattering.scattering2d.filters_bank import filters_bank
+from scattering.scattering2d.filter_bank import filter_bank
 import scipy.fftpack as fft
-import numpy as np
-from matplotlib import rc
 
 
-# This function displays filter bank with those parameters:
+###############################################################################
+# Initial parameters of the filter bank
+# -------------------------------------
+
 M = 32
 J = 3
 L = 8
 
-filters_set = filters_bank(M, M, J, L=L)
+filters_set = filter_bank(M, M, J, L=L)
 
-fig, axs = plt.subplots(J+1, L, sharex=True, sharey=True)
 
-plt.rc('text', usetex=True)
-plt.rc('font', family='serif')
-i=0
-
+###############################################################################
+# Imshow complex images
+# -------------------------------------
 # Thanks to https://stackoverflow.com/questions/17044052/mathplotlib-imshow-complex-2d-array
 from colorsys import hls_to_rgb
 def colorize(z):
-    n,m = z.shape
-    c = np.zeros((n,m,3))
+    n, m = z.shape
+    c = np.zeros((n, m, 3))
     c[np.isinf(z)] = (1.0, 1.0, 1.0)
     c[np.isnan(z)] = (0.5, 0.5, 0.5)
 
@@ -34,16 +39,24 @@ def colorize(z):
     c[idx] = [hls_to_rgb(a, b, 0.8) for a,b in zip(A,B)]
     return c
 
-# Display first the psi
+fig, axs = plt.subplots(J+1, L, sharex=True, sharey=True)
+plt.rc('text', usetex=True)
+plt.rc('font', family='serif')
+
+###############################################################################
+# Bandpass filters
+# ----------------
+# First, we display each wavelets according to each scale and orientation.
+i=0
 for filter in filters_set['psi']:
     f_r = filter[0][...,0].numpy()
     f_i = filter[0][..., 1].numpy()
     f = f_r + 1j*f_i
     filter_c = fft.fft2(f)
     filter_c = np.fft.fftshift(filter_c)
-    axs[i//L,i%L].imshow(colorize(filter_c))
-    axs[i//L,i%L].axis('off')
-    axs[i//L,i%L].set_title("$j = "+str(i//L)+"$ \n $\\theta="+str(i%L)+"$")
+    axs[i // L, i % L].imshow(colorize(filter_c))
+    axs[i // L, i % L].axis('off')
+    axs[i // L, i % L].set_title("$j = {}$ \n $\\theta={}".format(i // L, i % L))
     i = i+1
 
 
@@ -52,15 +65,20 @@ for z in range(L):
     axs[i // L, i % L].axis('off')
     i = i+1
 
-
-# Display the phi
+###############################################################################
+# Lowpass filter
+# ----------------
+# We finally display the Gaussian filter.
 f_r = filters_set['phi'][0][...,0].numpy()
 f_i = filters_set['phi'][0][..., 1].numpy()
 f = f_r + 1j*f_i
 filter_c = fft.fft2(f)
 filter_c = np.fft.fftshift(filter_c)
-axs[J,L//2].imshow(colorize(filter_c))#amplitude, cmap=phase, aspect='auto')
-fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used, with the corresponding low-pass filter.\n The contrast corresponds to the amplitude and the color to the phase.", fontsize=13)
+axs[J, L // 2].imshow(colorize(filter_c))
+
+# Final caption.
+fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used, with the corresponding low-pass filter."
+             "\n The contrast corresponds to the amplitude and the color to the phase.", fontsize=13)
 
 
 plt.show()
