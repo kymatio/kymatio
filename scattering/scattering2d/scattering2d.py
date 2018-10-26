@@ -33,7 +33,7 @@ class Scattering2D(object):
 
     def build(self):
         # Create the filters
-        self.M_padded, self.N_padded = prepare_padding_size(self.M, self.N)
+        self.M_padded, self.N_padded = compute_padding(self.M, self.N)
         filters = filters_bank(self.M_padded, self.N_padded, J, L)
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
