@@ -14,19 +14,19 @@ def adaptative_choice_P(sigma, eps=1e-7):
     where 0 < xi < 1 is some frequency and g_{sigma} is
     the Gaussian window defined in Fourier by
     hat g_{sigma}(omega) = e^{-omega^2/(2 sigma^2)}
-    * a low pass term \hat \phi which is proportional to \hat g_{\sigma}.
+    * a low pass term \\hat \\phi which is proportional to \\hat g_{\\sigma}.
 
-    If \sigma is too large, then these formula will lead to discontinuities
+    If \\sigma is too large, then these formula will lead to discontinuities
     in the frequency interval [0, 1] (which is the interval used by numpy.fft).
     We therefore choose a larger integer P >= 1 such that at the boundaries
     of the FFTs of both filters on the interval [1-P, P], the magnitude of
     the entries is below the required machine precision.
     Mathematically, this means we would need P to satisfy the relations:
 
-    |\hat \psi(P)| <= eps and |\hat \phi(1-P)| <= eps
+    |\\hat \\psi(P)| <= eps and |\\hat \\phi(1-P)| <= eps
 
     Since 0 <= xi <= 1, the latter implies the former. Hence the formula which
-    is easily derived using the explicit formula for g_{\sigma} in Fourier.
+    is easily derived using the explicit formula for g_{\\sigma} in Fourier.
 
     Parameters
     ----------
@@ -170,7 +170,7 @@ def gauss1D(N, sigma, normalize='l1', P_max=5, eps=1e-7):
     """
     Computes the FFT of a low pass gaussian window.
 
-    \hat g_{\sigma}(\omega) = e^{-\omega^2 / 2 \sigma^2}
+    \\hat g_{\\sigma}(\\omega) = e^{-\\omega^2 / 2 \\sigma^2}
 
     Parameters
     ----------
@@ -263,10 +263,10 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
     This function computes the support T which is the smallest integer
     such that for all signals x and all filters h,
 
-    \| x \conv h - x \conv h_{[-T, T]} \|_{\infty} \leq \epsilon
-        \| x \|_{\infty}  (1)
+    \\| x \\conv h - x \\conv h_{[-T, T]} \\|_{\\infty} \\leq \\epsilon
+        \\| x \\|_{\\infty}  (1)
 
-    where 0<\epsilon<1 is an acceptable error, and h_{[-T, T]} denotes the
+    where 0<\\epsilon<1 is an acceptable error, and h_{[-T, T]} denotes the
     filter h whose support is restricted in the interval [-T, T]
 
     The resulting value T used to pad the signals to avoid boundary effects
@@ -279,7 +279,7 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
         FFT of a filter which is centered and whose absolute value is
         symmetric
     criterion_amplitude : float, optional
-        value \epsilon controlling the numerical
+        value \\epsilon controlling the numerical
         error. The larger criterion_amplitude, the smaller the temporal
         support and the larger the numerical error. Defaults to 1e-3
 
