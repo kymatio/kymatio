@@ -9,7 +9,7 @@
 # 3. Is there a config file? If so, go and find the backend entry
 # 4. Set the backend to DEFAULT_BACKEND
 
-DEFAULT_BACKEND = "skcuda"
+DEFAULT_BACKEND = "torch"
 
 import os
 import configparser
@@ -60,8 +60,8 @@ BACKEND = os.environ.get("SCATTERING_BACKEND_3D", BACKEND)
 
 
 
-if BACKEND == 'skcuda':
-    from .backend_skcuda import *
+if BACKEND == 'torch':
+    from .backend_torch import *
 else:
     # For now, raise and error
     raise ValueError("Backend {} unknown".format(BACKEND))
