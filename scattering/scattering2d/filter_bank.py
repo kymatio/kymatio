@@ -94,7 +94,7 @@ def filter_bank(M, N, J, L=8, cache=False):
              wavelet filters.
     """
     if not cache:
-        return filters_bank_real(M, N, J, L)
+        return filter_bank_real(M, N, J, L)
     try:
         print('Attempting to load from ',cache,' ...')
         data = torch.load(cache)
