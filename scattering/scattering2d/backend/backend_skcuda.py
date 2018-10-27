@@ -211,9 +211,8 @@ def fft(input, direction='C2C', inverse=False):
 
         Example
         -------
-        fft = Fft()
-        x = torch.randn(128, 1, 4096, 2)
-        x_fft = fft1d.c2c(x)
+        x = torch.randn(128, 32, 32, 2)
+        x_fft = fft(x, inverse=True)
 
         Parameters
         ----------
