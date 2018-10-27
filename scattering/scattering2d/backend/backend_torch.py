@@ -1,5 +1,6 @@
 import torch
-from torch.legacy.nn import SpatialReflectionPadding as pad_function
+#from torch.legacy.nn import SpatialReflectionPadding as pad_function
+from torch.nn import ReflectionPad2d
 
 NAME = 'torch'
 
@@ -9,9 +10,9 @@ def iscomplex(input):
 
 
 class pad(object):
-    def __init__(self, pre_pad=False):
-        self.pre_pad=pre_pad
-        self.padding_module = ReflectionPad2d(_ReflectionPadNd)
+    def __init__(self, pad_size, pre_pad=False):
+        self.pre_pad = pre_pad
+        self.padding_module = ReflectionPad2d(pad_size)
 
     def __call__(self, input):
         """
@@ -35,7 +36,7 @@ class pad(object):
             output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
             output.narrow(output.ndimension()-1, 0, 1).copy_(input)
         else:
-            out_ = self.padding_module.updateOutput(input)
+            out_ = self.padding_module(input)
             output = input.new(*(out_.size() + (2,))).fill_(0)
             output.select(4, 0).copy_(out_)
         return output
