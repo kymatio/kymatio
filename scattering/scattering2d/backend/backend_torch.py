@@ -8,8 +8,24 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
-# This function copies and view the real to complex
 def pad(input, pre_pad):
+    """
+        Padding which allows to simultaneously pad in a reflection fashion
+        and map to complex.
+
+        Parameters
+        ----------
+        x : tensor_like
+            input tensor (or variable), 4D with spatial variables in the last 2 axes.
+        prepad : boolean
+            if set to true, then there is no padding, one simply adds the imaginarty part.
+
+        Returns
+        -------
+        output : tensor_like
+            A padded signal, possibly transformed into a 5D tensor
+            with the last axis equal to 2.
+    """
     if(pre_pad):
         output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
         output.narrow(output.ndimension()-1, 0, 1).copy_(input)
@@ -19,13 +35,43 @@ def pad(input, pre_pad):
         output.select(4, 0).copy_(out_)
     return output
 
-def unpad(self, in_):
+def unpad(in_):
+    """
+        Slices the input tensor at indices between 1::-1
+
+        Parameters
+        ----------
+        in_ : tensor_like
+            input tensor
+
+        Returns
+        -------
+        in_[..., 1:-1, 1:-1]
+    """
     return in_[..., 1:-1, 1:-1]
 
 class SubsampleFourier(object):
-    """This class builds a wrapper to the periodiziation kernels and cache them.
-        """
+    """
+        Subsampling of a 2D image performed in the Fourier domain
+        Subsampling in the spatial domain amounts to periodization
+        in the Fourier domain, hence the formula.
 
+        Parameters
+        ----------
+        x : tensor_like
+            input tensor with at least 5 dimensions, the last being the real
+             and imaginary parts.
+            Ideally, the last dimension should be a power of 2 to avoid errors.
+        k : int
+            integer such that x is subsampled by 2**k along the spatial variables.
+
+        Returns
+        -------
+        res : tensor_like
+            tensor such that its fourier transform is the Fourier
+            transform of a subsampled version of x, i.e. in
+            FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
+    """
     def __call__(self, input, k):
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
 
@@ -40,9 +86,23 @@ class SubsampleFourier(object):
 
 
 class Modulus(object):
-    """This class builds a wrapper to the moduli kernels and cache them.
-        """
+    """
+        This class implements a modulus transform for complex numbers.
 
+        Usage
+        -----
+        modulus = Modulus()
+        x_mod = modulus(x)
+
+        Parameters
+        ---------
+        x: input tensor, with last dimension = 2 for complex numbers
+
+        Returns
+        -------
+        output: a tensor with imaginary part set to 0, real part set equal to
+        the modulus of x.
+    """
     def __call__(self, input):
 
         norm = input.norm(p=2, dim=-1, keepdim=True)
@@ -52,10 +112,25 @@ class Modulus(object):
 
 
 def fft(input, direction='C2C', inverse=False):
-    """This class builds a wrapper to the FFTs kernels and cache them.
+    """
+        Interface with torch FFT routines for 2D signals.
 
-    As a try, the library will purely work with complex data. The FFTS are UNORMALIZED.
-        """
+        Example
+        -------
+        x = torch.randn(128, 32, 32, 2)
+        x_fft = fft(x, inverse=True)
+
+        Parameters
+        ----------
+        input : tensor
+            complex input for the FFT
+        direction : string
+            'C2R' for complex to real, 'C2C' for complex to complex
+        inverse : bool
+            True for computing the inverse FFT.
+            NB : if direction is equal to 'C2R', then the transform
+            is automatically inverse.
+    """
     if direction == 'C2R':
         inverse = True
 
@@ -79,8 +154,24 @@ def fft(input, direction='C2C', inverse=False):
 
 
 def cdgmm(A, B, inplace=False):
-    """This function uses the C-wrapper to use cuBLAS.
-        """
+    """
+        Complex pointwise multiplication between (batched) tensor A and tensor B.
+
+        Parameters
+        ----------
+        A : tensor
+            input tensor with size (B, C, M, N, 2)
+        B : tensor
+            B is a complex tensor of size (M, N, 2)
+        inplace : boolean, optional
+            if set to True, all the operations are performed inplace
+
+        Returns
+        -------
+        C : tensor
+            output tensor of size (B, C, M, N, 2) such that:
+            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
+    """
     A, B = A.contiguous(), B.contiguous()
     if A.size()[-3:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication!')

@@ -13,17 +13,73 @@ from .utils import compute_padding
 
 
 class Scattering2D(object):
-    """Scattering module.
-
-    Runs scattering on an input image in NCHW format
-
-    Input args:
-        M, N: input image size
-        J: number of layers
-        pre_pad: if set to True, module expect pre-padded images
-        jit: compile kernels on the fly for speed
-    """
     def __init__(self, M, N, J, L=8, pre_pad=False):
+        """
+            Main module implementing the scattering transform in 2D.
+            The scattering transform computes two wavelet transform followed
+            by modulus non-linearity.
+            It can be summarized as:
+            S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
+            where
+            S_J^0 x = x * phi_J
+            S_J^1 x = [|x * psi^1_lambda| * phi_J]_lambda
+            S_J^2 x =
+                [||x * psi^1_lambda| * psi^2_mu| * phi_J]_{lambda, mu}
+            where * denotes the convolution (in space),
+            phi_J is a low pass filter, psi^1_lambda is a family of band pass
+            filters and psi^2_mu is another family of band pass filters.
+            Only Morlet filters are used in this implementation.
+            Convolutions are efficiently performed in the Fourier domain
+            with this implementation.
+
+            Example
+            -------
+            # 1) Define a Scattering object as:
+            s = Scattering2D(M, N, J)
+            #    where (M, N) are the image sizes and 2**J the scale of the scattering
+            # 2) Forward on an input Variable x of shape B x 1 x M x N,
+            #     where B is the batch size.
+            result_s = s(x)
+
+            Parameters
+            ----------
+            M, N : int
+                spatial support of the input
+            J : int
+                logscale of the scattering
+            L : int, optional
+                number of angles used for the wavelet transform
+            pre_pad : boolean, optional
+                controls the padding: if set to False, a symmetric padding is applied
+                on the signal. If set to true, the software will assume the signal was
+                padded externally.
+
+            Attributes
+            ----------
+            M, N : int
+                spatial support of the input
+            J : int
+                logscale of the scattering
+            L : int, optional
+                number of angles used for the wavelet transform
+            pre_pad : boolean
+                controls the padding
+            Psi : dictionary
+                containing the wavelets filters at all resolutions. See
+                filter_bank.filter_bank for an exact description.
+            Phi : dictionary
+                containing the low-pass filters at all resolutions. See
+                filter_bank.filter_bank for an exact description.
+            M_padded, N_padded : int
+                 spatial support of the padded input
+
+            Notes
+            -----
+            1. The design of the filters is optimized for the value L = 8
+            2. pre_pad is particularly useful when doing crops of a
+                bigger image because the padding is then extremely accurate. Defaults
+                to False.
+        """
         self.M, self.N, self.J, self.L = M, N, J, L
         self.pre_pad = pre_pad
         self.build()
@@ -32,7 +88,7 @@ class Scattering2D(object):
         self.modulus = Modulus()
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
-        self.M_padded, self.N_padded = compute_padding(self.M, self.N)
+        self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         filters = filter_bank(self.M_padded, self.N_padded, J, L)
         self.Psi = filters['psi']
         self.Phi = [filters['phi'][j] for j in range(J)]
@@ -48,12 +104,31 @@ class Scattering2D(object):
         return self
 
     def cuda(self):
+        """
+            Moves the parameters of the scattering to the GPU
+        """
         return self._type(torch.cuda.FloatTensor)
 
     def cpu(self):
+        """
+            Moves the parameters of the scattering to the CPU
+        """
         return self._type(torch.FloatTensor)
 
     def forward(self, input):
+        """
+            Forward pass of the scattering.
+            Parameters
+            ----------
+            x : Tensor
+                torch Variable with 3 dimensions (B, C, M, N) where (B, C) are arbitrary.
+                B typically is the batch size, whereas C is the number of input channels.
+            Returns
+            -------
+            S : Variable tensor or dictionary.
+                scattering of the input x, a 4D tensor (B, C, D, M', N') where D corresponds
+                to a new channel dimension and (M', N') are downsampled sizes by a factor 2^J.
+        """
         if not torch.is_tensor(input):
             raise(TypeError('The input should be a torch.cuda.FloatTensor, a torch.FloatTensor or a torch.DoubleTensor'))
 
