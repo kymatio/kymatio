@@ -9,7 +9,7 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
-class pad(object):
+class Pad(object):
     def __init__(self, pad_size, pre_pad=False):
         self.pre_pad = pre_pad
         self.padding_module = ReflectionPad2d(pad_size)
