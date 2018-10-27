@@ -34,7 +34,7 @@ def test_simple_scatterings(random_state=42):
     coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
     for _ in range(50):
         k = rng.randint(1, T // 2, 1)[0]
-        x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T) / float(T))
+        x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
         x2 = Variable(x2.unsqueeze(0).unsqueeze(0))
         s2 = scattering.forward(x2).data
 
