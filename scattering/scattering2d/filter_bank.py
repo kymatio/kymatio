@@ -13,6 +13,28 @@ import scipy.fftpack as fft
 
 
 def filter_bank_real(M, N, J, L=8):
+    """
+        Builds in Fourier the Morlet filters used for the scattering transform.
+        Each single filter is provided as a dictionary with the following keys:
+        * 'j' : scale
+        * 'theta' : angle used
+        Parameters
+        ----------
+        M, N : int
+            spatial support of the input
+        J : int
+            logscale of the scattering
+        L : int, optional
+            number of angles used for the wavelet transform
+        Returns
+        -------
+        filters : list
+            A two list of dictionary containing respectively the low-pass and
+             wavelet filters.
+        Notes
+        -----
+        The design of the filters is optimized for the value L = 8
+    """
     filters = {}
     filters['psi'] = []
 
@@ -45,15 +67,34 @@ def filter_bank_real(M, N, J, L=8):
 
 
 def filter_bank(M, N, J, L=8, cache=False):
-    '''
-    Cache filters to a file
+    """
+        Builds in Fourier the Morlet filters used for the scattering transform.
+        Each single filter is provided as a dictionary with the following keys:
+        * 'j' : scale
+        * 'theta' : angle used
+        Parameters
+        ----------
+        M, N : int
+            spatial support of the input
+        J : int
+            logscale of the scattering
+        L : int, optional
+            number of angles used for the wavelet transform
+            N.B.: the design of the filters is optimized for the value L = 8
+        cache : string or false
+            If False, returnes the same as scattering_filter_factory_real. Otherwise,
+            it stores the computed filters in the string cache. It is particularly
+             useful when the filters are large and avoids recomputing them at each call
+             to the package.
 
-    cache: string or False
-        path to filter bank. 
-        If parameters (M, N, J, L) match, load from cache, otherwise, recompute and overwrite.
-    '''
+        Returns
+        -------
+        filters : list
+            A two list of dictionary containing respectively the low-pass and
+             wavelet filters.
+    """
     if not cache:
-        return filter_bank_real(M, N, J, L)
+        return filters_bank_real(M, N, J, L)
     try:
         print('Attempting to load from ',cache,' ...')
         data = torch.load(cache)
@@ -80,6 +121,20 @@ def filter_bank(M, N, J, L=8, cache=False):
 
 
 def periodize_filter_fft(x, res):
+    """
+        Parameters
+        ----------
+        x : numpy array
+            signal to periodize in Fourier
+        res :
+            resolution to which the signal is cropped.
+
+        Returns
+        -------
+        crop : numpy array
+            It returns a crop version of the filter, assuming that
+             the convolutions will be done via compactly supported signals.
+    """
     M = x.shape[0]
     N = x.shape[1]
 
@@ -103,8 +158,38 @@ def periodize_filter_fft(x, res):
     return crop
 
 
-def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=None):
-    """ This function generated a morlet"""
+def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=False):
+    """
+        Computes a 2D Morlet filter.
+        A Morlet filter is the sum of a Gabor filter and a low-pass filter
+        to ensure that the sum has exactly zero mean in the temporal domain.
+        It is defined by the following formula in space:
+        psi(u) = g_{sigma}(u) (e^(i xi^T u) - beta)
+        where g_{sigma} is a Gaussian envelope, xi is a frequency and beta is
+        the cancelling parameter.
+
+        Parameters
+        ----------
+        M, N : int
+            spatial sizes
+        sigma : float
+            bandwidth parameter
+        xi : float
+            central frequency (in [0, 1])
+        theta : float
+            angle in [0, pi]
+        slant : float, optional
+            parameter which guides the elipsoidal shape of the morlet
+        offset : int, optional
+            offset by which the signal starts
+        fft_shift : boolean
+            if true, shift the signal in a numpy style
+
+        Returns
+        -------
+        morlet_fft : ndarray
+            numpy array of size (M, N)
+    """
     wv = gabor_2d(M, N, sigma, theta, xi, slant, offset, fft_shift)
     wv_modulus = gabor_2d(M, N, sigma, theta, 0, slant, offset, fft_shift)
     K = np.sum(wv) / np.sum(wv_modulus)
@@ -113,7 +198,35 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=None):
     return mor
 
 
-def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=None):
+def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
+    """
+        Computes a 2D Gabor filter.
+        A Gabor filter is defined by the following formula in space:
+        psi(u) = g_{sigma}(u) e^(i xi^T u)
+        where g_{sigma} is a Gaussian envelope and xi is a frequency.
+
+        Parameters
+        ----------
+        M, N : int
+            spatial sizes
+        sigma : float
+            bandwidth parameter
+        xi : float
+            central frequency (in [0, 1])
+        theta : float
+            angle in [0, pi]
+        slant : float, optional
+            parameter which guides the elipsoidal shape of the morlet
+        offset : int, optional
+            offset by which the signal starts
+        fft_shift : boolean
+            if true, shift the signal in a numpy style
+
+        Returns
+        -------
+        morlet_fft : ndarray
+            numpy array of size (M, N)
+    """
     gab = np.zeros((M, N), np.complex64)
     R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]], np.float32)
     R_inv = np.array([[np.cos(theta), np.sin(theta)], [-np.sin(theta), np.cos(theta)]], np.float32)

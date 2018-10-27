@@ -33,7 +33,7 @@ def test_Modulus():
         v = v.squeeze()
         assert (u - v).abs().max() < 1e-6
 
-
+# Checked the subsampling
 def test_SubsampleFourier():
     for backend in backends:
         x = torch.rand(100, 1, 128, 128, 2).cuda().double()
