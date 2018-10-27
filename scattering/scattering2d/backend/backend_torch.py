@@ -1,5 +1,4 @@
 import torch
-#from torch.legacy.nn import SpatialReflectionPadding as pad_function
 from torch.nn import ReflectionPad2d
 
 NAME = 'torch'
