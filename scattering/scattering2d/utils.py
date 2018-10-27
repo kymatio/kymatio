@@ -14,5 +14,4 @@ def compute_padding(M, N, J):
     """
     M_padded = ((M + 2 ** J) // 2 ** J + 1) * 2 ** J
     N_padded = ((N + 2 ** J) // 2 ** J + 1) * 2 ** J
-
     return M_padded, N_padded

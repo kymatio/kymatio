@@ -72,7 +72,6 @@ class SubsampleFourier(object):
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
-
     def __call__(self, input, k):
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
 

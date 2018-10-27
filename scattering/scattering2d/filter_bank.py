@@ -3,7 +3,7 @@ Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
 All rights reserved, 2017.
 """
 
-__all__ = ['filters_bank']
+__all__ = ['filter_bank']
 
 import torch
 import numpy as np
@@ -108,7 +108,7 @@ def filter_bank(M, N, J, L=8, cache=False):
     except Exception as e:
         print('Load Error: ',e)
         print('(Re-)computing filters.')
-        filters = filters_bank_real(M, N, J, L)
+        filters = filter_bank_real(M, N, J, L)
         print('Attempting to save to ',cache,' ...')
         try:
             with open(cache, 'wb') as fp:
