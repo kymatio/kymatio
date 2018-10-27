@@ -3,7 +3,6 @@ from torch.autograd import Variable
 from scattering.scattering1d.utils import pad1D, modulus, subsample_fourier
 from scattering.scattering1d.utils import compute_border_indices
 import numpy as np
-from sklearn.utils import check_random_state
 import pytest
 
 
@@ -86,7 +85,7 @@ def test_subsample_fourier(random_state=42):
     Tests whether the periodization in Fourier performs a good subsampling
     in time
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     J = 10
     x = rng.randn(100, 4, 2**J) + 1j * rng.randn(100, 4, 2**J)
     x_fft = np.fft.fft(x, axis=-1)[..., np.newaxis]
@@ -104,7 +103,7 @@ def test_border_indices(random_state=42):
     """
     Tests whether the border indices to unpad are well computed
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     J_signal = 10  # signal lives in 2**J_signal
     J = 6  # maximal subsampling
 
