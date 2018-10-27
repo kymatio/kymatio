@@ -89,9 +89,9 @@ class Scattering2D(object):
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
-        filters = filter_bank(self.M_padded, self.N_padded, J, L)
+        filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
         self.Psi = filters['psi']
-        self.Phi = [filters['phi'][j] for j in range(J)]
+        self.Phi = [filters['phi'][j] for j in range(self.J)]
 
 
     def _type(self, _type):
