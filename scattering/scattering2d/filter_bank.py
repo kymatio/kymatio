@@ -3,7 +3,7 @@ Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
 All rights reserved, 2017.
 """
 
-__all__ = ['filters_bank']
+__all__ = ['filter_bank']
 
 import torch
 import numpy as np
@@ -53,7 +53,7 @@ def filter_bank(M, N, J, L=8, cache=False):
         If parameters (M, N, J, L) match, load from cache, otherwise, recompute and overwrite.
     '''
     if not cache:
-        return filters_bank_real(M, N, J, L)
+        return filter_bank_real(M, N, J, L)
     try:
         print('Attempting to load from ',cache,' ...')
         data = torch.load(cache)
@@ -67,7 +67,7 @@ def filter_bank(M, N, J, L=8, cache=False):
     except Exception as e:
         print('Load Error: ',e)
         print('(Re-)computing filters.')
-        filters = filters_bank_real(M, N, J, L)
+        filters = filter_bank_real(M, N, J, L)
         print('Attempting to save to ',cache,' ...')
         try:
             with open(cache, 'wb') as fp:
