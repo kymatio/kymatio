@@ -8,7 +8,7 @@ __all__ = ['Scattering']
 import warnings
 import torch
 from .backend import cdgmm, Modulus, SubsampleFourier, fft
-from .filters_bank import filter_bank
+from .filter_bank import filter_bank
 from .utils import compute_padding
 
 
