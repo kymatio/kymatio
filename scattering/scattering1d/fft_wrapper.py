@@ -10,13 +10,12 @@ the FFT, which are differentiable with respect to their inputs.
 
 
 def fft1d_c2c(x):
-    return torch.fft(x)
+    return torch.fft(x, signal_ndim = 1)
 
 
 def ifft1d_c2c(x):
-    return torch.ifft(x)
+    return torch.ifft(x, signal_ndim = 1) * float(x.shape[-2])
 
 
 def ifft1d_c2c_normed(x):
-    factor = 1. / float(x.shape[-2])
-    return torch.ifft(x) * factor
+    return torch.ifft(x, signal_ndim = 1)
