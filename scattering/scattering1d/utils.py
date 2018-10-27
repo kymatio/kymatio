@@ -401,3 +401,38 @@ def compute_padding(J_pad, T):
     if max(pad_left, pad_right) >= T:
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
+
+def fft1d_c2c(x):
+    """
+        Computes the fft of a 1d signal.
+
+        Input
+        -----
+        x : tensor
+            the two final sizes must be (T, 2) where T is the time length of the signal
+    """
+    return torch.fft(x, signal_ndim = 1)
+
+
+def ifft1d_c2c(x):
+    """
+        Computes the inverse fft of a 1d signal.
+
+        Input
+        -----
+        x : tensor
+            the two final sizes must be (T, 2) where T is the time length of the signal
+    """
+    return torch.ifft(x, signal_ndim = 1) * float(x.shape[-2])
+
+
+def ifft1d_c2c_normed(x):
+    """
+        Computes the inverse normalized fft of a 1d signal.
+
+        Input
+        -----
+        x : tensor
+            the two final sizes must be (T, 2) where T is the time length of the signal
+    """
+    return torch.ifft(x, signal_ndim = 1)
