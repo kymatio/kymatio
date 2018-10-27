@@ -159,7 +159,7 @@ class Scattering2D(object):
                       1 + self.L*J + self.L*self.L*J*(J - 1) // 2,
                       self.M_padded//(2**J)-2,
                       self.N_padded//(2**J)-2)
-        U_r = pad(input, self.pre_pad)
+        U_r = pad(input)
         U_0_c = fft(U_r, 'C2C')  # We trick here with U_r and U_2_c
 
         # First low pass filter
