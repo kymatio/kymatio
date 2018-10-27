@@ -6,9 +6,9 @@ import math
 from .utils import pad, unpad, real, subsample_fourier, modulus_complex
 from .utils import compute_padding, compute_border_indices
 from .utils import cast_psi, cast_phi
+from .utils import fft1d_c2c, ifft1d_c2c_normed
 from .filter_bank import scattering_filter_factory
 from .filter_bank import calibrate_scattering_filters
-from .fft_wrapper import fft1d_c2c, ifft1d_c2c_normed
 
 
 def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
