@@ -7,7 +7,7 @@ __all__ = ['Scattering']
 
 import warnings
 import torch
-from .backend import cdgmm, Modulus, SubsampleFourier, fft
+from .backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
 from .filter_bank import filter_bank
 from .utils import compute_padding
 
@@ -86,6 +86,7 @@ class Scattering2D(object):
 
     def build(self):
         self.modulus = Modulus()
+        self.pad = Pad(self.pre_pad)
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
@@ -100,7 +101,7 @@ class Scattering2D(object):
                 if torch.is_tensor(item2):
                     self.Psi[key][key2] = item2.type(_type)
         self.Phi = [v.type(_type) for v in self.Phi]
-        self.padding_module.type(str(_type).split('\'')[1])
+        self.pad.padding_module.type(str(_type).split('\'')[1])
         return self
 
     def cuda(self):
@@ -151,6 +152,7 @@ class Scattering2D(object):
 
         subsample_fourier = self.subsample_fourier
         modulus = self.modulus
+        pad = self.pad
 
         S = input.new(input.size(0),
                       input.size(1),
