@@ -205,7 +205,7 @@ class FFT1DCache(object):
         if not(x.shape[-1] == 2):
             raise ValueError('The last dim of input array x should be 2!')
         # take it to numpy
-        x_np = x.numpy()
+        x_np = x.detach().numpy()
         # convert to complex
         if x_np.dtype == 'float32':
             original_type = 'float32'
