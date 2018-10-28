@@ -11,11 +11,14 @@ Then in a python shell::
 
 If the package has been correctly installed, this last command should run.
 
+Specific
+========
+
 1-d signals
-===========
+-----------
 
 2-d signals
-===========
+-----------
 
 Let us visualize the output after a Scattering Transform::
 
@@ -27,7 +30,7 @@ Let us visualize the output after a Scattering Transform::
     print(output.size())
 
 3-d signals
-===========
+-----------
 
 To go further
 =============
