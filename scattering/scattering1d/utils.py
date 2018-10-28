@@ -129,7 +129,7 @@ class ModulusStable(Function):
         grad_input: gradient with respect to the input, which should not
             contain any nan
         """
-        x, output = ctx.saved_variables
+        x, output = ctx.saved_tensors
         if ctx.dim is not None and ctx.keepdim is False and x.dim() != 1:
             grad_output = grad_output.unsqueeze(ctx.dim)
             output = output.unsqueeze(ctx.dim)
