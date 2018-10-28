@@ -10,27 +10,21 @@ def iscomplex(input):
 
 class Pad(object):
     def __init__(self, pad_size, pre_pad=False):
-        self.pre_pad = pre_pad
-        self.padding_module = ReflectionPad2d(pad_size)
-
-    def __call__(self, input):
         """
             Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
 
             Parameters
             ----------
-            x : tensor_like
-                input tensor (or variable), 4D with spatial variables in the last 2 axes.
+            pad_size : int
+                size of padding to apply.
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
-
-            Returns
-            -------
-            output : tensor_like
-                A padded signal, possibly transformed into a 5D tensor
-                with the last axis equal to 2.
         """
+        self.pre_pad = pre_pad
+        self.padding_module = ReflectionPad2d(pad_size)
+
+    def __call__(self, input):
         if(self.pre_pad):
             output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
             output.narrow(output.ndimension()-1, 0, 1).copy_(input)
