@@ -22,8 +22,29 @@ there exists :math:`\epsilon_0` satisfying:
 
 .. math:: 1-\epsilon_0 \leq \sum_\lambda |\hat \psi_\lambda(\omega)|^2 \leq 1
 
+Practical implementation
+========================
+
+1-D
+---
+
+2-D
+---
+
+3-D
+---
+
 Examples
 ========
+
+1-D
+---
+
+2-D
+---
+
+3-D
+---
 
 Output size
 ===========
