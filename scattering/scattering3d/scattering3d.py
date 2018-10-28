@@ -82,7 +82,7 @@ class Scattering3D(object):
 
         Returns
         -------
-        output: the result of input_array \star phi_j
+        output: the result of input_array \\star phi_j
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
         low_pass = self.gaussian_filters[j]
@@ -101,7 +101,7 @@ class Scattering3D(object):
 
         Returns
         -------
-        output: the result of input_array \star phi_J downsampled by a factor J
+        output: the result of input_array \\star phi_J downsampled by a factor J
         """
         convolved_input = self._low_pass_filter(input_array, self.J)
         return subsample(convolved_input, self.J).view(
@@ -199,7 +199,7 @@ class Scattering3D(object):
         output: torch tensor 
                 tensor of the same size as input_array. 
                 It holds the output of the operation:
-                 \sqrt(\sum_m (input_array \star \psi_{j,l,m})^2))
+                 \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
                  which is covariant to 3D translations and rotations 
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
@@ -236,7 +236,7 @@ class Scattering3D(object):
         output: torch tensor 
                 tensor of the same size as input_array. 
                 It holds the output of the operation:
-                 input_array \star \psi_{j,l,m})
+                 input_array \\star \\psi_{j,l,m})
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
         filters_l_m_j = self.filters[l][j][m]
@@ -278,9 +278,9 @@ class Scattering3D(object):
 
         rotation_covariant: bool, optional
                 if set to True the first order moduli take the form
-                    \sqrt(\sum_m (input_array \star \psi_{j,l,m})^2))
+                    \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
                 if set to False the first order moduli take the form
-                    input_array \star \psi_{j,l,m})
+                    input_array \\star \\psi_{j,l,m})
                 The second order moduli change analogously
                 Defaut: True
 

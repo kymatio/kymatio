@@ -76,7 +76,7 @@ def subsample(input_array, j):
 def compute_integrals(input_array, integral_powers):
     """
     Computes integrals of the input_array to the given powers.
-        \int input_array^p
+        \\int input_array^p
     
     Parameters
     ----------

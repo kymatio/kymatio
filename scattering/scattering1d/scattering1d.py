@@ -477,7 +477,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         a torch Variable of size (B, 1, T) where T is the temporal size
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (j, n)
-        j corresponds to the downsampling factor for x \ast psi1[(j, q)].
+        j corresponds to the downsampling factor for x \\ast psi1[(j, q)].
         n corresponds to an arbitrary numbering
         * psi1[(j, n)] is itself a dictionary, with keys corresponding to the
         dilation factors: psi1[(j, n)][j2] corresponds to a support of size
