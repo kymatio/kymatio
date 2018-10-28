@@ -3,7 +3,7 @@ from torch.autograd import Variable
 from scattering import Scattering1D
 import math
 import os
-
+import numpy as np
 # Signal-related tests
 
 
@@ -41,6 +41,7 @@ def test_simple_scatterings(random_state=42):
             if coords[cc]['order'] in ['0', '2']:
                 assert torch.max(torch.abs(s2[:, cc])) < 1e-2
 
+
 def test_sample_scattering():
     """
     Applies scattering on a stored signal to make sure its output agrees with
@@ -62,11 +63,12 @@ def test_sample_scattering():
 
     assert (Sx - Sx0).abs().max() < 1e-6
 
+
 def test_computation_Ux(random_state=42):
     """
     Checks the computation of the U transform (no averaging for 1st order)
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
     T = 2**12
