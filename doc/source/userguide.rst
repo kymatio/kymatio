@@ -31,6 +31,7 @@ Output size
 Switching devices: cuda>cpu or cuda<cpu
 =======================================
 
+.. _backend:
 Backend
 =======
 
