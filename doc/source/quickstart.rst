@@ -28,3 +28,8 @@ Let us visualize the output after a Scattering Transform::
 
 3-d signals
 ===========
+
+To go further
+=============
+
+Simply check the folder BLAH
