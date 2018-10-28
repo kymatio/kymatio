@@ -11,7 +11,6 @@ from scattering.scattering1d.filter_bank import calibrate_scattering_filters
 from scattering.scattering1d.filter_bank import get_max_dyadic_subsampling
 from scattering.scattering1d.filter_bank import gauss1D
 import numpy as np
-from sklearn.utils import check_random_state
 import math
 
 
@@ -41,7 +40,7 @@ def test_periodize_filter_fft(random_state=42):
     Tests whether the periodization in Fourier corresponds to
     a subsampling in time
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     size_signal = [2**j for j in range(5, 10)]
     periods = [2**k for k in range(0, 6)]
 
@@ -59,7 +58,7 @@ def test_normalizing_factor(random_state=42):
     Tests whether the computation of the normalizing factor does the correct
     job (i.e. actually normalizes the signal in l1 or l2)
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     size_signal = [2**j for j in range(5, 10)]
     norm_type = ['l1', 'l2']
     for N in size_signal:

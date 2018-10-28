@@ -3,7 +3,6 @@ from torch.autograd import Variable
 from scattering import Scattering1D
 import math
 import os
-from sklearn.utils import check_random_state
 
 # Signal-related tests
 
@@ -13,7 +12,7 @@ def test_simple_scatterings(random_state=42):
     Checks the behaviour of the scattering on simple signals
     (zero, constant, pure cosine)
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
     T = 2**12
