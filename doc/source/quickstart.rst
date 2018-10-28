@@ -11,12 +11,15 @@ Then in a python shell::
 
 If the package has been correctly installed, this last command should run.
 
-Or for 2D signals::
+
+Quick Start for 2-d signals
+===========================
+
+First, let us make sure the software is properly installed for 2d::
 
     python import torch
     from scattering import Scattering2D
     scattering = Scattering2D(32, 32, 2)
     signal = torch.randn(1, 1, 32, 32)
     output = scattering(signal)
-
 

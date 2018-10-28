@@ -1,5 +1,8 @@
 User Guide
-==========
+**********
+
+Introduction to scattering transform
+====================================
 
 A scattering transform is a non-linear operator that builds
 invariant with respect to euclidean geometric transformations such as translations
@@ -18,3 +21,18 @@ Let us consider a set of wavelets :math:`\{\psi_\lambda\}_\lambda` adjusted such
 there exists :math:`\epsilon_0` satisfying:
 
 .. math:: 1-\epsilon_0 \leq \sum_\lambda |\hat \psi_\lambda(\omega)|^2 \leq 1
+
+Backend
+=======
+
+1-D backend
+-----------
+
+A backend system is implemented, using.
+
+2-D backend
+-----------
+
+
+3-D backend
+-----------
