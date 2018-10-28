@@ -25,10 +25,18 @@ there exists :math:`\epsilon_0` satisfying:
 Practical implementation
 ========================
 
+Former implementation of the Scattering Transform computed each Scattering coefficients
+layer per layer. Here, we visit the tree of the Scattering path node per node. It permits
+to limit the memory use, and thus benefiting from CUDA accelerations. This is explained on
+REFERENE_FIGURE.
+
 .. image:: _static/algorithm.png
    :width: 600px
    :alt: Graph of the algorithm used
    :align: center
+    
+More details about our implementation can be found in SECTION_DU_DEV
+
 
 1-D
 ---
