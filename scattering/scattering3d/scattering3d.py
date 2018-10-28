@@ -5,7 +5,7 @@ __all__ = ['Scattering3D']
 import torch
 from .utils import compute_integrals, subsample
  
-from .backend import cdgmm3d, Fft3d, complex_modulus, to_complex
+from .backend import cdgmm3d, fft, complex_modulus, to_complex
 from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
 
 
@@ -47,7 +47,6 @@ class Scattering3D(object):
                             self.M, self.N, self.O, self.J, self.L, sigma_0)
         self.gaussian_filters = gaussian_filter_bank(
                                 self.M, self.N, self.O, self.J + 1, sigma_0)
-        self.fft = Fft3d()
 
     def _fft_convolve(self, input_array, filter_array):
         """
@@ -67,7 +66,7 @@ class Scattering3D(object):
         output: the result of the convolution of input_array with filter
 
         """
-        return self.fft(cdgmm3d(self.fft(input_array, inverse=False),
+        return fft(cdgmm3d(self.fft(input_array, inverse=False),
                                 filter_array), inverse=True, normalized=True)
 
     def _low_pass_filter(self, input_array, j):
