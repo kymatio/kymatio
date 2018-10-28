@@ -8,6 +8,7 @@ __all__ = ['filter_bank']
 import torch
 import numpy as np
 import scipy.fftpack as fft
+from .caching import get_cache_dir
 
 
 
@@ -72,6 +73,10 @@ def filter_bank(M, N, J, L=8, cache=False):
         Each single filter is provided as a dictionary with the following keys:
         * 'j' : scale
         * 'theta' : angle used
+
+        It also makes possible to cache large filter banks to avoid recomputing
+        them.
+        
         Parameters
         ----------
         M, N : int
@@ -81,11 +86,9 @@ def filter_bank(M, N, J, L=8, cache=False):
         L : int, optional
             number of angles used for the wavelet transform
             N.B.: the design of the filters is optimized for the value L = 8
-        cache : string or false
+        cache : boolean, optional
             If False, returnes the same as scattering_filter_factory_real. Otherwise,
-            it stores the computed filters in the string cache. It is particularly
-             useful when the filters are large and avoids recomputing them at each call
-             to the package.
+            it stores the computed filters in a cache folder.
 
         Returns
         -------
@@ -95,29 +98,33 @@ def filter_bank(M, N, J, L=8, cache=False):
     """
     if not cache:
         return filter_bank_real(M, N, J, L)
-    try:
-        print('Attempting to load from ',cache,' ...')
-        data = torch.load(cache)
-        assert M == data['M'], 'M mismatch'
-        assert N == data['N'], 'N mismatch'
-        assert J == data['J'], 'J mismatch'
-        assert L == data['L'], 'L mismatch'
-        filters = data['filters']
-        print('Loaded.')
-        return filters
-    except Exception as e:
-        print('Load Error: ',e)
-        print('(Re-)computing filters.')
-        filters = filter_bank_real(M, N, J, L)
-        print('Attempting to save to ',cache,' ...')
+    else:
+        filter_dir = get_cache_dir("filters_2d")
+        filter_file = os.path.join(filter_dir,
+                               "filters__M_{}__N_{}__J_{}__L_{}".format(M, N, J, L))
         try:
-            with open(cache, 'wb') as fp:
-                data = {'M':M, 'N':N, 'J':J, 'L':L, 'filters':filters}
-            torch.save(data, cache)
-            print('Saved.')
-        except Exception as f:
-            print('Save Error: ',f)
-        return filters
+            print('Attempting to load from ',cache,' ...')
+            data = torch.load(filter_file)
+            assert M == data['M'], 'M mismatch'
+            assert N == data['N'], 'N mismatch'
+            assert J == data['J'], 'J mismatch'
+            assert L == data['L'], 'L mismatch'
+            filters = data['filters']
+            print('Loaded.')
+            return filters
+        except Exception as e:
+            print('Load Error: ',e)
+            print('(Re-)computing filters.')
+            filters = filter_bank_real(M, N, J, L)
+            print('Attempting to save to ',cache,' ...')
+            try:
+                with open(filer_file, 'wb') as fp:
+                    data = {'M':M, 'N':N, 'J':J, 'L':L, 'filters':filters}
+                torch.save(data, cache)
+                print('Saved.')
+            except Exception as f:
+                print('Save Error: ',f)
+            return filters
 
 
 def periodize_filter_fft(x, res):
