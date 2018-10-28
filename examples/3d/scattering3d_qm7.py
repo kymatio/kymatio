@@ -6,7 +6,7 @@ import os
 from sklearn import linear_model, model_selection
 from sklearn.metrics import mean_absolute_error
 from scipy.spatial.distance import pdist
-from scattering.scattering import Scattering3D
+from scattering.scattering3d import Scattering3D
 from scattering.scattering3d.utils import (compute_integrals, 
                                            generate_weighted_sum_of_gaussians)
 from scattering.datasets import fetch_qm7
