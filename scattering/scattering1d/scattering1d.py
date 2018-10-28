@@ -3,6 +3,8 @@ from torch.autograd import Variable
 import numpy as np
 import math
 
+import warnings
+
 from .utils import pad, unpad, real, subsample_fourier, modulus_complex
 from .utils import compute_padding, compute_border_indices
 from .utils import cast_psi, cast_phi
@@ -290,6 +292,9 @@ class Scattering1D(object):
             not (in which case the output is a dictionary).
             Defaults to True.
         """
+        if vectorize and not(average_U1):
+            warnings.warn('Setting average_U1 to False and vectorize to True' +
+                          ' will raise an error at runtime.')
         self.default_args = {'order2': order2, 'average_U1': average_U1,
                              'oversampling': oversampling,
                              'vectorize': vectorize}
@@ -359,6 +364,10 @@ class Scattering1D(object):
             order2, average_U1, oversampling, vectorize)
         # treat the arguments
         if vectorize:
+            if not(average_U1):
+                raise ValueError(
+                    'Options average_U1=False and vectorize=True are ' +
+                    'mutually incompatible. Please set vectorize to False.')
             size_scat = self.precompute_size_scattering(
                 self.J, self.Q, order2=order2, detail=False)
         else:
@@ -548,16 +557,18 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         k1 = max(j - oversampling, 0)
         assert psi1[(j, n)]['xi'] < 0.5 / (2**k1)
         U1_hat = subsample_fourier(U0_hat * psi1[(j, n)][0], 2**k1)
-        # Take the modulus and go back in Fourier
-        U1_hat = fft1d_c2c(modulus_complex(ifft1d_c2c_normed(U1_hat)))
-        # Convolve with phi_J
+        # Take the modulus
+        U1 = modulus_complex(ifft1d_c2c_normed(U1_hat))
         if average_U1:
+            U1_hat = fft1d_c2c(U1)
+            # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             S1_J_hat = subsample_fourier(U1_hat * phi[k1], 2**k1_J)
             S1_J = unpad(real(ifft1d_c2c_normed(S1_J_hat)),
                          ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
-            S1_J = U1_hat
+            # just take the real value and unpad
+            S1_J = unpad(real(U1), ind_start[k1], ind_end[k1])
         if vectorize:
             S[:, cc, :] = S1_J.squeeze(dim=1)
             cc += 1
