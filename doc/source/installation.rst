@@ -27,7 +27,7 @@ In order to benefit from cuda optimization, you can also install skcuda and cupy
 
     pip install cupy skcuda
 
-and then refer to .backend for more details about the use of our optimized cuda kernels.
+and then refer to :ref:`backend-story` for more details about the use of our optimized cuda kernels.
 
 Developer
 =========

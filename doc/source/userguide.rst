@@ -28,21 +28,54 @@ Examples
 Output size
 ===========
 
+1-D
+---
+
+
+2-D
+---
+
+Let us assume that :math:`x` is a tensor of size :math:`(B,C,N_1,N_2)`. Then, if the
+output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` angles will have size:
+
+.. math:: (B,C,1+LJ+\frac{L^2J(J-1)}{2},\frac{N_1}{2^J},\frac{N_2}{2^J})
+
+3-D
+---
+
 Switching devices: cuda>cpu or cuda<cpu
 =======================================
 
-.. _backend:
+.. _backend-story:
+
 Backend
 =======
+
+This package is maintained with a flexible backend that currently supports PyTorch. A
+backend corresponds to an implementation of routines, which are optimized for their
+final purpose. For instance, `torch` backend is slightly slower than others backend
+but it has the advantage to be differentiable.
+
+At installation time, a config files is created in `~/.config/scattering/config.cfg` that
+will contain a backend used by default. This default backend will be overwritten if
+a global environment variable `SCATTERING_BACKEND` is created and not equal to `None`
+and in this case, each backends will use `SCATTERING_BACKEND` as a default backend.
+It is possible to specify more precisely the backend that will be used for each
+signal type as we will see below.
 
 1-D backend
 -----------
 
-A backend system is implemented, using.
 
 2-D backend
 -----------
 
+If the global environment variable `SCATTERING_BACKEND_2D` is not equal to `None`, then
+its value will be used at running time as the backend. Currently, two backends exist:
+
+- `torch`: the scattering is differentiable w.r.t. its parameters, however it can be too slow to be amenable for large scale classification.
+
+- `skcuda`: the scattering is not differentiable but is optimized to deliver fast computations.
 
 3-D backend
 -----------
