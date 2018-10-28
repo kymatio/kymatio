@@ -25,6 +25,11 @@ there exists :math:`\epsilon_0` satisfying:
 Practical implementation
 ========================
 
+.. image:: _static/algorithm.png
+   :width: 600px
+   :alt: Graph of the algorithm used
+   :align: center
+
 1-D
 ---
 
