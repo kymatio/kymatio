@@ -3,7 +3,6 @@ from torch.autograd import Variable
 from scattering import Scattering1D
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.utils import check_random_state
 
 
 def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
@@ -11,7 +10,7 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
     Generates a harmonic signal, which is made of piecewise constant notes
     (of random fundamental frequency), with half overlap
     """
-    rng = check_random_state(random_state)
+    rng = np.random.RandomState(random_state)
     num_notes = 2 * (num_intervals - 1) + 1
     support = T // num_intervals
     half_support = support // 2
