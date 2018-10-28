@@ -557,17 +557,18 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         k1 = max(j - oversampling, 0)
         assert psi1[(j, n)]['xi'] < 0.5 / (2**k1)
         U1_hat = subsample_fourier(U0_hat * psi1[(j, n)][0], 2**k1)
-        # Take the modulus and go back in Fourier
-        U1_hat = fft1d_c2c(modulus_complex(ifft1d_c2c_normed(U1_hat)))
-        # Convolve with phi_J
+        # Take the modulus
+        U1 = modulus_complex(ifft1d_c2c_normed(U1_hat))
         if average_U1:
+            U1_hat = fft1d_c2c(U1)
+            # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             S1_J_hat = subsample_fourier(U1_hat * phi[k1], 2**k1_J)
             S1_J = unpad(real(ifft1d_c2c_normed(S1_J_hat)),
                          ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
-            S1_J = unpad(real(ifft1d_c2c_normed(U1_hat)),
-                         ind_start[k1], ind_end[k1])
+            # just take the real value and unpad
+            S1_J = unpad(real(U1), ind_start[k1], ind_end[k1])
         if vectorize:
             S[:, cc, :] = S1_J.squeeze(dim=1)
             cc += 1
