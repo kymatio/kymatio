@@ -11,6 +11,6 @@ Scattering
    :caption: Contents:
 
    quickstart
-   developerguide
-   userguide
    installation
+   userguide
+   developerguide

@@ -62,7 +62,9 @@ Output size
 ---
 
 Let us assume that :math:`x` is a tensor of size :math:`(B,C,N_1,N_2)`. Then, if the
-output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` angles will have size:
+output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` angles will have
+size:
+
 
 .. math:: (B,C,1+LJ+\frac{L^2J(J-1)}{2},\frac{N_1}{2^J},\frac{N_2}{2^J})
 
@@ -71,6 +73,21 @@ output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` 
 
 Switching devices: cuda>cpu or cuda<cpu
 =======================================
+
+By default, the Scattering Transform is run on CPU::
+
+    import torch
+    from scattering import Scattering2D
+    scattering = Scattering2D(32, 32, 2)
+    x = torch.randn(1, 1, 32, 32)
+    Sx = scattering(x)
+
+However, if a GPU combined with CUDA is available, then it is possible to run it on GPU via::
+
+    scattering.cuda()
+    x = x.cuda()
+    Sx_ = scattering(x)
+    print(torch.norm(Sx_-Sx)
 
 .. _backend-story:
 

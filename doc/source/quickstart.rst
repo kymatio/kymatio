@@ -22,12 +22,12 @@ Specific
 
 Let us visualize the output after a Scattering Transform::
 
-    python import torch
+    import torch
     from scattering import Scattering2D
     scattering = Scattering2D(32, 32, 2)
-    signal = torch.randn(1, 1, 32, 32)
-    output = scattering(signal)
-    print(output.size())
+    x = torch.randn(1, 1, 32, 32)
+    Sx = scattering(x)
+    print(Sx.size())
 
 3-d signals
 -----------
