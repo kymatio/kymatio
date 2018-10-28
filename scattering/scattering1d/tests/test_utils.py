@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import Variable
 from scattering.scattering1d.backend import pad1D, modulus, subsample_fourier
 from scattering.scattering1d.utils import compute_border_indices
 import numpy as np
@@ -14,11 +13,11 @@ def test_pad1D(random_state=42):
     N = 128
     for pad_left in range(0, N, 16):
         for pad_right in range(0, N, 16):
-            x = Variable(torch.randn(100, 4, N), requires_grad=True)
+            x = torch.randn(100, 4, N, requires_grad=True)
             x_pad = pad1D(x, pad_left, pad_right, mode='reflect')
             # Check the size
-            x2 = x.data.clone()
-            x_pad2 = x_pad.data.clone()
+            x2 = x.clone()
+            x_pad2 = x_pad.clone()
             for t in range(1, pad_left + 1):
                 diff = x_pad2[..., pad_left - t] - x2[..., t]
                 assert torch.max(torch.abs(diff)) <= 1e-7
@@ -33,7 +32,7 @@ def test_pad1D(random_state=42):
             loss = 0.5 * torch.sum(x_pad**2)
             loss.backward()
             # compute the theoretical gradient for x
-            x_grad_original = x.data.clone()
+            x_grad_original = x.clone()
             x_grad = x_grad_original.new(x_grad_original.shape).fill_(0.)
             x_grad += x_grad_original
             for t in range(1, pad_left + 1):
@@ -42,7 +41,7 @@ def test_pad1D(random_state=42):
                 t0 = x.shape[-1] - 1 - t
                 x_grad[..., t0] += x_grad_original[..., t0]
             # get the difference
-            diff = x.grad.data - x_grad
+            diff = x.grad - x_grad
             assert torch.max(torch.abs(diff)) <= 1e-7
     # Check that the padding shows an error if we try to pad
     with pytest.raises(ValueError):
@@ -57,27 +56,27 @@ def test_modulus(random_state=42):
     """
     torch.manual_seed(random_state)
     # Test with a random vector
-    x = Variable(torch.randn(100, 4, 128, 2), requires_grad=True)
+    x = torch.randn(100, 4, 128, 2, requires_grad=True)
     x_abs = modulus(x)
     assert len(x_abs.shape) == len(x.shape) - 1
     # check the value
-    x_abs2 = x_abs.data.clone()
-    x2 = x.data.clone()
+    x_abs2 = x_abs.clone()
+    x2 = x.clone()
     diff = x_abs2 - torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2)
     assert torch.max(torch.abs(diff)) <= 1e-7
     # check the gradient
     loss = torch.sum(x_abs)
     loss.backward()
     x_grad = x2 / x_abs2.unsqueeze(-1)
-    diff = x.grad.data - x_grad
+    diff = x.grad - x_grad
     assert torch.max(torch.abs(diff)) <= 1e-7
 
     # Test the differentiation with a vector made of zeros
-    x0 = Variable(torch.zeros(100, 4, 128, 2), requires_grad=True)
+    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True)
     x_abs0 = modulus(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
-    assert torch.max(torch.abs(x0.grad.data)) <= 1e-7
+    assert torch.max(torch.abs(x0.grad)) <= 1e-7
 
 
 def test_subsample_fourier(random_state=42):

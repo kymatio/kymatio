@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import Variable
 from scattering import Scattering1D
 import math
 import os
@@ -18,14 +17,14 @@ def test_simple_scatterings(random_state=42):
     T = 2**12
     scattering = Scattering1D(T, J, Q, normalize='l1')
     # zero signal
-    x0 = Variable(torch.zeros(128, 1, T))
-    s = scattering.forward(x0).data
+    x0 = torch.zeros(128, 1, T)
+    s = scattering.forward(x0)
     # check that s is zero!
     assert torch.max(torch.abs(s)) < 1e-7
 
     # constant signal
-    x1 = Variable(rng.randn(1)[0] * torch.ones(1, 1, T))
-    s1 = scattering.forward(x1).data
+    x1 = rng.randn(1)[0] * torch.ones(1, 1, T)
+    s1 = scattering.forward(x1)
     # check that all orders above 1 are 0
     assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
 
@@ -34,8 +33,8 @@ def test_simple_scatterings(random_state=42):
     for _ in range(50):
         k = rng.randint(1, T // 2, 1)[0]
         x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
-        x2 = Variable(x2.unsqueeze(0).unsqueeze(0))
-        s2 = scattering.forward(x2).data
+        x2 = x2.unsqueeze(0).unsqueeze(0)
+        s2 = scattering.forward(x2)
 
         for cc in coords.keys():
             if coords[cc]['order'] in ['0', '2']:
@@ -75,7 +74,7 @@ def test_computation_Ux(random_state=42):
     scattering = Scattering1D(T, J, Q, normalize='l1', average_U1=False,
                               order2=False, vectorize=False)
     # random signal
-    x = Variable(torch.from_numpy(rng.randn(1, 1, T)).float())
+    x = torch.from_numpy(rng.randn(1, 1, T)).float()
     s = scattering.forward(x)
     # check that the keys in s correspond to the order 0 and second order
     for k in scattering.psi1_fft.keys():
@@ -108,12 +107,12 @@ def test_scattering_GPU_CPU(random_state=42, test_cuda=None):
         # build the scattering
         scattering = Scattering1D(T, J, Q)
 
-        x = Variable(torch.randn(128, 1, T))
-        s_cpu = scattering.forward(x).data
+        x = torch.randn(128, 1, T)
+        s_cpu = scattering.forward(x)
 
         scattering = scattering.cuda()
-        x_gpu = Variable(x.data.clone().cuda())
-        s_gpu = scattering.forward(x_gpu).data.cpu()
+        x_gpu = x.clone().cuda()
+        s_gpu = scattering.forward(x_gpu).cpu()
         # compute the distance
         assert torch.max(torch.abs(s_cpu - s_gpu)) < 1e-4
 
@@ -128,10 +127,10 @@ def test_coordinates(random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(T, J, Q, order2=True)
-    x = Variable(torch.randn(128, 1, T))
+    x = torch.randn(128, 1, T)
     s_dico = scattering.forward(x, vectorize=False)
     s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-    s_vec = scattering.forward(x, vectorize=True).data
+    s_vec = scattering.forward(x, vectorize=True)
 
     coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
 
@@ -162,7 +161,7 @@ def test_precompute_size_scattering(random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(T, J, Q)
-    x = Variable(torch.randn(128, 1, T))
+    x = torch.randn(128, 1, T)
     for order2 in [True, False]:
         s_dico = scattering.forward(x, vectorize=False, order2=order2)
         for detail in [True, False]:
@@ -197,8 +196,8 @@ def test_differentiability_scattering(random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(T, J, Q)
-    x = Variable(torch.randn(128, 1, T), requires_grad=True)
+    x = torch.randn(128, 1, T, requires_grad=True)
     s = scattering.forward(x)
     loss = torch.sum(torch.abs(s))
     loss.backward()
-    assert torch.max(torch.abs(x.grad.data)) > 0.
+    assert torch.max(torch.abs(x.grad)) > 0.

@@ -13,7 +13,6 @@ Testing accuracy = 95.3%
 import torch
 from torch.nn import Linear, NLLLoss, LogSoftmax, Sequential
 from torch.optim import Adam
-from torch.autograd import Variable
 from scattering import Scattering1D
 from scattering.datasets import fetch_fsdd
 from scattering.caching import get_cache_dir
@@ -296,7 +295,7 @@ def compute_scattering_coefs(T, J, Q, use_cuda=True, cache_name='fsdd',
             x_padded = np.zeros(T, dtype='float32')
             left_pad = (T - len(x)) // 2
             x_padded[left_pad:left_pad + len(x)] = x
-            x = Variable(torch.from_numpy(x_padded[np.newaxis, np.newaxis]))
+            x = torch.from_numpy(x_padded[np.newaxis, np.newaxis])
             if use_cuda:
                 x = x.cuda()
             # compute the scattering
@@ -313,7 +312,7 @@ def compute_scattering_coefs(T, J, Q, use_cuda=True, cache_name='fsdd',
                     data = torch.from_numpy(x[-T:]).float()
                 else:
                     data = torch.from_numpy(x[i * T: (i + 1) * T]).float()
-                data = Variable(data.unsqueeze(0).unsqueeze(0))
+                data = data.unsqueeze(0).unsqueeze(0)
                 if use_cuda:
                     data = data.cuda()
                 s = scattering.forward(data).data
@@ -410,8 +409,8 @@ if __name__ == '__main__':
         X_tr = X_tr.cuda()
         y_tr = y_tr.cuda()
     # embed them in variables
-    X_tr = Variable(X_tr, requires_grad=False)
-    y_tr = Variable(y_tr, requires_grad=False)
+    X_tr = X_tr.requires_grad_(False)
+    y_tr = y_tr.requires_grad_(False)
 
     # DEFINE THE MODEL
     model = Sequential(Linear(X_tr.shape[-1], num_classes), LogSoftmax())
@@ -450,8 +449,8 @@ if __name__ == '__main__':
     if use_cuda:
         X_te = X_te.cuda()
         y_te = y_te.cuda()
-    X_te = Variable(X_te, requires_grad=False)
-    y_te = Variable(torch.squeeze(y_te), requires_grad=False)
+    X_te = X_te.requires_grad_(False)
+    y_te = torch.squeeze(y_te).requires_grad_(False)
 
     avg_loss, accu = compute_loss_and_accuracy(model, criterion, X_te, y_te)
     print('TEST, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
