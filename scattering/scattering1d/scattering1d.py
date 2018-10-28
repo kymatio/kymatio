@@ -538,7 +538,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     S0_J = unpad(real(ifft1d_c2c_normed(S0_J_hat)),
                  ind_start[k0], ind_end[k0])
     if vectorize:
-        S[:, cc] = S0_J
+        S[:, cc, :] = S0_J.squeeze(dim=1)
         cc += 1
     else:
         S[0] = S0_J
@@ -559,7 +559,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         else:
             S1_J = U1_hat
         if vectorize:
-            S[:, cc] = S1_J
+            S[:, cc, :] = S1_J.squeeze(dim=1)
             cc += 1
         else:
             S[j, n] = S1_J
@@ -583,7 +583,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                                  ind_start[k1 + k2 + k2_J],
                                  ind_end[k1 + k2 + k2_J])
                     if vectorize:
-                        S[:, cc] = S2_J
+                        S[:, cc, :] = S2_J.squeeze(dim=1)
                         cc += 1
                     else:
                         S[j, n, j2, n2] = S2_J
