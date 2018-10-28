@@ -34,7 +34,7 @@ REFERENE_FIGURE.
    :width: 600px
    :alt: Graph of the algorithm used
    :align: center
-    
+
 More details about our implementation can be found in SECTION_DU_DEV
 
 
@@ -95,6 +95,13 @@ However, if a GPU combined with CUDA is available, then it is possible to run it
     scattering.cuda()
     x = x.cuda()
     Sx_ = scattering(x)
+    print(torch.norm(Sx_-Sx)
+
+Then, it is possible to redo the computations on CPU via::
+
+    scattering.cpu()
+    x = x.cpu()
+    Sx = scattering(x)
     print(torch.norm(Sx_-Sx)
 
 .. _backend-story:
