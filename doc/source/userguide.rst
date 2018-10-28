@@ -22,6 +22,12 @@ there exists :math:`\epsilon_0` satisfying:
 
 .. math:: 1-\epsilon_0 \leq \sum_\lambda |\hat \psi_\lambda(\omega)|^2 \leq 1
 
+Output size
+===========
+
+Switching devices: cuda>cpu or cuda<cpu
+=======================================
+
 Backend
 =======
 

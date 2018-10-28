@@ -11,15 +11,20 @@ Then in a python shell::
 
 If the package has been correctly installed, this last command should run.
 
+1-d signals
+===========
 
-Quick Start for 2-d signals
-===========================
+2-d signals
+===========
 
-First, let us make sure the software is properly installed for 2d::
+Let us visualize the output after a Scattering Transform::
 
     python import torch
     from scattering import Scattering2D
     scattering = Scattering2D(32, 32, 2)
     signal = torch.randn(1, 1, 32, 32)
     output = scattering(signal)
+    print(output.size())
 
+3-d signals
+===========
