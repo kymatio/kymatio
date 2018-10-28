@@ -4,12 +4,13 @@
    contain the root `toctree` directive.
 
 Scattering
-======================================
+==========
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    quickstart
+   developerguide
    userguide
-
+   installation
