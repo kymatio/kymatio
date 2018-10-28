@@ -59,7 +59,7 @@ def test_normalizing_factor(random_state=42):
     job (i.e. actually normalizes the signal in l1 or l2)
     """
     rng = np.random.RandomState(random_state)
-    size_signal = [2**j for j in range(5, 10)]
+    size_signal = [2**j for j in range(5, 13)]
     norm_type = ['l1', 'l2']
     for N in size_signal:
         x = rng.randn(N) + 1j * rng.randn(N)

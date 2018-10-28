@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import math
+import warnings
 
 
 def adaptative_choice_P(sigma, eps=1e-7):
@@ -272,6 +273,10 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
     The resulting value T used to pad the signals to avoid boundary effects
     and numerical errors.
 
+    If the support is too small, no such T might exist.
+    In this case, T is defined as the half of the support of h, and a
+    UserWarning is raised.
+
     Parameters
     ----------
     h_fft : array_like
@@ -295,8 +300,16 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
     l1_residual = np.fliplr(
         np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
     # find the first point above criterion_amplitude
-    T = np.min(
-        np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0]) + 1
+    if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
+        # if it is possible
+        T = np.min(
+            np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
+            + 1
+    else:
+        # if there is none:
+        T = half_support
+        # Raise a warning to say that there will be border effects
+        warnings.warn('Signal support is too small to avoid border effects')
     return T
 
 
@@ -653,7 +666,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
-    max_subsampling_after_psi2 = 0
     for key in xi2.keys():
         j2 = key[0]
         # compute the current value for the max_subsampling,
@@ -667,17 +679,17 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
                 max_sub_psi2 = 0
         else:
             max_sub_psi2 = max_subsampling
-        # save it for later use
-        max_subsampling_after_psi2 = max(max_subsampling_after_psi2,
-                                         max_sub_psi2 + j2)
-        # compute the filter after subsampling at all subsamplings
-        # which might be received by the network
-        for subsampling in range(0, max_sub_psi2 + 1):
-            T = 2**(J_support - subsampling)
-            for key in xi2.keys():
-                psi2_fft[key][subsampling] = morlet1D(
-                    T, xi2[key], sigma2[key], normalize=normalize,
-                    P_max=P_max, eps=eps)
+        # We first compute the filter without subsampling
+        T = 2**J_support
+        psi2_fft[key][0] = morlet1D(
+            T, xi2[key], sigma2[key], normalize=normalize, P_max=P_max,
+            eps=eps)
+        # compute the filter after subsampling at all other subsamplings
+        # which might be received by the network, based on this first filter
+        for subsampling in range(1, max_sub_psi2 + 1):
+            factor_subsampling = 2**subsampling
+            psi2_fft[key][subsampling] = periodize_filter_fft(
+                psi2_fft[key][0], nperiods=factor_subsampling)
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with T=2**J_support
@@ -692,15 +704,18 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # input it can accept (both 1st and 2nd order)
     if max_subsampling is None:
         max_subsampling_after_psi1 = max([key[0] for key in psi1_fft.keys()])
+        max_subsampling_after_psi2 = max([key[0] for key in psi2_fft.keys()])
         max_sub_phi = max(max_subsampling_after_psi1,
                           max_subsampling_after_psi2)
     else:
         max_sub_phi = max_subsampling
     # compute the filters at all possible subsamplings
-    for subsampling in range(0, max_sub_phi + 1):
-        T = 2**(J_support - subsampling)
+    phi_fft[0] = gauss1D(T, sigma_low, P_max=P_max, eps=eps)
+    for subsampling in range(1, max_sub_phi + 1):
+        factor_subsampling = 2**subsampling
         # compute the low_pass filter
-        phi_fft[subsampling] = gauss1D(T, sigma_low, P_max=P_max, eps=eps)
+        phi_fft[subsampling] = periodize_filter_fft(
+            phi_fft[0], nperiods=factor_subsampling)
 
     # Embed the meta information within the filters
     for k in xi1.keys():
