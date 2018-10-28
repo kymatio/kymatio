@@ -3,9 +3,16 @@ Information for developers
 
 Something something how the code works
 
-Core of the algorithm
-=====================
+Backend: core of the algorithm
+==============================
 
+Common to the 1-2-3-D routines of the Scattering Transform, four low-level functions
+must be optimized:
+
+1. FFT/iFFT
+2. SubsamplingFourier
+3. Modulus
+4. Dotwise complex multiplication
 
 Unit tests
 ==========
