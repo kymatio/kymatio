@@ -101,7 +101,7 @@ class Scattering2D(object):
                 if torch.is_tensor(item2):
                     self.Psi[key][key2] = item2.type(_type)
         self.Phi = [v.type(_type) for v in self.Phi]
-        self.pad.padding_module.type(str(_type).split('\'')[1])
+        self.pad.padding_module.type(_type)
         return self
 
     def cuda(self):
