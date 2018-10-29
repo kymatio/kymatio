@@ -201,7 +201,8 @@ def _pca_align_positions(positions, masks, inplace=False):
     for pos, mask, out in zip(positions, masks, output):
         masked_pos = pos[mask]
         masked_pos -= masked_pos.mean(0)
-        cov = masked_pos.T.dot(masked_pos)
+        # cov = masked_pos.T.dot(masked_pos)
+        cov = np.dot(np.transpose(masked_pos), masked_pos.copy())
         v, V = np.linalg.eigh(cov)
         aligned = masked_pos.dot(V[:, ::-1])  # largest to smallest
         out[mask] = aligned
@@ -250,7 +251,7 @@ def fetch_qm7(align=True, cache=True):
         _pca_align_positions(qm7['positions'], qm7['charges'], inplace=True)
         if cache:
             np.savez(aligned_filename, **qm7)
-    
+
     return qm7
 
 
