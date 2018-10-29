@@ -62,8 +62,6 @@ BACKEND = os.environ.get("SCATTERING_BACKEND_1D", BACKEND)
 
 if BACKEND == 'torch':
     from .backend_torch import *
-elif BACKEND == 'skcuda':
-    from .backend_skcuda import *
 else:
     # For now, raise and error
     raise ValueError("Backend {} unknown".format(BACKEND))
