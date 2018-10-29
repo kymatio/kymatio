@@ -8,7 +8,7 @@ __all__ = ['filter_bank']
 import torch
 import numpy as np
 import scipy.fftpack as fft
-from .caching import get_cache_dir
+from ..caching import get_cache_dir
 
 
 
