@@ -66,7 +66,7 @@ class Scattering3D(object):
         output: the result of the convolution of input_array with filter
 
         """
-        return fft(cdgmm3d(self.fft(input_array, inverse=False),
+        return fft(cdgmm3d(fft(input_array, inverse=False),
                                 filter_array), inverse=True, normalized=True)
 
     def _low_pass_filter(self, input_array, j):
