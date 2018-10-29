@@ -38,8 +38,8 @@ def loadfile(path_file):
 
 def get_fsdd_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
                               cache_name='fsdd', is_train=True,
-                              log_transform=True, average_time=True,
-                              verbose=True):
+                              log_transform=True, log_eps=1e-6,
+                              average_time=True, verbose=True):
     """
     Downloads, preprocesses and caches the scattering coefficients of the
     Free Spoken Digit Dataset
@@ -70,6 +70,9 @@ def get_fsdd_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
         Whether to take the logarithm of the scattering coefficients, which
         should be more equally distributed. This removes the zero-order
         coefficients (averages). Defaults to True.
+    log_eps: float > 0
+        Constant to add to the absolute value of the scattering coefficients
+        before computing the logarithm. Defaults to 1e-6.
     average_time: boolean, optional
         Whether to take the average of the scatterings along time, to reduce
         the dimensionality of the problem. Defaults to True
@@ -91,7 +94,8 @@ def get_fsdd_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
         T, J, Q, use_cuda=use_cuda, force_compute=force_compute,
         cache_name=cache_name, is_train=is_train, verbose=verbose)
     if log_transform:
-        x = torch.log(torch.abs(x)[:, 1:])  # remove order 0
+        x = x[:, 1:, :] # remove order 0
+        x = torch.log(torch.abs(x) + log_eps)
     if average_time:
         x = torch.mean(x, dim=-1)
     else:
@@ -376,6 +380,7 @@ if __name__ == '__main__':
     J = 8  # averaging scale of the scattering
     Q = 12  # quality factor for the wavelet transform
     log_transform = True  # use the log of the scattering
+    log_eps = 1e-6 # constant to prevent small arguments of the log
     average_time = True  # average scattering along time
     batch_size = 32  # batch_size
     num_epochs = 50  # number of epochs
@@ -391,8 +396,8 @@ if __name__ == '__main__':
     # GETTING TRAINING FEATURES
     X_tr, y_tr = get_fsdd_scattering_coefs(
         T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=True,
-        log_transform=log_transform, average_time=average_time,
-        force_compute=force_compute)
+        log_transform=log_transform, log_eps=log_eps,
+        average_time=average_time, force_compute=force_compute)
     nsamples = X_tr.shape[0]
     nbatches = nsamples // batch_size
     # whiten the dataset
