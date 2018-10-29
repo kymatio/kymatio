@@ -14,8 +14,8 @@ except:
     pass
 
 try:
-    from scattering.scattiering2d.backend import backend_torch
-    backends.append(backend_skcuda)
+    from scattering.scattering2d.backend import backend_torch
+    backends.append(backend_torch)
 except:
     pass
 
