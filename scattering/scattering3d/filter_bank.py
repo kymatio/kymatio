@@ -12,6 +12,30 @@ from .utils import get_3d_angles, double_factorial
 
 
 def solid_harmonic_filter_bank(M, N, O, J, L, sigma_0, fourier=True):
+    """
+        Computes a set of 3D Solid Harmonic Wavelets of scales j = [0, ..., J]
+        and first orders l = [0, ..., L].
+
+        Parameters
+        ----------
+        M, N, O : int
+            spatial sizes
+        J : int
+            maximal scale of the wavelets
+        L : int
+            maximal first order of the wavelets
+        sigma_0 : float
+            width parameter of mother solid harmonic wavelet
+        fourier : boolean
+            if true, wavelets are computed in Fourier space
+	    if false, wavelets are computed in signal space
+
+        Returns
+        -------
+        filters : list of ndarray
+            the element number l of the list is a torch array array of size
+            (J+1, 2l+1, M, N, O, 2) containing the (J+1)x(2l+1) wavelets of order l.
+    """
     filters = []
     for l in range(L + 1):
         filters_l = np.zeros((J + 1, 2 * l + 1, M, N, O, 2), dtype='float32')
@@ -25,6 +49,27 @@ def solid_harmonic_filter_bank(M, N, O, J, L, sigma_0, fourier=True):
 
 
 def gaussian_filter_bank(M, N, O, J, sigma_0, fourier=True):
+    """
+        Computes a set of 3D Gaussian filters of scales j = [0, ..., J].
+
+        Parameters
+        ----------
+        M, N, O : int
+            spatial sizes
+        J : int
+            maximal scale of the wavelets
+        sigma_0 : float
+            width parameter of father Gaussian filter
+        fourier : boolean
+            if true, wavelets are computed in Fourier space
+	    if false, wavelets are computed in signal space
+
+        Returns
+        -------
+        gaussians : ndarray
+            torch array array of size (J+1, M, N, O, 2) containing the (J+1)
+            Gaussian filters.
+    """
     gaussians = torch.zeros(J + 1, M, N, O, 2)
     for j in range(J + 1):
         sigma = sigma_0 * 2 ** j
@@ -34,7 +79,25 @@ def gaussian_filter_bank(M, N, O, J, sigma_0, fourier=True):
 
 
 def gaussian_3d(M, N, O, sigma, fourier=True):
-    """Computes gaussian in Fourier or signal space."""
+    """
+        Computes a 3D Gaussian filter.
+
+        Parameters
+        ----------
+        M, N, O : int
+            spatial sizes
+        sigma : float
+            gaussian width parameter
+        fourier : boolean
+            if true, the Gaussian if computed in Fourier space
+	    if false, the Gaussian if computed in signal space
+
+        Returns
+        -------
+        gaussian : ndarray
+            numpy array of size (M, N, O) and type float32 ifftshifted such
+            that the origin is at the point [0, 0, 0]
+    """
     grid = np.fft.ifftshift(
         np.mgrid[-M // 2:-M // 2 + M,
                  -N // 2:-N // 2 + N,
@@ -55,20 +118,31 @@ def gaussian_3d(M, N, O, sigma, fourier=True):
 
 
 def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
-    """Computes solid harmonic wavelets in Fourier or signal space.
+    """
+        Computes a set of 3D Solid Harmonic Wavelets.
+	A solid harmonic wavelet has two integer orders l >= 0 and -l <= m <= l
+	In spherical coordinates (r, theta, phi), a solid harmonic wavelet is
+	the product of a polynomial Gaussian r^l exp(-0.5 r^2 / sigma^2)
+	with a spherical harmonic function Y_{l,m} (theta, phi).
 
-    Input args:
-        M, N, O: integers, shape of the grid
-        sigma: float, width of the wavelets
-        l: integer, degree of the harmonic
-        fourier: boolean, compute wavelet in fourier space
-                 or in signal space
+        Parameters
+        ----------
+        M, N, O : int
+            spatial sizes
+        sigma : float
+            width parameter of the solid harmonic wavelets
+        l : int
+            first integer order of the wavelets
+        fourier : boolean
+            if true, wavelets are computed in Fourier space
+	    if false, wavelets are computed in signal space
 
-    Returns:
-        solid_harm: 4D tensors of shape (2l+1, M, N, O). The
-                    tensor is ifftshifted such that the point 0 in
-                    signal space or in Fourier space is at
-                    [m, 0, 0, 0] for m = 0 ... 2*l+1
+        Returns
+        -------
+        solid_harm : ndarray, type complex64
+            numpy array of size (2l+1, M, N, 0) and type complex64 containing
+            the 2l+1 wavelets of order (l , m) with -l <= m <= l.
+            It is ifftshifted such that the origin is at the point [., 0, 0, 0]
     """
     solid_harm = np.zeros((2*l+1, M, N, O), np.complex64)
     grid = np.fft.ifftshift(
@@ -115,5 +189,3 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
         norm_factor /= _sigma ** 3
 
     solid_harm *= norm_factor
-
-    return solid_harm
