@@ -189,3 +189,5 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
         norm_factor /= _sigma ** 3
 
     solid_harm *= norm_factor
+
+    return solid_harm
