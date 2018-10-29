@@ -1,52 +1,34 @@
 """Author: Louis Thiry, All rights reserved, 2018."""
-from collections import defaultdict
-
 import torch
 import numpy as np
-import warnings
-
-
-def generate_weighted_sum_of_diracs(positions, weights, M, N, O, 
-                                    sigma_dirac=0.4):
-    n_signals = positions.shape[0]
-    signals = torch.zeros(n_signals, M, N, O)
-    d_s = [(0, 0, 0), (0, 1, 0), (0, 0, 1), (0, 1, 1),
-           (1, 0, 0), (1, 1, 0), (1, 0, 1), (1, 1, 1)]
-    values = torch.FloatTensor(8)
-
-    for i_signal in range(n_signals):
-        n_positions = positions[i_signal].shape[0]
-        for i_position in range(n_positions):
-            position = positions[i_signal, i_position]
-            i, j, k = torch.floor(position).type(torch.IntTensor)
-            for i_d, (d_i, d_j, d_k) in enumerate(d_s):
-                values[i_d] = np.exp(-0.5 * (
-                    (position[0] - (i + d_i)) ** 2 + 
-                    (position[1] - (j + d_j)) ** 2 + 
-                    (position[2] - (k + d_k)) ** 2) / sigma_dirac ** 2)
-            values *= weights[i_signal, i_position] / values.sum()
-            for i_d, (d_i, d_j, d_k) in enumerate(d_s):
-                i_, j_, k_ = (i + d_i) % M, (j + d_j) % N, (k + d_k) % O
-                signals[i_signal, i_, j_, k_] += values[i_d]
-
-    return signals
-
-
-def generate_large_weighted_sum_of_gaussians(positions, weights, M, N, O, 
-                                             fourier_gaussian, fft=None):
-    n_signals = positions.shape[0]
-    signals = torch.zeros(n_signals, M, N, O, 2)
-    signals[..., 0] = generate_weighted_sum_of_diracs(
-        positions, weights, M, N, O)
-
-    if fft is None:
-        fft = Fft3d()
-    return fft(cdgmm3d(fft(signals, inverse=False), fourier_gaussian),
-               inverse=True, normalized=True)[..., 0]
 
 
 def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
                                        cuda=False):
+    """
+        Computes sum of 3D Gaussians centered at given positions and weighted
+        with the given weights.
+
+        Parameters
+        ----------
+        grid : torch FloatTensor
+            numerical grid, size (3, M, N, O)
+        positions: torch FloatTensor
+            positions of the Gaussians, size (N_signals, N_gaussians, 3)
+        positions: torch FloatTensor
+            weights of the Gaussians, size (N_signals, N_gaussians)
+            zero weights are assumed to be at the end since if a weight is zero
+            all weights after are ignored
+        sigma : float
+            width parameter of the Gaussian
+        cuda: boolean
+            if True, computations are done on CUDA GPU
+
+        Returns
+        -------
+        signals : torch FloatTensor
+            numpy array of size (N_signals, M, N, O)
+    """
     _, M, N, O = grid.size()
     signals = torch.zeros(positions.size(0), M, N, O)
     if cuda:
@@ -75,20 +57,21 @@ def subsample(input_array, j):
 
 def compute_integrals(input_array, integral_powers):
     """
-    Computes integrals of the input_array to the given powers.
-        \\int input_array^p
-    
-    Parameters
-    ----------
-    input_array: torch tensor 
-    
-    integral_powers: list
-        list that contains the powers p
+        Computes integrals of the input_array to the given powers.
 
-    Returns
-    -------
-    output: torch tensor
-        the integrals of the powers of the input_array    
+        Parameters
+        ----------
+        input_array: torch FloatTensor
+            size (N_inputs, M, N, O)
+
+        integral_powers: list
+            list of lenght P containg the powers p
+
+        Returns
+        -------
+        integrals: torch FloatTensor
+            the integrals of the powers of the input_array, size (N_inputs, P)
+
     """
     integrals = torch.zeros(input_array.size(0), len(integral_powers), 1)
     for i_q, q in enumerate(integral_powers):
@@ -99,18 +82,19 @@ def compute_integrals(input_array, integral_powers):
 
 def get_3d_angles(cartesian_grid):
     """
-    Given a cartesian grid, computes the spherical coord angles (theta, phi).
+        Given a cartesian grid, computes the spherical coord angles (theta, phi).
 
-    Parameters
-    ----------
-    cartesian_grid: torch tensor
-                  4D tensor of shape (3, M, N, O)
-    Returns
-    -------
-    output: tuple
-        tuple of two elements. The first is the polar coordinates of the grid 
-        and the second the azimuthal coordinates.
-        Both of them are 3D tensors of shape (M, N, O).
+        Parameters
+        ----------
+        cartesian_grid: numpy array
+            4D array of shape (3, M, N, O)
+
+        Returns
+        -------
+        polar: numpy array
+            polar angles, shape (M, N, O)
+        azimutal: numpy array
+            azimutal angles, shape (M, N, O)
     """
     z, y, x = cartesian_grid
     azimuthal = np.arctan2(y, x)
@@ -119,8 +103,6 @@ def get_3d_angles(cartesian_grid):
     return polar, azimuthal
 
 
-def double_factorial(l):
-    return 1 if (l < 1) else np.prod(np.arange(l, 0, -2))
-
-
-
+def double_factorial(i):
+    """Computes the double factorial of an integer."""
+    return 1 if (i < 1) else np.prod(np.arange(i, 0, -2))
