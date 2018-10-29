@@ -35,9 +35,11 @@ def gaussian_filter_bank(M, N, O, J, sigma_0, fourier=True):
 
 def gaussian_3d(M, N, O, sigma, fourier=True):
     """Computes gaussian in Fourier or signal space."""
-    grid = np.mgrid[-M // 2:-M // 2 + M,
-                    -N // 2:-N // 2 + N,
-                    -O // 2:-O // 2 + O].astype('float32')
+    grid = np.fft.ifftshift(
+        np.mgrid[-M // 2:-M // 2 + M,
+                 -N // 2:-N // 2 + N,
+                 -O // 2:-O // 2 + O].astype('float32'),
+        axes=(1,2,3))
     _sigma = sigma
     if fourier:
         grid[0] *= 2 * np.pi / M
@@ -49,7 +51,7 @@ def gaussian_3d(M, N, O, sigma, fourier=True):
     if not fourier:
         gaussian /= (2 * np.pi) ** 1.5 * _sigma ** 3
 
-    return np.fft.ifftshift(gaussian)
+    return gaussian
 
 
 def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
@@ -69,9 +71,11 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
                     [m, 0, 0, 0] for m = 0 ... 2*l+1
     """
     solid_harm = np.zeros((2*l+1, M, N, O), np.complex64)
-    grid = np.mgrid[-M // 2:-M // 2 + M,
-                    -N // 2:-N // 2 + N, 
-                    -O // 2:-O // 2 + O].astype('float32')
+    grid = np.fft.ifftshift(
+        np.mgrid[-M // 2:-M // 2 + M,
+                 -N // 2:-N // 2 + N,
+                 -O // 2:-O // 2 + O].astype('float32'),
+        axes=(1,2,3))
     _sigma = sigma
 
     if fourier:
@@ -112,5 +116,4 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
 
     solid_harm *= norm_factor
 
-    return np.fft.ifftshift(solid_harm, axes=(1, 2, 3))
-
+    return solid_harm
