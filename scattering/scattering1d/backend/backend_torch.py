@@ -7,12 +7,11 @@ from torch.autograd import Function
 def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
     """
     1D implementation of the padding function for torch tensors
-    or variables.
 
     Parameters
     ----------
     x : tensor_like
-        input tensor (or variable), 3D with time in the last axis.
+        input tensor , 3D with time in the last axis.
     pad_left : int
         amount to add on the left of the tensor (at the beginning
         of the temporal axis)
@@ -29,7 +28,7 @@ def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
 
     Returns
     -------
-    res: the padded tensor (or variable)
+    res: the padded tensor
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
@@ -57,7 +56,7 @@ class ModulusStable(Function):
 
     Parameters
     ---------
-    x: input tensor (embedded in a Variable), with last dimension = 2 for
+    x: input tensor, with last dimension = 2 for
         complex numbers
     p: optional, power of the norm (defaults to 2 for the complex modulus)
     dim: optional, dimension along which to reduce the norm (defaults to -1)
@@ -66,10 +65,9 @@ class ModulusStable(Function):
 
     Returns
     -------
-    output: a tensor embedded in a Variable of same size as the input
-        tensor, except for the dimension of the complex numbers which is
-        removed. This variable is differentiable with respect to the input
-        in a stable fashion (so diff modulus (0) = 0)
+    output: a tensor of same size as the input tensor, except for the dimension
+    of the complex numbers which is removed. This tensor is differentiable with
+    respect to the input in a stable fashion (so diff modulus (0) = 0)
     """
     @staticmethod
     def forward(ctx, x, p=2, dim=-1, keepdim=False):
@@ -80,10 +78,10 @@ class ModulusStable(Function):
 
         Arguments
         ---------
-        ctx: context variables collected during the forward pass. They are
+        ctx: context tensors collected during the forward pass. They are
             automatically added by pytorch and should not be touched.
             They are then used for the backward pass.
-        x: input tensor (already de-variabled).
+        x: input tensor
         p: optional, power of the norm (defaults to 2 for the modulus)
         dim: optional, dimension along which to compute the norm
             (defaults to -1)
@@ -119,7 +117,7 @@ class ModulusStable(Function):
 
         Arguments
         ---------
-        ctx: context variables collected during the forward pass, which allow
+        ctx: context tensors collected during the forward pass, which allow
             to compute the backward pass
         grad_output: gradient with respect to the output tensor computed at
             the forward pass
@@ -186,7 +184,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
     Parameters
     ----------
     x : tensor_like
-        input tensor (or variable), 3D with time in the last axis.
+        input tensor, 3D with time in the last axis.
     pad_left : int, optional
         amount to add on the left of the tensor
         (at the beginning of the temporal axis). Defaults to 0
@@ -208,7 +206,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
     if to_complex:
         return torch.cat(
             [output.unsqueeze(-1),
-             Variable(output.data.new(output.shape + (1,)).fill_(0.))],
+             output.data.new(output.shape + (1,)).fill_(0.)],
             dim=-1)
     else:
         return output
@@ -266,7 +264,7 @@ def modulus_complex(x):
     """
     # take the stable modulus
     real = modulus(x)
-    imag = Variable(real.data.new(real.shape).fill_(0.))
+    imag = real.data.new(real.shape).fill_(0.)
     res = torch.cat([real.unsqueeze(-1), imag.unsqueeze(-1)], dim=-1)
     return res
 
