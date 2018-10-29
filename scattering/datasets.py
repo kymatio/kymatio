@@ -1,7 +1,8 @@
 import os
 import subprocess
 import numpy as np
-from scipy.io import loadmat
+from scipy.spatial.distance import pdist
+import torch
 from .caching import get_cache_dir
 try:
     from urllib.request import urlopen
@@ -254,8 +255,72 @@ def fetch_qm7(align=True, cache=True):
 
     return qm7
 
+def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
+    """
+    Loads the positions and charges of the molecules of the QM7 dataset.
+    QM7 is a dataset of 7165 organic molecules with up to 7 non-hydrogen
+    atoms, whose energies were computed with Density Functional Theory.
+    This dataset has been made available to train machine learning models
+    to predict these energies.
+
+    Parameters
+    ----------
+    sigma : float
+        width parameter of the Gaussian that represents a particle
+
+    Returns
+    -------
+    positions, charges, valence_charges: float array
+        array containing the positions, charges and valence charges
+        of the QM7 database molecules
+    """
+    qm7 = fetch_qm7(align=True)
+    positions = qm7['positions']
+    charges = qm7['charges'].astype('float32')
+    valence_charges = get_valence(charges)
+
+    # normalize positions
+    min_dist = np.inf
+    for i in range(positions.shape[0]):
+        n_atoms = np.sum(charges[i] != 0)
+        pos = positions[i, :n_atoms, :]
+        min_dist = min(min_dist, pdist(pos).min())
+    delta = sigma * np.sqrt(-8 * np.log(overlapping_precision))
+    positions = positions * delta / min_dist
+
+    return (torch.from_numpy(positions),
+            torch.from_numpy(charges),
+            torch.from_numpy(valence_charges))
 
 
+def get_qm7_energies():
+    """
+    Loads the energies of the molecules of the QM7 dataset.
 
-    
+    Returns
+    -------
+    energies: float array
+        array containing the energies of the molecules
+    """
+    qm7 = fetch_qm7()
+    energies = qm7['energies']
 
+    return torch.from_numpy(energies)
+
+
+def get_valence(charges):
+    """
+    Returns the number valence electrons of a particle given the nuclear charge.
+
+    Parameters
+    ----------
+    charges: integer numpy array
+
+    Returns
+    -------
+    output : integer numpy array of the same size as charges
+    """
+    return (
+        charges * (charges <= 2) +
+        (charges - 2) * np.logical_and(charges > 2, charges <= 10) +
+        (charges - 10) * np.logical_and(charges > 10, charges <= 18))
