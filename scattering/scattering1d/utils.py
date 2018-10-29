@@ -52,8 +52,7 @@ def compute_border_indices(J, i0, i1):
 def cast_psi(Psi, _type):
     """
     Casts the filters contained in Psi to the required type, by following
-    the dictionary structure, and embed them into a variable as well.
-    Warning: this function has border effects as it modifies the input pointer.
+    the dictionary structure.
 
     Parameters
     ----------
@@ -69,11 +68,7 @@ def cast_psi(Psi, _type):
     for key, item in Psi.items():
         for key2, item2 in Psi[key].items():
             if torch.is_tensor(item2):
-                Psi[key][key2] = Variable(item2.type(_type).contiguous(),
-                                          requires_grad=False)
-            elif type(item2) == Variable:
-                Psi[key][key2] = Variable(item2.data.type(_type).contiguous(),
-                                          requires_grad=False)
+                Psi[key][key2] = item2.type(_type).contiguous().requires_grad_(False)
             else:
                 pass  # for the float entries
 
@@ -81,8 +76,7 @@ def cast_psi(Psi, _type):
 def cast_phi(Phi, _type):
     """
     Casts the filters contained in Phi to the required type, by following
-    the dictionary structure, and embed them into a variable as well.
-    Warning: this function has border effects as it modifies the input pointer.
+    the dictionary structure.
 
     Parameters
     ----------
@@ -97,11 +91,7 @@ def cast_phi(Phi, _type):
     """
     for key, item in Phi.items():
         if torch.is_tensor(item):
-            Phi[key] = Variable(item.type(_type).contiguous(),
-                                requires_grad=False)
-        elif type(item) == Variable:
-            Phi[key] = Variable(item.data.type(_type).contiguous(),
-                                requires_grad=False)
+            Phi[key] = item.type(_type).contiguous().requires_grad_(False)
         else:
             pass
 
