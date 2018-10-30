@@ -14,3 +14,4 @@ Scattering
    installation
    userguide
    developerguide
+   auto_examples/index
