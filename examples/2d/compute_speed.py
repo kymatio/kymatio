@@ -5,7 +5,7 @@ from scattering import Scattering2D as Scattering
 
 
 
-scattering = Scattering(M=224, N=224, J=3, L=8)
+scattering = Scattering(M=256, N=256, J=3, L=8)
 x_data = torch.randn(128, 3, 256, 256)
 
 times = 10
