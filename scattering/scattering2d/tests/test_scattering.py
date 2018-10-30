@@ -14,8 +14,8 @@ except:
     pass
 
 try:
-    from scattering.scattiering2d.backend import backend_torch
-    backends.append(backend_skcuda)
+    from scattering.scattering2d.backend import backend_torch
+    backends.append(backend_torch)
 except:
     pass
 
@@ -89,6 +89,7 @@ def test_Scattering2D():
 
     for backend in backends:
         if backend.NAME == 'skcuda':
+            print('skcuda backend tested!')
             # First, let's check the Jit
             scattering = Scattering2D(M, N, J, pre_pad=pre_pad)
             scattering.cuda()
@@ -103,11 +104,13 @@ def test_Scattering2D():
 
             for gpu in [True, False]:
                 if gpu:
+                    print('torch-gpu backend tested!')
                     x = x.cuda()
                     scattering.cuda()
                     S = S.cuda()
                     Sg = scattering(x)
                 else:
+                    print('torch-cpu backend tested!')
                     x = x.cpu()
                     S = S.cpu()
                     scattering.cpu()
