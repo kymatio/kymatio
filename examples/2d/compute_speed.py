@@ -1,16 +1,16 @@
 import torch
 
-try:
-    from scattering.scattering2d.backend import backend_skcuda
-    backends.append(backend_skcuda)
+import scattering.scattering2d.backend as backend
+from scattering import Scattering2D as Scattering
+
+
+if backend.NAME == 'skcuda':
     ############################ TORCH BACKEND - FLOAT 32 -- FORWARD ##################
     print('==> Testing Float32 with PyTorch and Torch backend')
     torch.cuda.set_device(0)
     torch.backends.cudnn.benchmark = True
 
-    from scattering import Scattering2D as Scattering
-
-    scattering = Scattering(M=224, N=224, J=3, L=8)
+    scattering = Scattering(M=224, N=224, J=3, L=8).cuda()
     x_data = torch.randn(256, 3, 224, 224).cuda().float()
 
     torch.cuda.synchronize()
@@ -22,31 +22,28 @@ try:
 
     print('Elapsed time: %.2f [s / %d evals]' % (elapsed_time, 10))
     print('Hz: %.2f [hz]' % (times / 10))
-except:
+
+
+
+
     print('skcuda backend not installed... passing...\n')
 
-try:
-    from scattering.scattiering2d.backend import backend_torch
-    backends.append(backend_skcuda)
-except:
-    pass
 
+if backend.NAME == 'torch':
+    ############## FIRST CPU TEST, TORCH BACKEND - FLOAT 32 -- FORWARD ##################
+    print('==> Testing Float32 with PyTorch and Torch backend, on CPU, forward')
+    from scattering import Scattering2D as Scattering
 
+    scattering = Scattering(M=224, N=224, J=3, L=8).cpu()
+    x_data = torch.randn(256, 3, 224, 224).float()
 
-############## FIRST CPU TEST, TORCH BACKEND - FLOAT 32 -- FORWARD ##################
-print('==> Testing Float32 with PyTorch and Torch backend, on CPU, forward')
-from scattering import Scattering2D as Scattering
+    t_start = time.time()
+    for i in range(10):
+        scattering(x_data)
+    elapsed_time = time.time() - t_start
 
-scattering = Scattering(M=224, N=224, J=3, L=8)
-x_data = torch.randn(256, 3, 224, 224).float()
-
-t_start = time.time()
-for i in range(10):
-    scattering(x_data)
-elapsed_time = time.time() - t_start
-
-print('Elapsed time: %.2f [s / %d evals]' % (elapsed_time, 10))
-print('Hz: %.2f [hz]' % (times / 10))
+    print('Elapsed time: %.2f [s / %d evals]' % (elapsed_time, 10))
+    print('Hz: %.2f [hz]' % (times / 10))
 
 
 
