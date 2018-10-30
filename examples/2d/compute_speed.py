@@ -1,5 +1,5 @@
 import torch
-
+import time
 import scattering.scattering2d.backend as backend
 from scattering import Scattering2D as Scattering
 
