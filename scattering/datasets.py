@@ -276,9 +276,13 @@ def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
         array containing the positions, charges and valence charges
         of the QM7 database molecules
     """
-    qm7 = fetch_qm7(align=True)
-    positions = qm7['positions']
-    charges = qm7['charges'].astype('float32')
+    # qm7 = fetch_qm7(align=True)
+    # positions = qm7['positions']
+    # charges = qm7['charges'].astype('float32')
+    from cheml.datasets import load_qm7
+    qm7 = load_qm7(align=True)
+    positions = qm7.R
+    charges = qm7.Z
     valence_charges = get_valence(charges)
 
     # normalize positions
