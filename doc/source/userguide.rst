@@ -161,6 +161,8 @@ PyScatWave :cite:`8413168`                      1.6
 Kymatio (skcuda backend, GPU)                   1.1
 ====================================            =========================
 
+The test were processed using a machine with a 1080Ti and 48 cores.
+
 
 3-D backend
 -----------
