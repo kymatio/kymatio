@@ -140,3 +140,32 @@ its value will be used at running time as the backend. Currently, two backends e
 
 Benchmark with previous versions
 ================================
+
+1-D backend
+-----------
+
+2-D backend
+-----------
+
+We compared our implementation with MATLAB version :cite:`Oyallon_2015_CVPR` and *PyScatWave* former
+PyTorch implementation :cite:`8413168`. The following table correspond to the average compute time
+for a batch of size :math:`128\times 3 \times 256 \times 256`, for a forward pass:
+
+====================================            =========================
+Name                                            Average time(s) per batch
+====================================            =========================
+MATLAB :cite:`Oyallon_2015_CVPR`                >200
+Kymatio (torch backend, CPU)                    110
+Kymatio (torch backend, GPU)                    4.4
+PyScatWave :cite:`8413168`                      1.6
+Kymatio (skcuda backend, GPU)                   1.1
+====================================            =========================
+
+
+3-D backend
+-----------
+
+
+.. rubric:: References
+
+.. bibliography:: _static/bibtex.bib
