@@ -170,10 +170,12 @@ def read_xyz(filename):
         n_atoms.append(int(s[0]))
         energies.append(float(s[1]))
         atom_positions = []
+        molecule_charges = []
+        charges.append(molecule_charges)
         positions.append(atom_positions)
         for i, row in zip(range(n_atoms[-1]), s[2:]):
             atom_type, *str_position = [x for x in row.split(" ") if x]
-            charges.append(atom_charges[atom_type])
+            molecule_charges.append(atom_charges[atom_type])
             pos = np.array(list(map(float, str_position)))
             atom_positions.append(pos)
 
@@ -182,8 +184,8 @@ def read_xyz(filename):
         arr_pos[:n] = np.array(pos)
 
     arr_charges = np.zeros_like(arr_positions[..., 0], dtype='int')
-    for arr_charge, charge, n in zip(arr_charges, charges, n_atoms):
-        arr_charge[:n] = charge
+    for arr_charge, molecule_charges, n in zip(arr_charges, charges, n_atoms):
+        arr_charge[:n] = molecule_charges
 
     return dict(positions=arr_positions,
                 energies=np.array(energies, dtype='float32'),
