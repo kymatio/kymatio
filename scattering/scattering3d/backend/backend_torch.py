@@ -57,9 +57,11 @@ def fft(input, inverse=False, normalized=False):
     if not iscomplex(input):
         raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
     if inverse:
-        output = torch.ifft(input, 3, normalized=normalized)
+        output = torch.ifft(input, 3, normalized=False)
     else:
-        output = torch.fft(input, 3, normalized=normalized)
+        output = torch.fft(input, 3, normalized=False)
+    if normalized:
+        output /= input.size(1) * input.size(2) * input.size(3)
     return output
 
 
