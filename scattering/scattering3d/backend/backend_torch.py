@@ -34,7 +34,7 @@ def complex_modulus(input_array):
 
 
 
-def fft(input, inverse=False, normalized=False):
+def fft(input, inverse=False):
     """
         fft of a 3d signal
 
@@ -49,19 +49,13 @@ def fft(input, inverse=False, normalized=False):
             complex input for the FFT
         inverse : bool
             True for computing the inverse FFT.
-        normalized : bool
-            True for a normalized FFT
 .
     """
     if not iscomplex(input):
         raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
     if inverse:
-        output = torch.ifft(input, 3, normalized=False)
-    else:
-        output = torch.fft(input, 3, normalized=False)
-    if normalized:
-        output /= input.size(1) * input.size(2) * input.size(3)
-    return output
+        return torch.ifft(input, 3)
+    return torch.fft(input, 3)
 
 
 def cdgmm3d(A, B):

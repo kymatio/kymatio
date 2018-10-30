@@ -66,8 +66,7 @@ class Scattering3D(object):
         output: the result of the convolution of input_array with filter
 
         """
-        return fft(cdgmm3d(fft(input_array, inverse=False),
-                                filter_array), inverse=True, normalized=True)
+        return fft(cdgmm3d(fft(input_array, inverse=False), filter_array), inverse=True)
 
     def _low_pass_filter(self, input_array, j):
         """
@@ -310,7 +309,7 @@ class Scattering3D(object):
                 self._rotation_covariant_convolution_and_modulus)
         else:
             convolution_and_modulus = self._convolution_and_modulus
-            
+
         compute_scattering_coefs = self._compute_scattering_coefs
 
         s_order_1 = []
