@@ -147,33 +147,34 @@ def test_Scattering2D():
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
-    for backend in backends:
-        if backend.NAME == 'skcuda':
-            print('skcuda backend tested!')
-            # First, let's check the Jit
-            scattering = Scattering2D(128, 128, 4, pre_pad=False)
-            scattering.cuda()
-            x = x.cuda()
-            S = S.cuda()
-            y = scattering(x)
-            assert ((S - y)).abs().max() < 1e-6
-        elif backend.NAME == 'torch':
-            # Then, let's check when using pure pytorch code
-            scattering = Scattering2D(128, 128, 4, pre_pad=False)
-            Sg = []
+    import scattering.scattering2d.backend as backend
 
-            for device in devices:
-                if device == 'gpu':
-                    print('torch-gpu backend tested!')
-                    x = x.cuda()
-                    scattering.cuda()
-                    S = S.cuda()
-                    Sg = scattering(x)
-                else:
-                    print('torch-cpu backend tested!')
-                    x = x.cpu()
-                    S = S.cpu()
-                    scattering.cpu()
-                    Sg = scattering(x)
-                assert (Sg - S).abs().max() < 1e-6
+    if backend.NAME == 'skcuda':
+        print('skcuda backend tested!')
+        # First, let's check the Jit
+        scattering = Scattering2D(128, 128, 4, pre_pad=False)
+        scattering.cuda()
+        x = x.cuda()
+        S = S.cuda()
+        y = scattering(x)
+        assert ((S - y)).abs().max() < 1e-6
+    elif backend.NAME == 'torch':
+        # Then, let's check when using pure pytorch code
+        scattering = Scattering2D(128, 128, 4, pre_pad=False)
+        Sg = []
+
+        for device in devices:
+            if device == 'gpu':
+                print('torch-gpu backend tested!')
+                x = x.cuda()
+                scattering.cuda()
+                S = S.cuda()
+                Sg = scattering(x)
+            else:
+                print('torch-cpu backend tested!')
+                x = x.cpu()
+                S = S.cpu()
+                scattering.cpu()
+                Sg = scattering(x)
+            assert (Sg - S).abs().max() < 1e-6
 
