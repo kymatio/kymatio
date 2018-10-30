@@ -11,23 +11,25 @@ def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
 
         Parameters
         ----------
-        grid : torch FloatTensor
+        grid : torch tensor
             numerical grid, size (3, M, N, O)
-        positions: torch FloatTensor
-            positions of the Gaussians, size (N_signals, N_gaussians, 3)
-        positions: torch FloatTensor
-            weights of the Gaussians, size (N_signals, N_gaussians)
+        positions: torch tensor
+            positions of the Gaussians, size (B, N_gaussians, 3)
+            B batch_size, N_gaussians number or gaussians
+        positions: torch tensor
+            weights of the Gaussians, size (B, N_gaussians)
             zero weights are assumed to be at the end since if a weight is zero
             all weights after are ignored
         sigma : float
             width parameter of the Gaussian
-        cuda: boolean
+        cuda: boolean, optional
             if True, computations are done on CUDA GPU
 
         Returns
         -------
-        signals : torch FloatTensor
-            numpy array of size (N_signals, M, N, O)
+        signals : torch tensor
+            numpy array of size (B, M, N, O)
+            B is the batch_size, M, N, O are the size of the signal
     """
     _, M, N, O = grid.size()
     signals = torch.zeros(positions.size(0), M, N, O)
@@ -42,8 +44,8 @@ def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
             weight = weights[i_signal, i_point]
             center = positions[i_signal, i_point]
             signals[i_signal] += weight * torch.exp(
-                -0.5 * ((grid[0] - center[0]) ** 2 + 
-                        (grid[1] - center[1]) ** 2 + 
+                -0.5 * ((grid[0] - center[0]) ** 2 +
+                        (grid[1] - center[1]) ** 2 +
                         (grid[2] - center[2]) ** 2) / sigma**2)
     return signals / ((2 * np.pi) ** 1.5 * sigma ** 3)
 
@@ -61,16 +63,18 @@ def compute_integrals(input_array, integral_powers):
 
         Parameters
         ----------
-        input_array: torch FloatTensor
-            size (N_inputs, M, N, O)
+        input_array: torch tensor
+            size (B, M, N, O), B batch_size, M, N, O spatial dims
 
         integral_powers: list
-            list of lenght P containg the powers p
+            list of P positive floats containing the p values used to
+            compute the integrals of the input_array to the power p (l_p norms)
 
         Returns
         -------
-        integrals: torch FloatTensor
-            the integrals of the powers of the input_array, size (N_inputs, P)
+        integrals: torch tensor
+            tensor of size (B, P) containing the integrals of the input_array
+            to the powers p (l_p norms)
 
     """
     integrals = torch.zeros(input_array.size(0), len(integral_powers), 1)
