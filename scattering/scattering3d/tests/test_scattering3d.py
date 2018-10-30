@@ -1,8 +1,8 @@
 """ This script will test the submodules used by the scattering module"""
 import torch
 import numpy as np
-from scatwave.scattering import Scattering3D
-from scatwave.scattering3d import utils as sl
+from scattering import Scattering3D
+from scattering.scattering3d import utils as sl
 
 def linfnorm(x,y):
     return torch.max(torch.abs(x-y))
@@ -49,4 +49,3 @@ def test_solid_harmonic_scattering():
         k = sigma_wavelet / np.sqrt(sigma_wavelet**2 + sigma_gaussian**2)
         for l in range(1, L+1):
             assert rerror(s[0, 0, j, l],k**l)<1e-4
-
