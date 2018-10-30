@@ -9,4 +9,4 @@ All contributions are welcome.
 
 ## Authors
 
-Edouard Oyallon, Eugene Belilovsky, Sergey Zagoruyko
+Joakim Anden, Mathieu Andreux, Eugene Belilovsky, Michael Eickenberg, Georgios Exakchis, Edouard Oyallon, Louis Thiry, Sergey Zagoruyko
