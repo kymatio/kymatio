@@ -13,16 +13,17 @@ def rerror(x,y):
         return np.sum(np.abs(y))
     else:
         return np.sum(np.abs(x-y))/nx
+      
+def relative_difference(a, b):
+    return np.sum(np.abs(a - b)) / max(np.sum(np.abs(a)), np.sum(np.abs(b)))
 
 
 def test_FFT3d_central_freq_batch():
     # Checked the 0 frequency for the 3D FFT
     for gpu in [ True, False]:
-
         x = torch.FloatTensor(1, 32, 32, 32, 2).fill_(0)
         if gpu:
             x = x.cuda()
-
         a = x.sum()
         fft3d = sl.Fft3d()
         y = fft3d(x)
@@ -49,3 +50,61 @@ def test_solid_harmonic_scattering():
         k = sigma_wavelet / np.sqrt(sigma_wavelet**2 + sigma_gaussian**2)
         for l in range(1, L+1):
             assert rerror(s[0, 0, j, l],k**l)<1e-4
+
+def test_against_standard_computations():
+    file_path = os.path.abspath(os.path.dirname(__file__))
+    d = np.load(os.path.join(file_path, 'data/ref_pyscatharm.npy'))
+    x = d.item()['x']
+    scat_ref = d.item()['scat']
+
+    M, N, O, J, L, sigma = 64, 64, 64, 2, 2, 1.
+    integral_powers = [1., 2.]
+
+    scattering = Scattering3D(M=M, N=N, O=O, J=J, L=L, sigma_0=sigma)
+
+    x_cpu = torch.from_numpy(x)
+
+    order_0_cpu = compute_integrals(x_cpu, integral_powers)
+    order_1_cpu, order_2_cpu = scattering(x_cpu, order_2=True,
+                            method='integral', integral_powers=integral_powers)
+
+
+    order_0_cpu = order_0_cpu.numpy().reshape((1, -1))
+    start = 0
+    end = order_0_cpu.shape[1]
+    order_0_ref = scat_ref[:,start:end]
+
+    order_1_cpu = order_1_cpu.numpy().reshape((1, -1))
+    start = end
+    end += order_1_cpu.shape[1]
+    order_1_ref = scat_ref[:, start:end]
+
+    order_2_cpu = order_2_cpu.numpy().reshape((1, -1))
+    start = end
+    end += order_2_cpu.shape[1]
+    order_2_ref = scat_ref[:, start:end]
+
+    order_0_diff_cpu = relative_difference(order_0_ref, order_0_cpu)
+    order_1_diff_cpu = relative_difference(order_1_ref, order_1_cpu)
+    order_2_diff_cpu = relative_difference(order_2_ref, order_2_cpu)
+
+    x_gpu = x_cpu.cuda()
+    order_0_gpu = compute_integrals(x_gpu, integral_powers)
+    order_1_gpu, order_2_gpu = scattering(x_gpu, order_2=True,
+                            method='integral', integral_powers=integral_powers)
+    order_0_gpu = order_0_gpu.cpu().numpy().reshape((1, -1))
+    order_1_gpu = order_1_gpu.cpu().numpy().reshape((1, -1))
+    order_2_gpu = order_2_gpu.cpu().numpy().reshape((1, -1))
+
+    order_0_diff_gpu = relative_difference(order_0_ref, order_0_gpu)
+    order_1_diff_gpu = relative_difference(order_1_ref, order_1_gpu)
+    order_2_diff_gpu = relative_difference(order_2_ref, order_2_gpu)
+
+    assert  order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
+    assert  order_1_diff_cpu < 1e-6, "CPU : order 1 do not match, diff={}".format(order_1_diff_cpu)
+    assert  order_2_diff_cpu < 1e-6, "CPU : order 2 do not match, diff={}".format(order_2_diff_cpu)
+
+    assert  order_0_diff_gpu < 1e-6, "GPU : order 0 do not match, diff={}".format(order_0_diff_gpu)
+    assert  order_1_diff_gpu < 1e-6, "GPU : order 1 do not match, diff={}".format(order_1_diff_gpu)
+    assert  order_2_diff_gpu < 1e-6, "GPU : order 2 do not match, diff={}".format(order_2_diff_gpu)
+    
