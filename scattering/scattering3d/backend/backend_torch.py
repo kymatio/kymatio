@@ -5,14 +5,6 @@ import numpy as np
 NAME = 'torch'
 
 
-try:
-    import pyfftw
-    FFTW = True
-except:
-    import scipy.fftpack as fft
-    FFTW = False
-
-
 def getDtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
