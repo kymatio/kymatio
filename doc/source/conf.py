@@ -45,7 +45,18 @@ extensions = [
     'sphinx.ext.imgmath',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinxcontrib.bibtex',
+    'sphinx_gallery.gen_gallery',
 ]
+
+# Add path to sphynx gallery
+sphinx_gallery_conf = {
+    # path to your examples scripts
+    'examples_dirs': ['../../examples/1d','../../examples/2d','../../examples/3d'],
+    # path where to save gallery generated examples
+    'gallery_dirs': ['gallery_1d','gallery_2d','gallery_3d'],
+    'ignore_pattern': '__init__.py|mnist.py|synthetic.py|real_signal.py|scattering3d_qm7.py',
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
