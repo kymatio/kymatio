@@ -53,7 +53,7 @@ def test_solid_harmonic_scattering():
 
 def test_against_standard_computations():
     file_path = os.path.abspath(os.path.dirname(__file__))
-    d = np.load(os.path.join(file_path, 'data/ref_pyscatharm.npy'))
+    d = np.load(os.path.join(file_path, 'test_data_3d.pt'))
     x = d.item()['x']
     scat_ref = d.item()['scat']
 
