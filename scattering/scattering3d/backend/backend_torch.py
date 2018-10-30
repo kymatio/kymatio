@@ -1,5 +1,4 @@
 from collections import defaultdict
-from skcuda import cufft
 import torch
 import numpy as np
 
