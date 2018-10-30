@@ -91,15 +91,14 @@ class SubsampleFourier(object):
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
-    def __init__(self, backend='skcuda'):
+    def __init__(self):
         self.block = (32, 32, 1)
-        self.backend = backend
 
     def GET_BLOCKS(self, N, threads):
         return (N + threads - 1) // threads
 
     def __call__(self, input, k):
-        if not input.is_cuda and self.backend == 'skcuda':
+        if not input.is_cuda:
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
@@ -165,16 +164,14 @@ class Modulus(object):
         output: a tensor with imaginary part set to 0, real part set equal to
         the modulus of x.
     """
-    def __init__(self, backend='skcuda'):
+    def __init__(self):
         self.CUDA_NUM_THREADS = 1024
-        self.backend = backend
 
     def GET_BLOCKS(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
     def __call__(self, input):
-
-        if not input.is_cuda and self.backend=='skcuda':
+        if not input.is_cuda:
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
         out = input.new(input.size())
