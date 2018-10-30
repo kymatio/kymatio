@@ -6,16 +6,10 @@ from scattering import Scattering3D
 from scattering.scattering3d import backend
 from scattering.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals
 
-
-
 if torch.cuda.is_available():
     devices = ['gpu', 'cpu']
 else:
     devices = ['cpu']
-
-
-
-
 
 def linfnorm(x,y):
     return torch.max(torch.abs(x-y))
@@ -87,25 +81,6 @@ def test_against_standard_computations():
         assert order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
         assert order_1_diff_cpu < 1e-6, "CPU : order 1 do not match, diff={}".format(order_1_diff_cpu)
         assert order_2_diff_cpu < 1e-6, "CPU : order 2 do not match, diff={}".format(order_2_diff_cpu)
-    """
-    x_gpu = x_cpu.cuda()
-    order_0_gpu = compute_integrals(x_gpu, integral_powers)
-    order_1_gpu, order_2_gpu = scattering(x_gpu, order_2=True,
-                            method='integral', integral_powers=integral_powers)
-    order_0_gpu = order_0_gpu.cpu().numpy().reshape((1, -1))
-    order_1_gpu = order_1_gpu.cpu().numpy().reshape((1, -1))
-    order_2_gpu = order_2_gpu.cpu().numpy().reshape((1, -1))
-
-    order_0_diff_gpu = relative_difference(order_0_ref, order_0_gpu)
-    order_1_diff_gpu = relative_difference(order_1_ref, order_1_gpu)
-    order_2_diff_gpu = relative_difference(order_2_ref, order_2_gpu)
-
-
-    assert  order_0_diff_gpu < 1e-6, "GPU : order 0 do not match, diff={}".format(order_0_diff_gpu)
-    assert  order_1_diff_gpu < 1e-6, "GPU : order 1 do not match, diff={}".format(order_1_diff_gpu)
-    assert  order_2_diff_gpu < 1e-6, "GPU : order 2 do not match, diff={}".format(order_2_diff_gpu)
-    """
-
 
 def test_solid_harmonic_scattering():
     # Compare value to analytical formula in the case of a single Gaussian
@@ -126,3 +101,4 @@ def test_solid_harmonic_scattering():
         for l in range(1, L+1):
             err = torch.abs(s[0, 0, j, l] - k ** l).sum()/(1e-6+s[0, 0, j, l].abs().sum())
             assert err<1e-4
+            
