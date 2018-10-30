@@ -11,7 +11,7 @@ def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
     Parameters
     ----------
     x : tensor_like
-        input tensor , 3D with time in the last axis.
+        input tensor, 3D with time in the last axis.
     pad_left : int
         amount to add on the left of the tensor (at the beginning
         of the temporal axis)
@@ -56,8 +56,7 @@ class ModulusStable(Function):
 
     Parameters
     ---------
-    x: input tensor, with last dimension = 2 for
-        complex numbers
+    x: input tensor, with last dimension = 2 for complex numbers
     p: optional, power of the norm (defaults to 2 for the complex modulus)
     dim: optional, dimension along which to reduce the norm (defaults to -1)
     keepdim: optional, whether to keep the dims after reduction or not
@@ -78,7 +77,7 @@ class ModulusStable(Function):
 
         Arguments
         ---------
-        ctx: context tensors collected during the forward pass. They are
+        ctx: context objects collected during the forward pass. They are
             automatically added by pytorch and should not be touched.
             They are then used for the backward pass.
         x: input tensor
@@ -117,7 +116,7 @@ class ModulusStable(Function):
 
         Arguments
         ---------
-        ctx: context tensors collected during the forward pass, which allow
+        ctx: context objects collected during the forward pass, which allow
             to compute the backward pass
         grad_output: gradient with respect to the output tensor computed at
             the forward pass

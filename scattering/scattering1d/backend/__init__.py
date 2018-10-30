@@ -4,7 +4,7 @@
 
 # Here's how it is decided upon:
 
-# 1. Is there an environment variable SCATTERING_BACKEND_2D?
+# 1. Is there an environment variable SCATTERING_BACKEND_1D?
 # 2. Is there an environment variable SCATTERING_BACKEND?
 # 3. Is there a config file? If so, go and find the backend entry
 # 4. Set the backend to DEFAULT_BACKEND
@@ -44,7 +44,7 @@ else:
         if not os.path.exists(dirname):
             os.makedirs(dirname)
         cp.add_section('general')
-        cp['general']['backend_2d'] = BACKEND
+        cp['general']['backend_1d'] = BACKEND
         with open(config_file, "w") as f:
             cp.write(f)
     except:
