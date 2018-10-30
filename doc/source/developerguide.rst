@@ -21,15 +21,7 @@ Unit tests
 For running all the unit tests and avoiding bugs, please simply run from the
 main folder::
 
-    #!/bin/bash
-    for folder in scattering1d scattering2d scattering 3d;
-        do
-        for testfile in scattering/${folder}/tests/*.py; do
-            echo $testfile
-            pytest $testfile
-        done
-    done
-    exit 0
+    pytest
 
 If all the tests pass, then you might be able to submit your Pull Request as explained
 in the next section!
