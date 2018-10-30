@@ -10,7 +10,7 @@ times = 10
 elapsed_time = -1
 
 if backend.NAME == 'skcuda':
-    ############################ TORCH BACKEND - FLOAT 32 -- FORWARD ##################
+    ############################ SKCUDA BACKEND GPU - FLOAT 32 -- FORWARD ##################
     print('==> Testing Float32 with Skcuda backend, on GPU, forward')
     torch.cuda.set_device(0)
     torch.backends.cudnn.benchmark = True
@@ -31,7 +31,7 @@ if backend.NAME == 'skcuda':
 
 
 if backend.NAME == 'torch' and not torch.cuda.is_available():
-    ############## FIRST CPU TEST, TORCH BACKEND - FLOAT 32 -- FORWARD ##################
+    ############## TORCH BACKEND CPU - FLOAT 32 -- FORWARD ##################
     print('==> Testing Float32 with Torch backend, on CPU, forward')
     from scattering import Scattering2D as Scattering
 
@@ -48,7 +48,7 @@ if backend.NAME == 'torch' and not torch.cuda.is_available():
 
 
 if backend.NAME == 'torch' and torch.cuda.is_available():
-    ############## FIRST CPU TEST, TORCH BACKEND - FLOAT 32 -- FORWARD ##################
+    ############## TORCH BACKEND GPU - FLOAT 32 -- FORWARD ##################
     print('==> Testing Float32 with Torch backend, on GPU, forward')
     from scattering import Scattering2D as Scattering
 
