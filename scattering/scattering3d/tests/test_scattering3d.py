@@ -36,7 +36,7 @@ def test_first_qm7_molecules_scattering_coefs():
             np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'),
             axes=(1, 2, 3)))
 
-    for cuda in [True, False]:
+    for cuda in [False, True]:
         if cuda:
             _grid = grid.cuda()
             _pos = pos.cuda()
@@ -52,10 +52,9 @@ def test_first_qm7_molecules_scattering_coefs():
         order_1, order_2 = scattering(first_densities, order_2=True,
                                 method='integral', integral_powers=integral_powers)
 
-        import pdb;pdb.set_trace()
-        assert rerror(order_0_ref, order_0.cpu().numpy()) < 1e-6
-        assert rerror(order_1_ref, order_1.cpu().numpy()) < 1e-6
-        assert rerror(order_2_ref, order_2.cpu().numpy()) < 1e-6
+        assert np.linalg.norm(order_0_ref - order_0.cpu().numpy()) < 1e-4
+        assert np.linalg.norm(order_1_ref - order_1.cpu().numpy()) < 1e-4
+        assert np.linalg.norm(order_2_ref - order_2.cpu().numpy()) < 1e-4
 
 
 def test_solid_harmonic_scattering():
