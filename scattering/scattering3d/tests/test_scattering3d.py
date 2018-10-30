@@ -101,4 +101,3 @@ def test_solid_harmonic_scattering():
         for l in range(1, L+1):
             err = torch.abs(s[0, 0, j, l] - k ** l).sum()/(1e-6+s[0, 0, j, l].abs().sum())
             assert err<1e-4
-            
