@@ -14,13 +14,7 @@ def test_against_standard_computations():
     file_path = os.path.abspath(os.path.dirname(__file__))
     x = np.load(os.path.join(file_path, 'data/x.npy'))
 
-    order_0_ref_cpu = np.load(os.path.join(file_path, 'data/order_0_ref_cpu.npy'))
-    order_1_ref_cpu = np.load(os.path.join(file_path, 'data/order_1_ref_cpu.npy'))
-    order_2_ref_cpu = np.load(os.path.join(file_path, 'data/order_2_ref_cpu.npy'))
-
-    order_0_ref_gpu = np.load(os.path.join(file_path, 'data/order_0_ref_gpu.npy'))
-    order_1_ref_gpu = np.load(os.path.join(file_path, 'data/order_1_ref_gpu.npy'))
-    order_2_ref_gpu = np.load(os.path.join(file_path, 'data/order_2_ref_gpu.npy'))
+    scat_ref = np.load(os.path.join(file_path, 'data/scat_ref.npy'))
 
     M, N, O, J, L, sigma = 64, 64, 64, 2, 2, 1.
     integral_powers = [1., 2.]
@@ -33,17 +27,37 @@ def test_against_standard_computations():
     order_1_cpu, order_2_cpu = scattering(x_cpu, order_2=True,
                             method='integral', integral_powers=integral_powers)
 
-    order_0_diff_cpu = relative_difference(order_0_ref_cpu, order_0_cpu.numpy())
-    order_1_diff_cpu = relative_difference(order_1_ref_cpu, order_1_cpu.numpy())
-    order_2_diff_cpu = relative_difference(order_2_ref_cpu, order_2_cpu.numpy())
+
+    order_0_cpu = order_0_cpu.numpy().reshape((1, -1))
+    start = 0
+    end = order_0_cpu.shape[1]
+    order_0_ref = scat_ref[:,start:end]
+
+    order_1_cpu = order_1_cpu.numpy().reshape((1, -1))
+    start = end
+    end += order_1_cpu.shape[1]
+    order_1_ref = scat_ref[:, start:end]
+
+    order_2_cpu = order_2_cpu.numpy().reshape((1, -1))
+    start = end
+    end += order_2_cpu.shape[1]
+    order_2_ref = scat_ref[:, start:end]
+
+    order_0_diff_cpu = relative_difference(order_0_ref, order_0_cpu)
+    order_1_diff_cpu = relative_difference(order_1_ref, order_1_cpu)
+    order_2_diff_cpu = relative_difference(order_2_ref, order_2_cpu)
 
     x_gpu = x_cpu.cuda()
     order_0_gpu = compute_integrals(x_gpu, integral_powers)
     order_1_gpu, order_2_gpu = scattering(x_gpu, order_2=True,
                             method='integral', integral_powers=integral_powers)
-    order_0_diff_gpu = relative_difference(order_0_ref_gpu, order_0_gpu.cpu().numpy())
-    order_1_diff_gpu = relative_difference(order_1_ref_gpu, order_1_gpu.cpu().numpy())
-    order_2_diff_gpu = relative_difference(order_2_ref_gpu, order_2_gpu.cpu().numpy())
+    order_0_gpu = order_0_gpu.cpu().numpy().reshape((1, -1))
+    order_1_gpu = order_1_gpu.cpu().numpy().reshape((1, -1))
+    order_2_gpu = order_2_gpu.cpu().numpy().reshape((1, -1))
+
+    order_0_diff_gpu = relative_difference(order_0_ref, order_0_gpu)
+    order_1_diff_gpu = relative_difference(order_1_ref, order_1_gpu)
+    order_2_diff_gpu = relative_difference(order_2_ref, order_2_gpu)
 
     assert  order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
     assert  order_1_diff_cpu < 1e-6, "CPU : order 1 do not match, diff={}".format(order_1_diff_cpu)
