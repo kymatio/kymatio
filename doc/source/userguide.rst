@@ -1,26 +1,36 @@
+.. _user-guide:
+
 User Guide
 **********
+
 
 Introduction to scattering transform
 ====================================
 
-A scattering transform is a non-linear operator that builds
+A Scattering Transform is a non-linear operator that builds
 invariant with respect to euclidean geometric transformations such as translations
 rotations or change of scale.
 
 A Scattering Network is a complex valued Convolutional Neural Network using predefined
-wavelets filters and the complex modulus as nonlinearity.  A wavelet transform
-propagates asignal throuh each layer, in order to separate structures at different
+wavelets filters and the complex modulus as non-linearity.  A wavelet transform
+propagates a signal throuh each layer, in order to separate structures at different
 scales.  Each operator ofthe cascade is non expansive, and so is the cascade.  Thus
 higher order layers do not sufferfrom high variance.  In other words, this
-representation has mathematical foundations thatmakes  it  amenable  for  mainstream
-statistical  use  on  structured  signals  such  as  naturalimages, textures, audio
-sounds or mollecules.
+representation has mathematical foundations that makes  it  amenable  as a  mainstream
+representation  on  structured  signals  such  as  natural images, textures, audio
+sounds or molecules.
 
 Let us consider a set of wavelets :math:`\{\psi_\lambda\}_\lambda` adjusted such that
 there exists :math:`\epsilon_0` satisfying:
 
 .. math:: 1-\epsilon_0 \leq \sum_\lambda |\hat \psi_\lambda(\omega)|^2 \leq 1
+
+For a fixed :math:`k` and a family of :math:`(\lambda_1,...,\lambda_k)`, a Scattering
+coefficient :math:`S[\lambda_1,...,\lambda_k]` of order :math:`k` is such that:
+
+.. math:: S[\lambda_1,...,\lambda_k] = |\psi_{\lambda_k} \star ...| \psi_{\lambda_1} \star x|...|
+
+See :cite:`mallat2012group` for deeper mathematical insights on the Scattering Transform.
 
 Practical implementation
 ========================
@@ -43,6 +53,10 @@ More details about our implementation can be found in SECTION_DU_DEV
 
 2-D
 ---
+
+The 2D implementation in this package  provided  outputs coefficients which
+matches exactly the one described in :cite:`anden2014scatnet`.
+
 
 3-D
 ---
