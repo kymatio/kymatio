@@ -12,9 +12,9 @@ def relative_difference(a, b):
 
 def test_against_standard_computations():
     file_path = os.path.abspath(os.path.dirname(__file__))
-    x = np.load(os.path.join(file_path, 'data/x.npy'))
-
-    scat_ref = np.load(os.path.join(file_path, 'data/scat_ref.npy'))
+    d = np.load(os.path.join(file_path, 'data/ref_pyscatharm.npy'))
+    x = d.item()['x']
+    scat_ref = d.item()['scat']
 
     M, N, O, J, L, sigma = 64, 64, 64, 2, 2, 1.
     integral_powers = [1., 2.]
