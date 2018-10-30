@@ -11,8 +11,9 @@ must be optimized:
 
 1. FFT/iFFT
 2. SubsamplingFourier
-3. Modulus
+3. Non-linearity (e.g. modulus for 1-2D)
 4. Dotwise complex multiplication
+5. Padding/unpadding
 
 Unit tests
 ==========
@@ -27,5 +28,13 @@ main folder::
 If all the tests pass, then you might be able to submit your Pull Request as explained
 in the next section!
 
+Checking speed
+==============
+
+Please check `examples/.d/compute_speed.py` to benchmark your modification of backend.
+
 Proposing a Pull Request(PR)
 ============================
+
+Each PR must be documented using docstings, illustrated with an example and must run the
+unit tests.
