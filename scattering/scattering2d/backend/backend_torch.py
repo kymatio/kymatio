@@ -26,12 +26,12 @@ class Pad(object):
 
     def __call__(self, input):
         if(self.pre_pad):
-            output = input.new(input.size(0), input.size(1), input.size(2), input.size(3), 2).fill_(0)
-            output.narrow(output.ndimension()-1, 0, 1).copy_(input)
+            output = input.new_zeros(input.size(0), input.size(1), input.size(2), input.size(3), 2)
+            output.narrow(output.ndimension()-1, 0, 1)[:] = input
         else:
             out_ = self.padding_module(input)
-            output = input.new(*(out_.size() + (2,))).fill_(0)
-            output.select(4, 0).copy_(out_)
+            output = input.new_zeros(*(out_.size() + (2,)))
+            output.select(4, 0)[:] = out_
         return output
 
 def unpad(in_):
