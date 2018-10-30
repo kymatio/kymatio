@@ -200,7 +200,7 @@ class Scattering3D(object):
                  \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
                  which is covariant to 3D translations and rotations 
         """
-        cuda = isinstance(input_array, torch.cuda.FloatTensor)
+        cuda = input_array.is_cuda
         filters_l_j = self.filters[l][j]
         if cuda:
             filters_l_j = filters_l_j.cuda()
