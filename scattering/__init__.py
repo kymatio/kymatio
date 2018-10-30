@@ -1,7 +1,6 @@
 __all__ = [
             'Scattering3D',
             'Scattering2D',
-            'Scattering',
             'Scattering1D'
             ]
 
