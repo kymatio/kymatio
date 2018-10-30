@@ -2,13 +2,7 @@ from collections import defaultdict
 import torch
 import numpy as np
 
-
-try:
-    import pyfftw
-    FFTW = True
-except:
-    import scipy.fftpack as fft
-    FFTW = False
+NAME = 'torch'
 
 
 def getDtype(t):
