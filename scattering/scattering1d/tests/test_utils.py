@@ -1,6 +1,6 @@
 import torch
 from torch.autograd import Variable
-from scattering.scattering1d.utils import pad1D, modulus, subsample_fourier
+from scattering.scattering1d.backend import pad1D, modulus, subsample_fourier
 from scattering.scattering1d.utils import compute_border_indices
 import numpy as np
 import pytest
