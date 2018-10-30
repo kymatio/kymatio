@@ -3,6 +3,8 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Function
 
+NAME = 'torch'
+
 
 def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
     """

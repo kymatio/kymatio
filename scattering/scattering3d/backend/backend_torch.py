@@ -2,6 +2,8 @@ from collections import defaultdict
 import torch
 import numpy as np
 
+NAME = 'torch'
+
 
 try:
     import pyfftw
