@@ -89,7 +89,7 @@ class ModulusStable(Function):
         ctx.dim = -1
         ctx.keepdim = False
 
-        output = x.norm(p=ctx.p, dim=ctx.dim, keepdim=ctx.keepdim)
+        output = (x[...,0]*x[...,0] + x[...,1]*x[...,1]).sqrt()
 
         ctx.save_for_backward(x, output)
         return output
@@ -249,9 +249,11 @@ def modulus_complex(x):
         the complex modulus of the input, and res[..., 1] = 0.
     """
     # take the stable modulus
-    real = modulus(x)
-    imag = real.data.new(real.shape).fill_(0.)
-    res = torch.cat([real.unsqueeze(-1), imag.unsqueeze(-1)], dim=-1)
+    norm = modulus(x)
+
+    res = torch.zeros_like(x)
+    res[...,0] = norm
+
     return res
 
 
