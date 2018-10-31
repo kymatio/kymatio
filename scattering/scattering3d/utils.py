@@ -4,7 +4,7 @@ import numpy as np
 
 
 def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
-                                       cuda=False):
+                                       cuda=False, fourier=False):
     """
         Computes sum of 3D Gaussians centered at given positions and weighted
         with the given weights.
@@ -24,17 +24,26 @@ def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
             width parameter of the Gaussian
         cuda: boolean, optional
             if True, computations are done on CUDA GPU
+        fourier: boolean, optional
+            if True, computations are done in fourier space
 
         Returns
         -------
         signals : torch tensor
-            numpy array of size (B, M, N, O)
+            numpy array of size (B, M, N, O), ((B, M, N, O, 2) in fourier)
             B is the batch_size, M, N, O are the size of the signal
     """
     _, M, N, O = grid.size()
-    signals = torch.zeros(positions.size(0), M, N, O)
+    if fourier:
+        signals = torch.zeros(positions.size(0), M, N, O, 2)
+    else:
+        signals = torch.zeros(positions.size(0), M, N, O)
+
     if cuda:
         signals = signals.cuda()
+
+    if fourier:
+        gaussian = torch.exp(-0.5 * sigma**2 * (grid**2).sum(0))
 
     for i_signal in range(positions.size(0)):
         n_points = positions[i_signal].size(0)
@@ -43,10 +52,17 @@ def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
                 break
             weight = weights[i_signal, i_point]
             center = positions[i_signal, i_point]
-            signals[i_signal] += weight * torch.exp(
-                -0.5 * ((grid[0] - center[0]) ** 2 +
-                        (grid[1] - center[1]) ** 2 +
-                        (grid[2] - center[2]) ** 2) / sigma**2)
+            if fourier:
+                grid_dot_center = -(grid[0]*center[0] + grid[1]*center[1] + grid[2]*center[2])
+                signals[i_signal, ..., 0] += weight * gaussian * torch.cos(grid_dot_center)
+                signals[i_signal, ..., 1] += weight * gaussian * torch.sin(grid_dot_center)
+            else:
+                signals[i_signal] += weight * torch.exp(
+                    -0.5 * ((grid[0] - center[0]) ** 2 +
+                            (grid[1] - center[1]) ** 2 +
+                            (grid[2] - center[2]) ** 2) / sigma**2)
+    if fourier:
+        return signals
     return signals / ((2 * np.pi) ** 1.5 * sigma ** 3)
 
 
