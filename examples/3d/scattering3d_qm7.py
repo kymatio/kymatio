@@ -196,26 +196,37 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
 
         pos_batch = pos[start:end]
         full_batch = full_charges[start:end]
+        val_batch = valence_charges[start:end]
 
         full_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, full_batch, sigma, cuda=cuda)
-
         full_order_0 = compute_integrals(full_density_batch, integral_powers)
-        full_order_1, full_order_2 = scattering(full_density_batch, order_2=True,
-                                method='integral', integral_powers=integral_powers)
-
-        full_order_0 = compute_integrals(full_density_batch, integral_powers)
-        val_batch = valence_charges[start:end]
         val_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, val_batch, sigma, cuda=cuda)
         val_order_0 = compute_integrals(val_density_batch, integral_powers)
-        val_order_1, val_order_2 = scattering(val_density_batch, order_2=True,
-                                method='integral', integral_powers=integral_powers)
-
         core_density_batch = full_density_batch - val_density_batch
         core_order_0 = compute_integrals(core_density_batch, integral_powers)
-        core_order_1, core_order_2 = scattering(core_density_batch, order_2=True,
-                                method='integral', integral_powers=integral_powers)
+
+        del full_density_batch
+        del val_density_batch
+        del core_density_batch
+
+        full_density_batch_fourier = generate_weighted_sum_of_gaussians(
+                grid, pos_batch, full_batch, sigma, cuda=cuda, fourier=True)
+        full_order_1, full_order_2 = scattering(
+                full_density_batch_fourier, order_2=True, method='integral',
+                integral_powers=integral_powers, fourier_input=True)
+
+        val_density_batch_fourier = generate_weighted_sum_of_gaussians(
+                grid, pos_batch, val_batch, sigma, cuda=cuda, fourier=True)
+        val_order_1, val_order_2 = scattering(
+                val_density_batch_fourier, order_2=True, method='integral',
+                integral_powers=integral_powers, fourier_input=True)
+
+        core_density_batch_fourier = full_density_batch_fourier - val_density_batch_fourier
+        core_order_1, core_order_2 = scattering(
+                core_density_batch_fourier, order_2=True, method='integral',
+                integral_powers=integral_powers, fourier_input=True)
 
         order_0.append(
             torch.stack([full_order_0, val_order_0, core_order_0], dim=-1))
