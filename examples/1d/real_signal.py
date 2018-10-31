@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import Variable
 from scattering import Scattering1D
 from scattering.datasets import fetch_fsdd
 import matplotlib.pyplot as plt
@@ -41,7 +40,7 @@ if __name__ == '__main__':
 
     # Load the signal
     sr, x = loadfile(filepath)
-    x_th = Variable(torch.from_numpy(x).float().unsqueeze(0).unsqueeze(0))
+    x_th = torch.from_numpy(x).float().unsqueeze(0).unsqueeze(0)
 
     # Prepare the scattering
     T = x_th.shape[-1]
@@ -58,7 +57,7 @@ if __name__ == '__main__':
         sorted([cc for cc in coords.keys() if coords[cc]['order'] == '2']))
 
     # Compute the scattering
-    s = scattering.forward(x_th).data.numpy()[0]
+    s = scattering.forward(x_th).numpy()[0]
 
     # show it
     show_signal(x, s, order0.numpy(), order1.numpy(), order2.numpy())

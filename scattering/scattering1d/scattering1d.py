@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import Variable
 import numpy as np
 import math
 
@@ -110,7 +109,7 @@ class Scattering1D(object):
         # 2) (optional) Change its arguments with
         s.set_default_arguments(**kwargs)
         # (especially for second order, etc)
-        # 3) Forward on an input Variable x of shape B x 1 x T,
+        # 3) Forward on an input Tensor x of shape B x 1 x T,
         #     where B is the batch size.
         result_s = s.forward(x)
 
@@ -323,8 +322,8 @@ class Scattering1D(object):
 
         Parameters
         ----------
-        x : Variable tensor
-            torch Variable with 3 dimensions (B, 1, T) where B is arbitrary.
+        x : Tensor
+            has 3 dimensions (B, 1, T), where B is arbitrary.
         order2 : boolean, optional
             whether to compute the 2nd order or not. Defaults to None
             (set_default_args() defaults this to True)
@@ -344,7 +343,7 @@ class Scattering1D(object):
 
         Returns
         -------
-        S : Variable tensor or dictionary.
+        S : Tensor or dictionary
             scattering of the input x. If vectorize is True, the output is
             a 3D tensor (B, C, T') such that S[i] = scattering(x[i]).
             If vectorize if False, it is a dictionary with keys
@@ -483,7 +482,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     Parameters
     ----------
     x : Tensor
-        a torch Variable of size (B, 1, T) where T is the temporal size
+        a torch Tensor of size (B, 1, T) where T is the temporal size
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (j, n)
         j corresponds to the downsampling factor for x \\ast psi1[(j, q)].
@@ -530,8 +529,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         batch_size = x.shape[0]
         kJ = max(J - oversampling, 0)
         temporal_size = ind_end[kJ] - ind_start[kJ]
-        S = Variable(x.data.new(batch_size, size_scat,
-                                temporal_size).fill_(0.))
+        S = x.new(batch_size, size_scat, temporal_size).fill_(0.)
     else:
         S = {}
 

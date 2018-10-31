@@ -1,5 +1,4 @@
 import torch
-from torch.autograd import Variable
 from scattering import Scattering1D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -28,8 +27,8 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
             note += (np.power(gamma, k) *
                      np.cos(u * (k + 1) * base_freq[i] + phase[i]))
         x[ind_start:ind_start + support] += note * window
-    # put x in a Variable
-    x = Variable(torch.from_numpy(x[np.newaxis, np.newaxis]))
+    # Transform x into a torch Tensor
+    x = torch.from_numpy(x[np.newaxis, np.newaxis])
     return x
 
 
@@ -63,7 +62,7 @@ if __name__ == '__main__':
 
     # harmonic signal
     x = generate_harmonic_signal(T)
-    s = scattering.forward(x).data[0]
-    show_signal(x.data.numpy().ravel(), s.numpy(),
+    s = scattering.forward(x)[0]
+    show_signal(x.numpy().ravel(), s.numpy(),
                 order0.numpy(), order1.numpy(), order2.numpy())
 
