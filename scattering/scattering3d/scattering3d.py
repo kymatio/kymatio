@@ -48,7 +48,7 @@ class Scattering3D(object):
         self.gaussian_filters = gaussian_filter_bank(
                                 self.M, self.N, self.O, self.J + 1, sigma_0)
 
-    def _fft_convolve(self, input_array, filter_array):
+    def _fft_convolve(self, input_array, filter_array, fourier_input=False):
         """
         Computes the fourier space convolution of the input_array, 
         given in signal space, with a filter, given in fourier space.
@@ -60,12 +60,17 @@ class Scattering3D(object):
 
         filter_array: torch tensor of size (M, N, O)
 
+        fourier_input: boolean, optional
+            if True, the input is assumed to be given in Fourier space
+
         Returns
         -------
 
         output: the result of the convolution of input_array with filter
 
         """
+        if fourier_input:
+            return fft(cdgmm3d(input_array, filter_array), inverse=True)
         return fft(cdgmm3d(fft(input_array, inverse=False), filter_array), inverse=True)
 
     def _low_pass_filter(self, input_array, j):
@@ -132,73 +137,77 @@ class Scattering3D(object):
                                                   i, int(x), int(y), int(z), 0]
         return local_coefs
 
-    def _compute_scattering_coefs(self, input_array, method, args, j):
+    def _compute_scattering_coefs(self, input_array, method,
+                                  integral_powers=None, j=None, points=None):
         """
-        Computes the scattering coefficients out with any of the three methods 
-        'standard', 'local', 'integral'
+            Computes the scattering coefficients out with any of the three
+            methods : 'standard', 'local', 'integral'
 
-        Parameters
-        ----------
-        input_array: torch tensor of size (batchsize, M, N, O)
+            Parameters
+            ----------
+            input_array: torch tensor of size (batchsize, M, N, O)
 
-        method: string 
-                method name with three possible values 
-                ("standard", "local", "integral")
+            method: string
+                    method name with three possible values
+                    ("standard", "local", "integral")
 
-        args: dict
-              method specific arguments 
-              method=="standard":
-                        args['integral_powers']: list
-                            a list that holds the exponents the moduli 
-                            should be raised to before calculating the integrals
-              method=="local":
-                        args['points']: torch tensor of size 
-                            (batchsize, number of points, 3)
-                            the points in coordinate space at which you
-                            want the moduli sampled
+            integral_powers: list, optional
+                required if the method is "integral"
+                list of P positive floats containing the p values used to
+                compute the integrals of the input_array to the power p
 
-        j: int the lowpass scale j of phi_j
+            points: torch tensor, optional
+                required if the method is "local"
+                size (B, N_points, 3) the points in coordinate space at which
+                you want the moduli sampled
 
-        Returns
-        -------
-        output: torch tensor 
-                The scattering coefficients as given by different methods.
+            j: int, optional
+                required if the method is "local"
+                the lowpass scale j of phi_j
+
+            Returns
+            -------
+            output: torch tensor
+                    Scattering coefficients as given by different methods.
         """
         methods = ['standard', 'local', 'integral']
         if (not method in methods):
             raise(ValueError('method must be in {}'.format(methods)))
         if method == 'integral':
-            return compute_integrals(input_array[..., 0],
-                                     args['integral_powers'])
+            return compute_integrals(input_array[..., 0], integral_powers)
         elif method == 'local':
             return self._compute_local_scattering_coefs(input_array,
-                                                        args['points'], j)
+                                                        points, j)
         elif method == 'standard':
             return self._compute_standard_scattering_coefs(input_array)
 
-    def _rotation_covariant_convolution_and_modulus(self, input_array, l, j):
+
+    def _rotation_covariant_convolution_and_modulus(self, input_array, l, j, fourier_input=False):
         """
-        Computes the convolution with a set of solid harmonics of scale j and 
-        degree l and returns the square root of their squared sum over m
+            Computes the convolution with a set of solid harmonics of scale j and
+            degree l and returns the square root of their squared sum over m
 
-        Parameters
-        ----------
-        input_array: torch tensor of size (batchsize x M x N x O)
+            Parameters
+            ----------
+            input_array: torch tensor of size (batchsize x M x N x O)
 
-        l: int
-            solid harmonic degree l
+            l: int
+                solid harmonic degree l
 
-        j: int
-            solid harmonic scale j
+            j: int
+                solid harmonic scale j
 
-        Returns
-        -------
+            fourier_input: boolean, optional
+                if True, the input is assumed to be given in Fourier space
 
-        output: torch tensor 
-                tensor of the same size as input_array. 
-                It holds the output of the operation:
-                 \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
-                 which is covariant to 3D translations and rotations 
+            Returns
+            -------
+
+            output: torch tensor
+                    tensor of the same size as input_array.
+                    It holds the output of the operation:
+                    \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
+                    which is covariant to 3D translations and rotations
         """
         cuda = input_array.is_cuda
         filters_l_j = self.filters[l][j]
@@ -207,12 +216,13 @@ class Scattering3D(object):
         convolution_modulus = input_array.new(input_array.size()).fill_(0)
         for m in range(filters_l_j.size(0)):
             convolution_modulus[..., 0] += (self._fft_convolve(
-                input_array, filters_l_j[m]) ** 2).sum(-1)
+                input_array, filters_l_j[m], fourier_input=fourier_input) ** 2).sum(-1)
         return torch.sqrt(convolution_modulus)
 
-    def _convolution_and_modulus(self, input_array, l, j, m=0):
+
+    def _convolution_and_modulus(self, input_array, l, j, m=0, fourier_input=False):
         """
-        Computes the convolution with a set of solid harmonics of scale j and 
+        Computes the convolution with a set of solid harmonics of scale j and
         degree l and returns the square root of their squared sum over m
 
         Parameters
@@ -228,6 +238,10 @@ class Scattering3D(object):
         m: int, optional
             solid harmonic rank m (defaults to 0)
 
+        fourier_input: boolean, optional
+            if True, the input is assumed to be given in Fourier space
+
+
         Returns
         -------
 
@@ -240,7 +254,8 @@ class Scattering3D(object):
         filters_l_m_j = self.filters[l][j][m]
         if cuda:
             filters_l_m_j = filters_l_m_j.cuda()
-        return complex_modulus(self._fft_convolve(input_array, filters_l_m_j))
+        return complex_modulus(self._fft_convolve(input_array, filters_l_m_j,
+                               fourier_input=fourier_input))
 
     def _check_input(self, input_array):
         if not torch.is_tensor(input_array):
@@ -261,49 +276,56 @@ class Scattering3D(object):
             raise (RuntimeError('Input tensor must be 4D'))
 
     def forward(self, input_array, order_2=True, rotation_covariant=True,
-                method='standard', points=None, integral_powers=(.5, 1., 2.)):
+                method='standard', points=None, integral_powers=(.5, 1., 2.),
+                fourier_input=False):
         """
-        The forward pass of 3D solid harmonic scattering
+            The forward pass of 3D solid harmonic scattering
 
-        Parameters
-        ----------
-        input_array: torch tensor 
-                     input of size (batchsize x M x N x O)
+            Parameters
+            ----------
+            input_array: torch tensor
+                        input of size (batchsize x M x N x O)
 
-        order_2: bool, optional
-                if set to False|True it also excludes|includes second order 
-                scattering coefficients (default: True).
+            order_2: bool, optional
+                    if set to False|True it also excludes|includes second order
+                    scattering coefficients (default: True).
 
-        rotation_covariant: bool, optional
-                if set to True the first order moduli take the form
-                    \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
-                if set to False the first order moduli take the form
-                    input_array \\star \\psi_{j,l,m})
-                The second order moduli change analogously
-                Defaut: True
+            rotation_covariant: bool, optional
+                    if set to True the first order moduli take the form
+                        \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
+                    if set to False the first order moduli take the form
+                        input_array \\star \\psi_{j,l,m})
+                    The second order moduli change analogously
+                    Defaut: True
 
-        method: string, optional
-                specifies the method for obtaining scattering coefficients  
-                ("standard","local","integral")
-                Default: "standard"
+            method: string, optional
+                    specifies the method for obtaining scattering coefficients
+                    ("standard","local","integral")
+                    Default: "standard"
 
 
-        points: array-like,
-            List of locations in which to sample wavelet moduli. Used when
-            method == 'local'
+            points: array-like,
+                List of locations in which to sample wavelet moduli. Used when
+                method == 'local'
 
-        integral_powers: array-like
-            List of exponents to the power of which moduli are raised before
-            integration. Used with method == 'standard', method == 'integral'
-        Returns
-        -------
-        output: tuple | torch tensor
-                if order_2 is false it returns a torch tensor with the 
-                first order scattering coefficients
-                if order_2 is true it returns a tuple with two elements,
-                the first and second order scattering coefficients 
+            integral_powers: array-like
+                List of exponents to the power of which moduli are raised before
+                integration. Used with method == 'standard', method == 'integral'
+            Returns
+            -------
+            output: tuple | torch tensor
+                    if order_2 is false it returns a torch tensor with the
+                    first order scattering coefficients
+                    if order_2 is true it returns a tuple with two elements,
+                    the first and second order scattering coefficients
         """
-        self._check_input(input_array)
+
+        if fourier_input:
+            _input = input_array
+        else:
+            self._check_input(input_array)
+            _input = to_complex(input_array)
+
         if rotation_covariant:
             convolution_and_modulus = (
                 self._rotation_covariant_convolution_and_modulus)
@@ -314,23 +336,23 @@ class Scattering3D(object):
 
         s_order_1 = []
         s_order_2 = []
-        _input = to_complex(input_array)
-
-        method_args = dict(points=points, integral_powers=integral_powers)
 
         for l in range(self.L+1):
             s_order_1_l, s_order_2_l = [], []
             for j_1 in range(self.J+1):
-                conv_modulus = convolution_and_modulus(_input, l, j_1)
+                conv_modulus = convolution_and_modulus(_input, l, j_1,
+                        fourier_input=fourier_input)
                 s_order_1_l.append(compute_scattering_coefs(
-                    conv_modulus, method, method_args, j_1))
+                    conv_modulus, method, integral_powers=integral_powers,
+                    points=points, j=j_1))
                 if not order_2:
                     continue
                 for j_2 in range(j_1+1, self.J+1):
                     conv_modulus_2 = convolution_and_modulus(
                         conv_modulus, l, j_2)
                     s_order_2_l.append(compute_scattering_coefs(
-                        conv_modulus_2, method, method_args, j_2))
+                        conv_modulus_2, method, integral_powers=integral_powers,
+                        points=points, j=j_2))
             s_order_1.append(torch.cat(s_order_1_l, -1))
             if order_2:
                 s_order_2.append(torch.cat(s_order_2_l, -1))
@@ -342,4 +364,3 @@ class Scattering3D(object):
 
 
     __call__ = forward
-
