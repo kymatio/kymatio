@@ -32,7 +32,7 @@ def find_datasets_base_dir(datasets_base_dir=None):
     downloads to a desired download location.
     """
 
-    
+
     if datasets_base_dir is None:
         datasets_base_dir = os.environ.get('SCATTERING_DATASETS',
                                 os.path.expanduser("~/scattering_datasets"))
@@ -203,7 +203,7 @@ def _pca_align_positions(positions, masks, inplace=False):
     for pos, mask, out in zip(positions, masks, output):
         masked_pos = pos[mask]
         masked_pos -= masked_pos.mean(0)
-        cov = masked_pos.T.dot(masked_pos)
+        cov = masked_pos.T.dot(masked_pos.copy())
         v, V = np.linalg.eigh(cov)
         aligned = masked_pos.dot(V[:, ::-1])  # largest to smallest
         out[mask] = aligned
@@ -233,7 +233,7 @@ def fetch_qm7(align=True, cache=True):
                 _pca_align_positions(f['positions'], f['charges'], inplace=True)
                 np.savez(aligned_filename, **f)
             return dict(**f)
-        
+
     path = get_dataset_dir("qm7")
     qm7_file = os.path.join(path, "dsgdb7ae.xyz")
     if not os.path.exists(qm7_file):
@@ -243,7 +243,7 @@ def fetch_qm7(align=True, cache=True):
             import zipfile
             with zipfile.ZipFile(qm7_zipfile, "r") as zipref:
                 zipref.extractall(path)
-	
+
     qm7 = read_xyz(qm7_file)
     if cache:
         np.savez(unaligned_filename, **qm7)
@@ -252,11 +252,5 @@ def fetch_qm7(align=True, cache=True):
         _pca_align_positions(qm7['positions'], qm7['charges'], inplace=True)
         if cache:
             np.savez(aligned_filename, **qm7)
-    
+
     return qm7
-
-
-
-
-    
-
