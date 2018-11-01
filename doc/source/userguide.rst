@@ -187,3 +187,5 @@ The CPU tests were performed on a 48-core machine.
 .. rubric:: References
 
 .. bibliography:: _static/bibtex.bib
+
+

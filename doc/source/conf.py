@@ -12,9 +12,10 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-# import os
-# import sys
-# sys.path.insert(0, os.path.abspath('.'))
+import os
+import sys
+sys.path.insert(0, os.path.abspath('../../scattering'))
+
 
 
 # -- Project information -----------------------------------------------------
@@ -47,6 +48,7 @@ extensions = [
     'sphinx.ext.githubpages',
     'sphinxcontrib.bibtex',
     'sphinx_gallery.gen_gallery',
+    'sphinx.ext.napoleon',
 ]
 
 # Add path to sphynx gallery
@@ -56,7 +58,11 @@ sphinx_gallery_conf = {
     # path where to save gallery generated examples
     'gallery_dirs': ['gallery_1d','gallery_2d','gallery_3d'],
     'ignore_pattern': '__init__.py|mnist.py|synthetic.py|real_signal.py|scattering3d_qm7.py',
+    #'abort_on_example_error': False,
 }
+
+intersphinx_mapping = {'scattering_transform': ('../scattering', None)}
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
