@@ -29,7 +29,6 @@ class Scattering3D(object):
             width of input 3D image size
         O: int
             depth of input 3D image size
-
         J: int
             number of scales
         L: int
@@ -58,7 +57,6 @@ class Scattering3D(object):
 
         input_array: torch tensor
             size (batchsize, M, N, O)
-
         filter_array: torch tensor
             size (M, N, O)
 
@@ -76,13 +74,15 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor of size (batchsize, M, N, O)
+        input_array : tensor
+            size (batchsize, M, N, O)
 
         j: int 
 
         Returns
         -------
-        output: the result of input_array \\star phi_j
+        output: the result of input_array :math:`\star phi_J`
+
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
         low_pass = self.gaussian_filters[j]
@@ -102,6 +102,7 @@ class Scattering3D(object):
         Returns
         -------
         output: the result of input_array \\star phi_J downsampled by a factor J
+
         """
         convolved_input = self._low_pass_filter(input_array, self.J)
         return subsample(convolved_input, self.J).view(
@@ -114,16 +115,18 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor of size (batchsize, M, N, O)
-
-        points: torch tensor of size (batchsize, number of points, 3)
-
-        j: int the lowpass scale j of phi_j
+        input_array: torch tensor
+            size (batchsize, M, N, O)
+        points: torch tensor
+            size (batchsize, number of points, 3)
+        j: int
+            the lowpass scale j of phi_j
 
         Returns
         -------
         output: torch tensor of size (batchsize, number of points, 1) with
                 the values of the lowpass filtered moduli at the points given.
+
         """
         local_coefs = torch.zeros(input_array.size(0), points.size(1), 1)
         convolved_input = self._low_pass_filter(input_array, j+1)
@@ -141,31 +144,25 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor
+        input_array : torch tensor
             size (batchsize, M, N, O)
-
-        method: string 
+        method : string
             method name with three possible values ("standard", "local", "integral")
-
-        args: dict
-            method specific arguments
-            method=="standard":
-                args['integral_powers']: list
-                    a list that holds the exponents the moduli
-                    should be raised to before calculating the integrals
-            method=="local":
-                args['points']: torch tensor of size
-                    (batchsize, number of points, 3)
-                    the points in coordinate space at which you
-                    want the moduli sampled
-
-        j: int
-            lowpass scale j of phi_j
+        args : dict
+            method specific arguments. It methods is equal to "standard", then one
+            expects the array args['integral_powers'] to be a list that holds
+            the exponents the moduli. It should be raised to before calculating
+            the integrals. If method is equal to "local", args['points'] must contain
+            a torch tensor of size (batchsize, number of points, 3) the points in
+            coordinate space at which you want the moduli sampled
+        j : int
+            lowpass scale j of :math:`\phi_j`
 
         Returns
         -------
         output: torch tensor 
             The scattering coefficients as given by different methods.
+
         """
         methods = ['standard', 'local', 'integral']
         if (not method in methods):
@@ -186,22 +183,25 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor of size (batchsize x M x N x O)
-
-        l: int
+        input_array : tensor
+            size (batchsize x M x N x O)
+        l : int
             solid harmonic degree l
 
-        j: int
+        j : int
             solid harmonic scale j
 
         Returns
         -------
 
-        output: torch tensor 
-                tensor of the same size as input_array. 
-                It holds the output of the operation:
-                 \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
-                 which is covariant to 3D translations and rotations 
+        output : torch tensor
+            tensor of the same size as input_array. It holds the output of
+            the operation::
+
+            .. math::   \sqrt{\sum_m (\text{input}_\text{array} \star \psi_{j,l,m})^2)}
+
+            which is covariant to 3D translations and rotations
+
         """
         cuda = input_array.is_cuda
         filters_l_j = self.filters[l][j]
@@ -220,24 +220,23 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor of size (batchsize, M, N, O)
-
-        l: int
+        input_array: torch tensor
+            size (batchsize, M, N, O)
+        l : int
             solid harmonic degree l
-
-        j: int
+        j : int
             solid harmonic scale j
-
-        m: int, optional
+        m : int, optional
             solid harmonic rank m (defaults to 0)
 
         Returns
         -------
-
         output: torch tensor 
-                tensor of the same size as input_array. 
-                It holds the output of the operation:
-                 input_array \\star \\psi_{j,l,m})
+                tensor of the same size as input_array. It holds the output of the
+                operation::
+
+                .. math:: \text{input}_\text{array} \star \psi_{j,l,m})
+
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
         filters_l_m_j = self.filters[l][j][m]
@@ -271,40 +270,40 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array: torch tensor 
-                     input of size (batchsize x M x N x O)
-
+            input of size (batchsize x M x N x O)
         order_2: bool, optional
-                if set to False|True it also excludes|includes second order 
-                scattering coefficients (default: True).
-
+            if set to False|True it also excludes|includes second order
+            scattering coefficients (default: True).
         rotation_covariant: bool, optional
-                if set to True the first order moduli take the form
-                    \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
-                if set to False the first order moduli take the form
-                    input_array \\star \\psi_{j,l,m})
-                The second order moduli change analogously
-                Defaut: True
+            if set to True the first order moduli take the form::
 
+            .. math:: \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
+
+            if set to False the first order moduli take the form::
+
+            .. math:: input_array \\star \\psi_{j,l,m})
+
+            The second order moduli change analogously
+            Defaut: True
         method: string, optional
-                specifies the method for obtaining scattering coefficients  
-                ("standard","local","integral")
-                Default: "standard"
-
-
-        points: array-like,
+            specifies the method for obtaining scattering coefficients
+            ("standard","local","integral"). Default: "standard"
+        points: array-like, optional
             List of locations in which to sample wavelet moduli. Used when
             method == 'local'
 
         integral_powers: array-like
             List of exponents to the power of which moduli are raised before
             integration. Used with method == 'standard', method == 'integral'
+
         Returns
         -------
         output: tuple | torch tensor
-                if order_2 is false it returns a torch tensor with the 
-                first order scattering coefficients
-                if order_2 is true it returns a tuple with two elements,
-                the first and second order scattering coefficients 
+            if order_2 is false it returns a torch tensor with the
+            first order scattering coefficients
+            if order_2 is true it returns a tuple with two elements,
+            the first and second order scattering coefficients
+
         """
         self._check_input(input_array)
         if rotation_covariant:
