@@ -55,7 +55,7 @@ sphinx_gallery_conf = {
     'examples_dirs': ['../../examples/1d','../../examples/2d','../../examples/3d'],
     # path where to save gallery generated examples
     'gallery_dirs': ['gallery_1d','gallery_2d','gallery_3d'],
-    'ignore_pattern': '__init__.py|mnist.py|synthetic.py|real_signal.py|scattering3d_qm7.py',
+    'ignore_pattern': '__init__.py|mnist.py|synthetic.py|real_signal.py|scattering3d_qm7.py|compute_speed',
 }
 
 # Add any paths that contain templates here, relative to this directory.

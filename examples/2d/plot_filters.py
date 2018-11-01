@@ -1,6 +1,6 @@
 """
 Plot of the 2D Morlet filters used for the Scattering Transform
-===============================
+===============================================================
 See :ref:`filter_bank` for more informations about the used wavelets.
 """
 
@@ -13,11 +13,9 @@ import scipy.fftpack as fft
 ###############################################################################
 # Initial parameters of the filter bank
 # -------------------------------------
-
 M = 32
 J = 3
 L = 8
-
 filters_set = filter_bank(M, M, J, L=L)
 
 
