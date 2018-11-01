@@ -59,10 +59,6 @@ class ModulusStable(Function):
     Parameters
     ---------
     x: input tensor, with last dimension = 2 for complex numbers
-    p: optional, power of the norm (defaults to 2 for the complex modulus)
-    dim: optional, dimension along which to reduce the norm (defaults to -1)
-    keepdim: optional, whether to keep the dims after reduction or not
-        (defaults to False)
 
     Returns
     -------
@@ -71,7 +67,7 @@ class ModulusStable(Function):
     respect to the input in a stable fashion (so diff modulus (0) = 0)
     """
     @staticmethod
-    def forward(ctx, x, p=2, dim=-1, keepdim=False):
+    def forward(ctx, x):
         """
         Forward pass of the modulus.
         This is a static method which does not require an instantiation of the
@@ -83,29 +79,18 @@ class ModulusStable(Function):
             automatically added by pytorch and should not be touched.
             They are then used for the backward pass.
         x: input tensor
-        p: optional, power of the norm (defaults to 2 for the modulus)
-        dim: optional, dimension along which to compute the norm
-            (defaults to -1)
-        keepdim: optional, whether to keep the dims after reduction or not
-            (defaults to False)
 
         Returns
         -------
         output: torch tensor containing the modulus computing along the last
-            axis, with this axis removed if keepdim is False
+            axis, with this axis removed
         """
-        ctx.p = p
-        ctx.dim = dim
-        ctx.keepdim = False if keepdim is None else keepdim
+        ctx.p = 2
+        ctx.dim = -1
+        ctx.keepdim = False
 
-        if dim is None:
-            norm = x.norm(p)
-            output = x.new((norm,))
-        else:
-            if keepdim is not None:
-                output = x.norm(p, dim, keepdim=keepdim)
-            else:
-                output = x.norm(p, dim)
+        output = (x[...,0]*x[...,0] + x[...,1]*x[...,1]).sqrt()
+
         ctx.save_for_backward(x, output)
         return output
 
@@ -264,9 +249,11 @@ def modulus_complex(x):
         the complex modulus of the input, and res[..., 1] = 0.
     """
     # take the stable modulus
-    real = modulus(x)
-    imag = real.data.new(real.shape).fill_(0.)
-    res = torch.cat([real.unsqueeze(-1), imag.unsqueeze(-1)], dim=-1)
+    norm = modulus(x)
+
+    res = torch.zeros_like(x)
+    res[...,0] = norm
+
     return res
 
 

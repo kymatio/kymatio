@@ -736,20 +736,21 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     if to_torch:
         for k in phi_fft.keys():
             if type(k) != str:
-                # view(-1, 1) because real numbers!
-                phi_fft[k] = torch.from_numpy(phi_fft[k]).view(-1, 1)
+                # view(-1, 1).repeat(1, 2) because real numbers!
+                phi_fft[k] = torch.from_numpy(
+                    phi_fft[k]).view(-1, 1).repeat(1, 2)
         for k in psi1_fft.keys():
             for sub_k in psi1_fft[k].keys():
                 if type(sub_k) != str:
-                    # view(-1, 1) because real numbers!
+                    # view(-1, 1).repeat(1, 2) because real numbers!
                     psi1_fft[k][sub_k] = torch.from_numpy(
-                        psi1_fft[k][sub_k]).view(-1, 1)
+                        psi1_fft[k][sub_k]).view(-1, 1).repeat(1, 2)
         for k in psi2_fft.keys():
             for sub_k in psi2_fft[k].keys():
                 if type(sub_k) != str:
-                    # view(-1, 1) because real numbers!
+                    # view(-1, 1).repeat(1, 2) because real numbers!
                     psi2_fft[k][sub_k] = torch.from_numpy(
-                        psi2_fft[k][sub_k]).view(-1, 1)
+                        psi2_fft[k][sub_k]).view(-1, 1).repeat(1, 2)
 
     # return results
     return phi_fft, psi1_fft, psi2_fft, t_max_phi
