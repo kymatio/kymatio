@@ -1,4 +1,7 @@
 """
+Regularize inverse of a Scattering coefficient from MNIST
+=========================================================
+
 Description:
 This example trains a convolutional network to invert the scattering transform at scale 2 of MNIST digits.
 After only two epochs, it produces a network that transforms a linear interpolation in the scattering space into a
