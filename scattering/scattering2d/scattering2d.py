@@ -77,7 +77,7 @@ class Scattering2D(object):
     Notes
     -----
     The design of the filters is optimized for the value L = 8
-    
+
     pre_pad is particularly useful when doing crops of a bigger
      image because the padding is then extremely accurate. Defaults
      to False.
@@ -133,7 +133,7 @@ class Scattering2D(object):
         -------
         S : tensor
             scattering of the input, a 4D tensor :math:`(B, C, D, Md, Nd)` where :math:`D` corresponds
-            to a new channel dimension and :math:`(Md, Nd)` are downsampled sizes by a factor:math:`2^J`.
+            to a new channel dimension and :math:`(Md, Nd)` are downsampled sizes by a factor :math:`2^J`.
 
         """
         if not torch.is_tensor(input):

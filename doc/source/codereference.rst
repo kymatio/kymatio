@@ -7,3 +7,4 @@ example_module2 module
     :show-inheritance:
     :private-members:
     :special-members:
+    :exclude-members: __dict__
