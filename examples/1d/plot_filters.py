@@ -10,7 +10,7 @@ import math
 from scattering.scattering1d.filter_bank import scattering_filter_factory
 
 
-###############################################################################
+#######################################
 # Initial parameters of the filter bank
 # -------------------------------------
 
@@ -23,7 +23,7 @@ phi_fft, psi1_fft, psi2_fft, _ = scattering_filter_factory(math.log2(T), J, Q)
 ###############################################################################
 # Plot first-order (Q = 8) and second-order (Q = 1) wavelets along with their
 # lowpass filters
-# -------------------------------------
+# ---------------------------------------------------------------------------
 
 fig, axs = plt.subplots(2, 1)
 
