@@ -1,5 +1,5 @@
 import torch
-from scattering.scattering1d.backend import pad1D, modulus, subsample_fourier
+from scattering.scattering1d.backend import pad1D, modulus_complex, subsample_fourier
 from scattering.scattering1d.utils import compute_border_indices
 import numpy as np
 import pytest
@@ -57,23 +57,23 @@ def test_modulus(random_state=42):
     torch.manual_seed(random_state)
     # Test with a random vector
     x = torch.randn(100, 4, 128, 2, requires_grad=True)
-    x_abs = modulus(x)
-    assert len(x_abs.shape) == len(x.shape) - 1
+    x_abs = modulus_complex(x)
+    assert len(x_abs.shape) == len(x.shape)
     # check the value
     x_abs2 = x_abs.clone()
     x2 = x.clone()
-    diff = x_abs2 - torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2)
+    diff = x_abs2[..., 0] - torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2)
     assert torch.max(torch.abs(diff)) <= 1e-7
     # check the gradient
     loss = torch.sum(x_abs)
     loss.backward()
-    x_grad = x2 / x_abs2.unsqueeze(-1)
+    x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
     diff = x.grad - x_grad
     assert torch.max(torch.abs(diff)) <= 1e-7
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True)
-    x_abs0 = modulus(x0)
+    x_abs0 = modulus_complex(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
     assert torch.max(torch.abs(x0.grad)) <= 1e-7
