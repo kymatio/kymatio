@@ -14,4 +14,7 @@ Scattering
    installation
    userguide
    developerguide
-   auto_examples/index
+   codereference
+   gallery_1d/index
+   gallery_2d/index
+   gallery_3d/index

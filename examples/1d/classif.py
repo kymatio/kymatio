@@ -1,5 +1,7 @@
 """
 Self-contained classification example on the free-spoken digit data recordings
+==============================================================================
+
 This dataset is automatically downloaded and preprocessed from
 https://github.com/Jakobovski/free-spoken-digit-dataset.git
 
