@@ -56,9 +56,11 @@ class Scattering3D(object):
         Parameters
         ----------
 
-        input_array: torch tensor of size (batchsize, M, N, O)
+        input_array: torch tensor
+            size (batchsize, M, N, O)
 
-        filter_array: torch tensor of size (M, N, O)
+        filter_array: torch tensor
+            size (M, N, O)
 
         Returns
         -------
@@ -139,30 +141,31 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor of size (batchsize, M, N, O)
+        input_array: torch tensor
+            size (batchsize, M, N, O)
 
         method: string 
-                method name with three possible values 
-                ("standard", "local", "integral")
+            method name with three possible values ("standard", "local", "integral")
 
         args: dict
-              method specific arguments 
-              method=="standard":
-                        args['integral_powers']: list
-                            a list that holds the exponents the moduli 
-                            should be raised to before calculating the integrals
-              method=="local":
-                        args['points']: torch tensor of size 
-                            (batchsize, number of points, 3)
-                            the points in coordinate space at which you
-                            want the moduli sampled
+            method specific arguments
+            method=="standard":
+                args['integral_powers']: list
+                    a list that holds the exponents the moduli
+                    should be raised to before calculating the integrals
+            method=="local":
+                args['points']: torch tensor of size
+                    (batchsize, number of points, 3)
+                    the points in coordinate space at which you
+                    want the moduli sampled
 
-        j: int the lowpass scale j of phi_j
+        j: int
+            lowpass scale j of phi_j
 
         Returns
         -------
         output: torch tensor 
-                The scattering coefficients as given by different methods.
+            The scattering coefficients as given by different methods.
         """
         methods = ['standard', 'local', 'integral']
         if (not method in methods):
