@@ -10,31 +10,28 @@ from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
 
 
 class Scattering3D(object):
-    """
-    3D Solid Harmonic scattering .
+    """3D Solid Harmonic scattering .
 
     This class implements solid harmonic scattering on an input 3D image.
     For details see https://arxiv.org/abs/1805.00571.
+
+    Instantiates and initializes a 3d solid harmonic scattering object.
+
+    Parameters
+    ----------
+    M: int
+        height of input 3D image size
+    N: int
+        width of input 3D image size
+    O: int
+        depth of input 3D image size
+    J: int
+        number of scales
+    L: int
+        number of l values
+
     """
-
     def __init__(self, M, N, O, J, L, sigma_0):
-        """
-        Instantiates and initializes a 3d solid harmonic scattering object.
-
-        Parameters
-        ----------
-        M: int
-            height of input 3D image size
-        N: int
-            width of input 3D image size
-        O: int
-            depth of input 3D image size
-        J: int
-            number of scales
-        L: int
-            number of l values
-
-        """
         super(Scattering3D, self).__init__()
         self.M = M
         self.N = N

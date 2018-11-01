@@ -1,5 +1,5 @@
-example_module2 module
-======================
+Code documentation of the library
+=================================
 
 .. automodule:: scattering
     :members:
