@@ -185,8 +185,9 @@ class SubsampleFourier(object):
         B = input.size(0) * input.size(1)
         T = input.size(2)
         periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, Dtype=getDtype(input))
-        grid = (self.GET_BLOCKS(out.size(-2), self.block[1]),
-                self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
+        grid = (self.GET_BLOCKS(out.size(-2), self.block[0]),
+                self.GET_BLOCKS(out.nelement() // (2*out.size(-2)), self.block[1]),
+                1)
         periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
