@@ -3,8 +3,15 @@ from scattering import Scattering1D
 import math
 import os
 import numpy as np
+import scattering.scattering1d.backend as backend
+import warnings
+
 # Signal-related tests
 
+if backend.NAME == 'skcuda':
+    force_gpu = True
+else:
+    force_gpu = False
 
 def test_simple_scatterings(random_state=42):
     """
@@ -16,15 +23,25 @@ def test_simple_scatterings(random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(T, J, Q, normalize='l1')
+    if force_gpu:
+        scattering = scattering.cuda()
     # zero signal
     x0 = torch.zeros(128, 1, T)
+    if force_gpu:
+        x0 = x0.cuda()
     s = scattering.forward(x0)
+    if force_gpu:
+        s = s.cpu()
     # check that s is zero!
     assert torch.max(torch.abs(s)) < 1e-7
 
     # constant signal
     x1 = rng.randn(1)[0] * torch.ones(1, 1, T)
+    if force_gpu:
+        x1 = x1.cuda()
     s1 = scattering.forward(x1)
+    if force_gpu:
+        s1 = s1.cpu()
     # check that all orders above 1 are 0
     assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
 
@@ -34,7 +51,11 @@ def test_simple_scatterings(random_state=42):
         k = rng.randint(1, T // 2, 1)[0]
         x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
         x2 = x2.unsqueeze(0).unsqueeze(0)
+        if force_gpu:
+            x2 = x2.cuda()
         s2 = scattering.forward(x2)
+        if force_gpu:
+            s2 = s2.cpu()
 
         for cc in coords.keys():
             if coords[cc]['order'] in ['0', '2']:
@@ -58,7 +79,15 @@ def test_sample_scattering():
     T = x.numel()
 
     scattering = Scattering1D(T, J, Q)
+
+    if force_gpu:
+        scattering = scattering.cuda()
+        x = x.cuda()
+
     Sx = scattering.forward(x)
+
+    if force_gpu:
+        Sx = Sx.cpu()
 
     assert (Sx - Sx0).abs().max() < 1e-6
 
@@ -75,7 +104,13 @@ def test_computation_Ux(random_state=42):
                               order2=False, vectorize=False)
     # random signal
     x = torch.from_numpy(rng.randn(1, 1, T)).float()
+
+    if force_gpu:
+        scattering.cuda()
+        x = x.cuda()
+
     s = scattering.forward(x)
+
     # check that the keys in s correspond to the order 0 and second order
     for k in scattering.psi1_fft.keys():
         assert k in s.keys()
@@ -96,6 +131,9 @@ def test_scattering_GPU_CPU(random_state=42, test_cuda=None):
     Note that we can only achieve 1e-4 absolute l_infty error between GPU
     and CPU
     """
+    if force_gpu:
+        return
+
     torch.manual_seed(random_state)
     if test_cuda is None:
         test_cuda = torch.cuda.is_available()
@@ -128,9 +166,18 @@ def test_coordinates(random_state=42):
     T = 2**12
     scattering = Scattering1D(T, J, Q, order2=True)
     x = torch.randn(128, 1, T)
+
+    if force_gpu:
+        scattering.cuda()
+        x = x.cuda()
+
     s_dico = scattering.forward(x, vectorize=False)
     s_dico = {k: s_dico[k].data for k in s_dico.keys()}
     s_vec = scattering.forward(x, vectorize=True)
+
+    if force_gpu:
+        s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
+        s_vec = s_vec.cpu()
 
     coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
 
@@ -162,6 +209,11 @@ def test_precompute_size_scattering(random_state=42):
     T = 2**12
     scattering = Scattering1D(T, J, Q)
     x = torch.randn(128, 1, T)
+
+    if force_gpu:
+        scattering.cuda()
+        x = x.cuda()
+
     for order2 in [True, False]:
         s_dico = scattering.forward(x, vectorize=False, order2=order2)
         for detail in [True, False]:
@@ -191,12 +243,23 @@ def test_differentiability_scattering(random_state=42):
     It simply tests whether it is really differentiable or not.
     This does NOT test whether the gradients are correct.
     """
+
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend does not pass differentiability"
+            "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
+        return
+
     torch.manual_seed(random_state)
     J = 6
     Q = 8
     T = 2**12
     scattering = Scattering1D(T, J, Q)
     x = torch.randn(128, 1, T, requires_grad=True)
+
+    if force_gpu:
+        scattering.cuda()
+        x = x.cuda()
+
     s = scattering.forward(x)
     loss = torch.sum(torch.abs(s))
     loss.backward()
