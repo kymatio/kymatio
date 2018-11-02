@@ -25,42 +25,6 @@ def getDtype(t):
 def iscomplex(input):
     return input.size(-1) == 2
 
-def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
-    """
-    1D implementation of the padding function for torch tensors
-
-    Parameters
-    ----------
-    x : tensor_like
-        input tensor, 3D with time in the last axis.
-    pad_left : int
-        amount to add on the left of the tensor (at the beginning
-        of the temporal axis)
-    pad_right : int
-        amount to add on the right of the tensor (at the end
-        of the temporal axis)
-    mode : string, optional
-        Padding mode. Options include 'constant' and
-        'reflect'. See the pytorch API for other options.
-        Defaults to 'constant'
-    value : float, optional
-        If mode == 'constant', value to input
-        within the padding. Defaults to 0.
-
-    Returns
-    -------
-    res: the padded tensor
-    """
-    if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-        if mode == 'reflect':
-            raise ValueError('Indefinite padding size (larger than tensor)')
-    res = F.pad(x.unsqueeze(2),
-                (pad_left, pad_right, 0, 0),
-                mode=mode, value=value).squeeze(2)
-    return res
-
-
-
 class Modulus(object):
     """
         This class implements a modulus transform for complex numbers.
@@ -115,8 +79,27 @@ class Modulus(object):
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
+modulus = Modulus()
 
+def modulus_complex(x):
+    """
+    Computes the modulus of x as a real tensor and returns a new complex tensor
+    with imaginary part equal to 0.
 
+    Parameters
+    ----------
+    x : tensor_like
+        input tensor, should be a 4D tensor with the last axis of size 2
+
+    Returns
+    -------
+    res : tensor_like
+        a tensor with same dimensions as x, such that res[..., 0] contains
+        the complex modulus of the input, and res[..., 1] = 0.
+    """
+    # take the stable modulus
+    res = modulus(x)
+    return res
 
 class SubsampleFourier(object):
     """
@@ -192,7 +175,6 @@ class SubsampleFourier(object):
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
-
 subsamplefourier = SubsampleFourier()
 
 def subsample_fourier(x, k):
@@ -220,6 +202,39 @@ def subsample_fourier(x, k):
     """
     return subsamplefourier(x,k)
 
+def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
+    """
+    1D implementation of the padding function for torch tensors
+
+    Parameters
+    ----------
+    x : tensor_like
+        input tensor, 3D with time in the last axis.
+    pad_left : int
+        amount to add on the left of the tensor (at the beginning
+        of the temporal axis)
+    pad_right : int
+        amount to add on the right of the tensor (at the end
+        of the temporal axis)
+    mode : string, optional
+        Padding mode. Options include 'constant' and
+        'reflect'. See the pytorch API for other options.
+        Defaults to 'constant'
+    value : float, optional
+        If mode == 'constant', value to input
+        within the padding. Defaults to 0.
+
+    Returns
+    -------
+    res: the padded tensor
+    """
+    if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
+        if mode == 'reflect':
+            raise ValueError('Indefinite padding size (larger than tensor)')
+    res = F.pad(x.unsqueeze(2),
+                (pad_left, pad_right, 0, 0),
+                mode=mode, value=value).squeeze(2)
+    return res
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
     """
@@ -256,7 +271,6 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
     else:
         return output
 
-
 def unpad(x, i0, i1):
     """
     Slices the input tensor at indices between i0 and i1 in the last axis
@@ -274,7 +288,6 @@ def unpad(x, i0, i1):
     """
     return x[..., i0:i1]
 
-
 def real(x):
     """
     Takes the real part of a 4D tensor x, where the last axis is interpreted
@@ -290,30 +303,6 @@ def real(x):
     """
     return x[..., 0]
 
-modulus = Modulus()
-
-def modulus_complex(x):
-    """
-    Computes the modulus of x as a real tensor and returns a new complex tensor
-    with imaginary part equal to 0.
-
-    Parameters
-    ----------
-    x : tensor_like
-        input tensor, should be a 4D tensor with the last axis of size 2
-
-    Returns
-    -------
-    res : tensor_like
-        a tensor with same dimensions as x, such that res[..., 0] contains
-        the complex modulus of the input, and res[..., 1] = 0.
-    """
-    # take the stable modulus
-    res = modulus(x)
-    return res
-
-
-
 def fft1d_c2c(x):
     """
         Computes the fft of a 1d signal.
@@ -325,7 +314,6 @@ def fft1d_c2c(x):
     """
     return torch.fft(x, signal_ndim = 1)
 
-
 def ifft1d_c2c(x):
     """
         Computes the inverse fft of a 1d signal.
@@ -336,7 +324,6 @@ def ifft1d_c2c(x):
             the two final sizes must be (T, 2) where T is the time length of the signal
     """
     return torch.ifft(x, signal_ndim = 1) * float(x.shape[-2])
-
 
 def ifft1d_c2c_normed(x):
     """
