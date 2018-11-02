@@ -128,7 +128,8 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
     """
         Computes the scattering coefficients of the molecules of the
         QM7 database. Channels used are full charges, valence charges
-        and core charges.
+        and core charges. Linear regression of the qm7 energies with
+        the given values gives MAE 2.75, RMSE 4.18 (kcal.mol-1).
 
         Parameters
         ----------
@@ -196,26 +197,28 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
 
         pos_batch = pos[start:end]
         full_batch = full_charges[start:end]
+        val_batch = valence_charges[start:end]
 
         full_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, full_batch, sigma, cuda=cuda)
-
         full_order_0 = compute_integrals(full_density_batch, integral_powers)
-        full_order_1, full_order_2 = scattering(full_density_batch, order_2=True,
-                                method='integral', integral_powers=integral_powers)
+        full_order_1, full_order_2 = scattering(
+                full_density_batch, order_2=True, method='integral',
+                integral_powers=integral_powers)
 
-        full_order_0 = compute_integrals(full_density_batch, integral_powers)
-        val_batch = valence_charges[start:end]
         val_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, val_batch, sigma, cuda=cuda)
         val_order_0 = compute_integrals(val_density_batch, integral_powers)
-        val_order_1, val_order_2 = scattering(val_density_batch, order_2=True,
-                                method='integral', integral_powers=integral_powers)
+        val_order_1, val_order_2 = scattering(
+                val_density_batch, order_2=True, method='integral',
+                integral_powers=integral_powers)
 
         core_density_batch = full_density_batch - val_density_batch
         core_order_0 = compute_integrals(core_density_batch, integral_powers)
-        core_order_1, core_order_2 = scattering(core_density_batch, order_2=True,
-                                method='integral', integral_powers=integral_powers)
+        core_order_1, core_order_2 = scattering(
+                core_density_batch, order_2=True, method='integral',
+                integral_powers=integral_powers)
+
 
         order_0.append(
             torch.stack([full_order_0, val_order_0, core_order_0], dim=-1))
@@ -230,13 +233,13 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
 
     return order_0, order_1, order_2
 
-M, N, O, J, L = 192, 128, 96, 2, 2
+M, N, O, J, L = 192, 128, 96, 2, 3
 integral_powers = [0.5,  1., 2., 3.]
-sigma = 1.5
+sigma = 2.
 
 order_0, order_1, order_2 = compute_qm7_solid_harmonic_scattering_coefficients(
     M=M, N=N, O=O, J=J, L=L, integral_powers=integral_powers,
-    sigma=sigma)
+    sigma=sigma, batch_size=8)
 
 n_molecules = order_0.size(0)
 
