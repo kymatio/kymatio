@@ -68,3 +68,30 @@ if backend.NAME == 'torch':
 
         fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
         print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+
+###############################################################################
+# Benchmark the skcuda backend
+# -----------------------------
+# If we're using the this backend, only compute the benchmark on the GPU.
+
+if backend.NAME == 'skcuda':
+    device = 'gpu'
+
+    fmt_str = '==> Testing Float32 with Skcuda backend, on {}, forward'
+    print(fmt_str.format(device.upper()))
+
+    scattering.cuda()
+    x_data = x_data.cuda()
+
+    torch.cuda.synchronize()
+
+    t_start = time.time()
+    for _ in range(times):
+        scattering(x_data)
+
+    torch.cuda.synchronize()
+
+    t_elapsed = time.time() - t_start
+
+    fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
+    print(fmt_str.format(t_elapsed, times, t_elapsed/times))
