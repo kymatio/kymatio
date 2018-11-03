@@ -65,7 +65,6 @@ def main():
 
         scattering 1st order can also be set by the mode
         Scattering features are normalized by batch normalization.
-        The model achieves XX testing accuracy after 10 epochs.
 
         scatter + linear achieves 99.15% in 15 epochs
         scatter + cnn achieves 99.3% in 15 epochs
