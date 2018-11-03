@@ -10,6 +10,8 @@ import torch.optim
 from torchvision import datasets, transforms
 import torch.nn.functional as F
 from scattering import Scattering2D
+import scattering.datasets as scattering_datasets
+import scattering
 import torch
 import argparse
 import math
@@ -71,7 +73,7 @@ def main():
     """
     parser = argparse.ArgumentParser(description='MNIST scattering  + hybrid examples')
     parser.add_argument('--mode', type=int, default=2,help='scattering 1st or 2nd order')
-    parser.add_argument('--classifier', type=str, default='cnn',help='classifier model')
+    parser.add_argument('--classifier', type=str, default='linear',help='classifier model')
     args = parser.parse_args()
     assert(args.classifier in ['linear','mlp','cnn'])
 
@@ -135,14 +137,14 @@ def main():
     # DataLoaders
     kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
     train_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('./data', train=True, download=True,
+        datasets.MNIST(scattering_datasets.get_dataset_dir('MNIST'), train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
         batch_size=128, shuffle=True, **kwargs)
     test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('./data', train=False, transform=transforms.Compose([
+        datasets.MNIST(scattering_datasets.get_dataset_dir('MNIST'), train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])),
