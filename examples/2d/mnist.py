@@ -118,7 +118,7 @@ def main():
             nn.Linear(K * 7 * 7, 10)
         )
     else:
-        ValueError()
+        raise ValueError('Classifier should be cnn/mlp/linear')
 
     model.to(device)
 
