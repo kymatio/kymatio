@@ -5,7 +5,6 @@ Based on pytorch example for MNIST
 """
 
 
-import torch.nn as nn
 import torch.optim
 from torchvision import datasets, transforms
 import torch.nn.functional as F
@@ -13,12 +12,7 @@ from scattering import Scattering2D
 import scattering.datasets as scattering_datasets
 import torch
 import argparse
-
-
-import math
-
 import torch.nn as nn
-import torch.nn.init as init
 
 
 class Scattering2dCNN(nn.Module):
@@ -144,7 +138,13 @@ def main():
     model = Scattering2dCNN(K,args.classifier).to(device)
 
     # DataLoaders
-    kwargs = {'num_workers': 4, 'pin_memory': True} if use_cuda else {}
+    if use_cuda:
+        num_workers = 4
+        pin_memory = True
+    else:
+        num_workers = None
+        pin_memory = False
+
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
@@ -155,14 +155,14 @@ def main():
             transforms.ToTensor(),
             normalize,
         ]), download=True),
-        batch_size=128, shuffle=True, **kwargs)
+        batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
 
     test_loader = torch.utils.data.DataLoader(
         datasets.CIFAR10(root=scattering_datasets.get_dataset_dir('CIFAR'), train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             normalize,
         ])),
-        batch_size=128, shuffle=False, **kwargs)
+        batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
     # Optimizer
     lr = 0.1

@@ -134,20 +134,26 @@ def main():
             m.bias.data.zero_()
 
     # DataLoaders
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+    if use_cuda:
+        num_workers = 4
+        pin_memory = True
+    else:
+        num_workers = None
+        pin_memory = False
+
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST(scattering_datasets.get_dataset_dir('MNIST'), train=True, download=True,
                        transform=transforms.Compose([
                            transforms.ToTensor(),
                            transforms.Normalize((0.1307,), (0.3081,))
                        ])),
-        batch_size=128, shuffle=True, **kwargs)
+        batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
     test_loader = torch.utils.data.DataLoader(
         datasets.MNIST(scattering_datasets.get_dataset_dir('MNIST'), train=False, transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,))
         ])),
-        batch_size=128, shuffle=True, **kwargs)
+        batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
 
     # Optimizer
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9,
