@@ -27,31 +27,36 @@ class Scattering2dCNN(nn.Module):
     '''
     def __init__(self, in_channels, classifier_type='cnn'):
         super(Scattering2dCNN, self).__init__()
+        self.in_channels = in_channels
+        self.classifier_type = classifier_type
+        self.build()
+
+    def build(self):
         cfg = [256, 256, 256, 'M', 512, 512, 512, 1024, 1024]
         layers = []
-        self.K = in_channels
+        self.K = self.in_channels
         self.bn = nn.BatchNorm2d(self.K)
-        if classifier_type == 'cnn':
+        if self.classifier_type == 'cnn':
             for v in cfg:
                 if v == 'M':
                     layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
                 else:
-                    conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
+                    conv2d = nn.Conv2d(self.in_channels, v, kernel_size=3, padding=1)
                     layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
-                    in_channels = v
+                    self.in_channels = v
 
             layers += [nn.AdaptiveAvgPool2d(2)]
             self.features = nn.Sequential(*layers)
             self.classifier =  nn.Linear(1024*4, 10)
 
-        elif classifier_type == 'mlp':
+        elif self.classifier_type == 'mlp':
             self.classifier = nn.Sequential(
                         nn.Linear(self.K*8*8, 1024), nn.ReLU(),
                         nn.Linear(1024, 1024), nn.ReLU(),
                         nn.Linear(1024, 10))
             self.features = None
 
-        elif classifier_type == 'linear':
+        elif self.classifier_type == 'linear':
             self.classifier = nn.Linear(self.K*8*8,10)
             self.features = None
 
@@ -66,12 +71,12 @@ class Scattering2dCNN(nn.Module):
 
 
 
-def train(model, device, train_loader, optimizer, epoch, scat):
+def train(model, device, train_loader, optimizer, epoch, scattering):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
-        output = model(scat(data))
+        output = model(scattering(data))
         loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
@@ -80,14 +85,14 @@ def train(model, device, train_loader, optimizer, epoch, scat):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-def test(model, device, test_loader, scat):
+def test(model, device, test_loader, scattering):
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            output = model(scat(data))
+            output = model(scattering(data))
             test_loss += F.cross_entropy(output, target, size_average=False).item() # sum up batch loss
             pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -125,13 +130,13 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if args.mode == 1:
-        scat = Scattering2D(M=32, N=32, J=2,order2=False)
+        scattering = Scattering2D(M=32, N=32, J=2,order2=False)
         K = 17*3
     else:
-        scat = Scattering2D(M=32, N=32, J=2)
+        scattering = Scattering2D(M=32, N=32, J=2)
         K = 81*3
     if use_cuda:
-        scat = scat.cuda()
+        scattering = scattering.cuda()
 
 
 
@@ -167,8 +172,8 @@ def main():
                                         weight_decay=0.0005)
             lr*=0.2
 
-        train(model, device, train_loader, optimizer, epoch+1, scat)
-        test(model, device, test_loader, scat)
+        train(model, device, train_loader, optimizer, epoch+1, scattering)
+        test(model, device, test_loader, scattering)
 
 
 

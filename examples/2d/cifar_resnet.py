@@ -14,7 +14,6 @@ import torch
 import argparse
 import scattering.datasets as scattering_datasets
 
-import math
 
 import torch.nn as nn
 import torch.nn.init as init
@@ -104,12 +103,12 @@ class Scattering2dResNet(nn.Module):
 
 
 
-def train(model, device, train_loader, optimizer, epoch, scat):
+def train(model, device, train_loader, optimizer, epoch, scattering):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
-        output = model(scat(data))
+        output = model(scattering(data))
         loss = F.cross_entropy(output, target)
         loss.backward()
         optimizer.step()
@@ -118,14 +117,14 @@ def train(model, device, train_loader, optimizer, epoch, scat):
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
 
-def test(model, device, test_loader, scat):
+def test(model, device, test_loader, scattering):
     model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
-            output = model(scat(data))
+            output = model(scattering(data))
             test_loss += F.cross_entropy(output, target, size_average=False).item() # sum up batch loss
             pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
@@ -157,13 +156,13 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if args.mode == 1:
-        scat = Scattering2D(M=32, N=32, J=2,order2=False)
+        scattering = Scattering2D(M=32, N=32, J=2,order2=False)
         K = 17*3
     else:
-        scat = Scattering2D(M=32, N=32, J=2)
+        scattering = Scattering2D(M=32, N=32, J=2)
         K = 81*3
     if use_cuda:
-        scat = scat.cuda()
+        scattering = scat.cuda()
 
 
 
@@ -199,8 +198,8 @@ def main():
                                         weight_decay=0.0005)
             lr*=0.2
 
-        train(model, device, train_loader, optimizer, epoch+1, scat)
-        test(model, device, test_loader, scat)
+        train(model, device, train_loader, optimizer, epoch+1, scattering)
+        test(model, device, test_loader, scattering)
 
 
 

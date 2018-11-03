@@ -81,13 +81,13 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if args.mode == 1:
-        scat = Scattering2D(M=28, N=28, J=2,order2=False)
+        scattering = Scattering2D(M=28, N=28, J=2,order2=False)
         K = 17
     else:
-        scat = Scattering2D(M=28, N=28, J=2)
+        scattering = Scattering2D(M=28, N=28, J=2)
         K = 81
     if use_cuda:
-        scat = scat.cuda()
+        scattering = scattering.cuda()
 
 
 
@@ -155,8 +155,8 @@ def main():
                                 weight_decay=0.0005)
 
     for epoch in range(1, 16):
-        train( model, device, train_loader, optimizer, epoch, scat)
-        test(model, device, test_loader, scat)
+        train( model, device, train_loader, optimizer, epoch, scattering)
+        test(model, device, test_loader, scattering)
 
 
 if __name__ == '__main__':
