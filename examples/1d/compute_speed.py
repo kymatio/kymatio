@@ -82,9 +82,12 @@ x = torch.randn(batch_size, 1, T, dtype=torch.float32)
 # -----------------
 # For each device, we need to convert the `scattering` object and the Tensor
 # `x` to the appropriate type, invoke `times` calls to the `scattering.forward`
-# and print the running times. If the benchmark is running on the GPU, we also
-# need to call `torch.cuda.synchronize()` before and after the benchmark to
-# make sure that all CUDA kernels have finished executing.
+# and print the running times. Before the timer starts, we add an extra
+# `scattering.forward` call to ensure any first-time overhead, such as memory
+# allocation and CUDA kernel compilation, is not counted. If the benchmark is
+# running on the GPU, we also need to call `torch.cuda.synchronize()` before
+# and after the benchmark to make sure that all CUDA kernels have finished
+# executing.
 
 for device in devices:
     fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
@@ -96,6 +99,8 @@ for device in devices:
     else:
         scattering.cpu()
         x = x.cpu()
+
+    scattering.forward(x)
 
     if device == 'gpu':
         torch.cuda.synchronize()
