@@ -6,3 +6,7 @@ doc/build/*
 .pytest_cache
 scattering.egg-info
 .cache/
+doc/source/gallery_1d
+doc/source/gallery_2d
+doc/source/gallery_3d
+
