@@ -1,24 +1,26 @@
 Installation
 ************
 
-For installing the software, we propose two solutions: via pip or from the sources.
+We propose two ways to install kymatio: via the `pip` package management system, or directly from the source code.
 
 Recommended
 ===========
 
-In your bash, run::
+In your comannd line prompt, please run::
 
-    pip install scattering_transform
+    pip install kymatio
+    
 
 From source
 ===========
 
-If you desire to use the latest version of the code::
+If you wish to use the latest version of the code::
 
-    git clone https://github.com/scattering_transform/scattering_transform
-    cd scattering_transform
+    git clone https://github.com/kymatio/kymatio
+    cd kymatio
     pip install -r requirements.txt
     python setup.py install
+
 
 Optimizing GPU acceleration
 ===========================
@@ -28,6 +30,7 @@ In order to benefit from cuda optimization, you can also install skcuda and cupy
     pip install cupy skcuda
 
 and then refer to :ref:`backend-story` for more details about the use of our optimized cuda kernels.
+
 
 Developer
 =========
