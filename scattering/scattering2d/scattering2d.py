@@ -1,7 +1,6 @@
-"""
-Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
-All rights reserved, 2017.
-"""
+# Authors: Edouard Oyallon
+# Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
+
 
 __all__ = ['Scattering']
 

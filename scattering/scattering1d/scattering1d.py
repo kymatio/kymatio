@@ -1,3 +1,6 @@
+# Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
+# Scientific Ancestry: Mathieu Andreux, Vincent Lostanlen, Joakim Anden
+
 import torch
 import numpy as np
 import math

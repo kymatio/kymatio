@@ -1,3 +1,5 @@
+# Authors: Edouard Oyallon, Sergey Zagoruyko
+
 from collections import defaultdict, namedtuple
 import torch
 from skcuda import cublas
