@@ -2,6 +2,10 @@
 Self-contained classification example on the free-spoken digit data recordings
 ==============================================================================
 
+In this example we use the 1D scattering transform to represent spoken digits,
+which we then classify using a simple classifier. This shows that 1D scattering
+representations are useful for this type of problem.
+
 This dataset is automatically downloaded and preprocessed from
 https://github.com/Jakobovski/free-spoken-digit-dataset.git
 
@@ -12,6 +16,10 @@ Results:
 Training accuracy = 99.6%
 Testing accuracy = 95.3%
 """
+
+###############################################################################
+# Import the necessary packages
+# -----------------------------
 import torch
 from torch.nn import Linear, NLLLoss, LogSoftmax, Sequential
 from torch.optim import Adam
@@ -25,6 +33,19 @@ import json
 import time
 
 
+###############################################################################
+# Defining helper functions
+# -------------------------
+# In this section we define a number of functions that will help us make the
+# procedure as clear as possible.
+#
+
+
+###############################################################################
+# The first helper function is for loading wave files.
+# Sometimes audio input from files is stereo, in which case it loads to an
+# array that has one very long dimension and one very short dimension. We 
+# average over the short dimension
 def loadfile(path_file):
     sr, x = wavfile.read(path_file)
     x = np.asarray(x, dtype='float')
@@ -37,6 +58,13 @@ def loadfile(path_file):
     return sr, x
 
 
+###############################################################################
+# This helper computes the scattering coefficients for the free-spoken digits
+# dataset and stores them in a cache. That way it only takes time to do once
+# and future calls to the script can retrieve from the cache.
+# Looking at the code, you can see that it calls another helper to actually do
+# the work and then applies some transformations to it before handing it to the
+# user.
 def get_fsdd_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
                               cache_name='fsdd', is_train=True,
                               log_transform=True, log_eps=1e-6,
@@ -103,7 +131,10 @@ def get_fsdd_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
         x = x.view(x.shape(0), -1).contiguous()
     return x, y
 
-
+###############################################################################
+# The next function is responsible for checking whether the scattering
+# coefficients are already cached in bulk. If they are not, then it asks
+# another function to compute all of them, and then saves them in bulk.
 def get_agg_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
                              cache_name='fsdd', is_train=True,
                              verbose=False):
@@ -178,7 +209,10 @@ def get_agg_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
     # return the result
     return s_acc, y_acc
 
-
+###############################################################################
+# Next up is a function that checks whether indididual files have been
+# scattering-transformed, and if so gathers these files. If not, it calls 
+# another function to compute them.
 def get_detail_scattering_coefs(T, J, Q, use_cuda=True,
                                 force_compute=False,
                                 cache_name='fsdd', is_train=True,
@@ -236,6 +270,11 @@ def get_detail_scattering_coefs(T, J, Q, use_cuda=True,
             return list_test
 
 
+###############################################################################
+# This next function here does the actual heavy lifting - it uses the fsdd
+# dataset loader to obtain the raw data, which is downloaded from the Internet
+# automatically if it is not local. Then it computes the scattering transform
+# of each file and saves it in a file in a cache directory.
 def compute_scattering_coefs(T, J, Q, use_cuda=True, cache_name='fsdd',
                              verbose=False):
     """
@@ -340,6 +379,10 @@ def compute_scattering_coefs(T, J, Q, use_cuda=True, cache_name='fsdd',
     return files_train, files_test
 
 
+
+###############################################################################
+# Next up is a helper function that can compute the loss and accuracy of a
+# neural network that we give it along with an evaluation criterion and data.
 def compute_loss_and_accuracy(net, criterion, x, y):
     """
     Computes the loss and accuracy of the model net with the given
@@ -376,84 +419,130 @@ def compute_loss_and_accuracy(net, criterion, x, y):
     return avg_loss, accuracy
 
 
-if __name__ == '__main__':
-    T = 2**13  # support size we use
-    J = 8  # averaging scale of the scattering
-    Q = 12  # quality factor for the wavelet transform
-    log_transform = True  # use the log of the scattering
-    log_eps = 1e-6 # constant to prevent small arguments of the log
-    average_time = True  # average scattering along time
-    batch_size = 32  # batch_size
-    num_epochs = 50  # number of epochs
-    lr = 1e-4  # learning rate (ADAM)
-    random_state = 42  # random seed for reproducibility
-    use_cuda = torch.cuda.is_available()  # whether to use cuda
-    verbose = True  # print intermediate steps
-    cache_name = 'fsdd'  # name of the cache folder
-    num_classes = 10  # number of classes for the problem
-    force_compute = False  # forces to recompute scattering features
-    # set the seed
-    torch.manual_seed(random_state)  # set the seed
-    # GETTING TRAINING FEATURES
-    X_tr, y_tr = get_fsdd_scattering_coefs(
-        T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=True,
-        log_transform=log_transform, log_eps=log_eps,
-        average_time=average_time, force_compute=force_compute)
-    nsamples = X_tr.shape[0]
-    nbatches = nsamples // batch_size
-    # whiten the dataset
-    mu_tr = X_tr.mean(dim=0)
-    std_tr = X_tr.std(dim=0)
-    X_tr = (X_tr - mu_tr) / std_tr
+###############################################################################
+# Putting everything together
+# ---------------------------
+# We start by specifying the dimensions of our processing pipeline along with
+# some other parameters
+T = 2**13  # support size we use
+J = 8  # averaging scale of the scattering
+Q = 12  # quality factor for the wavelet transform
+log_transform = True  # use the log of the scattering
+log_eps = 1e-6 # constant to prevent small arguments of the log
+average_time = True  # average scattering along time
+batch_size = 32  # batch_size
+num_epochs = 50  # number of epochs
+lr = 1e-4  # learning rate (ADAM)
+random_state = 42  # random seed for reproducibility
+use_cuda = torch.cuda.is_available()  # whether to use cuda
+verbose = True  # print intermediate steps
+cache_name = 'fsdd'  # name of the cache folder
+num_classes = 10  # number of classes for the problem
+force_compute = False  # forces to recompute scattering features
+# set the seed
+torch.manual_seed(random_state)  # set the seed
 
-    # move to GPU if necessary
+###############################################################################
+# Here we obtain the scattering features for training, preprocess them and get
+# them ready for classification
+X_tr, y_tr = get_fsdd_scattering_coefs(
+    T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=True,
+    log_transform=log_transform, log_eps=log_eps,
+    average_time=average_time, force_compute=force_compute)
+nsamples = X_tr.shape[0]
+nbatches = nsamples // batch_size
+# whiten the dataset
+mu_tr = X_tr.mean(dim=0)
+std_tr = X_tr.std(dim=0)
+X_tr = (X_tr - mu_tr) / std_tr
+
+# move to GPU if necessary
+if use_cuda:
+    X_tr = X_tr.cuda()
+    y_tr = y_tr.cuda()
+# embed them in variables
+X_tr = X_tr.requires_grad_(False)
+y_tr = y_tr.requires_grad_(False)
+
+
+###############################################################################
+# Neural Network Model
+# 
+# Here we define a Logistic Regression model using pytorch
+model = Sequential(Linear(X_tr.shape[-1], num_classes), LogSoftmax())
+optimizer = Adam(model.parameters())
+criterion = NLLLoss()
+if use_cuda:
+    model = model.cuda()
+    criterion = criterion.cuda()
+
+###############################################################################
+# This part is the actual training routine
+
+# perform the gradient descent
+for e in range(num_epochs):
+    # permutation of the dataset
+    perm = torch.randperm(nsamples)
     if use_cuda:
-        X_tr = X_tr.cuda()
-        y_tr = y_tr.cuda()
-    # embed them in variables
-    X_tr = X_tr.requires_grad_(False)
-    y_tr = y_tr.requires_grad_(False)
+        perm = perm.cuda()
+    for i in range(nbatches):
+        model.zero_grad()
+        resp = model.forward(
+            X_tr[perm[i * batch_size: (i + 1) * batch_size]])
+        loss = criterion(
+            resp, y_tr[perm[i * batch_size: (i + 1) * batch_size]])
+        loss.backward()
+        optimizer.step()
+    # compute the loss and the accuracy
+    avg_loss, accu = compute_loss_and_accuracy(model, criterion,
+                                               X_tr, y_tr)
+    print('Epoch {}, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
+        e, avg_loss, accu))
 
-    # DEFINE THE MODEL
-    model = Sequential(Linear(X_tr.shape[-1], num_classes), LogSoftmax())
-    optimizer = Adam(model.parameters())
-    criterion = NLLLoss()
-    if use_cuda:
-        model = model.cuda()
-        criterion = criterion.cuda()
+###############################################################################
+# Now that our network is trained, let's test it!
 
-    # perform the gradient descent
-    for e in range(num_epochs):
-        # permutation of the dataset
-        perm = torch.randperm(nsamples)
-        if use_cuda:
-            perm = perm.cuda()
-        for i in range(nbatches):
-            model.zero_grad()
-            resp = model.forward(
-                X_tr[perm[i * batch_size: (i + 1) * batch_size]])
-            loss = criterion(
-                resp, y_tr[perm[i * batch_size: (i + 1) * batch_size]])
-            loss.backward()
-            optimizer.step()
-        # compute the loss and the accuracy
-        avg_loss, accu = compute_loss_and_accuracy(model, criterion,
-                                                   X_tr, y_tr)
-        print('Epoch {}, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
-            e, avg_loss, accu))
+# Load testing features
+X_te, y_te = get_fsdd_scattering_coefs(
+    T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=False,
+    log_transform=log_transform, average_time=average_time,
+    force_compute=force_compute)
+X_te = (X_te - mu_tr) / std_tr
+if use_cuda:
+    X_te = X_te.cuda()
+    y_te = y_te.cuda()
+X_te = X_te.requires_grad_(False)
+y_te = torch.squeeze(y_te).requires_grad_(False)
 
-    # Load testing features
-    X_te, y_te = get_fsdd_scattering_coefs(
-        T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=False,
-        log_transform=log_transform, average_time=average_time,
-        force_compute=force_compute)
-    X_te = (X_te - mu_tr) / std_tr
-    if use_cuda:
-        X_te = X_te.cuda()
-        y_te = y_te.cuda()
-    X_te = X_te.requires_grad_(False)
-    y_te = torch.squeeze(y_te).requires_grad_(False)
+avg_loss, accu = compute_loss_and_accuracy(model, criterion, X_te, y_te)
+print('TEST, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
+      avg_loss, accu))
 
-    avg_loss, accu = compute_loss_and_accuracy(model, criterion, X_te, y_te)
-    print('TEST, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
-          avg_loss, accu))
+###############################################################################
+# Plotting the classification accuracy as a confusion matrix
+# ----------------------------------------------------------
+# Let's see, among the very few misclassified sounds, what they get
+# misclassified as.
+# We will plot a confusion matrix which indicates in a 2D histogram how often
+# one sample was mistaken for another (anything on the diagonal is correctly
+# classified, anything off is wrong)
+
+predicted_logits = model(X_te).detach().cpu().numpy()
+predicted_categories = predicted_logits.argmax(axis=1)
+actual_categories = y_te.cpu().numpy()
+
+from sklearn.metrics import confusion_matrix
+confusion = confusion_matrix(actual_categories, predicted_categories)
+import matplotlib.pyplot as plt
+plt.figure()
+plt.imshow(confusion)
+tick_locs = np.arange(10)
+ticks = ['{}'.format(i) for i in range(1, 11)]
+plt.xticks(tick_locs, ticks)
+plt.yticks(tick_locs, ticks)
+plt.ylabel("True number")
+plt.xlabel("Predicted number")
+plt.show()
+
+
+
