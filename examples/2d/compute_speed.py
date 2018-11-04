@@ -1,76 +1,130 @@
 """
-Benchmark the speed of the 1D scattering transform
+2D scattering transform benchmark
 ==================================================
-We compute scattering transforms for signals of length `T = 2**16`, with scale
-`J = 10` and `Q = 8` wavelets per octave. The signals are stacked into batches
-of size `batch_size = 64` and the transform is computed `10` times to get an
-average running time.
+We compute scattering transforms for images of size `256`-by-`256` with
+averaging scale `2**3 = 8` and `L = 8` angular directions. The images are
+stacked into batches of size `batch_size = 128` and the transforms are
+computed `10` times to get an average running time.
 """
 
+###############################################################################
+# Preliminaries
+# -------------
+# Since kymatio handles PyTorch arrays, we first import `torch`.
+
 import torch
-import time
-import scattering.scattering2d.backend as backend
-from scattering import Scattering2D as Scattering
 
 ###############################################################################
-# Parameters for the benchmark
-# ----------------------------
+# To measure the running time of the implementation, we use the `time` package.
+
+import time
+
+###############################################################################
+# The performance of the implementation depends on which "backend" is used. We
+# therefore want to report the name of the backend when presenting the results.
+# Certain backends are also GPU-only, we we want to detect that before running
+# the benchmark.
+
+import scattering.scattering2d.backend as backend
+
+###############################################################################
+# Finally, we import the `Scattering2D` class that computes the scattering
+# transform.
+
+from scattering import Scattering2D
+
+###############################################################################
+# Benchmark setup
+# --------------------
+# First, we set up some basic parameters: the image width `M` and height `N`,
+# the averaging scale, `2**J`, and the number of angular directions `L`.
+# Here, we consider square images of size `256` with an averaging scale
+# `2**3 = 8` and `L = 8` angular directions. These are all typical parameter
+# for scattering transforms of natural images.
 
 M = 256
 N = 256
+J = 3
+L = 8
+
+###############################################################################
+# To squeeze the maximum performance out of the implementation, we apply it to
+# a batch of `128` images. Larger batch sizes do not yield increased efficiency,
+# but smaller values increases the influence of overhead on the running time.
 
 batch_size = 128
 
-J = 3
-L = 8
+###############################################################################
+# We repeat the benchmark `10` times and compute the average running time to
+# get a reasonable estimate.
 
 times = 10
 
 ###############################################################################
-# Set up the scattering object and the test data
-# ----------------------------------------------
-
-scattering = Scattering(M=M, N=N, J=J, L=L)
-
-x_data = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
-
-###############################################################################
-# Benchmark the PyTorch backend
-# -----------------------------
-# If we're using the this backend, compute scattering transforms both on CPU
-# and GPU so that we can compare performance.
+# Determine which devices (CPU or GPU) that are supported by the current
+# backend.
 
 if backend.NAME == 'torch':
-    devices = ['cpu']
-    if torch.cuda.is_available():
-        devices.append('gpu')
+    devices = ['cpu', 'gpu']
+elif backend.NAME == 'skcuda':
+    devices = ['gpu']
 
-    for device in devices:
-        fmt_str = '==> Testing Float32 with Torch backend, on {}, forward'
-        print(fmt_str.format(device.upper()))
+###############################################################################
+# Create the `Scattering2D` object using the given parameters and generate
+# some compatible test data with the specified batch size. The number of
+# channels in the test data here is set to `3`, corresponding to the three
+# colors channels in an RGB image.
 
-        if device == 'gpu':
-            scattering.cuda()
-            x_data = x_data.cuda()
-        else:
-            scattering.cpu()
-            x_data = torch.randn(5, 3, M, N, dtype=torch.float32)
-            x_data = x_data.cpu()
+scattering = Scattering2D(M, N, J, L)
 
-        # One pass because the first forward is always slower
-        scattering(x_data)
+x = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
 
-        if device == 'gpu':
-            torch.cuda.synchronize()
+###############################################################################
+# Run the benchmark
+# -----------------
+# For each device, we need to convert the `scattering` object and the Tensor
+# `x` to the appropriate type, invoke `times` calls to `scattering.forward`
+# and print the running times. Before the timer starts, we add an extra
+# `scattering.forward` call to ensure any first-time overhead, such as memory
+# allocation and CUDA kernel compilation, is not counted. If the benchmark is
+# running on the GPU, we also need to call `torch.cuda.synchronize()` before
+# and after the benchmark to make sure that all CUDA kernels have finished
+# executing.
 
-        t_start = time.time()
-        for _ in range(times):
-            scattering(x_data)
+for device in devices:
+    fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
+    print(fmt_str.format(backend.NAME, device.upper()))
 
-        if device == 'gpu':
-            torch.cuda.synchronize()
+    if device == 'gpu':
+        scattering.cuda()
+        x = x.cuda()
+    else:
+        scattering.cpu()
+        x = x.cpu()
 
-        t_elapsed = time.time() - t_start
+    scattering.forward(x)
 
-        fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
-        print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+    if device == 'gpu':
+        torch.cuda.synchronize()
+
+    t_start = time.time()
+    for _ in range(times):
+        scattering.forward(x)
+
+    if device == 'gpu':
+        torch.cuda.synchronize()
+
+    t_elapsed = time.time() - t_start
+
+    fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
+    print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+
+###############################################################################
+# The resulting output should be something like
+#
+# .. code-block:: text
+#
+#   ==> Testing Float32 with torch backend, on CPU, forward
+#   Elapsed time: 624.910853 [s / 10 evals], avg: 62.49 (s/batch)
+#   ==> Testing Float32 with torch backend, on GPU, forward
+#   Elapsed time: 130.580992 [s / 10 evals], avg: 13.06 (s/batch)
