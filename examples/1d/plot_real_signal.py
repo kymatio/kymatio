@@ -99,32 +99,31 @@ order0 = [0]
 order1 = sorted([cc for cc in coords.keys() if coords[cc]['order'] == '1'])
 order2 = sorted([cc for cc in coords.keys() if coords[cc]['order'] == '2'])
 
-###############################################################################
-# We display the results in four separate plots arranged vertically.
-
-fig, axarr = plt.subplots(4, 1, figsize=(8, 16))
 
 ###############################################################################
 # First, we plot the original signal `x`. Note that we have to index it as
 # `x[0,0,:]` to convert it to a one-dimensional array and convert it to a
 # numpy array using the `numpy()` method.
 
-axarr[0].plot(x[0,0,:].numpy())
-axarr[0].set_title('Original signal')
+plt.figure(figsize=(8, 2))
+plt.plot(x[0,0,:].numpy())
+plt.title('Original signal')
 
 ###############################################################################
 # We now plot the zeroth-order scattering coefficient, which is simply an
 # average of the original signal at the scale `2**J`.
 
-axarr[1].plot(Sx[0,order0,:].numpy())
-axarr[1].set_title('Scattering Order 0')
+plt.figure(figsize=(8, 2))
+plt.plot(Sx[0,order0,:].numpy().ravel())
+plt.title('Scattering Order 0')
 
 ###############################################################################
 # We then plot the first-order coefficients, which are arranged along time
 # and log-frequency.
 
-axarr[2].imshow(Sx[0,order1,:].numpy(), aspect='auto')
-axarr[2].set_title('Scattering Order 1')
+plt.figure(figsize=(8, 2))
+plt.imshow(Sx[0,order1,:].numpy(), aspect='auto')
+plt.title('Scattering Order 1')
 
 ###############################################################################
 # Finally, we plot the second-order scattering coefficients. These are also
@@ -132,8 +131,9 @@ axarr[2].set_title('Scattering Order 1')
 # frequency and one second-order frequency. Here, both indices are mixed along
 # the vertical axis.
 
-axarr[3].imshow(Sx[0,order2,:].numpy(), aspect='auto')
-axarr[3].set_title('Scattering Order 2')
+plt.figure(figsize=(8, 2))
+plt.imshow(Sx[0,order2,:].numpy(), aspect='auto')
+plt.title('Scattering Order 2')
 
 ###############################################################################
 # Display the plots!
