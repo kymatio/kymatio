@@ -58,7 +58,7 @@ sphinx_gallery_conf = {
     # path where to save gallery generated examples
     'gallery_dirs': ['gallery_1d','gallery_2d','gallery_3d'],
     'ignore_pattern':
-    '__init__.py|mnist.py|scattering3d_qm7.py|compute_speed.py',
+    '__init__.py|mnist.py|scattering3d_qm7.py',
 }
 
 intersphinx_mapping = {'scattering_transform': ('../scattering', None)}
