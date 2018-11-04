@@ -1,3 +1,5 @@
+# Authors: Edouard Oyallon, Sergey Zagoruyko
+
 import torch
 from torch.nn import ReflectionPad2d
 

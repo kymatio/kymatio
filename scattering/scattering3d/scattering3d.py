@@ -1,4 +1,5 @@
-"""Author: Louis Thiry, All rights reserved, 2018."""
+# Authors: Louis Thiry, Georgios Exarchakis
+# Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
 
 __all__ = ['Scattering3D']
 
