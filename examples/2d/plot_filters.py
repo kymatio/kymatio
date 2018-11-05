@@ -7,7 +7,7 @@ See :meth:`scattering.scattering1d.filter_bank` for more informations about the 
 import numpy as np
 import matplotlib.pyplot as plt
 from scattering.scattering2d.filter_bank import filter_bank
-import scipy.fftpack as fft
+from scattering.scattering2d.utils import fft2
 
 
 ###############################################################################
@@ -50,7 +50,7 @@ for filter in filters_set['psi']:
     f_r = filter[0][...,0].numpy()
     f_i = filter[0][..., 1].numpy()
     f = f_r + 1j*f_i
-    filter_c = fft.fft2(f)
+    filter_c = fft2(f)
     filter_c = np.fft.fftshift(filter_c)
     axs[i // L, i % L].imshow(colorize(filter_c))
     axs[i // L, i % L].axis('off')
@@ -70,7 +70,7 @@ for z in range(L):
 f_r = filters_set['phi'][0][...,0].numpy()
 f_i = filters_set['phi'][0][..., 1].numpy()
 f = f_r + 1j*f_i
-filter_c = fft.fft2(f)
+filter_c = fft2(f)
 filter_c = np.fft.fftshift(filter_c)
 axs[J, L // 2].imshow(colorize(filter_c))
 
