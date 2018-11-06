@@ -1,5 +1,5 @@
 import torch
-from scattering.scattering1d.backend import pad1D, modulus_complex, subsample_fourier
+from scattering.scattering1d.backend import pad_1d, modulus_complex, subsample_fourier
 from scattering.scattering1d.utils import compute_border_indices
 import numpy as np
 import pytest
@@ -12,16 +12,16 @@ else:
     force_gpu = False
 
 
-def test_pad1D(random_state=42):
+def test_pad_1d(random_state=42):
     """
-    Tests the correctness and differentiability of pad1D
+    Tests the correctness and differentiability of pad_1d
     """
     torch.manual_seed(random_state)
     N = 128
     for pad_left in range(0, N, 16):
         for pad_right in range(0, N, 16):
             x = torch.randn(100, 4, N, requires_grad=True)
-            x_pad = pad1D(x, pad_left, pad_right, mode='reflect')
+            x_pad = pad_1d(x, pad_left, pad_right, mode='reflect')
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
@@ -52,9 +52,9 @@ def test_pad1D(random_state=42):
             assert torch.max(torch.abs(diff)) <= 1e-7
     # Check that the padding shows an error if we try to pad
     with pytest.raises(ValueError):
-        pad1D(x, x.shape[-1], 0, mode='reflect')
+        pad_1d(x, x.shape[-1], 0, mode='reflect')
     with pytest.raises(ValueError):
-        pad1D(x, 0, x.shape[-1], mode='reflect')
+        pad_1d(x, 0, x.shape[-1], mode='reflect')
 
 
 def test_modulus(random_state=42):
