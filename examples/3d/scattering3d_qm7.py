@@ -124,7 +124,7 @@ def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
 
 def compute_qm7_solid_harmonic_scattering_coefficients(
         M=192, N=128, O=96, sigma=2., J=2, L=3,
-        integral_powers=[0.5, 1., 2., 3.], batch_size=16):
+        integral_powers=(0.5, 1., 2., 3.), batch_size=16):
     """
         Computes the scattering coefficients of the molecules of the
         QM7 database. Channels used are full charges, valence charges
