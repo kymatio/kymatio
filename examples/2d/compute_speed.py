@@ -49,8 +49,7 @@ L = 8
 
 ###############################################################################
 # To squeeze the maximum performance out of the implementation, we apply it to
-# a batch of `128` images. Larger batch sizes do not yield increased efficiency,
-# but smaller values increases the influence of overhead on the running time.
+# a batch of `128` images.
 
 batch_size = 128
 
