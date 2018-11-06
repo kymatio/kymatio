@@ -9,531 +9,299 @@ representations are useful for this type of problem.
 This dataset is automatically downloaded and preprocessed from
 https://github.com/Jakobovski/free-spoken-digit-dataset.git
 
-Downloading and precomputing scattering coefficients should take about 5 mns.
-Running the gradient descent takes about 1 mn.
+Downloading and precomputing scattering coefficients should take about 5 min.
+Running the gradient descent takes about 1 min.
 
 Results:
-Training accuracy = 99.6%
-Testing accuracy = 95.3%
+Training accuracy = 99.7%
+Testing accuracy = 98.0%
 """
 
 ###############################################################################
-# Import the necessary packages
-# -----------------------------
+# Preliminaries
+# -------------
+#
+# Since kymatio handles PyTorch arrays, we first import `torch`.
+
 import torch
+
+###############################################################################
+# We will be constructing a logistic regression classifier on top of the
+# scattering coefficients, so we need some of the neural network tools from
+# `torch.nn` and the Adam optimizer from `torch.optim`.
+
 from torch.nn import Linear, NLLLoss, LogSoftmax, Sequential
 from torch.optim import Adam
-from scattering import Scattering1D
-from scattering.datasets import fetch_fsdd
-from scattering.caching import get_cache_dir
-import numpy as np
+
+###############################################################################
+# To handle audio file I/O, we import `os` and `scipy.io.wavfile`. We also need
+# `numpy` for some basic array manipulation.
+
 from scipy.io import wavfile
 import os
-import json
-import time
-
+import numpy as np
 
 ###############################################################################
-# Defining helper functions
-# -------------------------
-# In this section we define a number of functions that will help us make the
-# procedure as clear as possible.
+# To evaluate our results, we need to form a confusion matrix using
+# scikit-learn and display them using `matplotlib`.
+
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+
+###############################################################################
+# Finally, we import the `Scattering1D` class from the `scattering` package and
+# the `fetch_fsdd` function from `scattering.datasets`. The `Scattering1D`
+# class is what lets us calculate the scattering transform, while the
+# `fetch_fsdd` function downloads the FSDD, if needed.
+
+from scattering import Scattering1D
+from scattering.datasets import fetch_fsdd
+
+###############################################################################
+# Pipeline setup
+# --------------
+# We start by specifying the dimensions of our processing pipeline along with
+# some other parameters.
 #
-
+# First, we have signal length. Longer signals are truncated and shorter
+# signals are zero-padded. The sampling rate is 8000 Hz, so this corresponds to
+# little over a second.
+T = 2**13
 
 ###############################################################################
-# The first helper function is for loading wave files.
-# Sometimes audio input from files is stereo, in which case it loads to an
-# array that has one very long dimension and one very short dimension. We 
-# average over the short dimension
-def loadfile(path_file):
-    sr, x = wavfile.read(path_file)
-    x = np.asarray(x, dtype='float')
-    # make it mono
-    if x.ndim > 1:
-        smallest_axis = np.argmin(x.shape)
-        x = x.mean(axis=smallest_axis)
+# Maximum scale 2**J of the scattering transform (here, about 30 milliseconds)
+# and the number of wavelets per octave.
+J = 8
+Q = 12
+
+###############################################################################
+# We need a small constant to add to the scattering coefficients before
+# computing the logarithm. This prevents very large values when the scattering 
+# coefficients are very close to zero.
+log_eps = 1e-6
+
+###############################################################################
+# If a GPU is available, let's use it!
+use_cuda = torch.cuda.is_available()
+
+###############################################################################
+# For reproducibility, we fix the seed of the random number generator.
+torch.manual_seed(42)
+
+###############################################################################
+# Loading the data
+# ----------------
+# Once the parameter are set, we can start loading the data into a format that
+# can be fed into the scattering transform and then a logistic regression
+# classifier.
+#
+# We first download the dataset. If it's already downloaded, `fetch_fsdd` will
+# simply return the information corresponding to the dataset that's already
+# on disk.
+info_data = fetch_fsdd()
+files = info_data['files']
+path_dataset = info_data['path_dataset']
+
+###############################################################################
+# Set up Tensors to hold the audio signals (`x_all`), the labels (`y_all`), and
+# whether the signal is in the train or test set (`subset`).
+x_all = torch.zeros(len(files), 1, T, dtype=torch.float32)
+y_all = torch.zeros(len(files), dtype=torch.int64)
+subset = torch.zeros(len(files), dtype=torch.int64)
+
+###############################################################################
+# For each file in the dataset, we extract its label `y` and its index from the
+# filename. If the index is between 0 and 4, it is placed in the test set, while
+# files with larger indices are used for training. The actual signals are
+# normalized to have maximum amplitude one, and are truncated or zero-padded
+# to the desired length `T`. They are then stored in the `x_all` Tensor while
+# their labels are in `y_all`.
+for k, f in enumerate(files):
+    basename = f.split('.')[0]
+
+    # Get label (0-9) of recording.
+    y = int(basename.split('_')[0])
+
+    # Index larger than 5 gets assigned to training set.
+    if int(basename.split('_')[2]) >= 5:
+        subset[k] = 0
+    else:
+        subset[k] = 1
+
+    # Load the audio signal and normalize it.
+    _, x = wavfile.read(os.path.join(path_dataset, f))
     x = np.asarray(x, dtype='float')
     x /= np.max(np.abs(x))
-    return sr, x
 
+    # Convert from NumPy array to PyTorch Tensor.
+    x = torch.from_numpy(x)
 
-###############################################################################
-# This helper computes the scattering coefficients for the free-spoken digits
-# dataset and stores them in a cache. That way it only takes time to do once
-# and future calls to the script can retrieve from the cache.
-# Looking at the code, you can see that it calls another helper to actually do
-# the work and then applies some transformations to it before handing it to the
-# user.
-def get_fsdd_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
-                              cache_name='fsdd', is_train=True,
-                              log_transform=True, log_eps=1e-6,
-                              average_time=True, verbose=True):
-    """
-    Downloads, preprocesses and caches the scattering coefficients of the
-    Free Spoken Digit Dataset
+    # If it's too long, truncate it.
+    if x.numel() > T:
+        x = x[:T]
 
-    This function is the main entrance function to access the fsdd dataset
-    in an automated fashion.
+    # If it's too short, zero-pad it.
+    start = (T - x.numel()) // 2
 
-    Arguments
-    ---------
-    T: int > 0
-        Support of the signals to use (otherwise, signals will be cut or
-        padded to achieve this value)
-    J: int > 0
-        Scale parameter for the scattering transform
-    Q: int > 0
-        Quality factor for the scattering filterbank.
-    use_cuda: boolean, optional
-        Allows to use cuda to speed up operations. Defaults to True
-    force_compute: boolean, optional
-        Whether to force to recompute scattering vectors, even if existing.
-        Defaults to False.
-    cache_name: string, optional
-        Name of the caching directory for this file. Defaults to "fsdd"
-    is_train: boolean, optional
-        Whether to provide files related to the training or testing set.
-        Defaults to True
-    log_transform: boolean, optional
-        Whether to take the logarithm of the scattering coefficients, which
-        should be more equally distributed. This removes the zero-order
-        coefficients (averages). Defaults to True.
-    log_eps: float > 0
-        Constant to add to the absolute value of the scattering coefficients
-        before computing the logarithm. Defaults to 1e-6.
-    average_time: boolean, optional
-        Whether to take the average of the scatterings along time, to reduce
-        the dimensionality of the problem. Defaults to True
-    verbose: boolean, optional
-        Whether to display information about what is performed.
-        Defaults to True.
-
-    Returns
-    -------
-    x: torch FloatTensor with 2 axis
-        The input vectors (lines are samples, columns features)
-        The inputs are processed according to the log and averaging operations,
-        if necessary.
-    y: torch LongTensor with 1 axis
-        The output classes (integers from 0 to 9)
-    """
-    # Get the aggregated file in the adequate folder
-    x, y = get_agg_scattering_coefs(
-        T, J, Q, use_cuda=use_cuda, force_compute=force_compute,
-        cache_name=cache_name, is_train=is_train, verbose=verbose)
-    if log_transform:
-        x = x[:, 1:, :] # remove order 0
-        x = torch.log(torch.abs(x) + log_eps)
-    if average_time:
-        x = torch.mean(x, dim=-1)
-    else:
-        x = x.view(x.shape(0), -1).contiguous()
-    return x, y
+    x_all[k,0,start:start + x.numel()] = x
+    y_all[k] = y
 
 ###############################################################################
-# The next function is responsible for checking whether the scattering
-# coefficients are already cached in bulk. If they are not, then it asks
-# another function to compute all of them, and then saves them in bulk.
-def get_agg_scattering_coefs(T, J, Q, use_cuda=True, force_compute=False,
-                             cache_name='fsdd', is_train=True,
-                             verbose=False):
-    """
-    Help function for get_fsdd_dataset.
-    Computes and caches the aggregated dataset for train and test (aggregated
-    along all files, which is possible since the dataset is very small).
-
-    Arguments
-    ---------
-    T: int > 0
-        Support of the signals to use (otherwise, signals will be cut or
-        padded to achieve this value)
-    J: int > 0
-        Scale parameter for the scattering transform
-    Q: int > 0
-        Quality factor for the scattering filterbank.
-    use_cuda: boolean, optional
-        Allows to use cuda to speed up operations. Defaults to True
-    force_compute: boolean, optional
-        Whether to force to recompute scattering vectors, even if existing.
-        Defaults to False.
-    cache_name: string, optional
-        Name of the caching directory for this file. Defaults to "fsdd"
-    is_train: boolean, optional
-        Whether to provide files related to the training or testing set.
-        Defaults to True
-    verbose: boolean, optional
-        Whether to display information about what is performed.
-        Defaults to True.
-
-    Returns
-    -------
-    x: torch FloatTensor with 2 axis
-        The input vectors (lines are samples, columns features), un-processed.
-    y: torch LongTensor with 1 axis
-        The output classes (integers from 0 to 9)
-    """
-    # Check if the aggregated files for train or test already exist
-    suffix = 'train' if is_train else 'test'
-    path_data = get_cache_dir(os.path.join(cache_name, 'scattering'))
-    input_path = os.path.join(path_data, 'input_' + suffix + '.th')
-    output_path = os.path.join(path_data, 'output_' + suffix + '.th')
-    exists_input = os.path.exists(input_path)
-    exists_output = os.path.exists(output_path)
-    if not(exists_input) or not(exists_output) or force_compute:
-        # get the list of all the scattering coefficients
-        # (they may be recomputed along the way if necessary
-        files = get_detail_scattering_coefs(
-            T, J, Q, use_cuda=use_cuda, force_compute=force_compute,
-            cache_name=cache_name, is_train=is_train, verbose=verbose)
-        if verbose:
-            print('Aggregating individual scattering vectors for', suffix)
-        # Aggregate the files
-        path_dataset = os.path.join(path_data, suffix)
-        s_acc = []
-        y_acc = []
-        for f in files:
-            s = torch.load(os.path.join(path_dataset, f))
-            label = int(f.split('_')[0])
-            y = torch.LongTensor([label])
-            s_acc.append(s.unsqueeze(0))
-            y_acc.append(y.unsqueeze(0))
-        s_acc = torch.cat(s_acc, dim=0)
-        y_acc = torch.squeeze(torch.cat(y_acc, dim=0))
-        # save them
-        torch.save(s_acc, input_path)
-        torch.save(y_acc, output_path)
-    else:
-        s_acc = torch.load(input_path)
-        y_acc = torch.load(output_path)
-    # return the result
-    return s_acc, y_acc
+# Log-scattering transform
+# ------------------------
+# We now create the `Scattering1D` object that will be used to calculate the
+# scattering coefficients.
+scattering = Scattering1D(T, J, Q)
 
 ###############################################################################
-# Next up is a function that checks whether indididual files have been
-# scattering-transformed, and if so gathers these files. If not, it calls 
-# another function to compute them.
-def get_detail_scattering_coefs(T, J, Q, use_cuda=True,
-                                force_compute=False,
-                                cache_name='fsdd', is_train=True,
-                                verbose=False):
-    """
-    Get the list of all the class_name_idex.th files for the train/test class
-    If the folder cache_name/scattering/train or test does not exist or
-    if force_compute is True, all the scattering coefficients are recomputed
-    along the way (both for train and test)
-
-    Arguments
-    ---------
-    T: int > 0
-        Support of the signals to use (otherwise, signals will be cut or
-        padded to achieve this value)
-    J: int > 0
-        Scale parameter for the scattering transform
-    Q: int > 0
-        Quality factor for the scattering filterbank.
-    use_cuda: boolean, optional
-        Allows to use cuda to speed up operations. Defaults to True
-    force_compute: boolean, optional
-        Whether to force to recompute scattering vectors, even if existing.
-        Defaults to False.
-    cache_name: string, optional
-        Name of the caching directory for this file. Defaults to "fsdd"
-    is_train: boolean, optional
-        Whether to provide files related to the training or testing set.
-        Defaults to True
-    verbose: boolean, optional
-        Whether to display information about what is performed.
-        Defaults to True.
-
-    Returns
-    -------
-    list_train (or list_test): list
-        The list of the files present in the correct caching directory to
-        look after when performing the aggregation. Files are sorted to
-        ensure reproducibility.
-    """
-    suffix = 'train' if is_train else 'test'
-    path_dataset = get_cache_dir(
-        name=os.path.join(cache_name, 'scattering', suffix))
-    list_files = sorted(
-        [f for f in os.listdir(path_dataset) if f.endswith('.th')])
-    if len(list_files) > 0 and not(force_compute):
-        return list_files
-    else:
-        # we recompute all scattering coefficients
-        list_train, list_test = compute_scattering_coefs(
-            T, J, Q, use_cuda=use_cuda, cache_name=cache_name, verbose=verbose)
-        if is_train:
-            return list_train
-        else:
-            return list_test
-
-
-###############################################################################
-# This next function here does the actual heavy lifting - it uses the fsdd
-# dataset loader to obtain the raw data, which is downloaded from the Internet
-# automatically if it is not local. Then it computes the scattering transform
-# of each file and saves it in a file in a cache directory.
-def compute_scattering_coefs(T, J, Q, use_cuda=True, cache_name='fsdd',
-                             verbose=False):
-    """
-    Get the list of individual computed scattering coefficients, both for train
-    and test.
-    If not existing, computes and caches them.
-
-    Arguments
-    ---------
-    T: int > 0
-        Support of the signals to use (otherwise, signals will be cut or
-        padded to achieve this value)
-    J: int > 0
-        Scale parameter for the scattering transform
-    Q: int > 0
-        Quality factor for the scattering filterbank.
-    use_cuda: boolean, optional
-        Allows to use cuda to speed up operations. Defaults to True
-    cache_name: string, optional
-        Name of the caching directory for this file. Defaults to "fsdd"
-    verbose: boolean, optional
-        Whether to display information about what is performed.
-        Defaults to True.
-
-    Returns
-    -------
-    list_train, list_test:
-        The list of the files present in the correct caching directory to
-        look after when performing the aggregation. Files are sorted to
-        ensure reproducibility.
-    """
-    # 1) Download the dataset (if not existing)
-    info_data = fetch_fsdd(verbose=verbose)
-    files = sorted(info_data['files'])
-    path_data = info_data['path_dataset']
-    # 2) Preprocess with the scattering
-    if verbose:
-        print("Computing scattering coefficients")
-    scattering = Scattering1D(T, J, Q)
-    if use_cuda:
-        scattering = scattering.cuda()
-    # build the caching directory
-    path_temp = {
-        suffix: get_cache_dir(
-            name=os.path.join(cache_name, 'scattering', suffix))
-        for suffix in ['train', 'test']}
-
-    n = len(files)
-    t0 = time.time()
-    for count, f in enumerate(files):
-        t1 = time.time()
-        print("{}/{} - Time elapsed: {:0.2f}s".format(count, n, t1 - t0),
-              end="\r")
-        # load the file
-        rate, x = loadfile(os.path.join(path_data, f))
-        if x.size <= T:
-            # pad it with zeros:
-            missing = T - x.size
-            x_padded = np.zeros(T, dtype='float32')
-            left_pad = (T - len(x)) // 2
-            x_padded[left_pad:left_pad + len(x)] = x
-            x = torch.from_numpy(x_padded[np.newaxis, np.newaxis])
-            if use_cuda:
-                x = x.cuda()
-            # compute the scattering
-            s = scattering.forward(x).data[0]
-            if use_cuda:
-                x = x.cpu()
-                s = s.cpu()
-        else:
-            s_acc = []
-            # split it
-            num_chunks = -(-x.size // T)  # negative integer divison for ceil
-            for i in range(num_chunks):
-                if i == num_chunks - 1:
-                    data = torch.from_numpy(x[-T:]).float()
-                else:
-                    data = torch.from_numpy(x[i * T: (i + 1) * T]).float()
-                data = data.unsqueeze(0).unsqueeze(0)
-                if use_cuda:
-                    data = data.cuda()
-                s = scattering.forward(data).data
-                if use_cuda:
-                    data = data.cpu()
-                    s = s.cpu()
-                s_acc.append(s)
-            # average them
-            s_acc = torch.cat(s_acc, dim=0)
-            s = s_acc.mean(dim=0)
-
-        # store it in the adequate folder
-        info = f.split('_')
-        name = f.split('.')[0]
-        is_train = int(info[2].split('.')[0]) >= 5
-        suffix = 'train' if is_train else 'test'
-        torch.save(s, os.path.join(path_temp[suffix], name + '.th'))
-    # list all the files in train and test
-    files_train = sorted(
-        [f for f in os.listdir(path_temp['train']) if f.endswith('.th')])
-    files_test = sorted(
-        [f for f in os.listdir(path_temp['test']) if f.endswith('.th')])
-    return files_train, files_test
-
-
-
-###############################################################################
-# Next up is a helper function that can compute the loss and accuracy of a
-# neural network that we give it along with an evaluation criterion and data.
-def compute_loss_and_accuracy(net, criterion, x, y):
-    """
-    Computes the loss and accuracy of the model net with the given
-    criterion for the dataset (x, y)
-
-    Arguments
-    ---------
-    net: torch Module
-    criterion: torch loss function
-    x: input Tensor (variable)
-    y: expected output tensor (variable)
-
-    Returns
-    -------
-    avg_loss: float
-        average loss across the dataset
-    accuracy: float
-        average accuracy across the dataset, that is:
-        average number of samples for which the network assigns the
-        maximal probability for the correct class.
-    """
-    all_losses = []
-    all_successes = []
-    for i in range(x.shape[0]):
-        resp = net.forward(x[i].unsqueeze(0))
-        loss = criterion(resp, y[i:i+1])
-        all_losses.append(loss.data.cpu()[0])
-        # find the argmax of resp
-        sub_resp = torch.squeeze(resp.data.cpu()).numpy()
-        success = np.argmax(sub_resp) == y[i].data[0]
-        all_successes.append(success)
-    avg_loss = np.array(all_losses).mean()
-    accuracy = np.array(all_successes).mean()
-    return avg_loss, accuracy
-
-
-###############################################################################
-# Putting everything together
-# ---------------------------
-# We start by specifying the dimensions of our processing pipeline along with
-# some other parameters
-T = 2**13  # support size we use
-J = 8  # averaging scale of the scattering
-Q = 12  # quality factor for the wavelet transform
-log_transform = True  # use the log of the scattering
-log_eps = 1e-6 # constant to prevent small arguments of the log
-average_time = True  # average scattering along time
-batch_size = 32  # batch_size
-num_epochs = 50  # number of epochs
-lr = 1e-4  # learning rate (ADAM)
-random_state = 42  # random seed for reproducibility
-use_cuda = torch.cuda.is_available()  # whether to use cuda
-verbose = True  # print intermediate steps
-cache_name = 'fsdd'  # name of the cache folder
-num_classes = 10  # number of classes for the problem
-force_compute = False  # forces to recompute scattering features
-# set the seed
-torch.manual_seed(random_state)  # set the seed
-
-###############################################################################
-# Here we obtain the scattering features for training, preprocess them and get
-# them ready for classification
-X_tr, y_tr = get_fsdd_scattering_coefs(
-    T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=True,
-    log_transform=log_transform, log_eps=log_eps,
-    average_time=average_time, force_compute=force_compute)
-nsamples = X_tr.shape[0]
-nbatches = nsamples // batch_size
-# whiten the dataset
-mu_tr = X_tr.mean(dim=0)
-std_tr = X_tr.std(dim=0)
-X_tr = (X_tr - mu_tr) / std_tr
-
-# move to GPU if necessary
+# If we are using CUDA, the scattering transform object must be transferred to
+# the GPU by calling its `cuda()` method. The data is similarly transferred.
 if use_cuda:
-    X_tr = X_tr.cuda()
-    y_tr = y_tr.cuda()
-# embed them in variables
-X_tr = X_tr.requires_grad_(False)
-y_tr = y_tr.requires_grad_(False)
-
+    scattering.cuda()
+    x_all = x_all.cuda()
+    y_all = y_all.cuda()
 
 ###############################################################################
-# Neural Network Model
-# 
-# Here we define a Logistic Regression model using pytorch
-model = Sequential(Linear(X_tr.shape[-1], num_classes), LogSoftmax())
+# Compute the scattering transform for all signals in the dataset.
+Sx_all = scattering.forward(x_all)
+
+###############################################################################
+# Since it does not carry useful information, we remove the zeroth-order
+# scattering coefficients, which are always placed in the first channel of
+# the scattering Tensor.
+Sx_all = Sx_all[:,1:,:]
+
+###############################################################################
+# To increase discriminability, we take the logarithm of the scattering
+# coefficients (after adding a small constant to make sure nothing blows up
+# when scattering coefficients are close to zero).
+Sx_all = torch.log(torch.abs(Sx_all) + log_eps)
+
+###############################################################################
+# Finally, we average along the last dimension (time) to get a time-shift
+# invariant representation.
+Sx_all = torch.mean(Sx_all, dim=-1)
+
+###############################################################################
+# Training the classifier
+# -----------------------
+# With the log-scattering coefficients in hand, we are ready to train our
+# logistic regression classifier.
+#
+# First, we extract the training data (those for which `subset` equals `0`)
+# and the associated labels.
+Sx_tr, y_tr = Sx_all[subset == 0], y_all[subset == 0]
+
+###############################################################################
+# Standardize the data to have mean zero and unit variance. Note that we need
+# to apply the same transformation to the test data later, so we save the
+# mean and standard deviation Tensors.
+mu_tr = Sx_tr.mean(dim=0)
+std_tr = Sx_tr.std(dim=0)
+Sx_tr = (Sx_tr - mu_tr) / std_tr
+
+###############################################################################
+# Here we define a Logistic Regression model using PyTorch. We train it using
+# Adam with a negative log-likelihood loss.
+num_input = Sx_tr.shape[-1]
+num_classes = y_tr.unique().numel()
+model = Sequential(Linear(num_input, num_classes), LogSoftmax(dim=1))
 optimizer = Adam(model.parameters())
 criterion = NLLLoss()
+
+###############################################################################
+# As before, if we're on a GPU, transfer the model and the loss function onto
+# the device.
 if use_cuda:
     model = model.cuda()
     criterion = criterion.cuda()
 
 ###############################################################################
-# This part is the actual training routine
+# Before training the model, we set some parameters for the optimization
+# procedure.
 
-# perform the gradient descent
+# Number of signals to use in each gradient descent step (batch).
+batch_size = 32
+# Number of epochs.
+num_epochs = 50
+# Learning rate for Adam.
+lr = 1e-4
+
+###############################################################################
+# Given these parameters, we compute the total number of batches.
+nsamples = Sx_tr.shape[0]
+nbatches = nsamples // batch_size
+
+###############################################################################
+# Now we're ready to train the classifier.
 for e in range(num_epochs):
-    # permutation of the dataset
+    # Randomly permute the data. If necessary, transfer the permutation to the
+    # GPU.
     perm = torch.randperm(nsamples)
     if use_cuda:
         perm = perm.cuda()
+
+    # For each batch, calculate the gradient with respect to the loss and take
+    # one step.
     for i in range(nbatches):
+        idx = perm[i * batch_size : (i+1) * batch_size]
         model.zero_grad()
-        resp = model.forward(
-            X_tr[perm[i * batch_size: (i + 1) * batch_size]])
-        loss = criterion(
-            resp, y_tr[perm[i * batch_size: (i + 1) * batch_size]])
+        resp = model.forward(Sx_tr[idx])
+        loss = criterion(resp, y_tr[idx])
         loss.backward()
         optimizer.step()
-    # compute the loss and the accuracy
-    avg_loss, accu = compute_loss_and_accuracy(model, criterion,
-                                               X_tr, y_tr)
+
+    # Calculate the response of the training data at the end of this epoch and
+    # the average loss.
+    resp = model.forward(Sx_tr)
+    avg_loss = criterion(resp, y_tr)
+
+    # Try predicting the classes of the signals in the training set and compute
+    # the accuracy.
+    y_hat = resp.argmax(dim=1)
+    accuracy = (y_tr == y_hat).float().mean()
+
     print('Epoch {}, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
-        e, avg_loss, accu))
+        e, avg_loss, accuracy))
 
 ###############################################################################
 # Now that our network is trained, let's test it!
+#
+# First, we extract the test data (those for which `subset` equals `1`) and the
+# associated labels.
+Sx_te, y_te = Sx_all[subset == 1], y_all[subset == 1]
 
-# Load testing features
-X_te, y_te = get_fsdd_scattering_coefs(
-    T, J, Q, use_cuda=use_cuda, cache_name=cache_name, is_train=False,
-    log_transform=log_transform, average_time=average_time,
-    force_compute=force_compute)
-X_te = (X_te - mu_tr) / std_tr
-if use_cuda:
-    X_te = X_te.cuda()
-    y_te = y_te.cuda()
-X_te = X_te.requires_grad_(False)
-y_te = torch.squeeze(y_te).requires_grad_(False)
+###############################################################################
+# Use the mean and standard deviation calculated on the training data to 
+# standardize the testing data, as well.
+Sx_te = (Sx_te - mu_tr) / std_tr
 
-avg_loss, accu = compute_loss_and_accuracy(model, criterion, X_te, y_te)
+###############################################################################
+# Calculate the response of the classifier on the test data and the resulting
+# loss.
+resp = model.forward(Sx_te)
+avg_loss = criterion(resp, y_te)
+
+# Try predicting the labels of the signals in the test data and compute the
+# accuracy.
+y_hat = resp.argmax(dim=1)
+accu = (y_te == y_hat).float().mean()
+
 print('TEST, average loss = {:1.3f}, accuracy = {:1.3f}'.format(
       avg_loss, accu))
 
 ###############################################################################
 # Plotting the classification accuracy as a confusion matrix
 # ----------------------------------------------------------
-# Let's see, among the very few misclassified sounds, what they get
-# misclassified as.
-# We will plot a confusion matrix which indicates in a 2D histogram how often
+# Let's see what the very few misclassified sounds get misclassified as. We
+# will plot a confusion matrix which indicates in a 2D histogram how often
 # one sample was mistaken for another (anything on the diagonal is correctly
-# classified, anything off is wrong)
+# classified, anything off the diagonal is wrong).
 
-predicted_logits = model(X_te).detach().cpu().numpy()
-predicted_categories = predicted_logits.argmax(axis=1)
+predicted_categories = y_hat.cpu().numpy()
 actual_categories = y_te.cpu().numpy()
 
-from sklearn.metrics import confusion_matrix
 confusion = confusion_matrix(actual_categories, predicted_categories)
-import matplotlib.pyplot as plt
 plt.figure()
 plt.imshow(confusion)
 tick_locs = np.arange(10)
@@ -543,6 +311,3 @@ plt.yticks(tick_locs, ticks)
 plt.ylabel("True number")
 plt.xlabel("Predicted number")
 plt.show()
-
-
-
