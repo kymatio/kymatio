@@ -285,12 +285,8 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
     """
     output = pad1D(x, pad_left, pad_right, mode='reflect')
     if to_complex:
-        return torch.cat(
-            [output.unsqueeze(-1),
-             output.data.new(output.shape + (1,)).fill_(0.)],
-            dim=-1)
-    else:
-        return output
+        output = torch.stack((output, torch.zeros_like(output)), dim=-1)
+    return output
 
 def unpad(x, i0, i1):
     """Unpad real 1D tensor
