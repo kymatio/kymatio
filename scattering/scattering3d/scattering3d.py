@@ -54,9 +54,9 @@ class Scattering3D(object):
         ----------
 
         input_array: torch tensor
-            size (batchsize, M, N, O)
+            size (batchsize, M, N, O, 2)
         filter_array: torch tensor
-            size (M, N, O)
+            size (M, N, O, 2)
 
         Returns
         -------
@@ -73,7 +73,7 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array : tensor
-            size (batchsize, M, N, O)
+            size (batchsize, M, N, O, 2)
 
         j: int 
 
@@ -95,7 +95,7 @@ class Scattering3D(object):
 
         Parameters
         ----------
-        input_array: torch tensor of size (batchsize, M, N, O)
+        input_array: torch tensor of size (batchsize, M, N, O, 2)
 
         Returns
         -------
@@ -114,7 +114,7 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array: torch tensor
-            size (batchsize, M, N, O)
+            size (batchsize, M, N, O, 2)
         points: torch tensor
             size (batchsize, number of points, 3)
         j: int
@@ -143,7 +143,7 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array : torch tensor
-            size (batchsize, M, N, O)
+            size (batchsize, M, N, O, 2)
         method : string
             method name with three possible values ("standard", "local", "integral")
         args : dict
@@ -182,7 +182,7 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array : tensor
-            size (batchsize x M x N x O)
+            size (batchsize, M, N, O, 2)
         l : int
             solid harmonic degree l
 
@@ -219,7 +219,7 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array: torch tensor
-            size (batchsize, M, N, O)
+            size (batchsize, M, N, O, 2)
         l : int
             solid harmonic degree l
         j : int
@@ -268,7 +268,7 @@ class Scattering3D(object):
         Parameters
         ----------
         input_array: torch tensor 
-            input of size (batchsize x M x N x O)
+            input of size (batchsize, M, N, O)
         order_2: bool, optional
             if set to False|True it also excludes|includes second order
             scattering coefficients (default: True).
