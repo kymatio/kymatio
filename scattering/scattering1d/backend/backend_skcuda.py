@@ -18,13 +18,13 @@ def load_kernel(kernel_name, code, **kwargs):
 
 Stream = namedtuple('Stream', ['ptr'])
 
-def getDtype(t):
+def get_dtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-def iscomplex(input):
+def is_complex(input):
     return input.size(-1) == 2
 
 class Modulus(object):
@@ -58,7 +58,7 @@ class Modulus(object):
         self.CUDA_NUM_THREADS = 1024
         self.backend = backend
 
-    def GET_BLOCKS(self, N):
+    def get_blocks(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
     def __call__(self, input):
@@ -69,22 +69,22 @@ class Modulus(object):
         out = input.new(input.size())
         input = input.contiguous()
 
-        if not iscomplex(input):
+        if not is_complex(input):
             raise TypeError('The input and outputs should be complex.')
 
         kernel = """
         extern "C"
-        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype}2 * z, int n)
+        __global__ void abs_complex_value(const ${dtype} * x, ${dtype}2 * z, int n)
         {
             int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= n)
             return;
-        z[i] = make_${Dtype}2(normf(2, x + 2*i), 0);
+        z[i] = make_${dtype}2(normf(2, x + 2*i), 0);
 
         }
         """
-        fabs = load_kernel('abs_complex_value', kernel, Dtype=getDtype(input))
-        fabs(grid=(self.GET_BLOCKS(int(out.nelement())//2), 1, 1),
+        fabs = load_kernel('abs_complex_value', kernel, dtype=get_dtype(input))
+        fabs(grid=(self.get_blocks(int(out.nelement())//2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
              args=[input.data_ptr(), out.data_ptr(), out.numel() // 2],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
@@ -144,7 +144,7 @@ class SubsampleFourier(object):
         self.block = (1024, 1, 1)
         self.backend = backend
 
-    def GET_BLOCKS(self, N, threads):
+    def get_blocks(self, N, threads):
         return (N + threads - 1) // threads
 
     def __call__(self, input, k):
@@ -153,7 +153,7 @@ class SubsampleFourier(object):
 
         out = input.new(input.size(0), input.size(1), input.size(2) // k, 2)
 
-        if not iscomplex(input):
+        if not is_complex(input):
             raise (TypeError('The input and outputs should be complex'))
 
         input = input.contiguous()
@@ -161,7 +161,7 @@ class SubsampleFourier(object):
         kernel = '''
         #define NT ${T} / ${k}
         extern "C"
-        __global__ void periodize(const ${Dtype}2 *input, ${Dtype}2 *output)
+        __global__ void periodize(const ${dtype}2 *input, ${dtype}2 *output)
         {
           int tx = blockIdx.x * blockDim.x + threadIdx.x;
           int ty = blockIdx.y * blockDim.y + threadIdx.y;
@@ -169,11 +169,11 @@ class SubsampleFourier(object):
           if(tx >= NT || ty >= ${B})
             return;
           input += ty * ${T} + tx;
-          ${Dtype}2 res = make_${Dtype}2(0.f, 0.f);
+          ${dtype}2 res = make_${dtype}2(0.f, 0.f);
 
             for (int i=0; i<${k}; ++i)
             {
-              const ${Dtype}2 &c = input[i * NT];
+              const ${dtype}2 &c = input[i * NT];
               res.x += c.x;
               res.y += c.y;
             }
@@ -184,9 +184,9 @@ class SubsampleFourier(object):
         '''
         B = input.size(0) * input.size(1)
         T = input.size(2)
-        periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, Dtype=getDtype(input))
-        grid = (self.GET_BLOCKS(out.size(-2), self.block[0]),
-                self.GET_BLOCKS(out.nelement() // (2*out.size(-2)), self.block[1]),
+        periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, dtype=get_dtype(input))
+        grid = (self.get_blocks(out.size(-2), self.block[0]),
+                self.get_blocks(out.nelement() // (2*out.size(-2)), self.block[1]),
                 1)
         periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
