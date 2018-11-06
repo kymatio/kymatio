@@ -28,23 +28,32 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 class Modulus(object):
+    """Stable complex modulus
+
+    This class implements a modulus transform for complex numbers which is
+    stable with respect to very small inputs (z close to 0), avoiding
+    returning nans in all cases.
+
+    Usage
+    -----
+    modulus = ModulusStable.apply  # apply inherited from Function
+    x_mod = modulus(x)
+
+    Parameters
+    ---------
+    x : tensor
+        The complex tensor (i.e., whose last dimension is two) whose modulus
+        we want to compute.
+
+    Returns
+    -------
+    output : tensor
+        A tensor of same size as the input tensor, except for the last
+        dimension, which is removed. This tensor is differentiable with respect
+        to the input in a stable fashion (so gradent of the modulus at zero is
+        zero).
     """
-        This class implements a modulus transform for complex numbers.
 
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-
-        Parameters
-        ---------
-        x: input tensor, with last dimension = 2 for complex numbers
-
-        Returns
-        -------
-        output: a tensor with imaginary part set to 0, real part set equal to
-        the modulus of x.
-    """
     def __init__(self, backend='skcuda'):
         self.CUDA_NUM_THREADS = 1024
         self.backend = backend
@@ -55,13 +64,13 @@ class Modulus(object):
     def __call__(self, input):
 
         if not input.is_cuda and self.backend=='skcuda':
-            raise RuntimeError('Use the torch backend for cpu tensors!')
+            raise RuntimeError('Use the torch backend for CPU tensors!')
 
         out = input.new(input.size())
         input = input.contiguous()
 
         if not iscomplex(input):
-            raise TypeError('The input and outputs should be complex')
+            raise TypeError('The input and outputs should be complex.')
 
         kernel = """
         extern "C"
@@ -84,46 +93,52 @@ class Modulus(object):
 modulus = Modulus()
 
 def modulus_complex(x):
-    """
-    Computes the modulus of x as a real tensor and returns a new complex tensor
-    with imaginary part equal to 0.
+    """Compute the complex modulus
+
+    Computes the modulus of x and stores the result in a complex tensor of the
+    same size, with the real part equal to the modulus and the imaginary part
+    equal to zero.
 
     Parameters
     ----------
-    x : tensor_like
-        input tensor, should be a 4D tensor with the last axis of size 2
+    x : tensor
+        A complex tensor (that is, whose last dimension is equal to 2).
 
     Returns
     -------
-    res : tensor_like
-        a tensor with same dimensions as x, such that res[..., 0] contains
-        the complex modulus of the input, and res[..., 1] = 0.
+    res : tensor
+        A tensor with the same dimensions as x, such that res[..., 0] contains
+        the complex modulus of x, while res[..., 1] = 0.
     """
-    # take the stable modulus
-    res = modulus(x)
-    return res
+    return modulus(x)
 
 class SubsampleFourier(object):
-    """
-        Subsampling of a 2D image performed in the Fourier domain
-        Subsampling in the spatial domain amounts to periodization
-        in the Fourier domain, hence the formula.
+    """Subsampling in the Fourier domain
 
-        Parameters
-        ----------
-        x : tensor_like
-            input tensor with at least 5 dimensions, the last being the real
-             and imaginary parts.
-            Ideally, the last dimension should be a power of 2 to avoid errors.
-        k : int
-            integer such that x is subsampled by 2**k along the spatial variables.
+    Subsampling in the temporal domain amounts to periodization in the Fourier
+    domain, so the input is periodized according to the subsampling factor.
 
-        Returns
-        -------
-        res : tensor_like
-            tensor such that its fourier transform is the Fourier
-            transform of a subsampled version of x, i.e. in
-            FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
+    Usage
+    -----
+    sub_fourier = SubsampleFourier()
+    res = sub_fourier(x, 8)
+
+    Parameters
+    ----------
+    x : tensor
+        Input tensor with at least 3 dimensions, where the next to last
+        corresponds to the frequency index in the standard PyTorch FFT
+        ordering. The length of this dimension should be a power of 2 to
+        avoid errors. The last dimension should represent the real and
+        imaginary parts of the Fourier transform.
+    k : int
+        The subsampling factor.
+
+    Returns
+    -------
+    res : tensor
+        The input tensor periodized along the next to last axis to yield a
+        tensor of size x.shape[-2] // k along that dimension.
     """
     def __init__(self, backend='skcuda'):
         self.block = (1024, 1, 1)
@@ -180,89 +195,93 @@ class SubsampleFourier(object):
 subsamplefourier = SubsampleFourier()
 
 def subsample_fourier(x, k):
-    """
-    Subsampling of a vector performed in the Fourier domain
+    """Subsampling in the Fourier domain
 
-    Subsampling in the temporal domain amounts to periodization
-    in the Fourier domain, hence the formula.
+    Subsampling in the temporal domain amounts to periodization in the Fourier
+    domain, so the input is periodized according to the subsampling factor.
 
     Parameters
     ----------
-    x : tensor_like
-        input tensor with at least 3 dimensions, the last
-        corresponding to time (in the Fourier domain).
-        The last dimension should be a power of 2 to avoid errors.
+    x : tensor
+        Input tensor with at least 3 dimensions, where the next to last
+        corresponds to the frequency index in the standard PyTorch FFT
+        ordering. The length of this dimension should be a power of 2 to
+        avoid errors. The last dimension should represent the real and
+        imaginary parts of the Fourier transform.
     k : int
-        integer such that x is subsampled by 2**k
+        The subsampling factor.
 
     Returns
     -------
-    res : tensor_like
-        tensor such that its fourier transform is the Fourier
-        transform of a subsampled version of x, i.e. in
-        FFT^{-1}(res)[t] = FFT^{-1}(x)[t * (2**k)]
+    res : tensor
+        The input tensor periodized along the next to last axis to yield a
+        tensor of size x.shape[-2] // k along that dimension.
     """
     return subsamplefourier(x,k)
 
 def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
-    """
-    1D implementation of the padding function for torch tensors
+    """Pad real 1D tensors
+
+    1D implementation of the padding function for real PyTorch tensors.
 
     Parameters
     ----------
-    x : tensor_like
-        input tensor, 3D with time in the last axis.
+    x : tensor
+        Three-dimensional input tensor with the third axis being the one to
+        be padded.
     pad_left : int
-        amount to add on the left of the tensor (at the beginning
-        of the temporal axis)
+        Amount to add on the left of the tensor (at the beginning of the
+        temporal axis).
     pad_right : int
-        amount to add on the right of the tensor (at the end
-        of the temporal axis)
+        amount to add on the right of the tensor (at the end of the temporal
+        axis).
     mode : string, optional
-        Padding mode. Options include 'constant' and
-        'reflect'. See the pytorch API for other options.
-        Defaults to 'constant'
+        Padding mode. Options include 'constant' and 'reflect'. See the
+        PyTorch API for other options.  Defaults to 'constant'.
     value : float, optional
-        If mode == 'constant', value to input
-        within the padding. Defaults to 0.
+        If mode == 'constant', value to input within the padding. Defaults to
+        0.
 
     Returns
     -------
-    res: the padded tensor
+    res : tensor
+        The tensor passed along the third dimension.
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
-            raise ValueError('Indefinite padding size (larger than tensor)')
+            raise ValueError('Indefinite padding size (larger than tensor).')
     res = F.pad(x.unsqueeze(2),
                 (pad_left, pad_right, 0, 0),
                 mode=mode, value=value).squeeze(2)
     return res
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
-    """
-    Padding which allows to simultaneously pad in a reflection fashion
-    and map to complex if necessary
+    """Pad real 1D tensors and map to complex
+
+    Padding which allows to simultaneously pad in a reflection fashion and map
+    to complex if necessary.
 
     Parameters
     ----------
-    x : tensor_like
-        input tensor, 3D with time in the last axis.
-    pad_left : int, optional
-        amount to add on the left of the tensor
-        (at the beginning of the temporal axis). Defaults to 0
-    pad_right : int, optional
-        amount to add on the right of the tensor (at the end
-        of the temporal axis). Defaults to 0
+    x : tensor
+        Three-dimensional input tensor with the third axis being the one to
+        be padded.
+    pad_left : int
+        Amount to add on the left of the tensor (at the beginning of the
+        temporal axis).
+    pad_right : int
+        amount to add on the right of the tensor (at the end of the temporal
+        axis).
     to_complex : boolean, optional
-        Whether to map the resulting padded tensor
-        to a complex type (seen as a real number). Defaults to True
+        Whether to map the resulting padded tensor to a complex type (seen
+        as a real number). Defaults to True.
 
     Returns
     -------
-    output : tensor_like
-        A padded signal, possibly transformed into a 4D tensor
-        with the last axis equal to 2 if to_complex is True (these
-        dimensions should be interpreted as real and imaginary parts)
+    output : tensor
+        A padded signal, possibly transformed into a four-dimensional tensor
+        with the last axis of size 2 if to_complex is True (this axis
+        corresponds to the real and imaginary parts).
     """
     output = pad1D(x, pad_left, pad_right, mode='reflect')
     if to_complex:
@@ -274,66 +293,95 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
         return output
 
 def unpad(x, i0, i1):
-    """
-    Slices the input tensor at indices between i0 and i1 in the last axis
+    """Unpad real 1D tensor
+
+    Slices the input tensor at indices between i0 and i1 along the last axis.
 
     Parameters
     ----------
-    x : tensor_like
-        input tensor (at least 1 axis)
+    x : tensor
+        Input tensor with least one axis.
     i0 : int
-    i1: int
+        Start of original signal before padding.
+    i1 : int
+        End of original signal before padding.
 
     Returns
     -------
-    x[..., i0:i1]
+    x_unpadded : tensor
+        The tensor x[..., i0:i1].
     """
     return x[..., i0:i1]
 
 def real(x):
-    """
-    Takes the real part of a 4D tensor x, where the last axis is interpreted
-    as the real and imaginary parts.
+    """Real part of complex tensor
+
+    Takes the real part of a complex tensor, where the last axis corresponds
+    to the real and imaginary parts.
 
     Parameters
     ----------
-    x : tensor_like
+    x : tensor
+        A complex tensor (that is, whose last dimension is equal to 2).
 
     Returns
     -------
-    x[..., 0], which is interpreted as the real part of x
+    x_real : tensor
+        The tensor x[..., 0] which is interpreted as the real part of x.
     """
     return x[..., 0]
 
 def fft1d_c2c(x):
-    """
-        Computes the fft of a 1d signal.
+    """Compute the 1D FFT of a complex signal
 
-        Input
-        -----
-        x : tensor
-            the two final sizes must be (T, 2) where T is the time length of the signal
+    Input
+    -----
+    x : tensor
+        A tensor of size (..., T, 2), where x[..., 0] is the real part and
+        x[..., 1] is the imaginary part.
+
+    Returns
+    -------
+    x_f : tensor
+        A tensor of the same size as x containing its Fourier transform in the
+        standard PyTorch FFT ordering.
     """
-    return torch.fft(x, signal_ndim = 1)
+    return torch.fft(x, signal_ndim=1)
+
 
 def ifft1d_c2c(x):
-    """
-        Computes the inverse fft of a 1d signal.
+    """Compute the (unnormalized) 1D inverse FFT of a complex signal
 
-        Input
-        -----
-        x : tensor
-            the two final sizes must be (T, 2) where T is the time length of the signal
+    Input
+    -----
+    x_f : tensor
+        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
+        x[..., 1] is the imaginary part. The frequencies are assumed to be in
+        the standard PyTorch FFT ordering.
+
+    Returns
+    -------
+    x : tensor
+        A tensor of the same size of x_f containing the unnormalized inverse
+        Fourier transform of x_f.
     """
     return torch.ifft(x, signal_ndim = 1) * float(x.shape[-2])
 
-def ifft1d_c2c_normed(x):
-    """
-        Computes the inverse normalized fft of a 1d signal.
 
-        Input
-        -----
-        x : tensor
-            the two final sizes must be (T, 2) where T is the time length of the signal
+def ifft1d_c2c_normed(x):
+    """Compute the normalized 1D inverse FFT of a complex signal
+
+    Input
+    -----
+    x_f : tensor
+        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
+        x[..., 1] is the imaginary part. The frequencies are assumed to be in
+        the standard PyTorch FFT ordering.
+
+    Returns
+    -------
+    x : tensor
+        A tensor of the same size of x_f containing the normalized inverse
+        Fourier transform of x_f.
     """
-    return torch.ifft(x, signal_ndim = 1)
+    return torch.ifft(x, signal_ndim=1)
