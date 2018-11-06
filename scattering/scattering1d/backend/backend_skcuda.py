@@ -219,7 +219,7 @@ def subsample_fourier(x, k):
     """
     return subsamplefourier(x,k)
 
-def pad1D(x, pad_left, pad_right, mode='constant', value=0.):
+def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     """Pad real 1D tensors
 
     1D implementation of the padding function for real PyTorch tensors.
@@ -283,7 +283,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
         with the last axis of size 2 if to_complex is True (this axis
         corresponds to the real and imaginary parts).
     """
-    output = pad1D(x, pad_left, pad_right, mode='reflect')
+    output = pad_1d(x, pad_left, pad_right, mode='reflect')
     if to_complex:
         output = torch.stack((output, torch.zeros_like(output)), dim=-1)
     return output
