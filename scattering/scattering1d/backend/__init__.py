@@ -9,15 +9,13 @@
 # 3. Is there a config file? If so, go and find the backend entry
 # 4. Set the backend to DEFAULT_BACKEND
 
-DEFAULT_BACKEND = "torch"
-
 import os
 import configparser
 import appdirs
 
+DEFAULT_BACKEND = "torch"
 
 # find config file
-
 config_file = os.path.join(appdirs.user_config_dir("scattering"), "scattering.cfg")
 cp = configparser.ConfigParser()
 
@@ -35,7 +33,6 @@ if os.path.exists(config_file):
                 cp.write(f)
         except:
             pass
-
 else:
     BACKEND = DEFAULT_BACKEND
     # try to write config file
@@ -50,15 +47,11 @@ else:
     except:
         pass
 
-
-
 # general env:
 BACKEND = os.environ.get("SCATTERING_BACKEND", BACKEND)
 
-# 2d specific env:
+# 1d specific env:
 BACKEND = os.environ.get("SCATTERING_BACKEND_1D", BACKEND)
-
-
 
 if BACKEND == 'torch':
     from .backend_torch import *
@@ -67,5 +60,3 @@ elif BACKEND == 'skcuda':
 else:
     # For now, raise and error
     raise ValueError("Backend {} unknown".format(BACKEND))
-
-
