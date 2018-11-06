@@ -76,7 +76,7 @@ def test_sample_scattering():
     Q = data['Q']
     Sx0 = data['Sx']
 
-    T = x.numel()
+    T = x.shape[2]
 
     scattering = Scattering1D(T, J, Q)
 
