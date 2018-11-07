@@ -407,24 +407,32 @@ class Scattering1D(object):
             key2 for second order)
 
         """
-        sigma_low, xi1, sigma1, xi2, sigma2 = calibrate_scattering_filters(
-            J, Q)
+        sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+            calibrate_scattering_filters(J, Q)
+
         coords = {}
-        coords[0] = {'order': '0', 'sigma': sigma_low, 'xi': 0}
+        coords[0] = {'order': 0,
+                     'xi': (),
+                     'sigma': (),
+                     'j': (),
+                     'key': ()}
         cc = 1
-        for (j1, n1) in sorted(xi1.keys()):
-            coords[cc] = {'order': '1', 'xi': xi1[j1, n1],
-                          'sigma': sigma1[j1, n1],
-                          'key': (j1, n1)}
+        for n1 in range(len(xi1)):
+            coords[cc] = {'order': 1,
+                          'xi': (xi1[n1],),
+                          'sigma': (sigma1[n1],),
+                          'j': (j1[n1],),
+                          'key': (n1,)}
             cc += 1
             if order2:
-                for (j2, n2) in sorted(xi2.keys()):
-                    if j2 > j1:
+                for n2 in range(len(xi2)):
+                    if j2[n2] > j1[n1]:
                         coords[cc] = {
-                            'order': '2', 'j2': j2,
-                            'key1': (j1, n1), 'key2': (j2, n2),
-                            'xi2': xi2[j2, n2], 'sigma2': sigma2[j2, n2],
-                            'xi1': xi1[j1, n1], 'sigma1': sigma1[j1, n1]}
+                            'order': 2,
+                            'xi': (xi1[n1], xi2[n2]),
+                            'sigma': (sigma1[n1], sigma2[n2]),
+                            'j': (j1[n1], j2[n2]),
+                            'key': (n1, n2)}
                         cc += 1
         return coords
 
@@ -453,14 +461,15 @@ class Scattering1D(object):
         if detail is False, returns the sum of the above tuple
 
         """
-        sigma_low, xi1, sigma1, xi2, sigma2 = calibrate_scattering_filters(
-            J, Q)
+        sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+            calibrate_scattering_filters(J, Q)
+
         size_order0 = 1
         size_order1 = len(xi1)
         size_order2 = 0
-        for (j, n) in sorted(xi1.keys()):
-            for (j2, n2) in sorted(xi2.keys()):
-                if j2 > j:
+        for n1 in range(len(xi1)):
+            for n2 in range(len(xi2)):
+                if j2[n2] > j1[n1]:
                     size_order2 += 1
         if detail:
             return size_order0, size_order1, size_order2
@@ -547,13 +556,14 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         S[:, cc, :] = S0_J.squeeze(dim=1)
         cc += 1
     else:
-        S[0] = S0_J
+        S[()] = S0_J
     # First order:
-    for (j, n) in sorted(psi1.keys()):
+    for n1 in range(len(psi1)):
         # Convolution + downsampling
-        k1 = max(j - oversampling, 0)
-        assert psi1[(j, n)]['xi'] < 0.5 / (2**k1)
-        U1_hat = subsample_fourier(U0_hat * psi1[(j, n)][0], 2**k1)
+        j1 = psi1[n1]['j']
+        k1 = max(j1 - oversampling, 0)
+        assert psi1[n1]['xi'] < 0.5 / (2**k1)
+        U1_hat = subsample_fourier(U0_hat * psi1[n1][0], 2**k1)
         # Take the modulus
         U1 = modulus_complex(ifft1d_c2c(U1_hat))
         if average_U1:
@@ -570,15 +580,16 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
             S[:, cc, :] = S1_J.squeeze(dim=1)
             cc += 1
         else:
-            S[j, n] = S1_J
+            S[n1,] = S1_J
         if order2:
             # 2nd order
-            for (j2, n2) in sorted(psi2.keys()):
-                if j2 > j:
-                    assert psi2[j2, n2]['xi'] < psi1[j, n]['xi']
+            for n2 in range(len(psi2)):
+                j2 = psi2[n2]['j']
+                if j2 > j1:
+                    assert psi2[n2]['xi'] < psi1[n1]['xi']
                     # convolution + downsampling
                     k2 = max(j2 - k1 - oversampling, 0)
-                    U2_hat = subsample_fourier(U1_hat * psi2[j2, n2][k1],
+                    U2_hat = subsample_fourier(U1_hat * psi2[n2][k1],
                                                2**k2)
                     # take the modulus and go back in Fourier
                     U2_hat = fft1d_c2c(modulus_complex(
@@ -594,5 +605,5 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                         S[:, cc, :] = S2_J.squeeze(dim=1)
                         cc += 1
                     else:
-                        S[j, n, j2, n2] = S2_J
+                        S[n1, n2] = S2_J
     return S

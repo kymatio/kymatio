@@ -32,8 +32,8 @@ Qs = (Q, 1)
 
 for k in range(2):
     axs[k].plot(np.arange(T)/T, phi_f[0], 'b')
-    for key in psis_f[k].keys():
-        axs[k].plot(np.arange(T)/T, psis_f[k][key][0], 'b')
+    for psi_f in psis_f[k]:
+        axs[k].plot(np.arange(T)/T, psi_f[0], 'b')
     axs[k].set_xlim(0, 0.5)
     axs[k].set_ylim(0, 1.2)
     axs[k].set_xlabel('\omega')

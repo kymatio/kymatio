@@ -64,10 +64,10 @@ def cast_psi(Psi, _type):
     -------
     Nothing - function modifies the input
     """
-    for key, item in Psi.items():
-        for key2, item2 in Psi[key].items():
-            if torch.is_tensor(item2):
-                Psi[key][key2] = item2.type(_type).contiguous().requires_grad_(False)
+    for filt in Psi:
+        for k in filt.keys():
+            if torch.is_tensor(filt[k]):
+                filt[k] = filt[k].type(_type).contiguous().requires_grad_(False)
             else:
                 pass  # for the float entries
 
@@ -88,9 +88,9 @@ def cast_phi(Phi, _type):
     -------
     Nothing - function modifies the input
     """
-    for key, item in Phi.items():
-        if torch.is_tensor(item):
-            Phi[key] = item.type(_type).contiguous().requires_grad_(False)
+    for k in Phi.keys():
+        if torch.is_tensor(Phi[k]):
+            Phi[k] = Phi[k].type(_type).contiguous().requires_grad_(False)
         else:
             pass
 
