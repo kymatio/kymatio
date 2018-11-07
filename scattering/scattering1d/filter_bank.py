@@ -72,7 +72,7 @@ def periodize_filter_fft(h_fft, nperiods=1):
     return v_fft
 
 
-def morlet1D(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
+def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
     """
     Computes the FFT of a Morlet filter.
 
@@ -167,7 +167,7 @@ def get_normalizing_factor(h_fft, normalize='l1'):
     return norm_factor
 
 
-def gauss1D(N, sigma, normalize='l1', P_max=5, eps=1e-7):
+def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
     """
     Computes the FFT of a low pass gaussian window.
 
@@ -681,7 +681,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
         T = 2**J_support
-        psi2_fft[key][0] = morlet1D(
+        psi2_fft[key][0] = morlet_1d(
             T, xi2[key], sigma2[key], normalize=normalize, P_max=P_max,
             eps=eps)
         # compute the filter after subsampling at all other subsamplings
@@ -695,7 +695,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # can only compute them with T=2**J_support
     for key in xi1.keys():
         T = 2**J_support
-        psi1_fft[key][0] = morlet1D(
+        psi1_fft[key][0] = morlet_1d(
             T, xi1[key], sigma1[key], normalize=normalize,
             P_max=P_max, eps=eps)
 
@@ -710,7 +710,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     else:
         max_sub_phi = max_subsampling
     # compute the filters at all possible subsamplings
-    phi_fft[0] = gauss1D(T, sigma_low, P_max=P_max, eps=eps)
+    phi_fft[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter
