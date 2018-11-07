@@ -7,7 +7,7 @@ import math
 
 import warnings
 
-from .backend import pad, unpad, real, subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c_normed
+from .backend import pad, unpad, real, subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c
 from .utils import compute_padding, compute_border_indices
 from .utils import cast_psi, cast_phi
 
@@ -543,7 +543,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     # Get S0
     k0 = max(J - oversampling, 0)
     S0_J_hat = subsample_fourier(U0_hat * phi[0], 2**k0)
-    S0_J = unpad(real(ifft1d_c2c_normed(S0_J_hat)),
+    S0_J = unpad(real(ifft1d_c2c(S0_J_hat)),
                  ind_start[k0], ind_end[k0])
     if vectorize:
         S[:, cc, :] = S0_J.squeeze(dim=1)
@@ -557,13 +557,13 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         assert psi1[(j, n)]['xi'] < 0.5 / (2**k1)
         U1_hat = subsample_fourier(U0_hat * psi1[(j, n)][0], 2**k1)
         # Take the modulus
-        U1 = modulus_complex(ifft1d_c2c_normed(U1_hat))
+        U1 = modulus_complex(ifft1d_c2c(U1_hat))
         if average_U1:
             U1_hat = fft1d_c2c(U1)
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             S1_J_hat = subsample_fourier(U1_hat * phi[k1], 2**k1_J)
-            S1_J = unpad(real(ifft1d_c2c_normed(S1_J_hat)),
+            S1_J = unpad(real(ifft1d_c2c(S1_J_hat)),
                          ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             # just take the real value and unpad
@@ -584,12 +584,12 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                                                2**k2)
                     # take the modulus and go back in Fourier
                     U2_hat = fft1d_c2c(modulus_complex(
-                        ifft1d_c2c_normed(U2_hat)))
+                        ifft1d_c2c(U2_hat)))
                     # Convolve with phi_J
                     k2_J = max(J - k2 - k1 - oversampling, 0)
                     S2_J_hat = subsample_fourier(U2_hat * phi[k1 + k2],
                                                  2**k2_J)
-                    S2_J = unpad(real(ifft1d_c2c_normed(S2_J_hat)),
+                    S2_J = unpad(real(ifft1d_c2c(S2_J_hat)),
                                  ind_start[k1 + k2 + k2_J],
                                  ind_end[k1 + k2 + k2_J])
                     if vectorize:
