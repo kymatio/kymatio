@@ -56,7 +56,7 @@ def cast_psi(Psi, _type):
     Parameters
     ----------
     Psi : dictionary
-        dictionary of dictionary of filters, should be psi1_fft or psi2_fft
+        dictionary of dictionary of filters, should be psi1_f or psi2_f
     _type : torch type
         required type to cast the filters to. Should be a torch.FloatTensor
 
@@ -80,7 +80,7 @@ def cast_phi(Phi, _type):
     Parameters
     ----------
     Psi : dictionary
-        dictionary of filters, should be phi_fft
+        dictionary of filters, should be phi_f
     _type : torch type
         required type to cast the filters to. Should be a torch.FloatTensor
 

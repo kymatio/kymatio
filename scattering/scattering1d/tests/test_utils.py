@@ -107,18 +107,18 @@ def test_subsample_fourier(random_state=42):
     rng = np.random.RandomState(random_state)
     J = 10
     x = rng.randn(100, 4, 2**J) + 1j * rng.randn(100, 4, 2**J)
-    x_fft = np.fft.fft(x, axis=-1)[..., np.newaxis]
-    x_fft.dtype = 'float64'  # make it a vector
-    x_fft_th = torch.from_numpy(x_fft)
+    x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
+    x_f.dtype = 'float64'  # make it a vector
+    x_f_th = torch.from_numpy(x_f)
     if force_gpu:
-        x_fft_th = x_fft_th.cuda()
+        x_f_th = x_f_th.cuda()
     for j in range(J + 1):
-        x_fft_sub_th = subsample_fourier(x_fft_th, 2**j)
+        x_f_sub_th = subsample_fourier(x_f_th, 2**j)
         if force_gpu:
-            x_fft_sub_th = x_fft_sub_th.cpu()
-        x_fft_sub = x_fft_sub_th.numpy()
-        x_fft_sub.dtype = 'complex128'
-        x_sub = np.fft.ifft(x_fft_sub[..., 0], axis=-1)
+            x_f_sub_th = x_f_sub_th.cpu()
+        x_f_sub = x_f_sub_th.numpy()
+        x_f_sub.dtype = 'complex128'
+        x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
         assert np.max(np.abs(x[:, :, ::2**j] - x_sub)) < 1e-7
 
 

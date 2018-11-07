@@ -2,7 +2,7 @@
 Testing all functions in filters_bank
 """
 from scattering.scattering1d.filter_bank import adaptive_choice_P
-from scattering.scattering1d.filter_bank import periodize_filter_fft
+from scattering.scattering1d.filter_bank import periodize_filter_fourier
 from scattering.scattering1d.filter_bank import get_normalizing_factor
 from scattering.scattering1d.filter_bank import compute_sigma_psi
 from scattering.scattering1d.filter_bank import compute_xi_max
@@ -35,7 +35,7 @@ def test_adaptive_choice_P():
             assert lim_right <= eps
 
 
-def test_periodize_filter_fft(random_state=42):
+def test_periodize_filter_fourier(random_state=42):
     """
     Tests whether the periodization in Fourier corresponds to
     a subsampling in time
@@ -46,10 +46,10 @@ def test_periodize_filter_fft(random_state=42):
 
     for N in size_signal:
         x = rng.randn(N) + 1j * rng.randn(N)
-        x_fft = np.fft.fft(x)
+        x_f = np.fft.fft(x)
         for per in periods:
-            x_per_fft = periodize_filter_fft(x_fft, nperiods=per)
-            x_per = np.fft.ifft(x_per_fft)
+            x_per_f = periodize_filter_fourier(x_f, nperiods=per)
+            x_per = np.fft.ifft(x_per_f)
             assert np.max(np.abs(x_per - x[::per])) < 1e-7
 
 
@@ -63,9 +63,9 @@ def test_normalizing_factor(random_state=42):
     norm_type = ['l1', 'l2']
     for N in size_signal:
         x = rng.randn(N) + 1j * rng.randn(N)
-        x_fft = np.fft.fft(x)
+        x_f = np.fft.fft(x)
         for norm in norm_type:
-            kappa = get_normalizing_factor(x_fft, norm)
+            kappa = get_normalizing_factor(x_f, norm)
             x_norm = kappa * x
             if norm == 'l1':
                 assert np.isclose(np.sum(np.abs(x_norm)) - 1, 0.)
@@ -90,16 +90,16 @@ def test_morlet_1d():
             for xi in xi_range:
                 sigma = compute_sigma_psi(xi, Q)
                 # get the morlet for these parameters
-                psi_fft = morlet_1d(N, xi, sigma, normalize='l2')
+                psi_f = morlet_1d(N, xi, sigma, normalize='l2')
                 # make sure that it has zero mean
-                assert np.isclose(psi_fft[0], 0.)
+                assert np.isclose(psi_f[0], 0.)
                 # make sure that it has a fast decay in time
-                psi = np.fft.ifft(psi_fft)
+                psi = np.fft.ifft(psi_f)
                 psi_abs = np.abs(psi)
                 assert np.min(psi_abs) / np.max(psi_abs) < 1e-4
                 # Check that the maximal frequency is relatively close to xi,
                 # up to 1 percent
-                k_max = np.argmax(np.abs(psi_fft))
+                k_max = np.argmax(np.abs(psi_f))
                 xi_emp = float(k_max) / float(N)
                 assert np.abs(xi_emp - xi) / xi < 1e-2
 
@@ -116,11 +116,11 @@ def test_gauss_1d():
     tol = 1e-7
     for j in range(1, J + 1):
         sigma_low = sigma0 / math.pow(2, j)
-        g_fft = gauss_1d(N, sigma_low)
-        # check the symmetry of g_fft
-        assert np.max(np.abs(g_fft[1:N // 2] - g_fft[N // 2 + 1:][::-1])) < tol
+        g_f = gauss_1d(N, sigma_low)
+        # check the symmetry of g_f
+        assert np.max(np.abs(g_f[1:N // 2] - g_f[N // 2 + 1:][::-1])) < tol
         # make sure that it has a fast decay in time
-        phi = np.fft.ifft(g_fft)
+        phi = np.fft.ifft(g_f)
         assert np.min(phi) > - tol
         assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
 
@@ -179,10 +179,10 @@ def test_get_max_dyadic_subsampling():
             j = get_max_dyadic_subsampling(xi, sigma)
             if j > 0:  # if there is subsampling
                 # compute the corresponding Morlet
-                psi_fft = morlet_1d(N, xi, sigma)
+                psi_f = morlet_1d(N, xi, sigma)
                 # find the integer k such that
                 k = N // 2**(j + 1)
-                assert np.abs(psi_fft[k]) / np.max(np.abs(psi_fft)) < 1e-2
+                assert np.abs(psi_f[k]) / np.max(np.abs(psi_f)) < 1e-2
             else:
                 # pass this case: we have detected that there cannot
                 # be any subsampling, and we assume that the filters are not
