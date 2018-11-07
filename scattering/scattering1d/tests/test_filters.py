@@ -6,10 +6,10 @@ from scattering.scattering1d.filter_bank import periodize_filter_fft
 from scattering.scattering1d.filter_bank import get_normalizing_factor
 from scattering.scattering1d.filter_bank import compute_sigma_psi
 from scattering.scattering1d.filter_bank import compute_xi_max
-from scattering.scattering1d.filter_bank import morlet1D
+from scattering.scattering1d.filter_bank import morlet_1d
 from scattering.scattering1d.filter_bank import calibrate_scattering_filters
 from scattering.scattering1d.filter_bank import get_max_dyadic_subsampling
-from scattering.scattering1d.filter_bank import gauss1D
+from scattering.scattering1d.filter_bank import gauss_1d
 import numpy as np
 import math
 
@@ -73,7 +73,7 @@ def test_normalizing_factor(random_state=42):
                 assert np.isclose(np.sqrt(np.sum(np.abs(x_norm)**2)) - 1., 0.)
 
 
-def test_morlet1D():
+def test_morlet_1d():
     """
     Tests for Morlet wavelets:
     - Make sure that it has exact zero mean
@@ -90,7 +90,7 @@ def test_morlet1D():
             for xi in xi_range:
                 sigma = compute_sigma_psi(xi, Q)
                 # get the morlet for these parameters
-                psi_fft = morlet1D(N, xi, sigma, normalize='l2')
+                psi_fft = morlet_1d(N, xi, sigma, normalize='l2')
                 # make sure that it has zero mean
                 assert np.isclose(psi_fft[0], 0.)
                 # make sure that it has a fast decay in time
@@ -104,7 +104,7 @@ def test_morlet1D():
                 assert np.abs(xi_emp - xi) / xi < 1e-2
 
 
-def test_gauss1D():
+def test_gauss_1d():
     """
     Tests for Gabor low-pass
     - Make sure that it has a fast decay in time
@@ -116,7 +116,7 @@ def test_gauss1D():
     tol = 1e-7
     for j in range(1, J + 1):
         sigma_low = sigma0 / math.pow(2, j)
-        g_fft = gauss1D(N, sigma_low)
+        g_fft = gauss_1d(N, sigma_low)
         # check the symmetry of g_fft
         assert np.max(np.abs(g_fft[1:N // 2] - g_fft[N // 2 + 1:][::-1])) < tol
         # make sure that it has a fast decay in time
@@ -179,7 +179,7 @@ def test_get_max_dyadic_subsampling():
             j = get_max_dyadic_subsampling(xi, sigma)
             if j > 0:  # if there is subsampling
                 # compute the corresponding Morlet
-                psi_fft = morlet1D(N, xi, sigma)
+                psi_fft = morlet_1d(N, xi, sigma)
                 # find the integer k such that
                 k = N // 2**(j + 1)
                 assert np.abs(psi_fft[k]) / np.max(np.abs(psi_fft)) < 1e-2
