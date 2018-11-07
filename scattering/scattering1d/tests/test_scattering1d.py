@@ -112,11 +112,11 @@ def test_computation_Ux(random_state=42):
     s = scattering.forward(x)
 
     # check that the keys in s correspond to the order 0 and second order
-    for k in scattering.psi1_f.keys():
-        assert k in s.keys()
+    for k in range(len(scattering.psi1_f)):
+        assert (k,) in s.keys()
     for k in s.keys():
-        if k != 0:
-            assert k in scattering.psi1_f.keys()
+        if k is not ():
+            assert k[0] < len(scattering.psi1_f)
         else:
             assert True
 
@@ -184,16 +184,7 @@ def test_coordinates(random_state=42):
     assert len(s_dico) == s_vec.shape[1]
 
     for cc in range(s_vec.shape[1]):
-        if coords[cc]['order'] == '0':
-            k = 0
-        elif coords[cc]['order'] == '1':
-            # in this case, look for the key
-            k = coords[cc]['key']
-        elif coords[cc]['order'] == '2':
-            k = (coords[cc]['key1'][0], coords[cc]['key1'][1],
-                 coords[cc]['key2'][0], coords[cc]['key2'][1])
-        else:
-            assert False  # this case should NOT occur
+        k = coords[cc]['key']
         diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
         assert torch.max(torch.abs(diff)) < 1e-7
 
@@ -223,12 +214,12 @@ def test_precompute_size_scattering(random_state=42):
             if detail:
                 num_orders = {0: 0, 1: 0, 2: 0}
                 for k in s_dico.keys():
-                    if isinstance(k, int):
+                    if k is ():
                         num_orders[0] += 1
                     else:
-                        if len(k) == 2:  # order1
+                        if len(k) == 1:  # order1
                             num_orders[1] += 1
-                        elif len(k) == 4:
+                        elif len(k) == 2:
                             num_orders[2] += 1
                 todo = 2 if order2 else 1
                 for i in range(todo):

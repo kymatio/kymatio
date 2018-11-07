@@ -386,11 +386,11 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
         whose values are updated
     """
     factor = 1. / math.pow(2., 1. / Q)
-    n = cv['key'][1]
+    n = cv['key']
     new_cv = {'xi': cv['xi'] * factor, 'sigma': cv['sigma'] * factor}
     # compute the new j
-    j = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'], alpha=alpha)
-    new_cv['key'] = (j, n + 1)
+    new_cv['j'] = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'], alpha=alpha)
+    new_cv['key'] = n + 1
     return new_cv
 
 
@@ -461,38 +461,35 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 
-    xi = {}
-    sigma = {}
+    xi = []
+    sigma = []
+    j = []
 
     if sigma_max <= sigma_low:
         # in this exceptional case, we will not go through the loop, so
         # we directly assign
         last_xi = sigma_max
-        n = 0
     else:
         # fill all the dyadic wavelets as long as possible
-        current = {'key': (0, 0), 'xi': xi_max, 'sigma': sigma_max}
+        current = {'key': 0, 'j': 0, 'xi': xi_max, 'sigma': sigma_max}
         while current['sigma'] > sigma_low:  # while we can attribute something
-            xi[current['key']] = current['xi']
-            sigma[current['key']] = current['sigma']
+            xi.append(current['xi'])
+            sigma.append(current['sigma'])
+            j.append(current['j'])
             current = move_one_dyadic_step(current, Q, alpha=alpha)
         # get the last key
-        last_key = max(xi.keys())
-        n = last_key[1] + 1
-        last_xi = xi[last_key]
+        last_xi = xi[-1]
     # fill num_interm wavelets between last_xi and 0, both excluded
     num_intermediate = Q - 1
     for q in range(1, num_intermediate + 1):
         factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
         new_xi = factor * last_xi
         new_sigma = sigma_low
-        j = get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha)
-        key = (j, n)
-        xi[key] = new_xi
-        sigma[key] = new_sigma
-        n += 1
+        xi.append(new_xi)
+        sigma.append(new_sigma)
+        j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
     # return results
-    return xi, sigma
+    return xi, sigma, j
 
 
 def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
@@ -549,11 +546,11 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
     if Q < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
     sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
-    xi1, sigma1 = compute_params_filterbank(sigma_low, Q, r_psi=r_psi,
+    xi1, sigma1, j1 = compute_params_filterbank(sigma_low, Q, r_psi=r_psi,
                                             alpha=alpha)
-    xi2, sigma2 = compute_params_filterbank(sigma_low, 1, r_psi=r_psi,
+    xi2, sigma2, j2 = compute_params_filterbank(sigma_low, 1, r_psi=r_psi,
                                             alpha=alpha)
-    return sigma_low, xi1, sigma1, xi2, sigma2
+    return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
@@ -657,23 +654,22 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_low, xi1, sigma1, xi2, sigma2 = calibrate_scattering_filters(
+    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
         J_scattering, Q, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
-    psi1_f = {k: {} for k in xi1.keys()}
-    psi2_f = {k: {} for k in xi2.keys()}
+    psi1_f = []
+    psi2_f = []
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
-    for key in xi2.keys():
-        j2 = key[0]
+    for (n2, j2) in enumerate(j2s):
         # compute the current value for the max_subsampling,
         # which depends on the input it can accept.
         if max_subsampling is None:
             possible_subsamplings_after_order1 = [
-                j1 for (j1, n1) in xi1.keys() if j2 > j1]
+                j1 for j1 in j1s if j2 > j1]
             if len(possible_subsamplings_after_order1) > 0:
                 max_sub_psi2 = max(possible_subsamplings_after_order1)
             else:
@@ -682,34 +678,38 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
         T = 2**J_support
-        psi2_f[key][0] = morlet_1d(
-            T, xi2[key], sigma2[key], normalize=normalize, P_max=P_max,
+
+        psi_f = {}
+        psi_f[0] = morlet_1d(
+            T, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
             eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
             factor_subsampling = 2**subsampling
-            psi2_f[key][subsampling] = periodize_filter_fourier(
-                psi2_f[key][0], nperiods=factor_subsampling)
+            psi_f[subsampling] = periodize_filter_fourier(
+                psi_f[0], nperiods=factor_subsampling)
+        psi2_f.append(psi_f)
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with T=2**J_support
-    for key in xi1.keys():
+    for (n1, j1) in enumerate(j1s):
         T = 2**J_support
-        psi1_f[key][0] = morlet_1d(
-            T, xi1[key], sigma1[key], normalize=normalize,
-            P_max=P_max, eps=eps)
+        psi1_f.append({0: morlet_1d(
+            T, xi1[n1], sigma1[n1], normalize=normalize,
+            P_max=P_max, eps=eps)})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
     # input it can accept (both 1st and 2nd order)
     if max_subsampling is None:
-        max_subsampling_after_psi1 = max([key[0] for key in psi1_f.keys()])
-        max_subsampling_after_psi2 = max([key[0] for key in psi2_f.keys()])
+        max_subsampling_after_psi1 = max(j1s)
+        max_subsampling_after_psi2 = max(j2s)
         max_sub_phi = max(max_subsampling_after_psi1,
                           max_subsampling_after_psi2)
     else:
         max_sub_phi = max_subsampling
+
     # compute the filters at all possible subsamplings
     phi_f[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
     for subsampling in range(1, max_sub_phi + 1):
@@ -719,14 +719,17 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
             phi_f[0], nperiods=factor_subsampling)
 
     # Embed the meta information within the filters
-    for k in xi1.keys():
-        psi1_f[k]['xi'] = xi1[k]
-        psi1_f[k]['sigma'] = sigma1[k]
-    for k in xi2.keys():
-        psi2_f[k]['xi'] = xi2[k]
-        psi2_f[k]['sigma'] = sigma2[k]
+    for (n1, j1) in enumerate(j1s):
+        psi1_f[n1]['xi'] = xi1[n1]
+        psi1_f[n1]['sigma'] = sigma1[n1]
+        psi1_f[n1]['j'] = j1
+    for (n2, j2) in enumerate(j2s):
+        psi2_f[n2]['xi'] = xi2[n2]
+        psi2_f[n2]['sigma'] = sigma2[n2]
+        psi2_f[n2]['j'] = j2
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
+    phi_f['j'] = 0
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
@@ -740,18 +743,18 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 phi_f[k] = torch.from_numpy(
                     phi_f[k]).view(-1, 1).repeat(1, 2)
-        for k in psi1_f.keys():
-            for sub_k in psi1_f[k].keys():
+        for psi_f in psi1_f:
+            for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi1_f[k][sub_k] = torch.from_numpy(
-                        psi1_f[k][sub_k]).view(-1, 1).repeat(1, 2)
-        for k in psi2_f.keys():
-            for sub_k in psi2_f[k].keys():
+                    psi_f[sub_k] = torch.from_numpy(
+                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+        for psi_f in psi2_f:
+            for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi2_f[k][sub_k] = torch.from_numpy(
-                        psi2_f[k][sub_k]).view(-1, 1).repeat(1, 2)
+                    psi_f[sub_k] = torch.from_numpy(
+                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi

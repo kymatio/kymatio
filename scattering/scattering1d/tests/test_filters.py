@@ -136,18 +136,18 @@ def test_calibrate_scattering_filters():
     Q_range = np.arange(1, 21, dtype=int)
     for J in J_range:
         for Q in Q_range:
-            sigma_low, xi1, sigma1, xi2, sigma2 = calibrate_scattering_filters(
-                J, Q)
+            sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+                calibrate_scattering_filters( J, Q)
             # Check that all sigmas are > 0
             assert sigma_low > 0
-            for sig in sigma1.values():
+            for sig in sigma1:
                 assert sig > 0
-            for sig in sigma2.values():
+            for sig in sigma2:
                 assert sig > 0
             # check that sigma_low is smaller than all sigma2
-            for sig in sigma1.values():
+            for sig in sigma1:
                 assert sig >= sigma_low
-            for sig in sigma2.values():
+            for sig in sigma2:
                 assert sig >= sigma_low
 
 
