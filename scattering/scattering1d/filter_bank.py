@@ -7,7 +7,7 @@ import warnings
 def adaptive_choice_P(sigma, eps=1e-7):
     """
     Adaptive choice of the value of the number of periods in the frequency
-    domain used to compute the FFT of a Morlet wavelet.
+    domain used to compute the Fourier transform of a Morlet wavelet.
 
     This function considers a Morlet wavelet defined as the sum
     of
@@ -20,8 +20,8 @@ def adaptive_choice_P(sigma, eps=1e-7):
     If \\sigma is too large, then these formula will lead to discontinuities
     in the frequency interval [0, 1] (which is the interval used by numpy.fft).
     We therefore choose a larger integer P >= 1 such that at the boundaries
-    of the FFTs of both filters on the interval [1-P, P], the magnitude of
-    the entries is below the required machine precision.
+    of the Fourier transform of both filters on the interval [1-P, P], the
+    magnitude of the entries is below the required machine precision.
     Mathematically, this means we would need P to satisfy the relations:
 
     |\\hat \\psi(P)| <= eps and |\\hat \\phi(1-P)| <= eps
@@ -49,32 +49,32 @@ def adaptive_choice_P(sigma, eps=1e-7):
     return P
 
 
-def periodize_filter_fft(h_fft, nperiods=1):
+def periodize_filter_fourier(h_f, nperiods=1):
     """
-    Computes a periodization of a filter provided in the FFT domain.
+    Computes a periodization of a filter provided in the Fourier domain.
 
     Parameters
     ----------
-    h_fft : array_like
+    h_f : array_like
         complex numpy array of shape (N*n_periods,)
     n_periods: int, optional
         Number of periods which should be used to periodize
 
     Returns
     -------
-    v_fft : array_like
+    v_f : array_like
         complex numpy array of size (N,), which is a periodization of
-        h_fft as described in the formula:
-        v_fft[k] = sum_{i=0}^{n_periods - 1} h_fft[i * N + k]
+        h_f as described in the formula:
+        v_f[k] = sum_{i=0}^{n_periods - 1} h_f[i * N + k]
     """
-    N = h_fft.shape[0] // nperiods
-    v_fft = h_fft.reshape(nperiods, N).mean(axis=0)
-    return v_fft
+    N = h_f.shape[0] // nperiods
+    v_f = h_f.reshape(nperiods, N).mean(axis=0)
+    return v_f
 
 
 def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
     """
-    Computes the FFT of a Morlet filter.
+    Computes the Fourier transform of a Morlet filter.
 
     A Morlet filter is the sum of a Gabor filter and a low-pass filter
     to ensure that the sum has exactly zero mean in the temporal domain.
@@ -96,16 +96,16 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         Supported normalizations are 'l1' and 'l2' (understood in time domain).
     P_max: int, optional
         integer controlling the maximal number of periods to use to ensure
-        the periodicity of the FFT. (At most 2*P_max - 1 periods are used,
-        to ensure an equal distribution around 0.5). Defaults to 5
+        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
+        are used, to ensure an equal distribution around 0.5). Defaults to 5
         Should be >= 1
     eps : float
         required machine precision (to choose the adequate P)
 
     Returns
     -------
-    morlet_fft : array_like
-        numpy array of size (N,) containing the FFT of the Morlet
+    morlet_f : array_like
+        numpy array of size (N,) containing the Fourier transform of the Morlet
         filter at the frequencies given by np.fft.fftfreq(N).
     """
     if type(P_max) != int:
@@ -125,36 +125,36 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
     else:
         raise ValueError('P should be > 0, got ', P)
     # define the gabor at freq xi and the low-pass, both of width sigma
-    gabor_fft = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
-    low_pass_fft = np.exp(-(freqs_low**2) / (2 * sigma**2))
+    gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+    low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
     # discretize in signal <=> periodize in Fourier
-    gabor_fft = periodize_filter_fft(gabor_fft, nperiods=2 * P - 1)
-    low_pass_fft = periodize_filter_fft(low_pass_fft, nperiods=2 * P - 1)
-    # find the summation factor to ensure that morlet_fft[0] = 0.
-    kappa = gabor_fft[0] / low_pass_fft[0]
-    morlet_fft = gabor_fft - kappa * low_pass_fft
+    gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+    low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
+    # find the summation factor to ensure that morlet_f[0] = 0.
+    kappa = gabor_f[0] / low_pass_f[0]
+    morlet_f = gabor_f - kappa * low_pass_f
     # normalize the Morlet if necessary
-    morlet_fft *= get_normalizing_factor(morlet_fft, normalize=normalize)
-    return morlet_fft
+    morlet_f *= get_normalizing_factor(morlet_f, normalize=normalize)
+    return morlet_f
 
 
-def get_normalizing_factor(h_fft, normalize='l1'):
+def get_normalizing_factor(h_f, normalize='l1'):
     """
     Computes the desired normalization factor for a filter defined in Fourier.
 
     Parameters
     ----------
-    h_fft : array_like
-        numpy vector containing the FFT of a filter
+    h_f : array_like
+        numpy vector containing the Fourier transform of a filter
     normalized : string, optional
         desired normalization type, either 'l1' or 'l2'. Defaults to 'l1'.
 
     Returns
     -------
     norm_factor : float
-        such that h_fft * norm_factor is the adequately normalized vector.
+        such that h_f * norm_factor is the adequately normalized vector.
     """
-    h_real = np.fft.ifft(h_fft)
+    h_real = np.fft.ifft(h_f)
     if np.abs(h_real).sum() < 1e-7:
         raise ValueError('Zero division error is very likely to occur, ' +
                          'aborting computations now.')
@@ -169,7 +169,7 @@ def get_normalizing_factor(h_fft, normalize='l1'):
 
 def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
     """
-    Computes the FFT of a low pass gaussian window.
+    Computes the Fourier transform of a low pass gaussian window.
 
     \\hat g_{\\sigma}(\\omega) = e^{-\\omega^2 / 2 \\sigma^2}
 
@@ -184,17 +184,17 @@ def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
         Supported normalizations are 'l1' and 'l2' (understood in time domain).
     P_max : int, optional
         integer controlling the maximal number of periods to use to ensure
-        the periodicity of the FFT. (At most 2*P_max - 1 periods are used,
-        to ensure an equal distribution around 0.5). Defaults to 5
+        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
+        are used, to ensure an equal distribution around 0.5). Defaults to 5
         Should be >= 1
     eps : float, optional
         required machine precision (to choose the adequate P)
 
     Returns
     -------
-    g_fft : array_like
-        numpy array of size (N,) containing the FFT of the filter (with the
-        frequencies in the np.fft.fftfreq convention).
+    g_f : array_like
+        numpy array of size (N,) containing the Fourier transform of the
+        filter (with the frequencies in the np.fft.fftfreq convention).
     """
     # Find the adequate value of P
     if type(P_max) != int:
@@ -210,13 +210,13 @@ def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
     else:
         raise ValueError('P should be an integer > 0, got {}'.format(P))
     # define the low pass
-    g_fft = np.exp(-freqs_low**2 / (2 * sigma**2))
+    g_f = np.exp(-freqs_low**2 / (2 * sigma**2))
     # periodize it
-    g_fft = periodize_filter_fft(g_fft, nperiods=2 * P - 1)
+    g_f = periodize_filter_fourier(g_f, nperiods=2 * P - 1)
     # normalize the signal
-    g_fft *= get_normalizing_factor(g_fft, normalize=normalize)
-    # return the FFT
-    return g_fft
+    g_f *= get_normalizing_factor(g_f, normalize=normalize)
+    # return the Fourier transform
+    return g_f
 
 
 def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
@@ -256,7 +256,7 @@ def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
     return xi * term1 * term2
 
 
-def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
+def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     """
     Computes the (half) temporal support of a family of centered,
     symmetric filters h provided in the Fourier domain
@@ -279,10 +279,10 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
 
     Parameters
     ----------
-    h_fft : array_like
+    h_f : array_like
         a numpy array of size batch x time, where each row contains the
-        FFT of a filter which is centered and whose absolute value is
-        symmetric
+        Fourier transform of a filter which is centered and whose absolute
+        value is symmetric
     criterion_amplitude : float, optional
         value \\epsilon controlling the numerical
         error. The larger criterion_amplitude, the smaller the temporal
@@ -291,10 +291,10 @@ def compute_temporal_support(h_fft, criterion_amplitude=1e-3):
     Returns
     -------
     t_max : int
-        temporal support which ensures (1) for all rows of h_fft
+        temporal support which ensures (1) for all rows of h_f
 
     """
-    h = np.fft.ifft(h_fft, axis=1)
+    h = np.fft.ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
     # compute ||h - h_[-T, T]||_1
     l1_residual = np.fliplr(
@@ -571,7 +571,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         depends on the type of filter, it is dynamically chosen depending
         on max_subsampling and the characteristics of the filters.
         Each value for k is an array (or tensor) of size 2**(J_support - k)
-        containing the FFT of the filter after subsampling by 2**k
+        containing the Fourier transform of the filter after subsampling by
+        2**k
 
     Parameters
     ----------
@@ -610,8 +611,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
     P_max : int, optional
-        maximal number of periods to use to make sure that the
-        FFT of the filters is periodic. P_max = 5 is more than enough for
+        maximal number of periods to use to make sure that the Fourier
+        transform of the filters is periodic. P_max = 5 is more than enough for
         double precision. Defaults to 5. Should be >= 1
     eps : float, optional
         required machine precision for the periodization (single
@@ -620,13 +621,13 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
 
     Returns
     -------
-    phi_fft : dictionary
+    phi_f : dictionary
         a dictionary containing the low-pass filter at all possible
         subsamplings. See above for a description of the dictionary structure.
         The possible subsamplings are controlled by the inputs they can
         receive, which correspond to the subsamplings performed on top of the
         1st and 2nd order transforms.
-    psi1_fft : dictionary
+    psi1_f : dictionary
         a dictionary containing the band-pass filters of the 1st order,
         only for the base resolution as no subsampling is used in the
         scattering tree.
@@ -635,7 +636,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         The keys of this dictionary are of the type (j, n) where n is an
         integer counting the filters and j the maximal dyadic subsampling
         which can be performed on top of the filter without aliasing.
-    psi2_fft : dictionary
+    psi2_f : dictionary
         a dictionary containing the band-pass filters of the 2nd order
         at all possible subsamplings. The subsamplings are determined by the
         input they can receive, which depends on the scattering tree.
@@ -660,9 +661,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         J_scattering, Q, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
-    phi_fft = {}
-    psi1_fft = {k: {} for k in xi1.keys()}
-    psi2_fft = {k: {} for k in xi2.keys()}
+    phi_f = {}
+    psi1_f = {k: {} for k in xi1.keys()}
+    psi2_f = {k: {} for k in xi2.keys()}
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
@@ -681,21 +682,21 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
         T = 2**J_support
-        psi2_fft[key][0] = morlet_1d(
+        psi2_f[key][0] = morlet_1d(
             T, xi2[key], sigma2[key], normalize=normalize, P_max=P_max,
             eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
             factor_subsampling = 2**subsampling
-            psi2_fft[key][subsampling] = periodize_filter_fft(
-                psi2_fft[key][0], nperiods=factor_subsampling)
+            psi2_f[key][subsampling] = periodize_filter_fourier(
+                psi2_f[key][0], nperiods=factor_subsampling)
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with T=2**J_support
     for key in xi1.keys():
         T = 2**J_support
-        psi1_fft[key][0] = morlet_1d(
+        psi1_f[key][0] = morlet_1d(
             T, xi1[key], sigma1[key], normalize=normalize,
             P_max=P_max, eps=eps)
 
@@ -703,54 +704,54 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # Determine the maximal subsampling for phi, which depends on the
     # input it can accept (both 1st and 2nd order)
     if max_subsampling is None:
-        max_subsampling_after_psi1 = max([key[0] for key in psi1_fft.keys()])
-        max_subsampling_after_psi2 = max([key[0] for key in psi2_fft.keys()])
+        max_subsampling_after_psi1 = max([key[0] for key in psi1_f.keys()])
+        max_subsampling_after_psi2 = max([key[0] for key in psi2_f.keys()])
         max_sub_phi = max(max_subsampling_after_psi1,
                           max_subsampling_after_psi2)
     else:
         max_sub_phi = max_subsampling
     # compute the filters at all possible subsamplings
-    phi_fft[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
+    phi_f[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter
-        phi_fft[subsampling] = periodize_filter_fft(
-            phi_fft[0], nperiods=factor_subsampling)
+        phi_f[subsampling] = periodize_filter_fourier(
+            phi_f[0], nperiods=factor_subsampling)
 
     # Embed the meta information within the filters
     for k in xi1.keys():
-        psi1_fft[k]['xi'] = xi1[k]
-        psi1_fft[k]['sigma'] = sigma1[k]
+        psi1_f[k]['xi'] = xi1[k]
+        psi1_f[k]['sigma'] = sigma1[k]
     for k in xi2.keys():
-        psi2_fft[k]['xi'] = xi2[k]
-        psi2_fft[k]['sigma'] = sigma2[k]
-    phi_fft['xi'] = 0.
-    phi_fft['sigma'] = sigma_low
+        psi2_f[k]['xi'] = xi2[k]
+        psi2_f[k]['sigma'] = sigma2[k]
+    phi_f['xi'] = 0.
+    phi_f['sigma'] = sigma_low
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
     t_max_phi = compute_temporal_support(
-        phi_fft[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
+        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
 
     # prepare for pytorch if necessary
     if to_torch:
-        for k in phi_fft.keys():
+        for k in phi_f.keys():
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
-                phi_fft[k] = torch.from_numpy(
-                    phi_fft[k]).view(-1, 1).repeat(1, 2)
-        for k in psi1_fft.keys():
-            for sub_k in psi1_fft[k].keys():
+                phi_f[k] = torch.from_numpy(
+                    phi_f[k]).view(-1, 1).repeat(1, 2)
+        for k in psi1_f.keys():
+            for sub_k in psi1_f[k].keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi1_fft[k][sub_k] = torch.from_numpy(
-                        psi1_fft[k][sub_k]).view(-1, 1).repeat(1, 2)
-        for k in psi2_fft.keys():
-            for sub_k in psi2_fft[k].keys():
+                    psi1_f[k][sub_k] = torch.from_numpy(
+                        psi1_f[k][sub_k]).view(-1, 1).repeat(1, 2)
+        for k in psi2_f.keys():
+            for sub_k in psi2_f[k].keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi2_fft[k][sub_k] = torch.from_numpy(
-                        psi2_fft[k][sub_k]).view(-1, 1).repeat(1, 2)
+                    psi2_f[k][sub_k] = torch.from_numpy(
+                        psi2_f[k][sub_k]).view(-1, 1).repeat(1, 2)
 
     # return results
-    return phi_fft, psi1_fft, psi2_fft, t_max_phi
+    return phi_f, psi1_f, psi2_f, t_max_phi

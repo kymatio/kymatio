@@ -52,9 +52,9 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
     P_max : int, optional
-        maximal number of periods to use to make sure that the
-        FFT of the filters is periodic. P_max = 5 is more than enough for
-        double precision. Defaults to 5
+        maximal number of periods to use to make sure that the Fourier transform
+        of the filters is periodic. P_max = 5 is more than enough for double
+        precision. Defaults to 5
     eps : float, optional
         required machine precision for the periodization (single
         floating point is enough for deep learning applications).
@@ -137,9 +137,9 @@ class Scattering1D(object):
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
     P_max : int, optional
-        maximal number of periods to use to make sure that the
-        FFT of the filters is periodic. P_max = 5 is more than enough for
-        double precision. Defaults to 5
+        maximal number of periods to use to make sure that the Fourier
+        transform of the filters is periodic. P_max = 5 is more than enough
+        for double precision. Defaults to 5
     eps : float, optional
         required machine precision for the periodization (single
         floating point is enough for deep learning applications).
@@ -176,14 +176,14 @@ class Scattering1D(object):
         amount which is padded on the left of the original temporal support
     pad_right : int
         amount which is padded on the right of the original support
-    phi_fft : dictionary
+    phi_f : dictionary
         countaining the low-pass filter at all resolutions
         See filters_bank.scat_filters_factory for an exact description
-    psi1_fft : dictionary
+    psi1_f : dictionary
         Countaining the filters of the 1st order at all
         resolutions. See filters_bank.scat_filters_factory for an exact
         description
-    psi2_fft : dictionary
+    psi2_f : dictionary
         countaining the filters of the 2nd order at all
         resolutions. See filters_bank.scat_filters_factory for an exact
         description
@@ -234,22 +234,22 @@ class Scattering1D(object):
         self.ind_start, self.ind_end = compute_border_indices(
             self.J, self.pad_left, self.pad_left + self.T)
         # Finally, precompute the filters
-        phi_fft, psi1_fft, psi2_fft, _ = scattering_filter_factory(
+        phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(
             self.J_pad, self.J, self.Q, normalize=self.normalize,
             to_torch=True, criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
-        self.psi1_fft = psi1_fft
-        cast_psi(self.psi1_fft, torch.FloatTensor)
-        self.psi2_fft = psi2_fft
-        cast_psi(self.psi2_fft, torch.FloatTensor)
-        self.phi_fft = phi_fft
-        cast_phi(self.phi_fft, torch.FloatTensor)
+        self.psi1_f = psi1_f
+        cast_psi(self.psi1_f, torch.FloatTensor)
+        self.psi2_f = psi2_f
+        cast_psi(self.psi2_f, torch.FloatTensor)
+        self.phi_f = phi_f
+        cast_phi(self.phi_f, torch.FloatTensor)
 
     def _type(self, target_type):
-        cast_psi(self.psi1_fft, target_type)
-        cast_psi(self.psi2_fft, target_type)
-        cast_phi(self.phi_fft, target_type)
+        cast_psi(self.psi1_f, target_type)
+        cast_psi(self.psi2_f, target_type)
+        cast_phi(self.phi_f, target_type)
         return self
 
     def cpu(self):
@@ -369,7 +369,7 @@ class Scattering1D(object):
                 self.J, self.Q, order2=order2, detail=False)
         else:
             size_scat = 0
-        S = scattering(x, self.psi1_fft, self.psi2_fft, self.phi_fft,
+        S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
                        self.J, order2=order2, average_U1=average_U1,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
@@ -405,7 +405,7 @@ class Scattering1D(object):
             order),
             'sigma': the spectral width of the filter (sigma1 and sigma2 for
             second order),
-            'key': the key in the dictionaries psi1_fft and psi2_fft (key1 and
+            'key': the key in the dictionaries psi1_f and psi2_f (key1 and
             key2 for second order)
 
         """
@@ -536,7 +536,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
 
     # pad to a dyadic size and make it complex
     U0 = pad(x, pad_left=pad_left, pad_right=pad_right, to_complex=True)
-    # compute the FFT
+    # compute the Fourier transform
     U0_hat = fft1d_c2c(U0)
     # initialize the cursor
     cc = 0  # current coordinate

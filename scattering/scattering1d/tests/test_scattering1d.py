@@ -112,11 +112,11 @@ def test_computation_Ux(random_state=42):
     s = scattering.forward(x)
 
     # check that the keys in s correspond to the order 0 and second order
-    for k in scattering.psi1_fft.keys():
+    for k in scattering.psi1_f.keys():
         assert k in s.keys()
     for k in s.keys():
         if k != 0:
-            assert k in scattering.psi1_fft.keys()
+            assert k in scattering.psi1_f.keys()
         else:
             assert True
 

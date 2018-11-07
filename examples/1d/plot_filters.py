@@ -18,7 +18,7 @@ T = 2**13
 J = 6
 Q = 8
 
-phi_fft, psi1_fft, psi2_fft, _ = scattering_filter_factory(math.log2(T), J, Q)
+phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(math.log2(T), J, Q)
 
 ###############################################################################
 # Plot first-order (Q = 8) and second-order (Q = 1) wavelets along with their
@@ -27,13 +27,13 @@ phi_fft, psi1_fft, psi2_fft, _ = scattering_filter_factory(math.log2(T), J, Q)
 
 fig, axs = plt.subplots(2, 1)
 
-psis_fft = (psi1_fft, psi2_fft)
+psis_f = (psi1_f, psi2_f)
 Qs = (Q, 1)
 
 for k in range(2):
-    axs[k].plot(np.arange(T)/T, phi_fft[0], 'b')
-    for key in psis_fft[k].keys():
-        axs[k].plot(np.arange(T)/T, psis_fft[k][key][0], 'b')
+    axs[k].plot(np.arange(T)/T, phi_f[0], 'b')
+    for key in psis_f[k].keys():
+        axs[k].plot(np.arange(T)/T, psis_f[k][key][0], 'b')
     axs[k].set_xlim(0, 0.5)
     axs[k].set_ylim(0, 1.2)
     axs[k].set_xlabel('\omega')
