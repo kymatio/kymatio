@@ -240,11 +240,9 @@ class Scattering1D(object):
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
         self.psi1_f = psi1_f
-        cast_psi(self.psi1_f, torch.FloatTensor)
         self.psi2_f = psi2_f
-        cast_psi(self.psi2_f, torch.FloatTensor)
         self.phi_f = phi_f
-        cast_phi(self.phi_f, torch.FloatTensor)
+        self._type(torch.FloatTensor)
 
     def _type(self, target_type):
         cast_psi(self.psi1_f, target_type)
