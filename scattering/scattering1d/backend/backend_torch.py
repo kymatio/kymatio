@@ -284,27 +284,7 @@ def fft1d_c2c(x):
     """
     return torch.fft(x, signal_ndim=1)
 
-
 def ifft1d_c2c(x):
-    """Compute the (unnormalized) 1D inverse FFT of a complex signal
-
-    Input
-    -----
-    x_f : tensor
-        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
-        x[..., 1] is the imaginary part. The frequencies are assumed to be in
-        the standard PyTorch FFT ordering.
-
-    Returns
-    -------
-    x : tensor
-        A tensor of the same size of x_f containing the unnormalized inverse
-        Fourier transform of x_f.
-    """
-    return torch.ifft(x, signal_ndim = 1) * float(x.shape[-2])
-
-
-def ifft1d_c2c_normed(x):
     """Compute the normalized 1D inverse FFT of a complex signal
 
     Input
