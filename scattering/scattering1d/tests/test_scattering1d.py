@@ -46,7 +46,7 @@ def test_simple_scatterings(random_state=42):
     assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
 
     # sinusoid scattering
-    coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
+    meta = Scattering1D.compute_meta_scattering(J, Q, order2=True)
     for _ in range(50):
         k = rng.randint(1, T // 2, 1)[0]
         x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
@@ -57,9 +57,7 @@ def test_simple_scatterings(random_state=42):
         if force_gpu:
             s2 = s2.cpu()
 
-        for cc in coords.keys():
-            if coords[cc]['order'] in ['0', '2']:
-                assert torch.max(torch.abs(s2[:, cc])) < 1e-2
+        assert(s2[:,meta['order'] != 1,:].abs().max() < 1e-2)
 
 
 def test_sample_scattering():
@@ -179,12 +177,12 @@ def test_coordinates(random_state=42):
         s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
         s_vec = s_vec.cpu()
 
-    coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
+    meta = Scattering1D.compute_meta_scattering(J, Q, order2=True)
 
     assert len(s_dico) == s_vec.shape[1]
 
     for cc in range(s_vec.shape[1]):
-        k = coords[cc]['key']
+        k = meta['key'][cc]
         diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
         assert torch.max(torch.abs(diff)) < 1e-7
 
