@@ -600,8 +600,9 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         U1_hat = subsample_fourier(U0_hat * psi1[n1][0], 2**k1)
         # Take the modulus
         U1 = modulus_complex(ifft1d_c2c(U1_hat))
-        if average:
+        if average or max_order > 1:
             U1_hat = fft1d_c2c(U1)
+        if average:
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             S1_J_hat = subsample_fourier(U1_hat * phi[k1], 2**k1_J)
