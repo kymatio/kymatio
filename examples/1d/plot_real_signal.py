@@ -94,10 +94,10 @@ Sx = scattering.forward(x)
 # to each order (zeroth, first, or second). We do this by extracting the `meta`
 # information from the scattering object and constructing masks for each order.
 
-coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
-order0 = [0]
-order1 = sorted([cc for cc in coords.keys() if coords[cc]['order'] == '1'])
-order2 = sorted([cc for cc in coords.keys() if coords[cc]['order'] == '2'])
+meta = Scattering1D.compute_meta_scattering(J, Q, order2=True)
+order0 = (meta['order'] == 0)
+order1 = (meta['order'] == 1)
+order2 = (meta['order'] == 2)
 
 
 ###############################################################################
