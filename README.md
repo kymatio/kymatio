@@ -67,7 +67,7 @@ Contributions are welcome via the standard practices of OSS development: Open a 
 
 
 ## Authors
-Joakim Andén, Mathieu Andreux, Tomas Anglés, Eugene Belilovsky, Michael Eickenberg, Georgios Exarchakis, Roberto Leonarduzzi, Edouard Oyallon, Gaspard Rochette, Louis Thiry, Sergey Zagoruyko, Sixin Zhang
+Joakim Andén, Mathieu Andreux, Tomas Anglés, Eugene Belilovsky, Michael Eickenberg, Georgios Exarchakis, Roberto Leonarduzzi, Vincent Lostanlen, Edouard Oyallon, Gaspard Rochette, Louis Thiry, Sergey Zagoruyko, Sixin Zhang
 
 
 
