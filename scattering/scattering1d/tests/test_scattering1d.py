@@ -98,7 +98,7 @@ def test_computation_Ux(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q, normalize='l1', average_U1=False,
+    scattering = Scattering1D(T, J, Q, normalize='l1', average=False,
                               max_order=1, vectorize=False)
     # random signal
     x = torch.from_numpy(rng.randn(1, 1, T)).float()
@@ -205,7 +205,7 @@ def test_precompute_size_scattering(random_state=42):
 
     for max_order in [1, 2]:
         scattering.set_default_args(max_order=max_order,
-            average_U1=True, oversampling=0, vectorize=False)
+            average=True, oversampling=0, vectorize=False)
         s_dico = scattering.forward(x)
         for detail in [True, False]:
             # get the size of scattering
