@@ -379,7 +379,7 @@ class Scattering1D(object):
         return self.forward(x)
 
     @staticmethod
-    def compute_meta_scattering(J, Q, order2=False):
+    def compute_meta_scattering(J, Q, order2=True):
         """
         Computes the meta information on each coordinate of the scattering
         vector.
@@ -462,7 +462,7 @@ class Scattering1D(object):
         return meta
 
     @staticmethod
-    def precompute_size_scattering(J, Q, order2=False, detail=False):
+    def precompute_size_scattering(J, Q, order2=True, detail=False):
         """
         Precomputes the size of the scattering vector.
 
@@ -507,7 +507,7 @@ class Scattering1D(object):
 
 def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
-               order2=False, average_U1=True, size_scat=0, vectorize=False):
+               order2=True, average_U1=True, size_scat=0, vectorize=False):
     """
     Main function implementing the scattering computation.
 
