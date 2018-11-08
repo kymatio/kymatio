@@ -312,8 +312,7 @@ class Scattering1D(object):
         return Scattering1D.precompute_size_scattering(self.J, self.Q,
             max_order=self.default_args['max_order'], detail=detail)
 
-    def forward(self, x, max_order=None, average=None, oversampling=None,
-                vectorize=None):
+    def forward(self, x):
         """
         Forward pass of the scattering.
 
@@ -364,7 +363,7 @@ class Scattering1D(object):
                     x.shape[1]))
         # get the arguments before calling the scattering
         max_order, average, oversampling, vectorize = self._get_arguments(
-            max_order, average, oversampling, vectorize)
+            None, None, None, None)
         # treat the arguments
         if vectorize:
             if not(average):
