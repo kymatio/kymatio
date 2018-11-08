@@ -208,10 +208,13 @@ class Scattering1D(object):
         self.eps = eps
         self.criterion_amplitude = criterion_amplitude
         self.normalize = normalize
+        self.default_args = {}
         # Build internal values
         self.build()
-        self.set_default_args(max_order=max_order, average=average,
-                              oversampling=oversampling, vectorize=vectorize)
+        self.max_order(max_order)
+        self.average(average)
+        self.oversampling(oversampling)
+        self.vectorize(vectorize)
 
     def build(self):
         """
@@ -262,37 +265,25 @@ class Scattering1D(object):
         """
         return self._type(torch.cuda.FloatTensor)
 
-    def set_default_args(self, max_order=2, average=True, oversampling=0,
-                         vectorize=True):
-        """
-        Allows to dynamically change the type of inputs sent to the module,
-        thereby avoiding recomputing the whole filterbank, which is expensive.
+    def max_order(self, max_order=None):
+        if max_order is not None:
+            self.default_args['max_order'] = max_order
+        return self.default_args['max_order']
 
-        Parameters
-        ----------
-        order2 : boolean, optional
-            whether to include the 2nd order scattering or not.
-            Defaults to True.
-        average_U1 : boolean, optional
-            whether to return an averaged first order
-            (proper scattering) or simply the :math:`|x star psi^1_lambda|`.
-            Defaults to True.
-        oversampling : boolean, optional
-            integer >= 0 contrlling the relative
-            oversampling relative to the default downsampling by :math:`2^J` after
-            convolution with phi_J, so that the value :math:`2^(J-\text{oversampling})`
-            is used. Defaults to 0
-        vectorize : boolean, optional
-            whether to return a vectorized scattering or
-            not (in which case the output is a dictionary).
-            Defaults to True.
-        """
-        if vectorize and not(average):
-            warnings.warn('Setting average to False and vectorize to True' +
-                          ' will raise an error at runtime.')
-        self.default_args = {'max_order': max_order, 'average': average,
-                             'oversampling': oversampling,
-                             'vectorize': vectorize}
+    def average(self, average=None):
+        if average is not None:
+            self.default_args['average'] = average
+        return self.default_args['average']
+
+    def oversampling(self, oversampling=None):
+        if oversampling is not None:
+            self.default_args['oversampling'] = oversampling
+        return self.default_args['oversampling']
+
+    def vectorize(self, vectorize=None):
+        if vectorize is not None:
+            self.default_args['vectorize'] = vectorize
+        return self.default_args['vectorize']
 
     def meta(self):
         return Scattering1D.compute_meta_scattering(self.J, self.Q,
@@ -352,10 +343,10 @@ class Scattering1D(object):
                 'Input tensor should only have 1 channel, got {}'.format(
                     x.shape[1]))
         # get the arguments before calling the scattering
-        max_order = self.default_args['max_order']
-        average = self.default_args['average']
-        oversampling = self.default_args['oversampling']
-        vectorize = self.default_args['vectorize']
+        max_order = self.max_order()
+        average = self.average()
+        oversampling = self.oversampling()
+        vectorize = self.vectorize()
         # treat the arguments
         if vectorize:
             if not(average):
