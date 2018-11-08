@@ -208,7 +208,7 @@ class Scattering1D(object):
         self.eps = eps
         self.criterion_amplitude = criterion_amplitude
         self.normalize = normalize
-        self.default_args = {}
+        self.args = {}
         # Build internal values
         self.build()
         self.max_order(max_order)
@@ -267,31 +267,31 @@ class Scattering1D(object):
 
     def max_order(self, max_order=None):
         if max_order is not None:
-            self.default_args['max_order'] = max_order
-        return self.default_args['max_order']
+            self.args['max_order'] = max_order
+        return self.args['max_order']
 
     def average(self, average=None):
         if average is not None:
-            self.default_args['average'] = average
-        return self.default_args['average']
+            self.args['average'] = average
+        return self.args['average']
 
     def oversampling(self, oversampling=None):
         if oversampling is not None:
-            self.default_args['oversampling'] = oversampling
-        return self.default_args['oversampling']
+            self.args['oversampling'] = oversampling
+        return self.args['oversampling']
 
     def vectorize(self, vectorize=None):
         if vectorize is not None:
-            self.default_args['vectorize'] = vectorize
-        return self.default_args['vectorize']
+            self.args['vectorize'] = vectorize
+        return self.args['vectorize']
 
     def meta(self):
         return Scattering1D.compute_meta_scattering(self.J, self.Q,
-            max_order=self.default_args['max_order'])
+            max_order=self.args['max_order'])
 
     def output_size(self, detail=False):
         return Scattering1D.precompute_size_scattering(self.J, self.Q,
-            max_order=self.default_args['max_order'], detail=detail)
+            max_order=self.args['max_order'], detail=detail)
 
     def forward(self, x):
         """
