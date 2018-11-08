@@ -294,16 +294,6 @@ class Scattering1D(object):
                              'oversampling': oversampling,
                              'vectorize': vectorize}
 
-    def _get_arguments(self, max_order, average, oversampling, vectorize):
-        new_o2 = self.default_args['max_order'] if max_order is None else max_order
-        new_aU1 = self.default_args['average'] if average is None\
-            else average
-        new_os = self.default_args['oversampling'] if oversampling is None\
-            else oversampling
-        new_vect = self.default_args['vectorize'] if vectorize is None\
-            else vectorize
-        return new_o2, new_aU1, new_os, new_vect
-
     def meta(self):
         return Scattering1D.compute_meta_scattering(self.J, self.Q,
             max_order=self.default_args['max_order'])
@@ -362,8 +352,10 @@ class Scattering1D(object):
                 'Input tensor should only have 1 channel, got {}'.format(
                     x.shape[1]))
         # get the arguments before calling the scattering
-        max_order, average, oversampling, vectorize = self._get_arguments(
-            None, None, None, None)
+        max_order = self.default_args['max_order']
+        average = self.default_args['average']
+        oversampling = self.default_args['oversampling']
+        vectorize = self.default_args['vectorize']
         # treat the arguments
         if vectorize:
             if not(average):
