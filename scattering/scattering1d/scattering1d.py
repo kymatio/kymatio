@@ -304,6 +304,10 @@ class Scattering1D(object):
             else vectorize
         return new_o2, new_aU1, new_os, new_vect
 
+    def meta(self):
+        return Scattering1D.compute_meta_scattering(self.J, self.Q,
+            order2=self.default_args['order2'])
+
     def forward(self, x, order2=None, average_U1=None, oversampling=None,
                 vectorize=None):
         """
