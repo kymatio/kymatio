@@ -169,9 +169,11 @@ def test_coordinates(random_state=42):
         scattering.cuda()
         x = x.cuda()
 
-    s_dico = scattering.forward(x, vectorize=False)
+    scattering.set_default_args(max_order=2, vectorize=False, average=True, oversampling=0)
+    s_dico = scattering.forward(x)
     s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-    s_vec = scattering.forward(x, vectorize=True)
+    scattering.set_default_args(max_order=2, vectorize=True, average=True, oversampling=0)
+    s_vec = scattering.forward(x)
 
     if force_gpu:
         s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
