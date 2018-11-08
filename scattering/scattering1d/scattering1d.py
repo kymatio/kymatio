@@ -407,34 +407,59 @@ class Scattering1D(object):
             key2 for second order)
 
         """
-        sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+        sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
             calibrate_scattering_filters(J, Q)
 
-        coords = {}
-        coords[0] = {'order': 0,
-                     'xi': (),
-                     'sigma': (),
-                     'j': (),
-                     'key': ()}
-        cc = 1
-        for n1 in range(len(xi1)):
-            coords[cc] = {'order': 1,
-                          'xi': (xi1[n1],),
-                          'sigma': (sigma1[n1],),
-                          'j': (j1[n1],),
-                          'key': (n1,)}
-            cc += 1
-            if order2:
-                for n2 in range(len(xi2)):
-                    if j2[n2] > j1[n1]:
-                        coords[cc] = {
-                            'order': 2,
-                            'xi': (xi1[n1], xi2[n2]),
-                            'sigma': (sigma1[n1], sigma2[n2]),
-                            'j': (j1[n1], j2[n2]),
-                            'key': (n1, n2)}
-                        cc += 1
-        return coords
+        meta = {}
+
+        meta['order'] = []
+        meta['xi'] = []
+        meta['sigma'] = []
+        meta['j'] = []
+        meta['n'] = []
+        meta['key'] = []
+
+        meta['order'].append(0)
+        meta['xi'].append(())
+        meta['sigma'].append(())
+        meta['j'].append(())
+        meta['n'].append(())
+        meta['key'].append(())
+
+        for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
+            meta['order'].append(1)
+            meta['xi'].append((xi1,))
+            meta['sigma'].append((sigma1,))
+            meta['j'].append((j1,))
+            meta['n'].append((n1,))
+            meta['key'].append((n1,))
+
+            if not order2:
+                continue
+
+            for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
+                if j2 > j1:
+                    meta['order'].append(2)
+                    meta['xi'].append((xi1, xi2))
+                    meta['sigma'].append((sigma1, sigma2))
+                    meta['j'].append((j1, j2))
+                    meta['n'].append((n1, n2))
+                    meta['key'].append((n1, n2))
+
+        pad_fields = ['xi', 'sigma', 'j', 'n']
+        pad_len = 1
+        if order2:
+            pad_len = 2
+
+        for field in pad_fields:
+            meta[field] = [x+(math.nan,)*(pad_len-len(x)) for x in meta[field]]
+
+        array_fields = ['order', 'xi', 'sigma', 'j', 'n']
+
+        for field in array_fields:
+            meta[field] = torch.from_numpy(np.array(meta[field]))
+
+        return meta
 
     @staticmethod
     def precompute_size_scattering(J, Q, order2=False, detail=False):

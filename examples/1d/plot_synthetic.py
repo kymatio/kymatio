@@ -80,23 +80,21 @@ Q = 16
 scattering = Scattering1D(T, J, Q)
 
 # get the metadata on the coordinates of the scattering
-coords = Scattering1D.compute_meta_scattering(J, Q, order2=True)
-order0 = torch.LongTensor([0])
-order1 = torch.LongTensor(
-    sorted([cc for cc in coords.keys() if coords[cc]['order'] == '1']))
-order2 = torch.LongTensor(
-    sorted([cc for cc in coords.keys() if coords[cc]['order'] == '2']))
+meta = Scattering1D.compute_meta_scattering(J, Q, order2=True)
+order0 = (meta['order'] == 0)
+order1 = (meta['order'] == 1)
+order2 = (meta['order'] == 2)
 
 s = scattering.forward(x)[0]
 plt.figure(figsize=(10, 10), dpi=300)
 plt.subplot(3, 1, 1)
-plt.plot(s[order0].numpy()[0])
+plt.plot(s[order0].numpy())
 plt.title("Scattering order 0")
 plt.subplot(3, 1, 2)
-plt.imshow(s[order1], aspect='auto')
+plt.imshow(s[order1].numpy(), aspect='auto')
 plt.title("Scattering order 1")
 plt.subplot(3, 1, 3)
-plt.imshow(s[order2], aspect='auto')
+plt.imshow(s[order2].numpy(), aspect='auto')
 plt.title("Scattering order 2")
 
 plt.show()
