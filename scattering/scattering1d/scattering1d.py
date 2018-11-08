@@ -308,6 +308,10 @@ class Scattering1D(object):
         return Scattering1D.compute_meta_scattering(self.J, self.Q,
             order2=self.default_args['order2'])
 
+    def output_size(self, detail=False):
+        return Scattering1D.precompute_size_scattering(self.J, self.Q,
+            order2=self.default_args['order2'], detail=detail)
+
     def forward(self, x, order2=None, average_U1=None, oversampling=None,
                 vectorize=None):
         """

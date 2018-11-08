@@ -204,11 +204,12 @@ def test_precompute_size_scattering(random_state=42):
         x = x.cuda()
 
     for order2 in [True, False]:
-        s_dico = scattering.forward(x, vectorize=False, order2=order2)
+        scattering.set_default_args(order2=order2,
+            average_U1=True, oversampling=0, vectorize=False)
+        s_dico = scattering.forward(x)
         for detail in [True, False]:
             # get the size of scattering
-            size = scattering.precompute_size_scattering(
-                J, Q, order2=order2, detail=detail)
+            size = scattering.output_size(detail=detail)
             if detail:
                 num_orders = {0: 0, 1: 0, 2: 0}
                 for k in s_dico.keys():
