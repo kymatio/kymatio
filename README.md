@@ -1,28 +1,13 @@
-kymatio
-==========
+kymatio: wavelet scattering in Pytorch
+======================================
 
-CuPy/PyTorch implementation of the Scattering transform for 1-D,2-D,3-D.
+kymatio is a Python module for wavelets and scattering transforms, built on top of Pytorch, and distributed under the 3-Clause BSD license.
 
-A scattering network is a Convolutional Network with filters predefined to be wavelets that are not learned and it can be used in vision task such as classification of images, sounds, and molecules. 
+Use kymatio if you need a library that:
+* integrates wavelet scattering in a deep learning architecture,
+* supports 1-D, 2-D, and 3-D wavelets, and
+* runs seamlessly on CPU and GPU hardware.
 
-Features:
-- Integration of 1-D,2-D, and 3-D scattering transforms on gpu
-- Easily integrated with deep learning pipelines, especially pytorch. 
-- 
-
-
-The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
-
-
-
-If using this code for your research please cite our paper:
-
-The scattering authors, [*kymatio: Fast Scattering in 1-D,2-D,3-D*]()
-
-This code unifies multiple previous efforts:
-    - pyscatwave/scatwave
-    - scatnetlight 
-    - others 
     
 
 ## Installation
@@ -38,6 +23,19 @@ The first step is to install pytorch following instructions from
 pip install -r requirements.txt
 python setup.py install
 ```
+
+The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
+
+
+If using this code for your research please cite our paper:
+
+The scattering authors, [*kymatio: Fast Scattering in 1-D,2-D,3-D*]()
+
+This code unifies multiple previous efforts:
+    - pyscatwave/scatwave
+    - scatnetlight 
+    - others 
+    
 
 ## Usage
 
