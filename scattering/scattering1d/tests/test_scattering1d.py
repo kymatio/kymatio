@@ -169,10 +169,10 @@ def test_coordinates(random_state=42):
         scattering.cuda()
         x = x.cuda()
 
-    scattering.set_default_args(max_order=2, vectorize=False, average=True, oversampling=0)
+    scattering.vectorize(False)
     s_dico = scattering.forward(x)
     s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-    scattering.set_default_args(max_order=2, vectorize=True, average=True, oversampling=0)
+    scattering.vectorize(True)
     s_vec = scattering.forward(x)
 
     if force_gpu:
@@ -198,7 +198,7 @@ def test_precompute_size_scattering(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q)
+    scattering = Scattering1D(T, J, Q, vectorize=False)
     x = torch.randn(128, 1, T)
 
     if force_gpu:
@@ -206,8 +206,7 @@ def test_precompute_size_scattering(random_state=42):
         x = x.cuda()
 
     for max_order in [1, 2]:
-        scattering.set_default_args(max_order=max_order,
-            average=True, oversampling=0, vectorize=False)
+        scattering.max_order(max_order)
         s_dico = scattering.forward(x)
         for detail in [True, False]:
             # get the size of scattering
