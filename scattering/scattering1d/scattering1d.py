@@ -194,7 +194,7 @@ class Scattering1D(object):
     """
     def __init__(self, T, J, Q, normalize='l1', criterion_amplitude=1e-3,
                  r_psi=math.sqrt(0.5), sigma0=0.1, alpha=5.,
-                 P_max=5, eps=1e-7, max_order=2, average_U1=True,
+                 P_max=5, eps=1e-7, max_order=2, average=True,
                  oversampling=0, vectorize=True):
         super(Scattering1D, self).__init__()
         # Store the parameters
@@ -210,7 +210,7 @@ class Scattering1D(object):
         self.normalize = normalize
         # Build internal values
         self.build()
-        self.set_default_args(max_order=max_order, average_U1=average_U1,
+        self.set_default_args(max_order=max_order, average=average,
                               oversampling=oversampling, vectorize=vectorize)
 
     def build(self):
@@ -262,7 +262,7 @@ class Scattering1D(object):
         """
         return self._type(torch.cuda.FloatTensor)
 
-    def set_default_args(self, max_order=2, average_U1=True, oversampling=0,
+    def set_default_args(self, max_order=2, average=True, oversampling=0,
                          vectorize=True):
         """
         Allows to dynamically change the type of inputs sent to the module,
@@ -287,17 +287,17 @@ class Scattering1D(object):
             not (in which case the output is a dictionary).
             Defaults to True.
         """
-        if vectorize and not(average_U1):
-            warnings.warn('Setting average_U1 to False and vectorize to True' +
+        if vectorize and not(average):
+            warnings.warn('Setting average to False and vectorize to True' +
                           ' will raise an error at runtime.')
-        self.default_args = {'max_order': max_order, 'average_U1': average_U1,
+        self.default_args = {'max_order': max_order, 'average': average,
                              'oversampling': oversampling,
                              'vectorize': vectorize}
 
-    def _get_arguments(self, max_order, average_U1, oversampling, vectorize):
+    def _get_arguments(self, max_order, average, oversampling, vectorize):
         new_o2 = self.default_args['max_order'] if max_order is None else max_order
-        new_aU1 = self.default_args['average_U1'] if average_U1 is None\
-            else average_U1
+        new_aU1 = self.default_args['average'] if average is None\
+            else average
         new_os = self.default_args['oversampling'] if oversampling is None\
             else oversampling
         new_vect = self.default_args['vectorize'] if vectorize is None\
@@ -312,7 +312,7 @@ class Scattering1D(object):
         return Scattering1D.precompute_size_scattering(self.J, self.Q,
             max_order=self.default_args['max_order'], detail=detail)
 
-    def forward(self, x, max_order=None, average_U1=None, oversampling=None,
+    def forward(self, x, max_order=None, average=None, oversampling=None,
                 vectorize=None):
         """
         Forward pass of the scattering.
@@ -363,20 +363,20 @@ class Scattering1D(object):
                 'Input tensor should only have 1 channel, got {}'.format(
                     x.shape[1]))
         # get the arguments before calling the scattering
-        max_order, average_U1, oversampling, vectorize = self._get_arguments(
-            max_order, average_U1, oversampling, vectorize)
+        max_order, average, oversampling, vectorize = self._get_arguments(
+            max_order, average, oversampling, vectorize)
         # treat the arguments
         if vectorize:
-            if not(average_U1):
+            if not(average):
                 raise ValueError(
-                    'Options average_U1=False and vectorize=True are ' +
+                    'Options average=False and vectorize=True are ' +
                     'mutually incompatible. Please set vectorize to False.')
             size_scat = self.precompute_size_scattering(
                 self.J, self.Q, max_order=max_order, detail=False)
         else:
             size_scat = 0
         S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
-                       self.J, max_order=max_order, average_U1=average_U1,
+                       self.J, max_order=max_order, average=average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
                        oversampling=oversampling, vectorize=vectorize,
@@ -513,7 +513,7 @@ class Scattering1D(object):
 
 def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
-               max_order=2, average_U1=True, size_scat=0, vectorize=False):
+               max_order=2, average=True, size_scat=0, vectorize=False):
     """
     Main function implementing the scattering computation.
 
@@ -580,9 +580,12 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     cc = 0  # current coordinate
     # Get S0
     k0 = max(J - oversampling, 0)
-    S0_J_hat = subsample_fourier(U0_hat * phi[0], 2**k0)
-    S0_J = unpad(real(ifft1d_c2c(S0_J_hat)),
-                 ind_start[k0], ind_end[k0])
+    if average:
+        S0_J_hat = subsample_fourier(U0_hat * phi[0], 2**k0)
+        S0_J = unpad(real(ifft1d_c2c(S0_J_hat)),
+                     ind_start[k0], ind_end[k0])
+    else:
+        S0_J = x
     if vectorize:
         S[:, cc, :] = S0_J.squeeze(dim=1)
         cc += 1
@@ -597,7 +600,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         U1_hat = subsample_fourier(U0_hat * psi1[n1][0], 2**k1)
         # Take the modulus
         U1 = modulus_complex(ifft1d_c2c(U1_hat))
-        if average_U1:
+        if average:
             U1_hat = fft1d_c2c(U1)
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
@@ -623,15 +626,19 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                     U2_hat = subsample_fourier(U1_hat * psi2[n2][k1],
                                                2**k2)
                     # take the modulus and go back in Fourier
-                    U2_hat = fft1d_c2c(modulus_complex(
-                        ifft1d_c2c(U2_hat)))
-                    # Convolve with phi_J
-                    k2_J = max(J - k2 - k1 - oversampling, 0)
-                    S2_J_hat = subsample_fourier(U2_hat * phi[k1 + k2],
-                                                 2**k2_J)
-                    S2_J = unpad(real(ifft1d_c2c(S2_J_hat)),
-                                 ind_start[k1 + k2 + k2_J],
-                                 ind_end[k1 + k2 + k2_J])
+                    U2 = modulus_complex(ifft1d_c2c(U2_hat))
+                    if average:
+                        U2_hat = fft1d_c2c(U2)
+                        # Convolve with phi_J
+                        k2_J = max(J - k2 - k1 - oversampling, 0)
+                        S2_J_hat = subsample_fourier(U2_hat * phi[k1 + k2],
+                                                     2**k2_J)
+                        S2_J = unpad(real(ifft1d_c2c(S2_J_hat)),
+                                     ind_start[k1 + k2 + k2_J],
+                                     ind_end[k1 + k2 + k2_J])
+                    else:
+                        # just take the real value and unpad
+                        S2_J = unpad(real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
                     if vectorize:
                         S[:, cc, :] = S2_J.squeeze(dim=1)
                         cc += 1
