@@ -46,7 +46,7 @@ def test_simple_scatterings(random_state=42):
     assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
 
     # sinusoid scattering
-    meta = Scattering1D.compute_meta_scattering(J, Q)
+    meta = scattering.meta()
     for _ in range(50):
         k = rng.randint(1, T // 2, 1)[0]
         x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
@@ -156,7 +156,7 @@ def test_scattering_GPU_CPU(random_state=42, test_cuda=None):
 def test_coordinates(random_state=42):
     """
     Tests whether the coordinates correspond to the actual values (obtained
-    with compute_meta_scattering), and with the vectorization
+    with Scattering1d.meta()), and with the vectorization
     """
     torch.manual_seed(random_state)
     J = 6
@@ -177,7 +177,7 @@ def test_coordinates(random_state=42):
         s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
         s_vec = s_vec.cpu()
 
-    meta = Scattering1D.compute_meta_scattering(J, Q)
+    meta = scattering.meta()
 
     assert len(s_dico) == s_vec.shape[1]
 
