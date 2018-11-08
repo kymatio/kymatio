@@ -194,7 +194,7 @@ class Scattering1D(object):
     """
     def __init__(self, T, J, Q, normalize='l1', criterion_amplitude=1e-3,
                  r_psi=math.sqrt(0.5), sigma0=0.1, alpha=5.,
-                 P_max=5, eps=1e-7, order2=True, average_U1=True,
+                 P_max=5, eps=1e-7, max_order=2, average_U1=True,
                  oversampling=0, vectorize=True):
         super(Scattering1D, self).__init__()
         # Store the parameters
@@ -210,7 +210,7 @@ class Scattering1D(object):
         self.normalize = normalize
         # Build internal values
         self.build()
-        self.set_default_args(order2=order2, average_U1=average_U1,
+        self.set_default_args(max_order=max_order, average_U1=average_U1,
                               oversampling=oversampling, vectorize=vectorize)
 
     def build(self):
@@ -262,7 +262,7 @@ class Scattering1D(object):
         """
         return self._type(torch.cuda.FloatTensor)
 
-    def set_default_args(self, order2=True, average_U1=True, oversampling=0,
+    def set_default_args(self, max_order=2, average_U1=True, oversampling=0,
                          vectorize=True):
         """
         Allows to dynamically change the type of inputs sent to the module,
@@ -290,12 +290,12 @@ class Scattering1D(object):
         if vectorize and not(average_U1):
             warnings.warn('Setting average_U1 to False and vectorize to True' +
                           ' will raise an error at runtime.')
-        self.default_args = {'order2': order2, 'average_U1': average_U1,
+        self.default_args = {'max_order': max_order, 'average_U1': average_U1,
                              'oversampling': oversampling,
                              'vectorize': vectorize}
 
-    def _get_arguments(self, order2, average_U1, oversampling, vectorize):
-        new_o2 = self.default_args['order2'] if order2 is None else order2
+    def _get_arguments(self, max_order, average_U1, oversampling, vectorize):
+        new_o2 = self.default_args['max_order'] if max_order is None else max_order
         new_aU1 = self.default_args['average_U1'] if average_U1 is None\
             else average_U1
         new_os = self.default_args['oversampling'] if oversampling is None\
@@ -306,13 +306,13 @@ class Scattering1D(object):
 
     def meta(self):
         return Scattering1D.compute_meta_scattering(self.J, self.Q,
-            order2=self.default_args['order2'])
+            max_order=self.default_args['max_order'])
 
     def output_size(self, detail=False):
         return Scattering1D.precompute_size_scattering(self.J, self.Q,
-            order2=self.default_args['order2'], detail=detail)
+            max_order=self.default_args['max_order'], detail=detail)
 
-    def forward(self, x, order2=None, average_U1=None, oversampling=None,
+    def forward(self, x, max_order=None, average_U1=None, oversampling=None,
                 vectorize=None):
         """
         Forward pass of the scattering.
@@ -363,8 +363,8 @@ class Scattering1D(object):
                 'Input tensor should only have 1 channel, got {}'.format(
                     x.shape[1]))
         # get the arguments before calling the scattering
-        order2, average_U1, oversampling, vectorize = self._get_arguments(
-            order2, average_U1, oversampling, vectorize)
+        max_order, average_U1, oversampling, vectorize = self._get_arguments(
+            max_order, average_U1, oversampling, vectorize)
         # treat the arguments
         if vectorize:
             if not(average_U1):
@@ -372,11 +372,11 @@ class Scattering1D(object):
                     'Options average_U1=False and vectorize=True are ' +
                     'mutually incompatible. Please set vectorize to False.')
             size_scat = self.precompute_size_scattering(
-                self.J, self.Q, order2=order2, detail=False)
+                self.J, self.Q, max_order=max_order, detail=False)
         else:
             size_scat = 0
         S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
-                       self.J, order2=order2, average_U1=average_U1,
+                       self.J, max_order=max_order, average_U1=average_U1,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
                        oversampling=oversampling, vectorize=vectorize,
@@ -387,7 +387,7 @@ class Scattering1D(object):
         return self.forward(x)
 
     @staticmethod
-    def compute_meta_scattering(J, Q, order2=True):
+    def compute_meta_scattering(J, Q, max_order=2):
         """
         Computes the meta information on each coordinate of the scattering
         vector.
@@ -442,7 +442,7 @@ class Scattering1D(object):
             meta['n'].append((n1,))
             meta['key'].append((n1,))
 
-            if not order2:
+            if max_order < 2:
                 continue
 
             for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
@@ -455,9 +455,7 @@ class Scattering1D(object):
                     meta['key'].append((n1, n2))
 
         pad_fields = ['xi', 'sigma', 'j', 'n']
-        pad_len = 1
-        if order2:
-            pad_len = 2
+        pad_len = max_order
 
         for field in pad_fields:
             meta[field] = [x+(math.nan,)*(pad_len-len(x)) for x in meta[field]]
@@ -470,7 +468,7 @@ class Scattering1D(object):
         return meta
 
     @staticmethod
-    def precompute_size_scattering(J, Q, order2=True, detail=False):
+    def precompute_size_scattering(J, Q, max_order=2, detail=False):
         """
         Precomputes the size of the scattering vector.
 
@@ -507,7 +505,7 @@ class Scattering1D(object):
         if detail:
             return size_order0, size_order1, size_order2
         else:
-            if order2:
+            if max_order == 2:
                 return size_order0 + size_order1 + size_order2
             else:
                 return size_order0 + size_order1
@@ -515,7 +513,7 @@ class Scattering1D(object):
 
 def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
-               order2=True, average_U1=True, size_scat=0, vectorize=False):
+               max_order=2, average_U1=True, size_scat=0, vectorize=False):
     """
     Main function implementing the scattering computation.
 
@@ -614,7 +612,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
             cc += 1
         else:
             S[n1,] = S1_J
-        if order2:
+        if max_order == 2:
             # 2nd order
             for n2 in range(len(psi2)):
                 j2 = psi2[n2]['j']
