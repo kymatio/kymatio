@@ -4,7 +4,7 @@ import math
 import warnings
 
 
-def adaptative_choice_P(sigma, eps=1e-7):
+def adaptive_choice_P(sigma, eps=1e-7):
     """
     Adaptive choice of the value of the number of periods in the frequency
     domain used to compute the FFT of a Morlet wavelet.
@@ -113,7 +113,7 @@ def morlet1D(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
     if P_max < 1:
         raise ValueError('P_max should be non-negative, got {}'.format(P_max))
     # Find the adequate value of P
-    P = min(adaptative_choice_P(sigma, eps=eps), P_max)
+    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
     if P == 1:
