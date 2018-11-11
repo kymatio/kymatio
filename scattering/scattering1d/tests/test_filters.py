@@ -1,7 +1,7 @@
 """
 Testing all functions in filters_bank
 """
-from scattering.scattering1d.filter_bank import adaptative_choice_P
+from scattering.scattering1d.filter_bank import adaptive_choice_P
 from scattering.scattering1d.filter_bank import periodize_filter_fft
 from scattering.scattering1d.filter_bank import get_normalizing_factor
 from scattering.scattering1d.filter_bank import compute_sigma_psi
@@ -14,9 +14,9 @@ import numpy as np
 import math
 
 
-def test_adaptative_choice_P():
+def test_adaptive_choice_P():
     """
-    Testing whether adaptive choice_P provides a bound P which satisfies
+    Tests whether adaptive_choice_P provides a bound P which satisfies
     the adequate requirements
     """
     sigma_range = np.logspace(-5, 2, num=10)
@@ -26,7 +26,7 @@ def test_adaptative_choice_P():
             sigma = sigma_range[i]
             eps = eps_range[j]
             # choose the formula
-            P = adaptative_choice_P(sigma, eps=eps)
+            P = adaptive_choice_P(sigma, eps=eps)
             # check at the boundaries
             denom = 2 * (sigma**2)
             lim_left = np.exp(-((1 - P)**2) / denom)
