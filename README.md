@@ -1,14 +1,15 @@
-kymatio: wavelet scattering in Pytorch
+kymatio: wavelet scattering in PyTorch
 ======================================
 
-kymatio is a Python module for wavelets and scattering transforms, built on top of Pytorch, and distributed under the 3-Clause BSD license.
+kymatio is a Python module for wavelets and scattering transforms, built on top of PyTorch.
+
+[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 Use kymatio if you need a library that:
 * integrates wavelet scattering in a deep learning architecture,
 * supports 1-D, 2-D, and 3-D wavelets, and
 * runs seamlessly on CPU and GPU hardware.
 
-    
 
 ## Installation
 
