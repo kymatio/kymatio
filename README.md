@@ -13,7 +13,7 @@ Use kymatio if you need a library that:
 
 ## Installation
 
-The software was tested on Linux with anaconda Python 2.7 and
+The software was tested on Linux with anaconda Python 3 and
 various GPUs, including Titan X, 1080s, 980s, K20s, and Titan X Pascal.
 
 The first step is to install pytorch following instructions from
@@ -44,12 +44,12 @@ Example:
 
 ```python
 import torch
-from scattering.scattering import Scattering
+from scattering.scattering2d import Scattering2D
 
-scattering = Scattering(M=32, N=32, J=2).cuda()
+scattering = Scattering2D(M=32, N=32, J=2).cuda()
 x = torch.randn(1, 3, 32, 32).cuda()
 
-print scattering(x).size()
+print (scattering(x).size())
 ```
 
 ## Benchmarks
