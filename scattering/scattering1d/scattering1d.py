@@ -229,9 +229,20 @@ class Scattering1D(object):
         resolutions. See `filter_bank.scattering_filter_factory` for an exact
         description.
         description
-    args : dictionary
-        A dictionary containing the variable parameters that may be changed
-        during the lifetime of the object.
+    max_order : int
+        The maximum scattering order of the transform.
+    average : boolean
+        Controls whether the output should be averaged (the standard
+        scattering transform) or not (resulting in wavelet modulus
+        coefficients). Note that to obtain unaveraged output, the `vectorize`
+        flag must be set to `False`.
+    oversampling : int
+        The number of powers of two to oversample the output compared to the
+        default subsampling rate determined from the filters.
+    vectorize : boolean
+        Controls whether the output should be vectorized into a single Tensor
+        or collected into a dictionary. For more details, see the
+        documentation for `forward()`.
     """
     def __init__(self, T, J, Q, normalize='l1', criterion_amplitude=1e-3,
                  r_psi=math.sqrt(0.5), sigma0=0.1, alpha=5.,
@@ -249,13 +260,12 @@ class Scattering1D(object):
         self.eps = eps
         self.criterion_amplitude = criterion_amplitude
         self.normalize = normalize
-        self.args = {}
         # Build internal values
         self.build()
-        self.max_order(max_order)
-        self.average(average)
-        self.oversampling(oversampling)
-        self.vectorize(vectorize)
+        self.max_order = max_order
+        self.average = average
+        self.oversampling = oversampling
+        self.vectorize = vectorize
 
     def build(self):
         """Set up padding and filters
@@ -324,92 +334,6 @@ class Scattering1D(object):
         """
         return self._type(torch.cuda.FloatTensor)
 
-    def max_order(self, max_order=None):
-        """Get or set the maximum scattering order
-
-        This parameter controls how many orders of scattering coefficients are
-        to be calculated. Currently, the only supported values are `1` and
-        `2`.
-
-        Parameters
-        ----------
-        max_order : int, optional
-            If specified, sets the maximum scattering order to the new
-            value.
-
-        Returns
-        -------
-        max_order : int
-            The current maximum scattering order.
-        """
-        if max_order is not None:
-            self.args['max_order'] = max_order
-        return self.args['max_order']
-
-    def average(self, average=None):
-        """Get or set the average flag
-
-        This flag controls whether the output should be averaged (the standard
-        scattering transform) or not (resulting in wavelet modulus
-        coefficients). Note that to obtain unaveraged output, the `vectorize`
-        flag must be set to `False`.
-
-        Parameters
-        ----------
-        average : boolean, optional
-            If specified, sets the average flag to the new value.
-
-        Returns
-        -------
-        average : boolean
-            The current value of the average flag.
-        """
-        if average is not None:
-            self.args['average'] = average
-        return self.args['average']
-
-    def oversampling(self, oversampling=None):
-        """Get or set the oversampling factor
-
-        This factor determines how much the transform should oversample the
-        output compared to the default subsampling rate determined from the
-        filters.
-
-        Parameters
-        ----------
-        oversampling : boolean, optional
-            If specified, sets the oversampling factor to the new value.
-
-        Returns
-        -------
-        oversampling : boolean
-            The current value of the oversampling factor.
-        """
-        if oversampling is not None:
-            self.args['oversampling'] = oversampling
-        return self.args['oversampling']
-
-    def vectorize(self, vectorize=None):
-        """Get or set the vectorize flag
-
-        This flag controls whether the output should be vectorized into a
-        single Tensor or collected into a dictionary. For more information,
-        see the documentation for `forward()`.
-
-        Parameters
-        ----------
-        vectorize : boolean, optional
-            If specified, sets the vectorize flag to the new value.
-
-        Returns
-        -------
-        vectorize : boolean
-            The current value of the vectorize flag.
-        """
-        if vectorize is not None:
-            self.args['vectorize'] = vectorize
-        return self.args['vectorize']
-
     def meta(self):
         """Get meta information on the transform
 
@@ -422,7 +346,7 @@ class Scattering1D(object):
             See the documentation for `compute_meta_scattering()`.
         """
         return Scattering1D.compute_meta_scattering(self.J, self.Q,
-            max_order=self.args['max_order'])
+            max_order=self.max_order)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
@@ -443,7 +367,7 @@ class Scattering1D(object):
         """
 
         return Scattering1D.precompute_size_scattering(self.J, self.Q,
-            max_order=self.args['max_order'], detail=detail)
+            max_order=self.max_order, detail=detail)
 
     def forward(self, x):
         """Apply the scattering transform
@@ -485,26 +409,22 @@ class Scattering1D(object):
                 'Input tensor should only have 1 channel, got {}'.format(
                     x.shape[1]))
         # get the arguments before calling the scattering
-        max_order = self.max_order()
-        average = self.average()
-        oversampling = self.oversampling()
-        vectorize = self.vectorize()
         # treat the arguments
-        if vectorize:
-            if not(average):
+        if self.vectorize:
+            if not(self.average):
                 raise ValueError(
                     'Options average=False and vectorize=True are ' +
                     'mutually incompatible. Please set vectorize to False.')
             size_scat = self.precompute_size_scattering(
-                self.J, self.Q, max_order=max_order, detail=False)
+                self.J, self.Q, max_order=self.max_order, detail=False)
         else:
             size_scat = 0
         S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
-                       self.J, max_order=max_order, average=average,
+                       self.J, max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
-                       oversampling=oversampling, vectorize=vectorize,
-                       size_scat=size_scat)
+                       oversampling=self.oversampling,
+                       vectorize=self.vectorize, size_scat=size_scat)
         return S
 
     def __call__(self, x):
