@@ -169,10 +169,10 @@ def test_coordinates(random_state=42):
         scattering.cuda()
         x = x.cuda()
 
-    scattering.vectorize(False)
+    scattering.vectorize = False
     s_dico = scattering.forward(x)
     s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-    scattering.vectorize(True)
+    scattering.vectorize = True
     s_vec = scattering.forward(x)
 
     if force_gpu:
@@ -206,7 +206,7 @@ def test_precompute_size_scattering(random_state=42):
         x = x.cuda()
 
     for max_order in [1, 2]:
-        scattering.max_order(max_order)
+        scattering.max_order = max_order
         s_dico = scattering.forward(x)
         for detail in [True, False]:
             # get the size of scattering
