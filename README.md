@@ -65,6 +65,7 @@ We do some simple timings and comparisons to the previous (multi-core CPU) imple
 For building documentation, in the main folder, please do:
 
 ```
+pip install -r requirements_optional.txt
 cd doc; make clean; make html
 ```
 
