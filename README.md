@@ -60,6 +60,13 @@ We do some simple timings and comparisons to the previous (multi-core CPU) imple
 256 × 256 × 3 × 128 (J=2) - 0.71 s (speed up of 225x vs ScatNetLight)
 
 
+## Documentation
+
+For building documentation, in the main folder, please do:
+
+```
+cd doc; make clean; make html
+```
 
 
 ## Contribution
