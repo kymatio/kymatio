@@ -13,10 +13,12 @@ Use kymatio if you need a library that:
 
 ## Installation
 
+### Standard package
+
 The software was tested on Linux with anaconda Python 3 and
 various GPUs, including Titan X, 1080s, 980s, K20s, and Titan X Pascal.
 
-The first step is to install pytorch following instructions from
+The first step is to install torch and torchvision, via anaconda, following instructions from
 <http://pytorch.org>, then you can run `pip`:
 
 
@@ -35,7 +37,17 @@ The scattering authors, [*kymatio: Fast Scattering in 1-D,2-D,3-D*]()
 This code unifies multiple previous efforts:
     - pyscatwave/scatwave
     - scatnetlight 
-    - others 
+    - others
+
+### Optimized package
+
+After installing the standard package and if you have a CUDA friendly machine you can use:
+
+```
+pip install -r requirements_optional_cuda.txt
+```
+
+This will allow you to use the optimized backend `skcuda`, as explained in the related documentation.
     
 
 ## Usage
