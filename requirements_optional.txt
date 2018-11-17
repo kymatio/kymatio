@@ -1,2 +1,6 @@
 skcuda
 sphinx
+sphinxcontrib-bibtex
+sphinx-gallery
+pillow
+matplotlib
