@@ -1,4 +1,3 @@
-skcuda
 sphinx
 sphinxcontrib-bibtex
 sphinx-gallery
