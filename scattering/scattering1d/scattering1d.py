@@ -46,7 +46,7 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
     sigma0 : float, optional
         parameter controlling the frequential width of the
         low-pass filter at J_scattering=0; at a an absolute J_scattering,
-        it is equal to :math:`\frac{\sigma_0}{2^J}`. Defaults to 1e-1
+        it is equal to :math:`\\frac{\\sigma_0}{2^J}`. Defaults to 1e-1
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
@@ -90,12 +90,12 @@ class Scattering1D(object):
 
         :math:`S_J^{(1)} x(t, \\lambda) = |x \\star \\psi_\\lambda^{(1)}| \\star \\phi_J`, and
 
-        :math:`S_J^{(2)} x(t, \\lambda, \\mu) = |\,| x \\star \\psi_\\lambda^{(1)}| \\star \\psi_\\mu^{(2)} | \\star \\phi_J`.
+        :math:`S_J^{(2)} x(t, \\lambda, \\mu) = |\\,| x \\star \\psi_\\lambda^{(1)}| \\star \\psi_\\mu^{(2)} | \\star \\phi_J`.
 
     In the above formulas, :math:`\\star` denotes convolution in time. The
     filters :math:`\\psi_\\lambda^{(1)}(t)` and :math:`\\psi_\\mu^{(2)}(t)`
     are analytic wavelets with center frequencies :math:`\\lambda` and
-    :math:`\\mu``, while :math:`\phi_J(t)` is a real lowpass filter centered
+    :math:`\\mu``, while :math:`\\phi_J(t)` is a real lowpass filter centered
     at the zero frequency.
 
     The `Scattering1D` class implements the 1D scattering transform for a
