@@ -68,6 +68,7 @@ For building documentation, in the main folder, please do:
 cd doc; make clean; make html
 ```
 
+Then, you can read the documentation from `doc/build/html/index.html`.
 
 ## Contribution
 
