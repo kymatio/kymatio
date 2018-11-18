@@ -64,10 +64,13 @@ times = 10
 # Determine which devices (CPU or GPU) that are supported by the current
 # backend.
 
+devices = []
 if backend.NAME == 'torch':
-    devices = ['cpu', 'gpu']
-elif backend.NAME == 'skcuda':
-    devices = ['gpu']
+    devices.append('cpu')
+if backend.NAME == 'torch' and torch.cuda.is_available():
+    devices.append('gpu')
+if backend.NAME == 'skcuda' and torch.cuda.is_available():
+    devices.append('gpu')
 
 ###############################################################################
 # Create the `Scattering1D` object using the given parameters and generate
