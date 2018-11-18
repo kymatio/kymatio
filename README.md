@@ -90,9 +90,5 @@ Then, you can read the documentation from `doc/build/html/index.html`.
 Contributions are welcome via the standard practices of OSS development: Open a PR to address an open issue, or open an issue to inform us of problems you have experienced or enhancements you would like to propose. Good practices are explained in the scikit-learn documentation.
 
 
-## Authors
-Joakim Andén, Mathieu Andreux, Tomas Anglés, Eugene Belilovsky, Michael Eickenberg, Georgios Exarchakis, Roberto Leonarduzzi, Vincent Lostanlen, Edouard Oyallon, Gaspard Rochette, Louis Thiry, Sergey Zagoruyko, Sixin Zhang
-
-
 
 
