@@ -1,6 +1,6 @@
 """
-Self-contained classification example on the free-spoken digit data recordings
-==============================================================================
+Classification of spoken digit recordings
+=========================================
 
 In this example we use the 1D scattering transform to represent spoken digits,
 which we then classify using a simple classifier. This shows that 1D scattering

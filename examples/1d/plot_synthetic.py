@@ -1,5 +1,5 @@
 """
-Scattering transform of a synthetic 1D harmonic signal 
+Compute the scattering transform of a synthetic signal
 ======================================================
 
 In this example we generate a harmonic signal of a few different frequencies

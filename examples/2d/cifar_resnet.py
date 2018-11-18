@@ -1,5 +1,6 @@
 """
-Self-contained classification example on CIFAR10
+Classification on CIFAR10 (ResNet)
+==================================
 
 Based on pytorch example for CIFAR10
 """

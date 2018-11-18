@@ -1,5 +1,6 @@
 """
-Self-contained classification example on MNIST
+Classification of handwritten digits
+====================================
 
 Based on pytorch example for MNIST
 """

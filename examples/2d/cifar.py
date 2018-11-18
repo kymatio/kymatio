@@ -1,5 +1,6 @@
 """
-Self-contained classification example on MNIST
+Classification on CIFAR10
+=========================
 
 Based on pytorch example for MNIST
 """

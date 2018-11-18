@@ -1,6 +1,6 @@
 """
-Plot of the 1D Morlet filters used for the Scattering Transform
-===============================================================
+Plot the 1D wavelet filters
+===========================
 See :meth:`scattering.scattering1d.filter_bank` for more informations about the wavelets used.
 """
 
