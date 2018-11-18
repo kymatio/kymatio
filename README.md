@@ -16,19 +16,35 @@ Use kymatio if you need a library that:
 
 ## Installation
 
-### Standard package
+### Dependencies
+
+kymatio requires:
+
+* Python (>= 3.6)
+* PyTorch (>= 0.4)
+* SciPy (>= 0.13)
+
+
+
+### Linux
+
+```
+conda install pytorch torchvision -c pytorch
+pip install -i https://test.pypi.org/simple/ kymatio==0.0.1
+```
+
+
+### Mac OS X
+
+```
+conda install pytorch torchvision -c pytorch
+pip install -i https://test.pypi.org/simple/ kymatio==0.0.1
+```
+
+
 
 The software was tested on Linux with anaconda Python 3 and
 various GPUs, including Titan X, 1080s, 980s, K20s, and Titan X Pascal.
-
-The first step is to install torch and torchvision, via anaconda, following instructions from
-<http://pytorch.org>, then you can run `pip`:
-
-
-```
-pip install -r requirements.txt
-python setup.py install
-```
 
 The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
 
