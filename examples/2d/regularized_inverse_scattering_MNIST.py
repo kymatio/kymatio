@@ -1,6 +1,6 @@
 """
-Regularize inverse of a Scattering coefficient from MNIST
-=========================================================
+Regularized inverse of a scattering transform on MNIST
+======================================================
 
 Description:
 This example trains a convolutional network to invert the scattering transform at scale 2 of MNIST digits.

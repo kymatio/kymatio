@@ -1,6 +1,6 @@
 """
-Compute scattering transform of a speech signal
-===============================================
+Compute the scattering transform of a speech recording
+======================================================
 This script loads a speech signal from the free spoken digit dataset (FSDD)
 of a man pronouncing the word "zero," computes its scattering transform, and
 displays the zeroth-, first-, and second-order scattering coefficients.
