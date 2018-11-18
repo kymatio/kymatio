@@ -69,28 +69,6 @@ pip install -r requirements_optional_cuda.txt
 ```
 
 This will allow you to use the optimized backend `skcuda`, as explained in the related documentation.
-    
-
-## Usage
-
-Example:
-
-```python
-import torch
-from kymatio.scattering2d import Scattering2D
-
-scattering = Scattering2D(M=32, N=32, J=2).cuda()
-x = torch.randn(1, 3, 32, 32).cuda()
-
-print (scattering(x).size())
-```
-
-## Benchmarks
-We do some simple timings and comparisons to the previous (multi-core CPU) implementation of scattering (ScatnetLight). We benchmark the software using a 1080 GPU. Below we show input sizes (WxHx3xBatchSize) and speed:
-
-32 × 32 × 3 × 128 (J=2)- 0.03s (speed of 8x vs ScatNetLight)
-
-256 × 256 × 3 × 128 (J=2) - 0.71 s (speed up of 225x vs ScatNetLight)
 
 
 ## Documentation
