@@ -1,4 +1,5 @@
-2D examples luliul
-==================
+2D examples
+===========
 
-Below is a gallery of examples
+These scripts demonstrate the capabilities of the 2D scattering transform
+class, ``Scattering2D``.

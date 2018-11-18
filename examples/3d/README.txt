@@ -1,4 +1,5 @@
-3D examples luliul
-==================
+3D examples
+===========
 
-Below is a gallery of examples
+These scripts demonstrate the capabilities of the 3D scattering transform
+class, ``Scattering3D``.
