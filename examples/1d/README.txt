@@ -1,4 +1,5 @@
-1D examples luliul
-==================
+1D examples
+===========
 
-Below is a gallery of examples
+These scripts demonstrate the capabilities of the 1D scattering transform
+class, ``Scattering1D``.
