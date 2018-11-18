@@ -28,6 +28,9 @@ install:
   - python setup.py install
 
 script:
+  - echo `which python`
+  - source activate test-environment
+  - echo `which python`
   - pytest
 
   
