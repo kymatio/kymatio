@@ -1,24 +1,24 @@
 Quick Start
 ===========
 
-For Linux or MacOS, in bash, do::
+On Linux or macOS, open a shell and run::
 
     pip install kymatio
 
-
-Then in a python shell::
+In the Python intepreter, you may then call::
 
     import kymatio
 
-If the package has been correctly installed, this last command should run.
+which should run without error if the package has been correctly installed.
 
 
 Apply 2D scattering to a 32x32 random image
 -------------------------------------------
 
-The following code imports ``torch`` and the 2D Scattering Transform. Then it
-creates a ``Scattering2D`` object and applies it to a 32x32 image of random
-normal values::
+The following code imports ``torch`` and the ``Scattering2D`` class, which
+implements the 2D scattering transform. It then creates an instance of this
+class to compute the scattering transform at scale ``J = 2`` of a 32x32 image
+consisting of Gaussian white noise::
 
     import torch
     from kymatio import Scattering2D
@@ -31,11 +31,11 @@ This should output::
 
     torch.Size([1, 1, 81, 8, 8])
 
-This corresponds to 81 scattering transform channels with an 8x8 spatial image
-each.
+This corresponds to 81 scattering coefficients, each corresponding to an
+8x8 image.
 
-Checkout :ref:`user-guide` for more examples of the use of the 2D Scattering Transform
+Check out the :ref:`user-guide` for more scattering transform examples.
 
-Also make sure you check out the :ref:`backend-story` section to learn how to switch backends
-
-
+The performance of the scattering transform depends on the specific backend
+that's in use. For more information on switching backends to improve
+performance, see the :ref:`backend-story` section.
