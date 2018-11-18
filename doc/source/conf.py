@@ -14,15 +14,15 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../scattering'))
+sys.path.insert(0, os.path.abspath('../../kymatio'))
 
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'scattering'
-copyright = '2018, The Scattering Developers'
-author = 'The Scattering Developers'
+project = 'kymatio'
+copyright = '2018, The Kymatio Developers'
+author = 'The Kymatio Developers'
 
 # The short X.Y version
 version = ''
@@ -61,7 +61,7 @@ sphinx_gallery_conf = {
     '__init__.py|mnist.py|scattering3d_qm7.py',
 }
 
-intersphinx_mapping = {'scattering_transform': ('../scattering', None)}
+intersphinx_mapping = {'kymatio': ('../kymatio', None)}
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -124,7 +124,7 @@ html_static_path = ['_static']
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'scatteringdoc'
+htmlhelp_basename = 'kymatiodoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -151,8 +151,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'scattering.tex', 'scattering Documentation',
-     'The Scattering Developers', 'manual'),
+    (master_doc, 'kymatio.tex', 'kymatio Documentation',
+     'The Kymatio Developers', 'manual'),
 ]
 
 
@@ -161,7 +161,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'scattering', 'scattering Documentation',
+    (master_doc, 'kymatio', 'Kymatio Documentation',
      [author], 1)
 ]
 
@@ -172,8 +172,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'scattering', 'scattering Documentation',
-     author, 'scattering', 'One line description of project.',
+    (master_doc, 'kymatio', 'kymatio Documentation',
+     author, 'kymatio', 'One line description of project.',
      'Miscellaneous'),
 ]
 
