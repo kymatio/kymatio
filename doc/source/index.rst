@@ -3,14 +3,30 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Scattering
-==========
+
+Kymatio: wavelet scattering in Python
+*************************************
+kymatio is a Python module for wavelets and scattering transforms
+
+It is built on top of PyTorch, but also has a fast cuda backend via ``cupy`` and
+``skcuda``
+
+Use kymatio if you need a library that:
+
+* integrates wavelet scattering in a deep learning architecture,
+* supports 1-D, 2-D, and 3-D wavelets, and
+* runs seamlessly on CPU and GPU hardware.
+
+A brief intro to wavelet scattering is provided in :ref:`user-guide` and
+publications can also be found  `here <https://www.di.ens.fr/data/publications>`_
+
+
+.. include:: quickstart.rst
 
 .. toctree::
-   :maxdepth: 3
+   :maxdepth: 2
    :caption: Contents:
 
-   quickstart
    installation
    userguide
    developerguide

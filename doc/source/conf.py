@@ -179,3 +179,7 @@ texinfo_documents = [
 
 
 # -- Extension configuration -------------------------------------------------
+
+autodoc_default_flags = ['members', 'inherited-members']
+
+

@@ -125,15 +125,23 @@ Backend
 
 This package is maintained with a flexible backend that currently supports PyTorch. A
 backend corresponds to an implementation of routines, which are optimized for their
-final purpose. For instance, `torch` backend is slightly slower than others backend
-but it has the advantage to be differentiable.
+final purpose. For instance, ``torch`` backend is slightly slower than other backend
+but it has the advantage of being differentiable.
 
-At installation time, a config files is created in `~/.config/scattering/config.cfg` that
+The first time kymatio is used, a config files is created in ``~/.config/kymatio/kymatio.cfg`` that
 will contain a backend used by default. This default backend will be overwritten if
-a global environment variable `SCATTERING_BACKEND` is created and not equal to `None`
-and in this case, each backends will use `SCATTERING_BACKEND` as a default backend.
+a global environment variable ``SCATTERING_BACKEND`` exists.
+In this case, each scattering module will use ``SCATTERING_BACKEND`` as backend.
 It is possible to specify more precisely the backend that will be used for each
 signal type as we will see below.
+
+TL;DR
+
+* For quick backend switches, just set an environment variable
+  ``SCATTERING_BACKEND_2D=skcuda ipython``
+
+* For permanent backend settings, edit ``~/.config/kymatio/kymatio.cfg``
+
 
 1-D backend
 -----------
@@ -142,8 +150,8 @@ signal type as we will see below.
 2-D backend
 -----------
 
-If the global environment variable `SCATTERING_BACKEND_2D` is not equal to `None`, then
-its value will be used at running time as the backend. Currently, two backends exist:
+If the global environment variable ``SCATTERING_BACKEND_2D`` is set, then
+its value will be used at run time as the backend for the 2D module. Currently, two backends exist:
 
 - `torch`: the scattering is differentiable w.r.t. its parameters, however it can be too slow to be amenable for large scale classification.
 
