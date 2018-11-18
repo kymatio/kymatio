@@ -4,10 +4,10 @@ import torch
 import os
 
 from sklearn import linear_model, model_selection, preprocessing, pipeline
-from scattering.scattering3d import Scattering3D
-from scattering.scattering3d.utils import compute_integrals, generate_weighted_sum_of_gaussians
-from scattering.datasets import fetch_qm7
-from scattering.caching import get_cache_dir
+from kymatio.scattering3d import Scattering3D
+from kymatio.scattering3d.utils import compute_integrals, generate_weighted_sum_of_gaussians
+from kymatio.datasets import fetch_qm7
+from kymatio.caching import get_cache_dir
 from scipy.spatial.distance import pdist
 
 

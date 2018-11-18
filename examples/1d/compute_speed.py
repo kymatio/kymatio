@@ -30,7 +30,7 @@ import scattering.scattering1d.backend as backend
 ###############################################################################
 # Finally, we import the `Scattering1D` class that computes the scattering
 # transform.
-from scattering import Scattering1D
+from kymatio import Scattering1D
 
 ###############################################################################
 # Benchmark setup

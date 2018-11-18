@@ -31,7 +31,7 @@ import scattering.scattering2d.backend as backend
 # Finally, we import the `Scattering2D` class that computes the scattering
 # transform.
 
-from scattering import Scattering2D
+from kymatio import Scattering2D
 
 ###############################################################################
 # Benchmark setup

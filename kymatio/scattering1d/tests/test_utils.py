@@ -1,6 +1,6 @@
 import torch
-from scattering.scattering1d.backend import pad_1d, modulus_complex, subsample_fourier
-from scattering.scattering1d.utils import compute_border_indices
+from kymatio.scattering1d.backend import pad_1d, modulus_complex, subsample_fourier
+from kymatio.scattering1d.utils import compute_border_indices
 import numpy as np
 import pytest
 import scattering.scattering1d.backend as backend

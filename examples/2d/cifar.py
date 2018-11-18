@@ -8,7 +8,7 @@ Based on pytorch example for MNIST
 import torch.optim
 from torchvision import datasets, transforms
 import torch.nn.functional as F
-from scattering import Scattering2D
+from kymatio import Scattering2D
 import scattering.datasets as scattering_datasets
 import torch
 import argparse

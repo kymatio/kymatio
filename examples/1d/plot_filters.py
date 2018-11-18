@@ -7,7 +7,7 @@ See :meth:`scattering.scattering1d.filter_bank` for more informations about the 
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from scattering.scattering1d.filter_bank import scattering_filter_factory
+from kymatio.scattering1d.filter_bank import scattering_filter_factory
 
 
 #######################################

@@ -2,9 +2,9 @@
 import torch
 import os
 import numpy as np
-from scattering import Scattering3D
-from scattering.scattering3d import backend
-from scattering.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals
+from kymatio import Scattering3D
+from kymatio.scattering3d import backend
+from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals
 
 if torch.cuda.is_available():
     devices = ['gpu', 'cpu']

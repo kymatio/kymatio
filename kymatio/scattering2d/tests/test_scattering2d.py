@@ -2,19 +2,19 @@
 
 import os
 import torch
-from scattering.scattering2d import Scattering2D
-from scattering.scattering2d import backend
+from kymatio.scattering2d import Scattering2D
+from kymatio.scattering2d import backend
 
 
 backends = []
 try:
-    from scattering.scattering2d.backend import backend_skcuda
+    from kymatio.scattering2d.backend import backend_skcuda
     backends.append(backend_skcuda)
 except:
     pass
 
 try:
-    from scattering.scattering2d.backend import backend_torch
+    from kymatio.scattering2d.backend import backend_torch
     backends.append(backend_torch)
 except:
     pass
