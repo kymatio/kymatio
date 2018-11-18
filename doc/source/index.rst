@@ -6,10 +6,10 @@
 
 Kymatio: wavelet scattering in Python
 *************************************
-kymatio is a Python module for wavelets and scattering transforms
+kymatio is a Python module for computing wavelet and scattering transforms.
 
-It is built on top of PyTorch, but also has a fast cuda backend via ``cupy`` and
-``skcuda``
+It is built on top of PyTorch, but also has a fast CUDA backend via cupy and
+skcuda.
 
 Use kymatio if you need a library that:
 
@@ -17,8 +17,9 @@ Use kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets, and
 * runs seamlessly on CPU and GPU hardware.
 
-A brief intro to wavelet scattering is provided in :ref:`user-guide` and
-publications can also be found  `here <https://www.di.ens.fr/data/publications>`_
+A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
+list of publications see
+`Publications <https://www.di.ens.fr/data/publications>`_.
 
 
 .. include:: quickstart.rst
