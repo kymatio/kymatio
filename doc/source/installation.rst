@@ -1,12 +1,13 @@
 Installation
 ************
 
-We propose two ways to install kymatio: via the `pip` package management system, or directly from the source code.
+There are two ways to install kymatio: via the `pip` package management system, or directly from source.
+
 
 Recommended
 ===========
 
-In your comannd line prompt, please run::
+In a shell, please run::
 
     pip install kymatio
     
@@ -14,7 +15,7 @@ In your comannd line prompt, please run::
 From source
 ===========
 
-If you wish to use the latest version of the code::
+To install the latest version from source, run::
 
     git clone https://github.com/kymatio/kymatio
     cd kymatio
@@ -25,16 +26,18 @@ If you wish to use the latest version of the code::
 Optimizing GPU acceleration
 ===========================
 
-In order to benefit from cuda optimization, you can also install skcuda and cupy::
+To improve performance with an optimized CUDA implementation, you may install optional CUDA packages by running::
 
-    pip install cupy skcuda
+    pip install -r requirements_optional_cuda.txt
 
-and then refer to :ref:`backend-story` for more details about the use of our optimized cuda kernels.
+To enable this implementation, see the :ref:`backend-story` section.
 
 
 Developer
 =========
 
-??????????????????????????????Use `python setup.py develop`????????????????????
+For developers, we recommend performing a development install. The steps are
+same as installing from source (see above), but with the last line replaced
+by::
 
-
+    python setup.py develop
