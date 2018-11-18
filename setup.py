@@ -23,7 +23,7 @@ setup_info = dict(
     author_email=('edouard.oyallon@ens.fr, eugene.belilovsky@inria.fr, '
                   'sergey.zagoruyko@enpc.fr, michael.eickenberg@berkeley.edu, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
-                  'louis.thiry@ens.fr, vincent.lostanlen@ens.fr, janden@flatironinstitute.org, '
+                  'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@flatironinstitute.org, '
                   'tomas.angles@ens.fr, gabriel.huang@ens.fr, roberto.leonarduzzi@ens.fr'),
     url='https://github.com/edouardoyallon/pyscatwave',
     description='Fast CPU/CUDA Scattering Transform implementation',
