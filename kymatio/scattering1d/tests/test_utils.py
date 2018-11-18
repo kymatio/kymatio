@@ -3,7 +3,7 @@ from kymatio.scattering1d.backend import pad_1d, modulus_complex, subsample_four
 from kymatio.scattering1d.utils import compute_border_indices
 import numpy as np
 import pytest
-import scattering.scattering1d.backend as backend
+import kymatio.scattering1d.backend as backend
 import warnings
 
 if backend.NAME == 'skcuda':

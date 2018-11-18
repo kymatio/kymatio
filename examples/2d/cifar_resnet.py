@@ -11,7 +11,7 @@ import torch.nn.functional as F
 from kymatio import Scattering2D
 import torch
 import argparse
-import scattering.datasets as scattering_datasets
+import kymatio.datasets as scattering_datasets
 import torch.nn as nn
 
 
