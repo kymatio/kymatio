@@ -79,7 +79,7 @@ class Scattering3D(object):
 
         Returns
         -------
-        output: the result of input_array :math:`\star phi_J`
+        output: the result of input_array :math:`\\star phi_J`
 
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
@@ -154,7 +154,7 @@ class Scattering3D(object):
             a torch tensor of size (batchsize, number of points, 3) the points in
             coordinate space at which you want the moduli sampled
         j : int
-            lowpass scale j of :math:`\phi_j`
+            lowpass scale j of :math:`\\phi_j`
 
         Returns
         -------
@@ -196,7 +196,7 @@ class Scattering3D(object):
             tensor of the same size as input_array. It holds the output of
             the operation::
 
-            .. math::   \sqrt{\sum_m (\text{input}_\text{array} \star \psi_{j,l,m})^2)}
+            .. math::   \\sqrt{\\sum_m (\\text{input}_\\text{array} \\star \\psi_{j,l,m})^2)}
 
             which is covariant to 3D translations and rotations
 
@@ -233,7 +233,7 @@ class Scattering3D(object):
                 tensor of the same size as input_array. It holds the output of the
                 operation::
 
-                .. math:: \text{input}_\text{array} \star \psi_{j,l,m})
+                .. math:: \\text{input}_\\text{array} \\star \\psi_{j,l,m})
 
         """
         cuda = isinstance(input_array, torch.cuda.FloatTensor)
