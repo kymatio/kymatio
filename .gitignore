@@ -1,10 +1,9 @@
 *.swp
 *.swo
 *__pycache__*
-scatwave.egg-info
+*.egg-info
 doc/build/*
 .pytest_cache
-scattering.egg-info
 .cache/
 doc/source/gallery_1d
 doc/source/gallery_2d
