@@ -9,9 +9,9 @@ import torch.nn as nn
 import torch.optim
 from torchvision import datasets, transforms
 import torch.nn.functional as F
-from scattering import Scattering2D
-import scattering.datasets as scattering_datasets
-import scattering
+from kymatio import Scattering2D
+import kymatio.datasets as scattering_datasets
+import kymatio
 import torch
 import argparse
 import math

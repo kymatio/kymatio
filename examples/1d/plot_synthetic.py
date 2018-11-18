@@ -11,7 +11,7 @@ and analyze it with the 1D scattering transform.
 # Import the necessary packages
 # -----------------------------
 import torch
-from scattering import Scattering1D
+from kymatio import Scattering1D
 import matplotlib.pyplot as plt
 import numpy as np
 

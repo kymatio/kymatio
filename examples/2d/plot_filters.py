@@ -6,8 +6,8 @@ See :meth:`scattering.scattering1d.filter_bank` for more informations about the 
 
 import numpy as np
 import matplotlib.pyplot as plt
-from scattering.scattering2d.filter_bank import filter_bank
-from scattering.scattering2d.utils import fft2
+from kymatio.scattering2d.filter_bank import filter_bank
+from kymatio.scattering2d.utils import fft2
 
 
 ###############################################################################

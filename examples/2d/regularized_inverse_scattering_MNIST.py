@@ -28,9 +28,9 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
-from scattering import Scattering2D as Scattering
-from scattering.caching import get_cache_dir
-from scattering.datasets import get_dataset_dir
+from kymatio import Scattering2D as Scattering
+from kymatio.caching import get_cache_dir
+from kymatio.datasets import get_dataset_dir
 
 
 class Generator(nn.Module):
