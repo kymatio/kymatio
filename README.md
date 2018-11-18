@@ -56,7 +56,7 @@ Example:
 
 ```python
 import torch
-from scattering.scattering2d import Scattering2D
+from kymatio.scattering2d import Scattering2D
 
 scattering = Scattering2D(M=32, N=32, J=2).cuda()
 x = torch.randn(1, 3, 32, 32).cuda()

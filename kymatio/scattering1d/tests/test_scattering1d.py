@@ -1,9 +1,9 @@
 import torch
-from scattering import Scattering1D
+from kymatio import Scattering1D
 import math
 import os
 import numpy as np
-import scattering.scattering1d.backend as backend
+import kymatio.scattering1d.backend as backend
 import warnings
 
 # Signal-related tests

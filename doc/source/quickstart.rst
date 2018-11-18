@@ -21,7 +21,7 @@ creates a ``Scattering2D`` object and applies it to a 32x32 image of random
 normal values::
 
     import torch
-    from scattering import Scattering2D
+    from kymatio import Scattering2D
     scattering = Scattering2D(32, 32, 2)
     x = torch.randn(1, 1, 32, 32)
     Sx = scattering(x)

@@ -25,12 +25,12 @@ import time
 # Certain backends are also GPU-only, we we want to detect that before running
 # the benchmark.
 
-import scattering.scattering1d.backend as backend
+import kymatio.scattering1d.backend as backend
 
 ###############################################################################
 # Finally, we import the `Scattering1D` class that computes the scattering
 # transform.
-from scattering import Scattering1D
+from kymatio import Scattering1D
 
 ###############################################################################
 # Benchmark setup

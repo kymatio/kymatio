@@ -99,7 +99,7 @@ Switching devices: cuda>cpu or cuda<cpu
 By default, the Scattering Transform is run on CPU::
 
     import torch
-    from scattering import Scattering2D
+    from kymatio import Scattering2D
     scattering = Scattering2D(32, 32, 2)
     x = torch.randn(1, 1, 32, 32)
     Sx = scattering(x)
