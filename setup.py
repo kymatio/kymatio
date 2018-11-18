@@ -14,7 +14,7 @@ CuPy/PyTorch CUDA and NumPy/PyTorch CUDA implementation
 
 setup_info = dict(
     # Metadata
-    name='scattering',
+    name='kymatio',
     version=VERSION,
     author=('Edouard Oyallon, Eugene Belilovsky, Sergey Zagoruyko, '
             'Michael Eickenberg, Mathieu Andreux, Georgios Exarchakis, '
@@ -34,8 +34,7 @@ setup_info = dict(
     zip_safe=True,
 
     install_requires=[
-        'torch',
-        'six'
+        'torch'
     ]
 )
 
