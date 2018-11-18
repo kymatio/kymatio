@@ -13,6 +13,8 @@ Use kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets, and
 * runs seamlessly on CPU and GPU hardware.
 
+Website: [kymatio.github.io](https://kymatio.github.io)
+
 
 ## Installation
 
