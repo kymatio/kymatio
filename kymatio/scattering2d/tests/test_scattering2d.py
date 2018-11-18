@@ -147,7 +147,7 @@ def test_Scattering2D():
     x = data['x'].view(7, 3, 128, 128)
     S = data['S'].view(7, 3, 417, 8, 8)
 
-    import scattering.scattering2d.backend as backend
+    import kymatio.scattering2d.backend as backend
 
     if backend.NAME == 'skcuda':
         print('skcuda backend tested!')
