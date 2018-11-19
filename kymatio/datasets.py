@@ -17,8 +17,8 @@ def find_datasets_base_dir(datasets_base_dir=None):
     ---------
     datasets_base_dir: string, optional
         Defaults to None. If None, then the datasets directory is searched in the
-        environement variable 'SCATTERING_DATASETS'. If the latter does not
-        exist the default base cache directory is: "~/scattering_datasets"
+        environement variable 'KYMATIO_DATASETS'. If the latter does not
+        exist the default base cache directory is: "~/kymatio_datasets"
 
     Returns
     -------
@@ -28,14 +28,14 @@ def find_datasets_base_dir(datasets_base_dir=None):
 
     Notes
     -----
-    Set the environment variable SCATTERING_DATASETS to direct dataset
+    Set the environment variable KYMATIO_DATASETS to direct dataset
     downloads to a desired download location.
     """
 
 
     if datasets_base_dir is None:
-        datasets_base_dir = os.environ.get('SCATTERING_DATASETS',
-                                os.path.expanduser("~/scattering_datasets"))
+        datasets_base_dir = os.environ.get('KYMATIO_DATASETS',
+                                os.path.expanduser("~/kymatio_datasets"))
     return datasets_base_dir
 
 
