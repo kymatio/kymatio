@@ -180,9 +180,9 @@ MATLAB :cite:`Oyallon_2015_CVPR`                >200
 Kymatio (torch backend, CPU)                    110
 Kymatio (torch backend, 1080Ti GPU)             4.4
 Kymatio (torch backend, V100 GPU)               2.9
-PyScatWave :cite:`8413168`                      1.6
-Kymatio (skcuda backend, 1080Ti GPU)            1.1
-Kymatio (skcuda backend, V100 GPU)              0.49
+PyScatWave (1080Ti GPU)                         0.5
+Kymatio (skcuda backend, V100 GPU)              1.1
+Kymatio (skcuda backend, 1080Ti GPU)            0.5
 ====================================            =========================
 
 The CPU tests were performed on a 48-core machine.
