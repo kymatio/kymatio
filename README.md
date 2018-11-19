@@ -84,10 +84,3 @@ cd doc; make clean; make html
 ```
 
 You may then read the documentation in `doc/build/html/index.html`.
-
-## Contribution
-
-Contributions are welcome via the standard practices of OSS development: Open a
-pull request (PR) to address an open issue, or open an issue to inform us of
-problems you have experienced or enhancements you would like to propose. Good
-practices are explained in the scikit-learn documentation.
