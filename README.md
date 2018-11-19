@@ -1,7 +1,7 @@
 kymatio: wavelet scattering in PyTorch
 ======================================
 
-kymatio is a Python module for wavelet and scattering transforms, built on top of PyTorch.
+kymatio is a Python package for wavelet scattering transforms, built on top of PyTorch.
 
 [![PyPI](https://img.shields.io/badge/python-3.6-blue.svg)]()
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
