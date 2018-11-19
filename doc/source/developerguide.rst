@@ -1,8 +1,6 @@
 Information for developers
 **************************
 
-Something something how the code works
-
 Backend: core of the algorithm
 ==============================
 
