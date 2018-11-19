@@ -1,7 +1,7 @@
 kymatio: wavelet scattering in PyTorch
 ======================================
 
-kymatio is a Python module for wavelets and scattering transforms, built on top of PyTorch.
+kymatio is a Python module for wavelet and scattering transforms, built on top of PyTorch.
 
 [![PyPI](https://img.shields.io/badge/python-3.6-blue.svg)]()
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
@@ -23,6 +23,7 @@ Website: [https://kymatio.github.io](https://kymatio.github.io)
 kymatio requires:
 
 * Python (>= 3.6)
+* Anaconda
 * PyTorch (>= 0.4)
 * SciPy (>= 0.13)
 
@@ -36,7 +37,7 @@ pip install -i https://test.pypi.org/simple/ kymatio==0.0.1
 ```
 
 
-### Mac OS X
+### macOS
 
 ```
 conda install pytorch torchvision -c pytorch
@@ -45,47 +46,48 @@ pip install -i https://test.pypi.org/simple/ kymatio==0.0.1
 
 
 
-The software was tested on Linux with anaconda Python 3 and
+The software was tested on Linux with Anaconda Python 3 and
 various GPUs, including Titan X, 1080s, 980s, K20s, and Titan X Pascal.
 
 The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
 
 
-If using this code for your research please cite our paper:
+If you use this code in your work please cite our paper:
 
 The scattering authors, [*kymatio: Fast Scattering in 1-D,2-D,3-D*]()
 
 This code unifies multiple previous efforts:
-    - pyscatwave/scatwave
-    - scatnetlight 
-    - others
+    - PyScatWave/ScatWave,
+    - ScatNetLight,
+    - ScatNet, and others
 
 ### Optimized package
 
-After installing the standard package and if you have a CUDA friendly machine you can use:
+If you have a CUDA-enabled GPU, you may run
 
 ```
 pip install -r requirements_optional_cuda.txt
 ```
 
-This will allow you to use the optimized backend `skcuda`, as explained in the related documentation.
+after installation to install the optimized `skcuda` backend. To enable it, set
+the `KYMATIO_BACKEND` environment variable to `skcuda`. For more information,
+see the documentation.
 
 
 ## Documentation
 
-For building documentation, in the main folder, please do:
+To build the documentation, please run
 
 ```
 pip install -r requirements_optional.txt
 cd doc; make clean; make html
 ```
 
-Then, you can read the documentation from `doc/build/html/index.html`.
+You may then read the documentation in `doc/build/html/index.html`.
 
 ## Contribution
 
-Contributions are welcome via the standard practices of OSS development: Open a PR to address an open issue, or open an issue to inform us of problems you have experienced or enhancements you would like to propose. Good practices are explained in the scikit-learn documentation.
-
-
-
-
+Contributions are welcome via the standard practices of OSS development: Open a
+pull request (PR) to address an open issue, or open an issue to inform us of
+problems you have experienced or enhancements you would like to propose. Good
+practices are explained in the scikit-learn documentation.
