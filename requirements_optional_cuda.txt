@@ -1,2 +1,2 @@
-skcuda
+scikit-cuda
 cupy
