@@ -1,14 +1,14 @@
-kymatio: wavelet scattering in PyTorch
+Kymatio: wavelet scattering in PyTorch
 ======================================
 
-kymatio is a Python package for wavelet scattering transforms, built on top of PyTorch.
+Kymatio is a Python package for wavelet scattering transforms, built on top of PyTorch.
 
 [![PyPI](https://img.shields.io/badge/python-3.6-blue.svg)]()
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build Status](https://travis-ci.org/kymatio/kymatio.svg?branch=master)](https://travis-ci.org/kymatio/kymatio)
 
 
-Use kymatio if you need a library that:
+Use Kymatio if you need a library that:
 * integrates wavelet scattering in a deep learning architecture,
 * supports 1-D, 2-D, and 3-D wavelets, and
 * runs seamlessly on CPU and GPU hardware.
@@ -20,7 +20,7 @@ Website: [https://kymatio.github.io](https://kymatio.github.io)
 
 ### Dependencies
 
-kymatio requires:
+Kymatio requires:
 
 * Python (>= 3.6)
 * Anaconda
@@ -54,7 +54,7 @@ The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
 
 If you use this code in your work please cite our paper:
 
-The scattering authors, [*kymatio: Fast Scattering in 1-D,2-D,3-D*]()
+The scattering authors, [*Kymatio: Fast Scattering in 1-D,2-D,3-D*]()
 
 This code unifies multiple previous efforts:
     - PyScatWave/ScatWave,
