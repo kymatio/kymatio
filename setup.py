@@ -27,11 +27,11 @@ setup_info = dict(
             'Michael Eickenberg, Mathieu Andreux, Georgios Exarchakis, '
             'Louis Thiry, Vincent Lostanlen, Joakim Andén, '
             'Tomás Angles, Gabriel Huang, Roberto Leonarduzzi'),
-    author_email=('edouard.oyallon@ens.fr, eugene.belilovsky@inria.fr, '
-                  'sergey.zagoruyko@enpc.fr, michael.eickenberg@berkeley.edu, '
+    author_email=('edouard.oyallon@centralesupelec.fr, belilove@iro.umontreal.ca, '
+                  'sergey.zagoruyko@inria.fr, michael.eickenberg@berkeley.edu, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
                   'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@flatironinstitute.org, '
-                  'tomas.angles@ens.fr, gabriel.huang@ens.fr, roberto.leonarduzzi@ens.fr'),
+                  'tomas.angles@ens.fr, gabriel.huang@umontreal.ca, roberto.leonarduzzi@ens.fr'),
     url=URL,
     download_url='https://github.com/kymatio/kymatio/releases',
     classifiers=['Intended Audience :: Education',
