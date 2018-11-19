@@ -25,10 +25,10 @@ import matplotlib.pyplot as plt
 ###############################################################################
 # Filter parameters and generation
 # --------------------------------
-# The filters are defined for a certain support size `T` corresponding to the
-# size of the input signal. Since we are not computing any scattering
-# transforms here, we may pick any value for `T`. Here, we choose
-# `2**13 = 8192`.
+# The filters are defined for a certain support size `T` which corresponds to
+# the size of the input signal. The only restriction is that `T` must be a
+# power of two. Since we are not computing any scattering transforms here, we
+# may pick any power of two for `T`. Here, we choose `2**13 = 8192`.
 
 T = 2**13
 
@@ -41,12 +41,12 @@ J = 5
 
 ###############################################################################
 # The `Q` parameter controls the number of wavelets per octave in the
-# first-order filter bank. The larger the value, the narrower these filters are
-# in the frequency domain and the wider they are in the time domain (in
-# general, the number of oscillations in time is proportional to `Q`). For
-# audio signals, it is often beneficial to have a large value for `Q` (between
-# 4 and 16), since these signals are often highly oscillatory and are better
-# localized in frequency than they are in time. We therefore set:
+# first-order filter bank. The larger the value, the narrower these filters
+# are in the frequency domain and the wider they are in the time domain (in
+# general, the number of non-negligible oscillations in time is proportional
+# to `Q`). For audio signals, it is often beneficial to have a large value for
+# `Q` (between 4 and 16), since these signals are often highly oscillatory and
+# are better localized in frequency than they are in time. We therefore set:
 
 Q = 8
 
@@ -64,7 +64,7 @@ phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(T), J, Q)
 
 ###############################################################################
 # The `phi_f` output is a dictionary where each integer key corresponds points
-# to the realization of the filter at a certain resolution. In other words,
+# to the instantiation of the filter at a certain resolution. In other words,
 # `phi_f[0]` corresponds to the lowpass filter at resolution `T`, while 
 # `phi_f[1]` corresponds to the filter at resolution `T/2`, and so on.
 #
