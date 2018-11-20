@@ -53,7 +53,7 @@ up its [documentation](http://git-scm.com/documentation).
 
 Filing bugs
 -----------
-We use Github issues to track all bugs and feature requests; feel free to
+We use Github issues to track all bugs and feature requests. Feel free to
 open an issue if you have found a bug or wish to see a feature implemented.
 
 It is recommended to check that your issue complies with the
