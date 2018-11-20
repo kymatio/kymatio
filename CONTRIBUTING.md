@@ -80,6 +80,17 @@ following rules before submitting:
   import kymatio; print("Kymatio", kymatio.__version__)
   ```
 
+- If your issue is related to GPU acceleration, please copy-paste the output
+  from the [environment collection script](https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py)
+  of PyTorch.
+  You can get the script and run it with:
+  ```python
+  wget https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py
+  # For security purposes, please check the contents of collect_env.py before running it.
+  python collect_env.py
+  ```
+
+
 Documentation
 -------------
 
