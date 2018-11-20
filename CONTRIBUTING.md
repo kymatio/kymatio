@@ -5,7 +5,7 @@ Contributing code
 How to contribute
 -----------------
 
-The preferred way to contribute to Kymatio is to fork the 
+The preferred way to contribute to Kymatio is to fork the
 [main repository](http://github.com/kymatio/kymatio/) on
 GitHub:
 
@@ -19,7 +19,7 @@ GitHub:
           $ cd kymatio
 
 3. Remove any previously installed versions of Kymatio:
-            
+
           $ pip uninstall kymatio
 
 and install your local copy with testing dependencies:
@@ -42,7 +42,7 @@ and install your local copy with testing dependencies:
 
           $ git push -u origin my-feature
 
-Finally, go to the web page of the your fork of the librosa repo,
+Finally, go to the web page of the your fork of the Kymatio repository,
 and click 'Pull request' to send your changes to the maintainers for
 review. This will send an email to the committers.
 
@@ -96,10 +96,10 @@ Documentation
 
 You can edit the documentation using any text editor and then generate
 the HTML output by typing ``make html`` from the docs/ directory.
-The resulting HTML files will be placed in _build/html/ and are viewable 
+The resulting HTML files will be placed in _build/html/ and are viewable
 in a web browser. See the README file in the doc/ directory for more information.
 
-For building the documentation, you will need 
+For building the documentation, you will need
 [sphinx](http://sphinx.pocoo.org/),
 [matplotlib](http://matplotlib.sourceforge.net/), and [numpydoc](https://pypi.python.org/pypi/numpydoc).
 
