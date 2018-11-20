@@ -30,7 +30,7 @@ and install your local copy with testing dependencies:
 
           $ git checkout -b my-feature
 
-   and start making changes. Never work in the ``master`` branch!
+   and start making changes. Never work in the ``master`` branch.
 
 5. Work on this copy on your computer using Git to do the version
    control. When you're done editing, do:
@@ -95,7 +95,7 @@ following rules before submitting:
 
 -  Please include your operating system type and version number, as well
    as your Python, NumPy, SciPy, PyTorch, and Kymatio versions. This information
-   can be found by runnning the following code snippet:
+   can be found by running the following code snippet:
 
   ```python
   import platform; print(platform.platform())
