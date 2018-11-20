@@ -9,9 +9,9 @@ def find_cache_base_dir(cache_base_dir=None):
     ---------
     cache_base_dir: string, optional
         Defaults to None. If None, then the cache directory is searched in the
-        environement variable 'SCATTERING_CACHE'. If the latter does not
+        environement variable 'KYMATIO_CACHE'. If the latter does not
         exist (so returns None), then the default base cache directory is:
-        "~/scattering_cache"
+        "~/kymatio_cache"
 
     Returns
     -------
@@ -19,11 +19,11 @@ def find_cache_base_dir(cache_base_dir=None):
         The path to the cache base directory.
     """
     if cache_base_dir is None:
-        scattering_cache = os.environ.get('SCATTERING_CACHE')
-        if scattering_cache is None:
-            return os.path.join(os.path.expanduser("~"), "scattering_cache")
+        kymatio_cache = os.environ.get('KYMATIO_CACHE')
+        if kymatio_cache is None:
+            return os.path.join(os.path.expanduser("~"), "kymatio_cache")
         else:
-            return scattering_cache
+            return kymatio_cache
     else:
         return cache_base_dir
 

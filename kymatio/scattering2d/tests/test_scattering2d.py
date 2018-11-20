@@ -140,7 +140,7 @@ def test_Cublas():
 
 # Check the scattering
 # FYI: access the two different tests in here by setting envs
-# SCATTERING_BACKEND=skcuda and SCATTERING_BACKEND=torch
+# KYMATIO_BACKEND=skcuda and KYMATIO_BACKEND=torch
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
     data = torch.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
