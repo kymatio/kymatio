@@ -15,7 +15,8 @@ LICENSE = 'BSD-3-Clause'
 
 # Parse description
 with open('README.md') as f:
-    LONG_DESCRIPTION = f.read()
+    README = f.read()
+    LONG_DESCRIPTION = '\n'.join([x for x in README if not x[:3]=='[!['])
 
 
 # Parse version.py
