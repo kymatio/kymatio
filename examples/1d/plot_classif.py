@@ -204,7 +204,7 @@ Sx_tr = (Sx_tr - mu_tr) / std_tr
 # Here we define a Logistic Regression model using PyTorch. We train it using
 # Adam with a negative log-likelihood loss.
 num_input = Sx_tr.shape[-1]
-num_classes = y_tr.unique().numel()
+num_classes = y_tr.cpu().unique().numel()
 model = Sequential(Linear(num_input, num_classes), LogSoftmax(dim=1))
 optimizer = Adam(model.parameters())
 criterion = NLLLoss()
