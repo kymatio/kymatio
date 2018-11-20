@@ -23,11 +23,11 @@ Website: [https://kymatio.github.io](https://kymatio.github.io)
 Kymatio requires:
 
 * Python (>= 3.6)
-* Anaconda
 * PyTorch (>= 0.4)
 * SciPy (>= 0.13)
 
-
+We also strongly recommend running Kymatio in a Conda environment since this
+simplifies installation of PyTorch.
 
 ### Linux
 
