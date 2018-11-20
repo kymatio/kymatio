@@ -6,6 +6,8 @@ import shutil
 import sys
 from setuptools import setup, find_packages
 
+# Constants
+DISTNAME = 'Kymatio'
 DESCRIPTION = 'Wavelet scattering transforms in Python with GPU acceleration'
 VERSION = imp.load_source('kymatio.version', 'kymatio/version.py').version
 with open('README.md') as f:
@@ -21,7 +23,7 @@ with open('requirements.txt', 'r') as f:
 
 setup_info = dict(
     # Metadata
-    name='kymatio',
+    name=DISTNAME,
     version=VERSION,
     author=('Edouard Oyallon, Eugene Belilovsky, Sergey Zagoruyko, '
             'Michael Eickenberg, Mathieu Andreux, Georgios Exarchakis, '
