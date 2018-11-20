@@ -4,8 +4,8 @@
 
 # Here's how it is decided upon:
 
-# 1. Is there an environment variable SCATTERING_BACKEND_2D?
-# 2. Is there an environment variable SCATTERING_BACKEND?
+# 1. Is there an environment variable KYMATIO_BACKEND_2D?
+# 2. Is there an environment variable KYMATIO_BACKEND?
 # 3. Is there a config file? If so, go and find the backend entry
 # 4. Set the backend to DEFAULT_BACKEND
 
@@ -18,7 +18,7 @@ import appdirs
 
 # find config file
 
-config_file = os.path.join(appdirs.user_config_dir("scattering"), "scattering.cfg")
+config_file = os.path.join(appdirs.user_config_dir("kymatio"), "kymatio.cfg")
 cp = configparser.ConfigParser()
 
 if os.path.exists(config_file):
@@ -53,10 +53,10 @@ else:
 
 
 # general env:
-BACKEND = os.environ.get("SCATTERING_BACKEND", BACKEND)
+BACKEND = os.environ.get("KYMATIO_BACKEND", BACKEND)
 
 # 2d specific env:
-BACKEND = os.environ.get("SCATTERING_BACKEND_2D", BACKEND)
+BACKEND = os.environ.get("KYMATIO_BACKEND_2D", BACKEND)
 
 
 
