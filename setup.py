@@ -16,7 +16,7 @@ LICENSE = 'BSD-3-Clause'
 
 # Parse requirements.txt
 with open('requirements.txt', 'r') as f:
-    REQUIREMENTS = [row[0] for row in csv.reader(f, delimiter='\n')]
+    REQUIREMENTS = f.read().split('\n')
 
 
 setup_info = dict(
