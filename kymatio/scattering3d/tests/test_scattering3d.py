@@ -41,7 +41,7 @@ def test_against_standard_computations():
     file_path = os.path.abspath(os.path.dirname(__file__))
     d = np.load(os.path.join(file_path, 'test_data_3d.pt'))
     x = d.item()['x']
-    scat_ref = d.item()['scat']
+    scattering_ref = d.item()['scat']
 
     M, N, O, J, L, sigma = 64, 64, 64, 2, 2, 1.
     integral_powers = [1., 2.]
@@ -62,17 +62,17 @@ def test_against_standard_computations():
         order_0 = order_0.cpu().numpy().reshape((1, -1))
         start = 0
         end = order_0.shape[1]
-        order_0_ref = scat_ref[:,start:end]
+        order_0_ref = scattering_ref[:,start:end]
 
         order_1 = order_1.cpu().numpy().reshape((1, -1))
         start = end
         end += order_1.shape[1]
-        order_1_ref = scat_ref[:, start:end]
+        order_1_ref = scattering_ref[:, start:end]
 
         order_2 = order_2.cpu().numpy().reshape((1, -1))
         start = end
         end += order_2.shape[1]
-        order_2_ref = scat_ref[:, start:end]
+        order_2_ref = scattering_ref[:, start:end]
 
         order_0_diff_cpu = relative_difference(order_0_ref, order_0)
         order_1_diff_cpu = relative_difference(order_1_ref, order_1)
