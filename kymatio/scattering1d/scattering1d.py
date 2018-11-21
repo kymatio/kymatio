@@ -415,16 +415,16 @@ class Scattering1D(object):
                 raise ValueError(
                     'Options average=False and vectorize=True are ' +
                     'mutually incompatible. Please set vectorize to False.')
-            size_scat = self.precompute_size_scattering(
+            size_scattering = self.precompute_size_scattering(
                 self.J, self.Q, max_order=self.max_order, detail=False)
         else:
-            size_scat = 0
+            size_scattering = 0
         S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
                        self.J, max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
                        oversampling=self.oversampling,
-                       vectorize=self.vectorize, size_scat=size_scat)
+                       vectorize=self.vectorize, size_scattering=size_scattering)
         return S
 
     def __call__(self, x):
@@ -576,7 +576,7 @@ class Scattering1D(object):
 
 def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
-               max_order=2, average=True, size_scat=0, vectorize=False):
+               max_order=2, average=True, size_scattering=0, vectorize=False):
     """
     Main function implementing the scattering computation.
 
@@ -619,7 +619,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         Whether to compute the 2nd order or not. Defaults to False.
     average_U1 : boolean, optional
         whether to average the first order vector. Defaults to True
-    size_scat : dictionary or int, optional
+    size_scattering : dictionary or int, optional
         contains the number of channels of the scattering,
         precomputed for speed-up. Defaults to 0
     vectorize : boolean, optional
@@ -631,7 +631,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         batch_size = x.shape[0]
         kJ = max(J - oversampling, 0)
         temporal_size = ind_end[kJ] - ind_start[kJ]
-        S = x.new(batch_size, size_scat, temporal_size).fill_(0.)
+        S = x.new(batch_size, size_scattering, temporal_size).fill_(0.)
     else:
         S = {}
 
