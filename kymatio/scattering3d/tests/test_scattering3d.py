@@ -41,7 +41,7 @@ def test_against_standard_computations():
     file_path = os.path.abspath(os.path.dirname(__file__))
     data = torch.load(os.path.join(file_path, 'test_data_3d.pt'))
     x = data['x']
-    scat_ref = data['Sx']
+    scattering_ref = data['Sx']
     J = data['J']
     L = data['L']
     integral_powers = data['integral_powers']
@@ -68,17 +68,17 @@ def test_against_standard_computations():
         order_0 = order_0.cpu().numpy().reshape((batch_size, -1))
         start = 0
         end = order_0.shape[1]
-        order_0_ref = scat_ref[:,start:end].numpy()
+        order_0_ref = scattering_ref[:,start:end].numpy()
 
         order_1 = order_1.cpu().numpy().reshape((batch_size, -1))
         start = end
         end += order_1.shape[1]
-        order_1_ref = scat_ref[:, start:end].numpy()
+        order_1_ref = scattering_ref[:, start:end].numpy()
 
         order_2 = order_2.cpu().numpy().reshape((batch_size, -1))
         start = end
         end += order_2.shape[1]
-        order_2_ref = scat_ref[:, start:end].numpy()
+        order_2_ref = scattering_ref[:, start:end].numpy()
 
         order_0_diff_cpu = relative_difference(order_0_ref, order_0)
         order_1_diff_cpu = relative_difference(order_1_ref, order_1)
