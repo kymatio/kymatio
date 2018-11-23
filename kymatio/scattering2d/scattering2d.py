@@ -4,7 +4,6 @@
 
 __all__ = ['Scattering']
 
-import warnings
 import torch
 from .backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
 from .filter_bank import filter_bank

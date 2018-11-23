@@ -5,7 +5,6 @@ import torch
 import numpy as np
 import math
 
-import warnings
 
 from .backend import pad, unpad, real, subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c
 from .utils import compute_padding, compute_border_indices
