@@ -58,7 +58,7 @@ for filter in filters_set['psi']:
     i = i+1
 
 fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used" #, with the corresponding low-pass filter."
-                 "\n The contrast corresponds to the amplitude and the color to the phase.", fontsize=13)
+                 "\n Color saturation and color hue respectively denote complex magnitude and complex phase.", fontsize=13)
 fig.show()
 
 ###############################################################################
@@ -69,16 +69,15 @@ plt.figure()
 plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 plt.axis('off')
-plt.set_cmap('gray')
+plt.set_cmap('gray_r')
 
 
-f_r = filters_set['phi'][0][...,0].numpy()
+f_r = filters_set['phi'][0][..., 0].numpy()
 f_i = filters_set['phi'][0][..., 1].numpy()
 f = f_r + 1j*f_i
 filter_c = fft2(f)
 filter_c = np.fft.fftshift(filter_c)
-plt.suptitle("The corresponding low-pass filter."
-             "\n The contrast corresponds to the amplitude", fontsize=13)
+plt.suptitle("The corresponding low-pass filter, also known as scaling function."
+"Color saturation and color hue respectively denote complex magnitude and complex phase", fontsize=13)
 filter_c = np.abs(filter_c)
-filter_c = 1-filter_c
 plt.imshow(filter_c)
