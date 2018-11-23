@@ -2,8 +2,6 @@
 # Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
 
 
-__all__ = ['Scattering']
-
 import warnings
 import torch
 from .backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
