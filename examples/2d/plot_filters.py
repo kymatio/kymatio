@@ -57,8 +57,8 @@ for filter in filters_set['psi']:
     axs[i // L, i % L].set_title("$j = {}$ \n $\\theta={}$".format(i // L, i % L))
     i = i+1
 
-fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used" #, with the corresponding low-pass filter."
-                 "\n Color saturation and color hue respectively denote complex magnitude and complex phase.", fontsize=13)
+fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used"
+"\n Color saturation and color hue respectively denote complex magnitude and complex phase.", fontsize=13)
 fig.show()
 
 ###############################################################################
