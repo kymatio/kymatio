@@ -2,7 +2,7 @@
 # Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
 
 
-__all__ = ['Scattering']
+__all__ = ['Scattering2D']
 
 import warnings
 import torch

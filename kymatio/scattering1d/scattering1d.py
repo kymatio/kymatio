@@ -7,6 +7,8 @@ import math
 
 import warnings
 
+__all__ = ['Scattering1D']
+
 from .backend import pad, unpad, real, subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c
 from .utils import compute_padding, compute_border_indices
 from .utils import cast_psi, cast_phi
