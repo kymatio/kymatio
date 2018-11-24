@@ -75,9 +75,7 @@ see the documentation.
 
 ## Important note: Deep Learning on ImageNet
 
-The Scattering Transform on ImageNet is not amenable without its `skcuda` backend. If you
-are willing to reproduce hybrid networks, or to incorporate the Scattering Transform
-in a supervised pipeline, please set `KYMATIO_BACKEND=skcuda`.
+If you wish to use the Scattering Transform as image preprocessing on Imagenet, it is recommended that you use the `skcuda` backend by setting the environment variable `KYMATIO_BACKEND_2D=skcuda` or changing the 2D default backend in the config file (`~/.config/kymatio/kymatio.cfg` for Linux).
 
 
 ## Documentation
