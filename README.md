@@ -13,7 +13,7 @@ Use Kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets, and
 * runs seamlessly on CPU and GPU hardware.
 
-Website: [https://kymatio.github.io](https://kymatio.github.io)
+Website: [http://www.kymat.io](http://www.kymat.io)
 
 
 ## Installation
@@ -72,6 +72,12 @@ pip install -r requirements_optional_cuda.txt
 after installation to install the optimized `skcuda` backend. To enable it, set
 the `KYMATIO_BACKEND` environment variable to `skcuda`. For more information,
 see the documentation.
+
+## Important note: Deep Learning on ImageNet
+
+The Scattering Transform on ImageNet is not amenable without its `skcuda` backend. If you
+are willing to reproduce hybrid networks, or to incorporate the Scattering Transform
+in a supervised pipeline, please set `KYMATIO_BACKEND=skcuda`.
 
 
 ## Documentation
