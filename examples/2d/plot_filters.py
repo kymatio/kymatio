@@ -39,7 +39,7 @@ def colorize(z):
 ###############################################################################
 # Bandpass filters
 # ----------------
-# First, we display each wavelets according to its scale and orientation.
+# First, we display each wavelet according to its scale and orientation.
 fig, axs = plt.subplots(J, L, sharex=True, sharey=True)
 fig.set_figheight(6)
 fig.set_figwidth(6)
@@ -57,7 +57,7 @@ for filter in filters_set['psi']:
     axs[i // L, i % L].set_title("$j = {}$ \n $\\theta={}$".format(i // L, i % L))
     i = i+1
 
-fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used"
+fig.suptitle("Wavelets for each scales $j$ and angles $\\theta$ used."
 "\n Color saturation and color hue respectively denote complex magnitude and complex phase.", fontsize=13)
 fig.show()
 
@@ -71,10 +71,10 @@ plt.rc('font', family='serif')
 plt.axis('off')
 plt.set_cmap('gray_r')
 
-
 f_r = filters_set['phi'][0][..., 0].numpy()
 f_i = filters_set['phi'][0][..., 1].numpy()
 f = f_r + 1j*f_i
+
 filter_c = fft2(f)
 filter_c = np.fft.fftshift(filter_c)
 plt.suptitle("The corresponding low-pass filter, also known as scaling function."
