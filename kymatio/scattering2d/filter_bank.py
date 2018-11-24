@@ -7,6 +7,7 @@ __all__ = ['filter_bank']
 
 import torch
 import numpy as np
+import os
 from .utils import fft2
 from ..caching import get_cache_dir
 
@@ -116,7 +117,7 @@ def filter_bank(M, N, J, L=8, cache=False):
             filters = filter_bank_real(M, N, J, L)
             print('Attempting to save to ',cache,' ...')
             try:
-                with open(filer_file, 'wb') as fp:
+                with open(filter_file, 'wb') as fp:
                     data = {'M':M, 'N':N, 'J':J, 'L':L, 'filters':filters}
                 torch.save(data, cache)
                 print('Saved.')
