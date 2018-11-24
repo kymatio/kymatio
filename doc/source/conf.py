@@ -107,7 +107,7 @@ html_theme_options = {
     'logo': 'logo.png',
     'github_button': True,
     'github_type': 'star',
-    'github_count': True,
+    #'github_count': True,
     'travis_button': True,
     'github_user': 'kymatio',
     'github_repo': 'kymatio',
