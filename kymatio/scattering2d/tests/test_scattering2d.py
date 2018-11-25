@@ -158,7 +158,7 @@ def test_Scattering2D():
     if backend.NAME == 'skcuda':
         print('skcuda backend tested!')
         # First, let's check the Jit
-        scattering = Scattering2D(M, N, J, pre_pad=pre_pad)
+        scattering = Scattering2D(J, M, N, pre_pad=pre_pad)
         scattering.cuda()
         x = x.cuda()
         S = S.cuda()
@@ -166,7 +166,7 @@ def test_Scattering2D():
         assert ((S - y)).abs().max() < 1e-6
     elif backend.NAME == 'torch':
         # Then, let's check when using pure pytorch code
-        scattering = Scattering2D(M, N, J, pre_pad=pre_pad)
+        scattering = Scattering2D(J, M, N, pre_pad=pre_pad)
         Sg = []
 
         for device in devices:

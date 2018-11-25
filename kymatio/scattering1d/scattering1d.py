@@ -120,15 +120,15 @@ class Scattering1D(object):
     ::
 
         # Set the parameters of the scattering transform.
-        T = 2**13
         J = 6
+        T = 2**13
         Q = 8
 
         # Generate a sample signal.
         x = torch.randn(1, 1, T)
 
         # Define a Scattering1D object.
-        S = Scattering1D(T, J, Q)
+        S = Scattering1D(J, T, Q)
 
         # Calculate the scattering transform.
         Sx = S.forward(x)
@@ -142,11 +142,11 @@ class Scattering1D(object):
 
     Parameters
     ----------
-    T : int
-        The length of the input signals.
     J : int
         The maximum log-scale of the scattering transform. In other words,
         the maximum scale is given by `2**J`.
+    T : int
+        The length of the input signals.
     Q : int >= 1
         The number of first-order wavelets per octave (second-order wavelets
         are fixed to one wavelet per octave).
@@ -202,11 +202,11 @@ class Scattering1D(object):
 
     Attributes
     ----------
-    T : int
-        The length of the input signals.
     J : int
         The maximum log-scale of the scattering transform. In other words,
         the maximum scale is given by `2**J`.
+    T : int
+        The length of the input signals.
     Q : int
         The number of first-order wavelets per octave (second-order wavelets
         are fixed to one wavelet per octave).
@@ -245,14 +245,14 @@ class Scattering1D(object):
         or collected into a dictionary. For more details, see the
         documentation for `forward()`.
     """
-    def __init__(self, T, J, Q, normalize='l1', criterion_amplitude=1e-3,
+    def __init__(self, J, T, Q, normalize='l1', criterion_amplitude=1e-3,
                  r_psi=math.sqrt(0.5), sigma0=0.1, alpha=5.,
                  P_max=5, eps=1e-7, max_order=2, average=True,
                  oversampling=0, vectorize=True):
         super(Scattering1D, self).__init__()
         # Store the parameters
-        self.T = T
         self.J = J
+        self.T = T
         self.Q = Q
         self.r_psi = r_psi
         self.sigma0 = sigma0

@@ -151,7 +151,7 @@ for k, f in enumerate(files):
 # ------------------------
 # We now create the `Scattering1D` object that will be used to calculate the
 # scattering coefficients.
-scattering = Scattering1D(T, J, Q)
+scattering = Scattering1D(J, T, Q)
 
 ###############################################################################
 # If we are using CUDA, the scattering transform object must be transferred to

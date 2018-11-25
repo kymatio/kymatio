@@ -177,7 +177,7 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
     n_molecules = pos.size(0)
     n_batches = np.ceil(n_molecules / batch_size).astype(int)
 
-    scattering = Scattering3D(M=M, N=N, O=O, J=J, L=L, sigma_0=sigma)
+    scattering = Scattering3D(J=J, M=M, N=N, O=O, L=L, sigma_0=sigma)
 
     order_0, order_1, order_2 = [], [], []
     print('Computing solid harmonic scattering coefficients of {} molecules '

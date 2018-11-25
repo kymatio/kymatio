@@ -22,7 +22,7 @@ consisting of Gaussian white noise::
 
     import torch
     from kymatio import Scattering2D
-    scattering = Scattering2D(32, 32, 2)
+    scattering = Scattering2D(2, 32, 32)
     x = torch.randn(1, 1, 32, 32)
     Sx = scattering(x)
     print(Sx.size())

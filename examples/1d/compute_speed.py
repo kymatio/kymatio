@@ -76,7 +76,7 @@ if backend.NAME == 'skcuda' and torch.cuda.is_available():
 # Create the `Scattering1D` object using the given parameters and generate
 # some compatible test data with the specified batch size.
 
-scattering = Scattering1D(T, J, Q)
+scattering = Scattering1D(J, T, Q)
 
 x = torch.randn(batch_size, 1, T, dtype=torch.float32)
 

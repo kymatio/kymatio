@@ -77,7 +77,7 @@ plt.title("Time-Frequency spectrogram of signal")
 J = 6
 Q = 16
 
-scattering = Scattering1D(T, J, Q)
+scattering = Scattering1D(J, T, Q)
 
 # get the metadata on the coordinates of the scattering
 meta = Scattering1D.compute_meta_scattering(J, Q)

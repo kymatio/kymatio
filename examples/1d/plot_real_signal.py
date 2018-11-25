@@ -74,7 +74,7 @@ Q = 16
 # Finally, we are able to create the object which computes our scattering
 # transform, `scattering`.
 
-scattering = Scattering1D(T, J, Q)
+scattering = Scattering1D(J, T, Q)
 
 ###############################################################################
 # Compute and display the scattering coefficients

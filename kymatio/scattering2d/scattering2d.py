@@ -34,7 +34,7 @@ class Scattering2D(object):
     Example
     -------
         # 1) Define a Scattering object as:
-        s = Scattering2D(M, N, J)
+        s = Scattering2D(J, M, N)
         #    where (M, N) are the image sizes and 2**J the scale of the scattering
         # 2) Forward on an input Variable x of shape B x 1 x M x N,
         #     where B is the batch size.
@@ -42,10 +42,10 @@ class Scattering2D(object):
 
     Parameters
     ----------
-    M, N : int
-        spatial support of the input
     J : int
         logscale of the scattering
+    M, N : int
+        spatial support of the input
     L : int, optional
         number of angles used for the wavelet transform
     pre_pad : boolean, optional
@@ -55,10 +55,10 @@ class Scattering2D(object):
 
     Attributes
     ----------
-    M, N : int
-        spatial support of the input
     J : int
         logscale of the scattering
+    M, N : int
+        spatial support of the input
     L : int, optional
         number of angles used for the wavelet transform
     pre_pad : boolean
@@ -81,8 +81,8 @@ class Scattering2D(object):
      to False.
 
     """
-    def __init__(self, M, N, J, L=8, pre_pad=False, order2=True):
-        self.M, self.N, self.J, self.L = M, N, J, L
+    def __init__(self, J, M, N, L=8, pre_pad=False, order2=True):
+        self.J, self.M, self.N, self.L = J, M, N, L
         self.pre_pad = pre_pad
         self.order2 = order2
         self.build()
