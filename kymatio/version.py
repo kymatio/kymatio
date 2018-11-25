@@ -1,2 +1,2 @@
-short_version = '0.1.1-alpha'
-version = '0.1.1'
+version = '0.1.0-dev'
+short_version = '0.1'
