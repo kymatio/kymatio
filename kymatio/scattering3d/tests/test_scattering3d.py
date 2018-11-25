@@ -1,6 +1,7 @@
 """ This script will test the submodules used by the scattering module"""
 import torch
 import os
+import warnings
 import numpy as np
 from kymatio import Scattering3D
 from kymatio.scattering3d import backend
@@ -26,6 +27,12 @@ def relative_difference(a, b):
 
 
 def test_FFT3d_central_freq_batch():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend is not yet implemented for 3D "
+            "scattering, but that's ok (for now)."), RuntimeWarning,
+            stacklevel=2)
+        return
+
     # Checked the 0 frequency for the 3D FFT
     for device in devices:
         x = torch.zeros(1, 32, 32, 32, 2).float()
@@ -38,6 +45,12 @@ def test_FFT3d_central_freq_batch():
 
 
 def test_against_standard_computations():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend is not yet implemented for 3D "
+            "scattering, but that's ok (for now)."), RuntimeWarning,
+            stacklevel=2)
+        return
+
     file_path = os.path.abspath(os.path.dirname(__file__))
     data = torch.load(os.path.join(file_path, 'test_data_3d.pt'))
     x = data['x']
@@ -89,6 +102,12 @@ def test_against_standard_computations():
         assert order_2_diff_cpu < 1e-6, "CPU : order 2 do not match, diff={}".format(order_2_diff_cpu)
 
 def test_solid_harmonic_scattering():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend is not yet implemented for 3D "
+            "scattering, but that's ok (for now)."), RuntimeWarning,
+            stacklevel=2)
+        return
+
     # Compare value to analytical formula in the case of a single Gaussian
     centers = torch.FloatTensor(1, 1, 3).fill_(0)
     weights = torch.FloatTensor(1, 1).fill_(1)
