@@ -22,7 +22,7 @@ def test_simple_scatterings(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q, normalize='l1')
+    scattering = Scattering1D(J, T, Q, normalize='l1')
     if force_gpu:
         scattering = scattering.cuda()
     # zero signal
@@ -76,7 +76,7 @@ def test_sample_scattering():
 
     T = x.shape[2]
 
-    scattering = Scattering1D(T, J, Q)
+    scattering = Scattering1D(J, T, Q)
 
     if force_gpu:
         scattering = scattering.cuda()
@@ -98,7 +98,7 @@ def test_computation_Ux(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q, normalize='l1', average=False,
+    scattering = Scattering1D(J, T, Q, normalize='l1', average=False,
                               max_order=1, vectorize=False)
     # random signal
     x = torch.from_numpy(rng.randn(1, 1, T)).float()
@@ -141,7 +141,7 @@ def test_scattering_GPU_CPU(random_state=42, test_cuda=None):
 
     if test_cuda:
         # build the scattering
-        scattering = Scattering1D(T, J, Q)
+        scattering = Scattering1D(J, T, Q)
 
         x = torch.randn(128, 1, T)
         s_cpu = scattering.forward(x)
@@ -162,7 +162,7 @@ def test_coordinates(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q, max_order=2)
+    scattering = Scattering1D(J, T, Q, max_order=2)
     x = torch.randn(128, 1, T)
 
     if force_gpu:
@@ -198,7 +198,7 @@ def test_precompute_size_scattering(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q, vectorize=False)
+    scattering = Scattering1D(J, T, Q, vectorize=False)
     x = torch.randn(128, 1, T)
 
     if force_gpu:
@@ -244,7 +244,7 @@ def test_differentiability_scattering(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(T, J, Q)
+    scattering = Scattering1D(J, T, Q)
     x = torch.randn(128, 1, T, requires_grad=True)
 
     if force_gpu:

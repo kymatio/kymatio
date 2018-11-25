@@ -119,7 +119,7 @@ When initialized, a scattering transform object is stored on the CPU::
     import torch
     from kymatio import Scattering2D
 
-    scattering = Scattering2D(32, 32, 2)
+    scattering = Scattering2D(2, 32, 32)
 
 We use this to compute scattering transforms of signals in CPU memory::
 

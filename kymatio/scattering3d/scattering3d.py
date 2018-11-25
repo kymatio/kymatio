@@ -23,26 +23,26 @@ class Scattering3D(object):
 
     Parameters
     ----------
+    J: int
+        number of scales
     M: int
         height of input 3D image size
     N: int
         width of input 3D image size
     O: int
         depth of input 3D image size
-    J: int
-        number of scales
     L: int
         number of l values
 
     """
-    def __init__(self, M, N, O, J, L, sigma_0):
+    def __init__(self, J, M, N, O, L, sigma_0):
         if backend.NAME == "skcuda":
             raise NotImplementedError(backend.skcuda_notimplementederror)
         super(Scattering3D, self).__init__()
+        self.J = J
         self.M = M
         self.N = N
         self.O = O
-        self.J = J
         self.L = L
         self.sigma_0 = sigma_0
         self.filters = solid_harmonic_filter_bank(
