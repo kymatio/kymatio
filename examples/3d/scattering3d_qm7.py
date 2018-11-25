@@ -1,7 +1,7 @@
 """
 3D scattering quantum chemestry regression
 ==========================================
-This uses the 3D scattering on a standard dataset.s
+This uses the 3D scattering on a standard dataset.
 """
 
 import numpy as np
