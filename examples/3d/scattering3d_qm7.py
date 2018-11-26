@@ -1,5 +1,5 @@
 """
-3D scattering quantum chemestry regression
+3D scattering quantum chemistry regression
 ==========================================
 This uses the 3D scattering on a standard dataset.
 """
