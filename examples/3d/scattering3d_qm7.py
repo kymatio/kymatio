@@ -1,3 +1,9 @@
+"""
+3D scattering quantum chemistry regression
+==========================================
+This uses the 3D scattering on a standard dataset.
+"""
+
 import numpy as np
 import time
 import torch
