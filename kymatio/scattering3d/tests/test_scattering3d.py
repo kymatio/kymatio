@@ -66,7 +66,7 @@ def test_against_standard_computations():
     N, O = M, M
     sigma = 1
 
-    scattering = Scattering3D(J=J, M=M, N=N, O=O, L=L, sigma_0=sigma)
+    scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
 
     for device in devices:
         if device == 'cpu':
@@ -117,7 +117,7 @@ def test_solid_harmonic_scattering():
     grid = torch.from_numpy(
         np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1,2,3)))
     x = generate_weighted_sum_of_gaussians(grid, centers, weights, sigma_gaussian)
-    scattering = Scattering3D(J=J, M=M, N=N, O=O, L=L, sigma_0=sigma_0_wavelet)
+    scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet)
     s = scattering(x, order_2=False, method='integral', integral_powers=[1])
 
     for j in range(J+1):
