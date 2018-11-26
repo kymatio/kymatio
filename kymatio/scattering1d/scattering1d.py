@@ -4,6 +4,7 @@
 import torch
 import numpy as np
 import math
+import numbers
 
 
 __all__ = ['Scattering1D']
@@ -205,7 +206,7 @@ class Scattering1D(object):
     J : int
         The maximum log-scale of the scattering transform. In other words,
         the maximum scale is given by `2**J`.
-    T : int
+    shape : int
         The length of the input signals.
     Q : int
         The number of first-order wavelets per octave (second-order wavelets
@@ -245,14 +246,14 @@ class Scattering1D(object):
         or collected into a dictionary. For more details, see the
         documentation for `forward()`.
     """
-    def __init__(self, J, T, Q, normalize='l1', criterion_amplitude=1e-3,
+    def __init__(self, J, shape, Q, normalize='l1', criterion_amplitude=1e-3,
                  r_psi=math.sqrt(0.5), sigma0=0.1, alpha=5.,
                  P_max=5, eps=1e-7, max_order=2, average=True,
                  oversampling=0, vectorize=True):
         super(Scattering1D, self).__init__()
         # Store the parameters
         self.J = J
-        self.T = T
+        self.shape = shape
         self.Q = Q
         self.r_psi = r_psi
         self.sigma0 = sigma0
@@ -277,6 +278,18 @@ class Scattering1D(object):
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
+
+        # check the shape
+        if isinstance(self.shape, numbers.Integral):
+            self.T = self.shape
+        elif isinstance(self.shape, tuple):
+            self.T = self.shape[0]
+            if len(self.shape) > 1:
+                raise ValueError("If shape is specified as a tuple, it must "
+                                 "have exactly one element")
+        else:
+            raise ValueError("shape must be an integer or a 1-tuple")
+
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
             self.T, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,

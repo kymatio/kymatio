@@ -74,7 +74,7 @@ elif backend.NAME == 'skcuda':
 # channels in the test data here is set to `3`, corresponding to the three
 # colors channels in an RGB image.
 
-scattering = Scattering2D(J, M, N, L)
+scattering = Scattering2D(J, shape=(M, N), L=L)
 
 x = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
 

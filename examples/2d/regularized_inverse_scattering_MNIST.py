@@ -94,7 +94,7 @@ def main():
     fixed_batch = next(iter(fixed_dataloader))
     fixed_batch = fixed_batch[0].float().cuda()
 
-    scattering = Scattering(M=28, N=28, J=2)
+    scattering = Scattering(J=2, shape=(28, 28))
     scattering.cuda()
 
     scattering_fixed_batch = scattering(fixed_batch).squeeze(1)

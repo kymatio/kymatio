@@ -1,3 +1,4 @@
+import pytest
 import torch
 from kymatio import Scattering1D
 import math
@@ -255,3 +256,21 @@ def test_differentiability_scattering(random_state=42):
     loss = torch.sum(torch.abs(s))
     loss.backward()
     assert torch.max(torch.abs(x.grad)) > 0.
+
+
+
+def test_scattering_shape_input():
+    # Checks that a wrong input to shape raises an error
+    J, Q = 6, 8
+    with pytest.raises(ValueError) as ve:
+        shape = 5, 6
+        s = Scattering1D(J, shape, Q)
+    assert "exactly one element" in ve.value.args[0]
+
+
+    with pytest.raises(ValueError) as ve:
+        shape = 1.5
+        s = Scattering1D(J, shape, Q)
+        # should invoke the else branch
+    assert "1-tuple" in ve.value.args[0]
+    assert "integer" in ve.value.args[0]
