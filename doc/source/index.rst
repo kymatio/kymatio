@@ -28,7 +28,7 @@ list of publications see
 
 .. toctree::
    :maxdepth: 2
-   :caption: wavelet scattering in PyTorch
+   :caption: Wavelet Scattering in PyTorch
 
    installation
    userguide
