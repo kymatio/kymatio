@@ -50,7 +50,7 @@ def filter_bank(M, N, J, L=8, cache=False):
             for res in range(j + 1):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
-                psi[res] = torch.FloatTensor
+                psi[res] = torch.FloatTensor(
                     np.stack((np.real(psi_signal_fourier_res),
                     np.imag(psi_signal_fourier_res)), axis=2))
                 # Normalization to avoid doing it with the FFT.
