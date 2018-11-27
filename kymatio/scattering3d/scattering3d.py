@@ -5,12 +5,9 @@ __all__ = ['Scattering3D']
 
 import torch
 from .utils import compute_integrals, subsample
- 
+
 from .backend import cdgmm3d, fft, complex_modulus, to_complex
 from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
-
-# TODO remove "import backend" below after implementing skcuda backend
-from kymatio.scattering3d import backend
 
 
 class Scattering3D(object):
@@ -32,8 +29,6 @@ class Scattering3D(object):
 
     """
     def __init__(self, J, shape, L, sigma_0):
-        if backend.NAME == "skcuda":
-            raise NotImplementedError(backend.skcuda_notimplementederror)
         super(Scattering3D, self).__init__()
         self.J = J
         self.shape = shape

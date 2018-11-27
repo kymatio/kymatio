@@ -66,6 +66,8 @@ times = 10
 
 if backend.NAME == 'torch':
     devices = ['cpu', 'gpu']
+elif backend.NAME == 'skcuda':
+    devices = ['gpu']
 
 ###############################################################################
 # Set up the scattering object and the test data
