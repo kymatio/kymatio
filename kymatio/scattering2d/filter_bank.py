@@ -11,7 +11,7 @@ from .utils import fft2
 from ..caching import get_cache_dir
 
 
-def filter_bank_real(M, N, J, L=8):
+def filter_bank(M, N, J, L=8, cache=False):
     """
         Builds in Fourier the Morlet filters used for the scattering transform.
         Each single filter is provided as a dictionary with the following keys:
@@ -32,11 +32,10 @@ def filter_bank_real(M, N, J, L=8):
              wavelet filters.
         Notes
         -----
-        The design of the filters is optimized for the value L = 8
+        The design of the filters is optimized for the value L = 8.
     """
     filters = {}
     filters['psi'] = []
-
 
     offset_unpad = 0
     for j in range(J):
@@ -44,12 +43,17 @@ def filter_bank_real(M, N, J, L=8):
             psi = {}
             psi['j'] = j
             psi['theta'] = theta
-            psi_signal = morlet_2d(M, N, 0.8 * 2**j, (int(L-L/2-1)-theta) * np.pi / L, 3.0 / 4.0 * np.pi /2**j, 4.0/L, offset=offset_unpad)
+            psi_signal = morlet_2d(M, N, 0.8 * 2**j,
+                (int(L-L/2-1)-theta) * np.pi / L,
+                3.0 / 4.0 * np.pi /2**j, 4.0/L, offset=offset_unpad)
             psi_signal_fourier = fft2(psi_signal)
             for res in range(j + 1):
-                psi_signal_fourier_res = periodize_filter_fft(psi_signal_fourier, res)
-                psi[res]=torch.FloatTensor(np.stack((np.real(psi_signal_fourier_res), np.imag(psi_signal_fourier_res)), axis=2))
-                # Normalization to avoid doing it with the FFT!
+                psi_signal_fourier_res = periodize_filter_fft(
+                    psi_signal_fourier, res)
+                psi[res] = torch.FloatTensor
+                    np.stack((np.real(psi_signal_fourier_res),
+                    np.imag(psi_signal_fourier_res)), axis=2))
+                # Normalization to avoid doing it with the FFT.
                 psi[res].div_(M*N// 2**(2*j))
             filters['psi'].append(psi)
 
@@ -59,70 +63,12 @@ def filter_bank_real(M, N, J, L=8):
     filters['phi']['j'] = J
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        filters['phi'][res]=torch.FloatTensor(np.stack((np.real(phi_signal_fourier_res), np.imag(phi_signal_fourier_res)), axis=2))
+        filters['phi'][res] = torch.FloatTensor(np.stack(
+            (np.real(phi_signal_fourier_res), np.imag(phi_signal_fourier_res)),
+            axis=2))
         filters['phi'][res].div_(M*N // 2 ** (2 * J))
 
     return filters
-
-
-def filter_bank(M, N, J, L=8, cache=False):
-    """
-        Builds in Fourier the Morlet filters used for the scattering transform.
-        Each single filter is provided as a dictionary with the following keys:
-        * 'j' : scale
-        * 'theta' : angle used
-
-        It also makes possible to cache large filter banks to avoid recomputing
-        them.
-        
-        Parameters
-        ----------
-        M, N : int
-            spatial support of the input
-        J : int
-            logscale of the scattering
-        L : int, optional
-            number of angles used for the wavelet transform
-            N.B.: the design of the filters is optimized for the value L = 8
-        cache : boolean, optional
-            If False, returnes the same as scattering_filter_factory_real. Otherwise,
-            it stores the computed filters in a cache folder.
-
-        Returns
-        -------
-        filters : list
-            A two list of dictionary containing respectively the low-pass and
-             wavelet filters.
-    """
-    if not cache:
-        return filter_bank_real(M, N, J, L)
-    else:
-        filter_dir = get_cache_dir("filters_2d")
-        filter_file = os.path.join(filter_dir,
-                               "filters__M_{}__N_{}__J_{}__L_{}".format(M, N, J, L))
-        try:
-            print('Attempting to load from ',cache,' ...')
-            data = torch.load(filter_file)
-            assert M == data['M'], 'M mismatch'
-            assert N == data['N'], 'N mismatch'
-            assert J == data['J'], 'J mismatch'
-            assert L == data['L'], 'L mismatch'
-            filters = data['filters']
-            print('Loaded.')
-            return filters
-        except Exception as e:
-            print('Load Error: ',e)
-            print('(Re-)computing filters.')
-            filters = filter_bank_real(M, N, J, L)
-            print('Attempting to save to ',cache,' ...')
-            try:
-                with open(filer_file, 'wb') as fp:
-                    data = {'M':M, 'N':N, 'J':J, 'L':L, 'filters':filters}
-                torch.save(data, cache)
-                print('Saved.')
-            except Exception as f:
-                print('Save Error: ',f)
-            return filters
 
 
 def periodize_filter_fft(x, res):
