@@ -5,6 +5,7 @@ from skcuda import cublas
 
 NAME = 'skcuda'
 
+
 def getDtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
@@ -12,14 +13,19 @@ def getDtype(t):
         return 'double'
 
 
+def iscomplex(input):
+    return input.size(-1) == 2
+
+
+def to_complex(input):
+    output = input.new(input.size() + (2,)).fill_(0)
+    output[..., 0] = input
+    return output
+
 def complex_modulus(input_array):
     modulus = torch.zeros_like(input_array)
     modulus[..., 0] += torch.sqrt((input_array ** 2).sum(-1))
     return modulus
-
-
-def iscomplex(input):
-    return input.size(-1) == 2
 
 
 def fft(input, inverse=False):
@@ -46,7 +52,7 @@ def fft(input, inverse=False):
     return torch.fft(input, 3)
 
 
-def cdgmm(A, B, inplace=False):
+def cdgmm3d(A, B, inplace=False):
     """
         Complex pointwise multiplication between (batched) tensor A and tensor B.
 
