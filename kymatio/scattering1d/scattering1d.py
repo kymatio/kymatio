@@ -1,80 +1,19 @@
-# Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
-# Scientific Ancestry: Mathieu Andreux, Vincent Lostanlen, Joakim Anden
+# Authors: Mathieu Andreux, Joakim Andén, Edouard Oyallon
+# Scientific Ancestry: Joakim Andén, Mathieu Andreux, Vincent Lostanlen
 
-import torch
-import numpy as np
 import math
 import numbers
+import numpy as np
+import torch
+
+from .backend import (fft1d_c2c, ifft1d_c2c, modulus_complex, pad, real,
+    subsample_fourier, unpad)
+from .filter_bank import (calibrate_scattering_filters,
+    scattering_filter_factory)
+from .utils import cast_phi, cast_psi, compute_border_indices, compute_padding
 
 
 __all__ = ['Scattering1D']
-
-from .backend import pad, unpad, real, subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c
-from .utils import compute_padding, compute_border_indices
-from .utils import cast_psi, cast_phi
-
-from .filter_bank import scattering_filter_factory
-from .filter_bank import calibrate_scattering_filters
-
-
-def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
-                                   normalize='l1', r_psi=math.sqrt(0.5),
-                                   sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
-    """
-    Computes the support to pad given the input size and the parameters of the
-    scattering transform.
-
-    Parameters
-    ----------
-    T : int
-        temporal size of the input signal
-    J : int
-        scale of the scattering
-    Q : int
-        number of wavelets per octave
-    normalize : string, optional
-        normalization type for the wavelets.
-        Only 'l2' or 'l1' normalizations are supported.
-        Defaults to 'l1'
-    criterion_amplitude: float >0 and <1, optional
-        Represents the numerical error which is allowed to be lost after
-        convolution and padding.
-        The larger criterion_amplitude, the smaller the padding size is.
-        Defaults to 1e-3
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent
-        wavelets). Defaults to sqrt(0.5).
-    sigma0 : float, optional
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering,
-        it is equal to :math:`\\frac{\\sigma_0}{2^J}`. Defaults to 1e-1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
-    P_max : int, optional
-        maximal number of periods to use to make sure that the Fourier transform
-        of the filters is periodic. P_max = 5 is more than enough for double
-        precision. Defaults to 5
-    eps : float, optional
-        required machine precision for the periodization (single
-        floating point is enough for deep learning applications).
-        Defaults to 1e-7
-
-    Returns
-    -------
-    min_to_pad: int
-        minimal value to pad the signal on one size to avoid any
-        boundary error
-    """
-    J_tentative = int(np.ceil(np.log2(T)))
-    _, _, _, t_max_phi = scattering_filter_factory(
-        J_tentative, J, Q, normalize=normalize, to_torch=False,
-        max_subsampling=0, criterion_amplitude=criterion_amplitude,
-        r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
-    min_to_pad = 3 * t_max_phi
-    return min_to_pad
 
 
 class Scattering1D(object):
@@ -90,9 +29,12 @@ class Scattering1D(object):
 
         :math:`S_J^{(0)} x(t) = x \\star \\phi_J(t)`,
 
-        :math:`S_J^{(1)} x(t, \\lambda) = |x \\star \\psi_\\lambda^{(1)}| \\star \\phi_J`, and
+        :math:`S_J^{(1)} x(t, \\lambda) =
+            |x \\star \\psi_\\lambda^{(1)}| \\star \\phi_J`, and
 
-        :math:`S_J^{(2)} x(t, \\lambda, \\mu) = |\\,| x \\star \\psi_\\lambda^{(1)}| \\star \\psi_\\mu^{(2)} | \\star \\phi_J`.
+        :math:`S_J^{(2)} x(t, \\lambda, \\mu) =
+            |\\,| x \\star \\psi_\\lambda^{(1)}|
+            \\star \\psi_\\mu^{(2)} | \\star \\phi_J`.
 
     In the above formulas, :math:`\\star` denotes convolution in time. The
     filters :math:`\\psi_\\lambda^{(1)}(t)` and :math:`\\psi_\\mu^{(2)}(t)`
@@ -359,8 +301,8 @@ class Scattering1D(object):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return Scattering1D.compute_meta_scattering(self.J, self.Q,
-            max_order=self.max_order)
+        return Scattering1D.compute_meta_scattering(
+            self.J, self.Q, max_order=self.max_order)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
@@ -380,18 +322,18 @@ class Scattering1D(object):
             See the documentation for `precompute_size_scattering()`.
         """
 
-        return Scattering1D.precompute_size_scattering(self.J, self.Q,
-            max_order=self.max_order, detail=detail)
+        return Scattering1D.precompute_size_scattering(
+            self.J, self.Q, max_order=self.max_order, detail=detail)
 
     def forward(self, x):
         """Apply the scattering transform
 
         Given an input Tensor of size `(B, 1, T0)`, where `B` is the batch
         size and `T0` is the length of the individual signals, this function
-        computes its scattering transform. If the `vectorize` flag is set to 
+        computes its scattering transform. If the `vectorize` flag is set to
         `True`, the output is in the form of a Tensor or size `(B, C, T1)`,
         where `T1` is the signal length after subsampling to the scale `2**J`
-        (with the appropriate oversampling factor to reduce aliasing), and 
+        (with the appropriate oversampling factor to reduce aliasing), and
         `C` is the number of scattering coefficients.  If `vectorize` is set
         `False`, however, the output is a dictionary containing `C` keys, each
         a tuple whose length corresponds to the scattering order and whose
@@ -438,7 +380,8 @@ class Scattering1D(object):
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
                        oversampling=self.oversampling,
-                       vectorize=self.vectorize, size_scattering=size_scattering)
+                       vectorize=self.vectorize,
+                       size_scattering=size_scattering)
         return S
 
     def __call__(self, x):
@@ -446,7 +389,7 @@ class Scattering1D(object):
 
     @staticmethod
     def compute_meta_scattering(J, Q, max_order=2):
-        """Get metadata on the transform
+        """Get metadata on the transform.
 
         This information specifies the content of each scattering coefficient,
         which order, which frequencies, which filters were used, and so on.
@@ -454,14 +397,14 @@ class Scattering1D(object):
         Parameters
         ----------
         J : int
-            The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by `2**J`.
+            The maximum log-scale of the scattering transform.
+            In other words, the maximum scale is given by `2**J`.
         Q : int >= 1
-            The number of first-order wavelets per octave (second-order wavelets
-            are fixed to one wavelet per octave).
+            The number of first-order wavelets per octave.
+            Second-order wavelets are fixed to one wavelet per octave.
         max_order : int, optional
-            The maximum order of scattering coefficients to compute. Must be one
-            `1` or `2`. Defaults to `2`.
+            The maximum order of scattering coefficients to compute.
+            Must be either equal to `1` or `2`. Defaults to `2`.
 
         Returns
         -------
@@ -550,14 +493,14 @@ class Scattering1D(object):
         Parameters
         ----------
         J : int
-            The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by `2**J`.
+            The maximum log-scale of the scattering transform.
+            In other words, the maximum scale is given by `2**J`.
         Q : int >= 1
-            The number of first-order wavelets per octave (second-order wavelets
-            are fixed to one wavelet per octave).
+            The number of first-order wavelets per octave.
+            Second-order wavelets are fixed to one wavelet per octave.
         max_order : int, optional
-            The maximum order of scattering coefficients to compute. Must be one
-            `1` or `2`. Defaults to `2`.
+            The maximum order of scattering coefficients to compute.
+            Must be either equal to `1` or `2`. Defaults to `2`.
         detail : boolean, optional
             Specifies whether to provide a detailed size (number of coefficient
             per order) or an aggregate size (total number of coefficients).
@@ -565,7 +508,7 @@ class Scattering1D(object):
         Returns
         -------
         size : int or tuple
-            If `detail` is `False`, returns the number of coefficients as an 
+            If `detail` is `False`, returns the number of coefficients as an
             integer. If `True`, returns a tuple of size `max_order` containing
             the number of coefficients in each order.
         """
@@ -588,37 +531,103 @@ class Scattering1D(object):
                 return size_order0 + size_order1
 
 
+def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
+                                   normalize='l1', r_psi=math.sqrt(0.5),
+                                   sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
+    """
+    Computes the support to pad given the input size and the parameters of the
+    scattering transform.
+
+    Parameters
+    ----------
+    T : int
+        temporal size of the input signal
+    J : int
+        scale of the scattering
+    Q : int
+        number of wavelets per octave
+    normalize : string, optional
+        normalization type for the wavelets.
+        Only `'l2'` or `'l1'` normalizations are supported.
+        Defaults to `'l1'`
+    criterion_amplitude: float `>0` and `<1`, optional
+        Represents the numerical error which is allowed to be lost after
+        convolution and padding.
+        The larger criterion_amplitude, the smaller the padding size is.
+        Defaults to `1e-3`
+    r_psi : float, optional
+        Should be `>0` and `<1`. Controls the redundancy of the filters
+        (the larger r_psi, the larger the overlap between adjacent
+        wavelets).
+        Defaults to `sqrt(0.5)`.
+    sigma0 : float, optional
+        parameter controlling the frequential width of the
+        low-pass filter at J_scattering=0; at a an absolute J_scattering,
+        it is equal to :math:`\\frac{\\sigma_0}{2^J}`.
+        Defaults to `1e-1`.
+    alpha : float, optional
+        tolerance factor for the aliasing after subsampling.
+        The larger the alpha, the more conservative the value of maximal
+        subsampling is.
+        Defaults to `5`.
+    P_max : int, optional
+        maximal number of periods to use to make sure that the Fourier
+        transform of the filters is periodic.
+        `P_max = 5` is more than enough for double precision.
+        Defaults to `5`.
+    eps : float, optional
+        required machine precision for the periodization (single
+        floating point is enough for deep learning applications).
+        Defaults to `1e-7`.
+
+    Returns
+    -------
+    min_to_pad: int
+        minimal value to pad the signal on one size to avoid any
+        boundary error.
+    """
+    J_tentative = int(np.ceil(np.log2(T)))
+    _, _, _, t_max_phi = scattering_filter_factory(
+        J_tentative, J, Q, normalize=normalize, to_torch=False,
+        max_subsampling=0, criterion_amplitude=criterion_amplitude,
+        r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
+    min_to_pad = 3 * t_max_phi
+    return min_to_pad
+
+
 def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
                max_order=2, average=True, size_scattering=0, vectorize=False):
     """
-    Main function implementing the scattering computation.
+    Main function implementing the 1-D scattering transform.
 
     Parameters
     ----------
     x : Tensor
-        a torch Tensor of size (B, 1, T) where T is the temporal size
+        a torch Tensor of size `(B, 1, T)` where `T` is the temporal size
     psi1 : dictionary
-        a dictionary of filters (in the Fourier domain), with keys (j, n)
-        j corresponds to the downsampling factor for x \\ast psi1[(j, q)].
-        n corresponds to an arbitrary numbering
+        a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
+        `j` corresponds to the downsampling factor for
+        :math:`x \\ast psi1[(j, q)]``, and `q` corresponds to a pitch class
+        (chroma).
         * psi1[(j, n)] is itself a dictionary, with keys corresponding to the
         dilation factors: psi1[(j, n)][j2] corresponds to a support of size
-        :math:`2^{J_\text{max} - j_2}`, where :math:`J_\text{max}` has been defined a priori
-        (J_max = size of the padding support of the input)
+        :math:`2^{J_\text{max} - j_2}`, where :math:`J_\text{max}` has been
+        defined a priori (`J_max = size` of the padding support of the input)
         * psi1[(j, n)] only has real values;
         the tensors are complex so that broadcasting applies
     psi2 : dictionary
         a dictionary of filters, with keys (j2, n2). Same remarks as for psi1
     phi : dictionary
-        a dictionary of filters of scale :math:`2^J` with keys (j) where j is the
-        downsampling factor: phi[j] is a (real) filter
+        a dictionary of filters of scale :math:`2^J` with keys (`j`)
+        where :math:`2^j` is the downsampling factor.
+        The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
     pad_left : int, optional
-        how much to pad the signal on the left. Defaults to 0
+        how much to pad the signal on the left. Defaults to `0`
     pad_right : int, optional
-        how much to pad the signal on the right. Defaults to 0
+        how much to pad the signal on the right. Defaults to `0`
     ind_start : dictionary of ints, optional
         indices to truncate the signal to recover only the
         parts which correspond to the actual signal after padding and
@@ -628,14 +637,14 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     oversampling : int, optional
         how much to oversample the scattering (with respect to :math:`2^J`):
         the higher, the larger the resulting scattering
-        tensor along time. Defaults to 0
+        tensor along time. Defaults to `0`
     order2 : boolean, optional
-        Whether to compute the 2nd order or not. Defaults to False.
+        Whether to compute the 2nd order or not. Defaults to `False`.
     average_U1 : boolean, optional
-        whether to average the first order vector. Defaults to True
+        whether to average the first order vector. Defaults to `True`
     size_scattering : dictionary or int, optional
         contains the number of channels of the scattering,
-        precomputed for speed-up. Defaults to 0
+        precomputed for speed-up. Defaults to `0`
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
 
@@ -692,7 +701,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
             S[:, cc, :] = S1_J.squeeze(dim=1)
             cc += 1
         else:
-            S[n1,] = S1_J
+            S[(n1,)] = S1_J
         if max_order == 2:
             # 2nd order
             for n2 in range(len(psi2)):
@@ -716,7 +725,8 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                                      ind_end[k1 + k2 + k2_J])
                     else:
                         # just take the real value and unpad
-                        S2_J = unpad(real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
+                        S2_J = unpad(
+                            real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
                     if vectorize:
                         S[:, cc, :] = S2_J.squeeze(dim=1)
                         cc += 1
