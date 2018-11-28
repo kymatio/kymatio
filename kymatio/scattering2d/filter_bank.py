@@ -11,7 +11,7 @@ from .utils import fft2
 from ..caching import get_cache_dir
 
 
-def filter_bank(M, N, J, L=8, cache=False):
+def filter_bank(M, N, J, L=8):
     """
         Builds in Fourier the Morlet filters used for the scattering transform.
         Each single filter is provided as a dictionary with the following keys:
