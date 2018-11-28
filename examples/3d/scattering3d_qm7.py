@@ -155,11 +155,9 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
         Returns
         -------
         order_0: torch tensor
-            array containing the order 0 scattering coefficients
-        order_1: torch tensor
-            array containing the order 1 scattering coefficients
-        order_2: torch tensor
-            array containing the order 2 scattering coefficients
+            array containing zeroth-order scattering coefficients
+        orders_1_and_2: torch tensor
+            array containing first- and second-order scattering coefficients
     """
     cuda = torch.cuda.is_available()
     grid = torch.from_numpy(
@@ -208,61 +206,56 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
         full_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, full_batch, sigma, cuda=cuda)
         full_order_0 = compute_integrals(full_density_batch, integral_powers)
-        full_order_1, full_order_2 = scattering(
+        full_scattering = scattering(
                 full_density_batch, order_2=True, method='integral',
                 integral_powers=integral_powers)
 
         val_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, val_batch, sigma, cuda=cuda)
         val_order_0 = compute_integrals(val_density_batch, integral_powers)
-        val_order_1, val_order_2 = scattering(
+        val_scattering= scattering(
                 val_density_batch, order_2=True, method='integral',
                 integral_powers=integral_powers)
 
         core_density_batch = full_density_batch - val_density_batch
         core_order_0 = compute_integrals(core_density_batch, integral_powers)
-        core_order_1, core_order_2 = scattering(
+        core_scattering = scattering(
                 core_density_batch, order_2=True, method='integral',
                 integral_powers=integral_powers)
 
 
         order_0.append(
             torch.stack([full_order_0, val_order_0, core_order_0], dim=-1))
-        order_1.append(
-            torch.stack([full_order_1, val_order_1, core_order_1], dim=-1))
-        order_2.append(
-            torch.stack([full_order_2, val_order_2, core_order_2], dim=-1))
+        orders_1_and_2.append(
+            torch.stack(
+                [full_scattering, val_scattering, core_scattering], dim=-1))
 
     order_0 = torch.cat(order_0, dim=0)
-    order_1 = torch.cat(order_1, dim=0)
-    order_2 = torch.cat(order_2, dim=0)
+    orders_1_and_2 = torch.cat(orders_1_and_2, dim=0)
 
-    return order_0, order_1, order_2
+    return order_0, orders_1_and_2
 
 M, N, O, J, L = 192, 128, 96, 2, 3
 integral_powers = [0.5,  1., 2., 3.]
 sigma = 2.
 
-order_0, order_1, order_2 = compute_qm7_solid_harmonic_scattering_coefficients(
+order_0, orders_1_and_2 = compute_qm7_solid_harmonic_scattering_coefficients(
     M=M, N=N, O=O, J=J, L=L, integral_powers=integral_powers,
     sigma=sigma, batch_size=8)
 
 n_molecules = order_0.size(0)
 
 np_order_0 = order_0.numpy().reshape((n_molecules, -1))
-np_order_1 = order_1.numpy().reshape((n_molecules, -1))
-np_order_2 = order_2.numpy().reshape((n_molecules, -1))
+np_orders_1_and_2 = orders_1_and_2.numpy().reshape((n_molecules, -1))
 
 basename = 'qm7_L_{}_J_{}_sigma_{}_MNO_{}_powers_{}.npy'.format(
         L, J, sigma, (M, N, O), integral_powers)
 cachedir = get_cache_dir("qm7/experiments")
 np.save(os.path.join(cachedir, 'order_0_' + basename), np_order_0)
-np.save(os.path.join(cachedir, 'order_1_' + basename), np_order_1)
-np.save(os.path.join(cachedir, 'order_2_' + basename), np_order_2)
+np.save(os.path.join(
+    cachedir, 'orders_1_and_2_' + basename), np_orders_1_and_2)
 
-scattering_coef = np.concatenate([np_order_0, np_order_1, np_order_2], axis=1)
+scattering_coef = np.concatenate([np_order_0, np_orders_1_and_2], axis=1)
 target = get_qm7_energies()
 
-print('order 1 : {} coef, order 2 : {} coefs'.format(np_order_1.shape[1],
-                                                    np_order_2.shape[1]))
 evaluate_linear_regression(scattering_coef, target)
