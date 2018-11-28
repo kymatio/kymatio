@@ -178,8 +178,7 @@ class Scattering1D(object):
         Required precision for the periodization. Defaults to `1e-7`.
     max_order : int, optional
         The maximum order of scattering coefficients to compute. Must be one
-        `1` or `2`. This parameter may be modified after object creation.
-        Defaults to `2`.
+        `1` or `2`. Defaults to `2`.
     average : boolean, optional
         Determines whether the output is averaged in time or not. The averaged
         output corresponds to the standard scattering transform, while the
