@@ -74,8 +74,9 @@ def test_against_standard_computations():
         else:
             x = x.cuda()
         order_0 = compute_integrals(x, integral_powers)
-        order_1, order_2 = scattering(x, order_2=True,
-                                method='integral', integral_powers=integral_powers)
+        orders_1_and_2 = scattering(
+            x, order_2=True, method='integral',
+            integral_powers=integral_powers)
 
 
         order_0 = order_0.cpu().numpy().reshape((batch_size, -1))
@@ -83,23 +84,18 @@ def test_against_standard_computations():
         end = order_0.shape[1]
         order_0_ref = scattering_ref[:,start:end].numpy()
 
-        order_1 = order_1.cpu().numpy().reshape((batch_size, -1))
+        orders_1_and_2 = orders_1_and_2.cpu().numpy().reshape((batch_size, -1))
         start = end
-        end += order_1.shape[1]
-        order_1_ref = scattering_ref[:, start:end].numpy()
-
-        order_2 = order_2.cpu().numpy().reshape((batch_size, -1))
-        start = end
-        end += order_2.shape[1]
-        order_2_ref = scattering_ref[:, start:end].numpy()
+        end += orders_1_and_2.shape[1]
+        orders_1_and_2_ref = scattering_ref[:, start:end].numpy()
 
         order_0_diff_cpu = relative_difference(order_0_ref, order_0)
-        order_1_diff_cpu = relative_difference(order_1_ref, order_1)
-        order_2_diff_cpu = relative_difference(order_2_ref, order_2)
+        orders_1_and_2_diff_cpu = relative_difference(
+            orders_1_and_2_ref, orders_1_and_2)
 
         assert order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
-        assert order_1_diff_cpu < 1e-6, "CPU : order 1 do not match, diff={}".format(order_1_diff_cpu)
-        assert order_2_diff_cpu < 1e-6, "CPU : order 2 do not match, diff={}".format(order_2_diff_cpu)
+        assert orders_1_and_2_diff_cpu < 1e-6, "CPU : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
+
 
 def test_solid_harmonic_scattering():
     if backend.NAME == "skcuda":

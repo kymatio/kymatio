@@ -340,9 +340,11 @@ class Scattering3D(object):
                 s_order_2.append(torch.cat(s_order_2_l, -1))
 
         if order_2:
-            return (torch.stack(s_order_1, dim=-1), 
-                    torch.stack(s_order_2, dim=-1))
-        return torch.stack(s_order_1, dim=-1)
+            return torch.cat(
+                [torch.stack(s_order_1, dim=-1),
+                torch.stack(s_order_2, dim=-1)], 1)
+        else:
+            return torch.stack(s_order_1, dim=-1)
 
 
     __call__ = forward
