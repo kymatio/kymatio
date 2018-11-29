@@ -130,14 +130,23 @@ def test_solid_harmonic_scattering():
         np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1,2,3)))
     x = generate_weighted_sum_of_gaussians(grid, centers, weights, sigma_gaussian)
     scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet)
-    s = scattering(x, max_order=1, method='integral', integral_powers=[1])
 
-    for j in range(J+1):
-        sigma_wavelet = sigma_0_wavelet*2**j
-        k = sigma_wavelet / np.sqrt(sigma_wavelet**2 + sigma_gaussian**2)
-        for l in range(1, L+1):
-            err = torch.abs(s[0, 0, j, l] - k ** l).sum()/(1e-6+s[0, 0, j, l].abs().sum())
-            assert err<1e-4
+    for device in devices:
+        if device == 'cpu':
+            x = x.cpu()
+            scattering.cpu()
+        else:
+            x = x.cuda()
+            scattering.cuda()
+
+        s = scattering(x, max_order=1, method='integral', integral_powers=[1])
+
+        for j in range(J+1):
+            sigma_wavelet = sigma_0_wavelet*2**j
+            k = sigma_wavelet / np.sqrt(sigma_wavelet**2 + sigma_gaussian**2)
+            for l in range(1, L+1):
+                err = torch.abs(s[0, 0, j, l] - k ** l).sum()/(1e-6+s[0, 0, j, l].abs().sum())
+                assert err<1e-4
 
 def test_larger_scales():
     if backend.NAME == "skcuda":
