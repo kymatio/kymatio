@@ -105,7 +105,7 @@ path_dataset = info_data['path_dataset']
 ###############################################################################
 # Set up Tensors to hold the audio signals (`x_all`), the labels (`y_all`), and
 # whether the signal is in the train or test set (`subset`).
-x_all = torch.zeros(len(files), 1, T, dtype=torch.float32)
+x_all = torch.zeros(len(files), T, dtype=torch.float32)
 y_all = torch.zeros(len(files), dtype=torch.int64)
 subset = torch.zeros(len(files), dtype=torch.int64)
 
@@ -143,7 +143,7 @@ for k, f in enumerate(files):
     # If it's too short, zero-pad it.
     start = (T - x.numel()) // 2
 
-    x_all[k,0,start:start + x.numel()] = x
+    x_all[k,start:start + x.numel()] = x
     y_all[k] = y
 
 ###############################################################################

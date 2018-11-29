@@ -51,7 +51,7 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
                      np.cos(u * (k + 1) * base_freq[i] + phase[i]))
         x[ind_start:ind_start + support] += note * window
     # Transform x into a torch Tensor
-    x = torch.from_numpy(x[np.newaxis, np.newaxis])
+    x = torch.from_numpy(x[np.newaxis])
     return x
 
 ###############################################################################

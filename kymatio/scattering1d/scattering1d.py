@@ -111,7 +111,7 @@ class Scattering1D(object):
     GPU, if available. A `Scattering1D` object may be transferred from one
     to the other using the `cuda()` and `cpu()` methods.
 
-    Given an input Tensor `x` of size `(B, 1, T)`, where `B` is the number of
+    Given an input Tensor `x` of size `(B, T)`, where `B` is the number of
     signals to transform (the batch size) and `T` is the length of the signal,
     we compute its scattering transform by passing it to the `forward()`
     method.
@@ -386,7 +386,7 @@ class Scattering1D(object):
     def forward(self, x):
         """Apply the scattering transform
 
-        Given an input Tensor of size `(B, 1, T0)`, where `B` is the batch
+        Given an input Tensor of size `(B, T0)`, where `B` is the batch
         size and `T0` is the length of the individual signals, this function
         computes its scattering transform. If the `vectorize` flag is set to 
         `True`, the output is in the form of a Tensor or size `(B, C, T1)`,
@@ -404,7 +404,7 @@ class Scattering1D(object):
         Parameters
         ----------
         x : tensor
-            An input Tensor of size `(B, 1, T0)`.
+            An input Tensor of size `(B, T0)`.
 
         Returns
         -------
@@ -414,14 +414,12 @@ class Scattering1D(object):
             is `False`, it is a dictionary indexed by tuples of filter indices.
         """
         # basic checking, should be improved
-        if len(x.shape) != 3:
+        if len(x.shape) != 2:
             raise ValueError(
-                'Input tensor x should have 3 axis, got {}'.format(
+                'Input tensor x should have 2 axis, got {}'.format(
                     len(x.shape)))
-        if x.shape[1] != 1:
-            raise ValueError(
-                'Input tensor should only have 1 channel, got {}'.format(
-                    x.shape[1]))
+        x = x.unsqueeze(1)
+
         # get the arguments before calling the scattering
         # treat the arguments
         if self.vectorize:
