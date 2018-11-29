@@ -49,7 +49,7 @@ class Scattering2D(object):
     L : int, optional
         number of angles used for the wavelet transform
     max_order : int, optional
-        The maximum order of scattering coefficients to compute. Must be one
+        The maximum order of scattering coefficients to compute. Must be either
         `1` or `2`. Defaults to `2`.
     pre_pad : boolean, optional
         controls the padding: if set to False, a symmetric padding is applied
