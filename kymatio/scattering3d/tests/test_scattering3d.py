@@ -8,10 +8,13 @@ from kymatio import Scattering3D
 from kymatio.scattering3d import backend
 from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals, sqrt
 
-if torch.cuda.is_available():
-    devices = ['gpu', 'cpu']
-else:
-    devices = ['cpu']
+devices = []
+if backend.NAME == 'torch':
+    devices.append('cpu')
+if backend.NAME == 'torch' and torch.cuda.is_available():
+    devices.append('gpu')
+if backend.NAME == 'skcuda' and torch.cuda.is_available():
+    devices.append('gpu')
 
 def linfnorm(x,y):
     return torch.max(torch.abs(x-y))
@@ -28,12 +31,6 @@ def relative_difference(a, b):
 
 
 def test_FFT3d_central_freq_batch():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend is not yet implemented for 3D "
-            "scattering, but that's ok (for now)."), RuntimeWarning,
-            stacklevel=2)
-        return
-
     # Checked the 0 frequency for the 3D FFT
     for device in devices:
         x = torch.zeros(1, 32, 32, 32, 2).float()
@@ -46,12 +43,6 @@ def test_FFT3d_central_freq_batch():
 
 
 def test_against_standard_computations():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend is not yet implemented for 3D "
-            "scattering, but that's ok (for now)."), RuntimeWarning,
-            stacklevel=2)
-        return
-
     file_path = os.path.abspath(os.path.dirname(__file__))
     data = torch.load(os.path.join(file_path, 'test_data_3d.pt'))
     x = data['x']
@@ -114,12 +105,6 @@ def test_against_standard_computations():
 
 
 def test_solid_harmonic_scattering():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend is not yet implemented for 3D "
-            "scattering, but that's ok (for now)."), RuntimeWarning,
-            stacklevel=2)
-        return
-
     # Compare value to analytical formula in the case of a single Gaussian
     centers = torch.FloatTensor(1, 1, 3).fill_(0)
     weights = torch.FloatTensor(1, 1).fill_(1)
@@ -149,12 +134,6 @@ def test_solid_harmonic_scattering():
                 assert err<1e-4
 
 def test_larger_scales():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend is not yet implemented for 3D "
-            "scattering, but that's ok (for now)."), RuntimeWarning,
-            stacklevel=2)
-        return
-
     shape = (32, 32, 32)
     L = 3
     sigma_0 = 1
@@ -163,15 +142,12 @@ def test_larger_scales():
 
     for J in range(3, 4+1):
         scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+        if not 'cpu' in devices:
+            x = x.cuda()
+            scattering.cuda()
         Sx = scattering(x, method='integral')
 
 def test_scattering_methods():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend is not yet implemented for 3D "
-            "scattering, but that's ok (for now)."), RuntimeWarning,
-            stacklevel=2)
-        return
-
     shape = (32, 32, 32)
     J = 4
     L = 3
@@ -179,6 +155,11 @@ def test_scattering_methods():
     x = torch.randn((1,) + shape)
 
     scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+
+    if not 'cpu' in devices:
+        x = x.cuda()
+        scattering.cuda()
+
     Sx = scattering(x, method='standard')
     Sx = scattering(x, method='standard', rotation_covariant=False)
 
@@ -189,12 +170,6 @@ def test_scattering_methods():
     Sx = scattering(x, method='local', points=points, rotation_covariant=False)
 
 def test_cpu_cuda():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend is not yet implemented for 3D "
-            "scattering, but that's ok (for now)."), RuntimeWarning,
-            stacklevel=2)
-        return
-
     shape = (32, 32, 32)
     J = 4
     L = 3
@@ -205,7 +180,8 @@ def test_cpu_cuda():
 
     assert not S.is_cuda
 
-    Sx = S(x)
+    if 'cpu' in devices:
+        Sx = S(x)
 
     if 'gpu' in devices:
         x_gpu = x.cuda()
