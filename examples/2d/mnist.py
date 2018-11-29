@@ -81,7 +81,7 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     if args.mode == 1:
-        scattering = Scattering2D(J=2, shape=(28, 28), order2=False)
+        scattering = Scattering2D(J=2, shape=(28, 28), max_order=1)
         K = 17
     else:
         scattering = Scattering2D(J=2, shape=(28, 28))

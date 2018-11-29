@@ -48,6 +48,9 @@ class Scattering2D(object):
         spatial support (M, N) of the input
     L : int, optional
         number of angles used for the wavelet transform
+    max_order : int, optional
+        The maximum order of scattering coefficients to compute. Must be either
+        `1` or `2`. Defaults to `2`.
     pre_pad : boolean, optional
         controls the padding: if set to False, a symmetric padding is applied
         on the signal. If set to true, the software will assume the signal was
@@ -61,6 +64,9 @@ class Scattering2D(object):
         spatial support (M, N) of the input
     L : int, optional
         number of angles used for the wavelet transform
+    max_order : int, optional
+        The maximum order of scattering coefficients to compute.
+        Must be either equal to `1` or `2`. Defaults to `2`.
     pre_pad : boolean
         controls the padding
     Psi : dictionary
@@ -81,10 +87,10 @@ class Scattering2D(object):
      to False.
 
     """
-    def __init__(self, J, shape, L=8, pre_pad=False, order2=True):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False):
         self.J, self.L = J, L
         self.pre_pad = pre_pad
-        self.order2 = order2
+        self.max_order = max_order
         self.shape = shape
 
         self.build()
@@ -161,7 +167,7 @@ class Scattering2D(object):
         modulus = self.modulus
         pad = self.pad
         output_size = 1 + self.L*J
-        if self.order2:
+        if self.max_order == 2:
             output_size += self.L*self.L*J*(J - 1) // 2
 
         S = input.new(input.size(0),
@@ -194,7 +200,7 @@ class Scattering2D(object):
             S[..., n, :, :] = unpad(U_J_r)
             n = n + 1
 
-            if self.order2:
+            if self.max_order == 2:
                 for n2 in range(len(psi)):
                     j2 = psi[n2]['j']
                     if(j1 < j2):
