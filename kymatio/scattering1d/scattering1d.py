@@ -459,8 +459,8 @@ class Scattering1D(object):
             The number of first-order wavelets per octave (second-order wavelets
             are fixed to one wavelet per octave).
         max_order : int, optional
-            The maximum order of scattering coefficients to compute. Must be one
-            `1` or `2`. Defaults to `2`.
+            The maximum order of scattering coefficients to compute.
+            Must be either equal to `1` or `2`. Defaults to `2`.
 
         Returns
         -------
@@ -555,8 +555,8 @@ class Scattering1D(object):
             The number of first-order wavelets per octave (second-order wavelets
             are fixed to one wavelet per octave).
         max_order : int, optional
-            The maximum order of scattering coefficients to compute. Must be one
-            `1` or `2`. Defaults to `2`.
+            The maximum order of scattering coefficients to compute.
+            Must be either equal to `1` or `2`. Defaults to `2`.
         detail : boolean, optional
             Specifies whether to provide a detailed size (number of coefficient
             per order) or an aggregate size (total number of coefficients).
