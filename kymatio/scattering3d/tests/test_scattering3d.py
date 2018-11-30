@@ -78,6 +78,19 @@ def test_against_standard_computations():
             x, order_2=True, method='integral',
             integral_powers=integral_powers)
 
+        # WARNING: These are hard-coded values for the setting J = 2.
+        n_order_1 = 3
+        n_order_2 = 3
+
+        # Extract orders and make order axis the slowest in accordance with
+        # the stored reference scattering transform.
+        order_1 = orders_1_and_2[:,:,0:n_order_1,:]
+        order_2 = orders_1_and_2[:,:,n_order_1:n_order_1+n_order_2,:]
+
+        order_1 = order_1.reshape((batch_size, -1))
+        order_2 = order_2.reshape((batch_size, -1))
+
+        orders_1_and_2 = torch.cat((order_1, order_2), 1)
 
         order_0 = order_0.cpu().numpy().reshape((batch_size, -1))
         start = 0
@@ -122,3 +135,20 @@ def test_solid_harmonic_scattering():
         for l in range(1, L+1):
             err = torch.abs(s[0, 0, j, l] - k ** l).sum()/(1e-6+s[0, 0, j, l].abs().sum())
             assert err<1e-4
+
+def test_larger_scales():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend is not yet implemented for 3D "
+            "scattering, but that's ok (for now)."), RuntimeWarning,
+            stacklevel=2)
+        return
+
+    shape = (32, 32, 32)
+    L = 3
+    sigma_0 = 1
+
+    x = torch.randn((1,) + shape)
+
+    for J in range(3, 4+1):
+        scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+        Sx = scattering(x, method='integral')

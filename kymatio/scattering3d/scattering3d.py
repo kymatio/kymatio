@@ -342,7 +342,7 @@ class Scattering3D(object):
         if order_2:
             return torch.cat(
                 [torch.stack(s_order_1, dim=-1),
-                torch.stack(s_order_2, dim=-1)], 1)
+                torch.stack(s_order_2, dim=-1)], -2)
         else:
             return torch.stack(s_order_1, dim=-1)
 
