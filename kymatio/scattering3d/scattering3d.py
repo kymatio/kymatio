@@ -86,7 +86,7 @@ class Scattering3D(object):
         output: the result of input_array :math:`\\star phi_J`
 
         """
-        cuda = isinstance(input_array, torch.cuda.FloatTensor)
+        cuda = input_array.is_cuda
         low_pass = self.gaussian_filters[j]
         if cuda:
             low_pass = low_pass.cuda()
@@ -240,7 +240,7 @@ class Scattering3D(object):
                 .. math:: \\text{input}_\\text{array} \\star \\psi_{j,l,m})
 
         """
-        cuda = isinstance(input_array, torch.cuda.FloatTensor)
+        cuda = input_array.is_cuda
         filters_l_m_j = self.filters[l][j][m]
         if cuda:
             filters_l_m_j = filters_l_m_j.cuda()
