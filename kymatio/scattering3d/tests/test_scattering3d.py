@@ -152,3 +152,26 @@ def test_larger_scales():
     for J in range(3, 4+1):
         scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
         Sx = scattering(x, method='integral')
+
+def test_scattering_methods():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend is not yet implemented for 3D "
+            "scattering, but that's ok (for now)."), RuntimeWarning,
+            stacklevel=2)
+        return
+
+    shape = (32, 32, 32)
+    J = 4
+    L = 3
+    sigma_0 = 1
+    x = torch.randn((1,) + shape)
+
+    scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+    Sx = scattering(x, method='standard')
+    Sx = scattering(x, method='standard', rotation_covariant=False)
+
+    points = torch.zeros(1, 1, 3)
+    points[0,0,:] = torch.tensor(shape)/2
+
+    Sx = scattering(x, method='local', points=points)
+    Sx = scattering(x, method='local', points=points, rotation_covariant=False)
