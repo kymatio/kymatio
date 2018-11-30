@@ -78,7 +78,7 @@ if backend.NAME == 'skcuda' and torch.cuda.is_available():
 
 scattering = Scattering1D(J, T, Q)
 
-x = torch.randn(batch_size, 1, T, dtype=torch.float32)
+x = torch.randn(batch_size, T, dtype=torch.float32)
 
 ###############################################################################
 # Run the benchmark

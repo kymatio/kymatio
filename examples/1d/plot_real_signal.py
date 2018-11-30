@@ -56,7 +56,7 @@ _, x = scipy.io.wavfile.read(file_path)
 
 x = torch.from_numpy(x).float()
 x /= x.abs().max()
-x = x.view(1, 1, -1)
+x = x.view(1, -1)
 
 ###############################################################################
 # We are now ready to set up the parameters for the scattering transform.
@@ -106,7 +106,7 @@ order2 = (meta['order'] == 2)
 # numpy array using the `numpy()` method.
 
 plt.figure(figsize=(8, 2))
-plt.plot(x[0,0,:].numpy())
+plt.plot(x[0,:].numpy())
 plt.title('Original signal')
 
 ###############################################################################
