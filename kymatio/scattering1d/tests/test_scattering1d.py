@@ -283,7 +283,7 @@ def test_batch_shape_agnostic():
     length = 1024
     shape = (length,)
 
-    length_ds = length/2**J
+    length_ds = length / 2**J
 
     S = Scattering1D(J, shape, Q)
 

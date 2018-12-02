@@ -355,17 +355,15 @@ class Scattering1D(object):
             is `False`, it is a dictionary indexed by tuples of filter indices.
         """
         # basic checking, should be improved
-        if x.dim() < 1:
+        if len(x.shape) < 1:
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
-                    x.dim()))
+                    len(x.shape)))
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
 
-        batch_length = int(np.prod(batch_shape))
-
-        x = x.view((batch_length, 1) + signal_shape)
+        x = x.reshape((-1, 1) + signal_shape)
 
         # get the arguments before calling the scattering
         # treat the arguments
@@ -388,11 +386,11 @@ class Scattering1D(object):
 
         if self.vectorize:
             scattering_shape = S.shape[-2:]
-            S = S.view(batch_shape + scattering_shape)
+            S = S.reshape(batch_shape + scattering_shape)
         else:
             for k, v in S.items():
                 scattering_shape = v.shape[-2:]
-                S[k] = v.view(batch_shape + scattering_shape)
+                S[k] = v.reshape(batch_shape + scattering_shape)
 
         return S
 
