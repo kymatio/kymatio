@@ -23,7 +23,7 @@ class Scattering1D(object):
     alternated with a complex modulus non-linearity. The scattering transform
     of a 1D signal :math:`x(t)` may be written as
 
-        :math:`S_J x = [S_J^{(0)} x, S_J^{(1)} x, S_J^{(2)} x]`
+        $`S_J x = [S_J^{(0)} x, S_J^{(1)} x, S_J^{(2)} x]`$
 
     where
 

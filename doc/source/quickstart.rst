@@ -1,9 +1,7 @@
 Quick Start
 ===========
 
-On Linux or macOS, open a shell and run::
-
-    pip install kymatio
+On Linux or macOS, open a shell and run the instruction of https://github.com/kymatio/kymatio .
 
 In the Python intepreter, you may then call::
 

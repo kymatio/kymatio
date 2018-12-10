@@ -104,10 +104,9 @@ html_theme = 'alabaster'
 # documentation.
 #
 html_theme_options = {
-    'logo': 'logo.png',
+    'logo': 'kymatio.jpg',
     'github_button': True,
     'github_type': 'star',
-    #'github_count': True,
     'travis_button': True,
     'github_user': 'kymatio',
     'github_repo': 'kymatio',
