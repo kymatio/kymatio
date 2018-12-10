@@ -5,3 +5,4 @@ sphinx-gallery
 pillow
 matplotlib
 scikit-learn
+texext
