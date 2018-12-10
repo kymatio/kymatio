@@ -7,6 +7,9 @@
 Kymatio:
 ********
 
+.. image:: https://img.shields.io/badge/python-3.6-blue.svg
+
+.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 
 Kymatio is a Python module for computing wavelet and scattering transforms.
 
@@ -22,7 +25,6 @@ Use kymatio if you need a library that:
 A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
 list of publications see
 `Publications <https://www.di.ens.fr/data/publications>`_.
-
 
 .. include:: quickstart.rst
 
