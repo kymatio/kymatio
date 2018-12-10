@@ -49,6 +49,7 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
+    'texext'
 ]
 
 # Add path to sphynx gallery
