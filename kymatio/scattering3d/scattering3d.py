@@ -200,7 +200,7 @@ class Scattering3D(object):
             tensor of the same size as input_array. It holds the output of
             the operation::
 
-            .. math::   \\sqrt{\\sum_m (\\text{input}_\\text{array} \\star \\psi_{j,l,m})^2)}
+            $\sqrt{\sum_m (\text{input}_\text{array} \star \psi_{j,l,m})^2)}
 
             which is covariant to 3D translations and rotations
 
@@ -279,11 +279,11 @@ class Scattering3D(object):
         rotation_covariant: bool, optional
             if set to True the first order moduli take the form::
 
-            .. math:: \\sqrt(\\sum_m (input_array \\star \\psi_{j,l,m})^2))
+            $\sqrt(\sum_m (input_array \star \psi_{j,l,m})^2))$
 
             if set to False the first order moduli take the form::
 
-            .. math:: input_array \\star \\psi_{j,l,m})
+            $input_array \star \psi_{j,l,m})$
 
             The second order moduli change analogously
             Defaut: True
