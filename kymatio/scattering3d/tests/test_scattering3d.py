@@ -3,9 +3,10 @@ import torch
 import os
 import warnings
 import numpy as np
+import pytest
 from kymatio import Scattering3D
 from kymatio.scattering3d import backend
-from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals
+from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals, sqrt
 
 if torch.cuda.is_available():
     devices = ['gpu', 'cpu']
@@ -175,3 +176,26 @@ def test_scattering_methods():
 
     Sx = scattering(x, method='local', points=points)
     Sx = scattering(x, method='local', points=points, rotation_covariant=False)
+
+def test_utils():
+    # Simple test
+    x = np.arange(8)
+    y = sqrt(x**2)
+    assert (y == x).all()
+
+    # Test problematic case
+    x = np.arange(8193, dtype='float32')
+    y = sqrt(x**2)
+    assert (y == x).all()
+
+    # Make sure we still don't let in negatives...
+    with pytest.warns(RuntimeWarning) as record:
+        x = np.array([-1, 0, 1])
+        y = sqrt(x)
+    assert "Negative" in record[0].message.args[0]
+
+    # ...unless they are compled numbers!
+    with pytest.warns(None) as record:
+        x = np.array([-1, 0, 1], dtype='complex64')
+        y = sqrt(x)
+    assert not record.list
