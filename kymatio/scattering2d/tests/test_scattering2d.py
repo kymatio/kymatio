@@ -2,6 +2,7 @@
 
 import os
 import torch
+import pytest
 from kymatio.scattering2d import Scattering2D
 from kymatio.scattering2d import backend
 
@@ -184,3 +185,41 @@ def test_Scattering2D():
                 Sg = scattering(x)
             assert (Sg - S).abs().max() < 1e-6
 
+
+def test_batch_shape_agnostic():
+    J = 3
+    L = 8
+    shape = (32, 32)
+
+    shape_ds = tuple(n // 2 **J for n in shape)
+
+    S = Scattering2D(J, shape, L)
+
+    with pytest.raises(RuntimeError) as ve:
+        S(torch.zeros(()))
+    assert "at least two" in ve.value.args[0]
+
+    with pytest.raises(RuntimeError) as ve:
+        S(torch.zeros((32, )))
+    assert "at least two" in ve.value.args[0]
+
+    x = torch.zeros(shape)
+    Sx = S(x)
+
+    assert len(Sx.shape) == 3
+    assert Sx.shape[-2:] == shape_ds
+
+    n_coeffs = Sx.shape[-3]
+
+    test_shapes = ((1,) + shape, (2,) + shape, (2, 2) + shape,
+                   (2, 2, 2) + shape)
+
+    for test_shape in test_shapes:
+        x = torch.zeros(test_shape)
+
+        Sx = S(x)
+
+        assert len(Sx.shape) == len(test_shape) + 1
+        assert Sx.shape[-2:] == shape_ds
+        assert Sx.shape[-3] == n_coeffs
+        assert Sx.shape[:-3] == test_shape[:-2]
