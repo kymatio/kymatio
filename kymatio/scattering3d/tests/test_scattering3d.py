@@ -179,6 +179,48 @@ def test_scattering_methods():
     Sx = scattering(x, method='local', points=points)
     Sx = scattering(x, method='local', points=points, rotation_covariant=False)
 
+def test_cpu_cuda():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend is not yet implemented for 3D "
+            "scattering, but that's ok (for now)."), RuntimeWarning,
+            stacklevel=2)
+        return
+
+    shape = (32, 32, 32)
+    J = 4
+    L = 3
+    sigma_0 = 1
+    x = torch.randn((1,) + shape)
+
+    S = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+
+    assert not S.is_cuda
+
+    Sx = S(x)
+
+    if 'gpu' in devices:
+        x_gpu = x.cuda()
+
+        with pytest.raises(TypeError) as record:
+            Sx_gpu = S(x_gpu)
+        assert "is in CPU mode" in record.value.args[0]
+
+        S.cuda()
+
+        assert S.is_cuda
+
+        Sx_gpu = S(x_gpu)
+
+        assert Sx_gpu.is_cuda
+
+        with pytest.raises(TypeError) as record:
+            Sx = S(x)
+        assert "is in GPU mode" in record.value.args[0]
+
+    S.cpu()
+
+    assert not S.is_cuda
+
 def test_utils():
     # Simple test
     x = np.arange(8)
