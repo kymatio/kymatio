@@ -277,3 +277,46 @@ def test_scattering_shape_input():
         # should invoke the else branch
     assert "1-tuple" in ve.value.args[0]
     assert "integer" in ve.value.args[0]
+
+def test_batch_shape_agnostic():
+    J, Q = 3, 8
+    length = 1024
+    shape = (length,)
+
+    length_ds = length / 2**J
+
+    S = Scattering1D(J, shape, Q)
+
+    with pytest.raises(ValueError) as ve:
+        S(torch.zeros(()))
+    assert "at least one axis" in ve.value.args[0]
+
+    x = torch.zeros(shape)
+    Sx = S(x)
+
+    assert Sx.dim() == 2
+    assert Sx.shape[-1] == length_ds
+
+    n_coeffs = Sx.shape[-2]
+
+    test_shapes = ((1,) + shape, (2,) + shape, (2,2) + shape, (2,2,2) + shape)
+
+    for test_shape in test_shapes:
+        x = torch.zeros(test_shape)
+
+        S.vectorize = True
+        Sx = S(x)
+
+        assert Sx.dim() == len(test_shape)+1
+        assert Sx.shape[-1] == length_ds
+        assert Sx.shape[-2] == n_coeffs
+        assert Sx.shape[:-2] == test_shape[:-1]
+
+        S.vectorize = False
+        Sx = S(x)
+
+        assert len(Sx) == n_coeffs
+        for k, v in Sx.items():
+            assert v.shape[-1] == length_ds
+            assert v.shape[-2] == 1
+            assert v.shape[:-2] == test_shape[:-1]
