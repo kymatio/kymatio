@@ -146,6 +146,10 @@ class Scattering2D(object):
         if not torch.is_tensor(input):
             raise(TypeError('The input should be a torch.cuda.FloatTensor, a torch.FloatTensor or a torch.DoubleTensor'))
 
+        if len(input.shape) < 2:
+            raise (RuntimeError('Input tensor must have at least two '
+                'dimensions'))
+
         if (not input.is_contiguous()):
             raise (RuntimeError('Tensor must be contiguous!'))
 
@@ -155,8 +159,10 @@ class Scattering2D(object):
         if ((input.size(-1) != self.N_padded or input.size(-2) != self.M_padded) and self.pre_pad):
             raise (RuntimeError('Padded tensor must be of spatial size (%i,%i)!' % (self.M_padded, self.N_padded)))
 
-        if (input.dim() != 4):
-            raise (RuntimeError('Input tensor must be 4D'))
+        batch_shape = input.shape[:-2]
+        signal_shape = input.shape[-2:]
+
+        input = input.reshape((-1, 1) + signal_shape)
 
         J = self.J
         phi = self.Phi
@@ -214,6 +220,9 @@ class Scattering2D(object):
     
                         S[..., n, :, :] = unpad(U_J_r)
                         n = n + 1
+
+        scattering_shape = S.shape[-3:]
+        S = S.reshape(batch_shape + scattering_shape)
 
         return S
 
