@@ -8,7 +8,7 @@ __all__ = ['solid_harmonic_filter_bank']
 import torch
 import numpy as np
 from scipy.special import sph_harm, factorial
-from .utils import get_3d_angles, double_factorial
+from .utils import get_3d_angles, double_factorial, sqrt
 
 
 def solid_harmonic_filter_bank(M, N, O, J, L, sigma_0, fourier=True):
@@ -159,7 +159,7 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
         _sigma = 1. / sigma
 
     r_square = (grid ** 2).sum(0)
-    r_power_l = r_square ** (l / 2)
+    r_power_l = sqrt(r_square ** l)
     gaussian = np.exp(-0.5 * r_square / _sigma ** 2).astype('complex64')
 
     if l == 0:
