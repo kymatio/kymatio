@@ -40,6 +40,8 @@ class Scattering3D(object):
         self.L = L
         self.sigma_0 = sigma_0
 
+        self.is_cuda = False
+
         self.build()
 
     def build(self):
@@ -48,6 +50,12 @@ class Scattering3D(object):
                             self.M, self.N, self.O, self.J, self.L, self.sigma_0)
         self.gaussian_filters = gaussian_filter_bank(
                                 self.M, self.N, self.O, self.J + 1, self.sigma_0)
+
+    def cuda(self):
+        self.is_cuda = True
+
+    def cpu(self):
+        self.is_cuda = False
 
     def _fft_convolve(self, input_array, filter_array):
         """
@@ -251,6 +259,14 @@ class Scattering3D(object):
             raise(TypeError(
                 'The input should be a torch.cuda.FloatTensor, '
                 'a torch.FloatTensor or a torch.DoubleTensor'))
+
+        if self.is_cuda and not input_array.is_cuda:
+            raise(TypeError('This transform is in GPU mode, but the input is '
+                            'on the CPU.'))
+
+        if not self.is_cuda and input_array.is_cuda:
+            raise(TypeError('This transform is in CPU mode, but the input is '
+                            'on the GPU.'))
 
         if (not input_array.is_contiguous()):
             input_array = input_array.contiguous()

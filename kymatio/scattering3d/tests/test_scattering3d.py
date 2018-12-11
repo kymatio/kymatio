@@ -72,8 +72,10 @@ def test_against_standard_computations():
     for device in devices:
         if device == 'cpu':
             x = x.cpu()
+            scattering.cpu()
         else:
             x = x.cuda()
+            scattering.cuda()
         order_0 = compute_integrals(x, integral_powers)
         orders_1_and_2 = scattering(
             x, order_2=True, method='integral',
