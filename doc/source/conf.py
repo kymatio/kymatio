@@ -112,7 +112,7 @@ html_theme_options = {
     'github_user': 'kymatio',
     'github_repo': 'kymatio',
     'github_banner': True,
-
+    'analytics_id': 'UA-130785726-1'
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
