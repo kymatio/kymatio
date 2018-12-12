@@ -1,15 +1,30 @@
+
+.. |pic1| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+
+.. |pic2| image:: https://img.shields.io/badge/python-3.6-blue.svg
+
+.. |pic3| image:: https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png
+          :width: 30px
+          :target: https://github.com/kymatio/kymatio
+
+.. |pic4| image:: https://avatars3.githubusercontent.com/u/50278?s=200&v=4
+          :width: 30px
+          :target: https://twitter.com/KymatioWavelets
+
 .. scattering documentation master file, created by
    sphinx-quickstart on Tue Oct  2 23:41:09 2018.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
 
+
 Kymatio:
 ********
 
-.. image:: https://img.shields.io/badge/python-3.6-blue.svg
+|pic1|  |pic2|
 
-.. image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
+|pic3|  |pic4|
+
 
 Kymatio is a Python module for computing wavelet and scattering transforms.
 
@@ -30,7 +45,6 @@ list of publications see
 
 .. toctree::
    :maxdepth: 2
-   :caption: Wavelet Scattering in PyTorch
 
    installation
    userguide

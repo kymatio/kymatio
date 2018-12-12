@@ -106,13 +106,18 @@ html_theme = 'alabaster'
 #
 html_theme_options = {
     'logo': 'kymatio.jpg',
+     'touch_icon': 'kymatio.jpg',
+    'logo_name':'Kymatio',
+    'description': 'Wavelet Scattering in PyTorch',
     'github_button': True,
     'github_type': 'star',
     'travis_button': True,
     'github_user': 'kymatio',
     'github_repo': 'kymatio',
     'github_banner': True,
-    'analytics_id': 'UA-130785726-1'
+    'analytics_id': 'UA-130785726-1',
+    'font_family': 'Arial'
+
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
