@@ -14,6 +14,8 @@
 #
 import os
 import sys
+import kymatio
+
 sys.path.insert(0, os.path.abspath('../../kymatio'))
 
 
@@ -25,9 +27,9 @@ copyright = '2018, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
-version = ''
+version = kymatio.__version__[:3]
 # The full version, including alpha/beta/rc tags
-release = ''
+release = kymatio.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -51,6 +53,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'texext'
 ]
+
+html_favicon = '_static/kymatio.ico'
 
 # Add path to sphynx gallery
 sphinx_gallery_conf = {
@@ -82,7 +86,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -188,7 +192,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'kymatio', 'kymatio Documentation',
-     author, 'kymatio', 'One line description of project.',
+     author, 'kymatio', 'Wavelet Scattering in PyTorch',
      'Miscellaneous'),
 ]
 
