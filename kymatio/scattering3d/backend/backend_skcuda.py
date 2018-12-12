@@ -9,8 +9,6 @@ def iscomplex(input):
 
 
 def to_complex(input):
-    if iscomplex(input):
-        return input
     output = input.new(input.size() + (2,)).fill_(0)
     output[..., 0] = input
     return output
