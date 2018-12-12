@@ -207,20 +207,20 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
                 grid, pos_batch, full_batch, sigma, cuda=cuda)
         full_order_0 = compute_integrals(full_density_batch, integral_powers)
         full_scattering = scattering(
-                full_density_batch, order_2=True, method='integral',
+                full_density_batch, max_order=2, method='integral',
                 integral_powers=integral_powers)
 
         val_density_batch = generate_weighted_sum_of_gaussians(
                 grid, pos_batch, val_batch, sigma, cuda=cuda)
         val_order_0 = compute_integrals(val_density_batch, integral_powers)
         val_scattering= scattering(
-                val_density_batch, order_2=True, method='integral',
+                val_density_batch, max_order=2, method='integral',
                 integral_powers=integral_powers)
 
         core_density_batch = full_density_batch - val_density_batch
         core_order_0 = compute_integrals(core_density_batch, integral_powers)
         core_scattering = scattering(
-                core_density_batch, order_2=True, method='integral',
+                core_density_batch, max_order=2, method='integral',
                 integral_powers=integral_powers)
 
 
