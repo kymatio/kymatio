@@ -52,9 +52,17 @@ class Scattering3D(object):
                                 self.M, self.N, self.O, self.J + 1, self.sigma_0)
 
     def cuda(self):
+        """Move to the GPU
+
+        This function prepares the object to accept input Tensors on the GPU.
+        """
         self.is_cuda = True
 
     def cpu(self):
+        """Move to the CPU
+
+        This function prepares the object to accept input Tensors on the CPU.
+        """
         self.is_cuda = False
 
     def _fft_convolve(self, input_array, filter_array):
