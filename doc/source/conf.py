@@ -15,6 +15,9 @@
 import os
 import sys
 import kymatio
+from distutils.version import LooseVersion
+
+
 
 sys.path.insert(0, os.path.abspath('../../kymatio'))
 
@@ -27,9 +30,10 @@ copyright = '2018, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
-version = kymatio.__version__[:3]
+version = LooseVersion(kymatio.__version__)
+
 # The full version, including alpha/beta/rc tags
-release = kymatio.__version__
+release = ".".join(version[:2])
 
 
 # -- General configuration ---------------------------------------------------

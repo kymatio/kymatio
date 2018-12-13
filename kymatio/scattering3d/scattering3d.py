@@ -200,7 +200,7 @@ class Scattering3D(object):
             tensor of the same size as input_array. It holds the output of
             the operation::
 
-            $\sqrt{\sum_m (\text{input}_\text{array} \star \psi_{j,l,m})^2)}
+            $\sqrt{\sum_m (\text{input}_\text{array} \star \psi_{j,l,m})^2)}$
 
             which is covariant to 3D translations and rotations
 

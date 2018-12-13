@@ -18,8 +18,8 @@
 
 
 
-Kymatio:
-********
+Kymatio
+*******
 
 |pic1|  |pic2|
 
