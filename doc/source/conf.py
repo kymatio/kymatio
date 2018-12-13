@@ -32,7 +32,7 @@ author = 'The Kymatio Developers'
 # The short X.Y version
 v = LooseVersion(kymatio.__version__).version
 
-version = ".".join(map(str,v[:2]))
+version = ".".join(map(str, v[:2]))
 
 # The full version, including alpha/beta/rc tags
 release = kymatio.__version__
