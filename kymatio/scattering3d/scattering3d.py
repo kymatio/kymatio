@@ -288,7 +288,7 @@ class Scattering3D(object):
         if (input_array.dim() != 4):
             raise (RuntimeError('Input tensor must be 4D'))
 
-    def forward(self, input_array, order_2=True, rotation_covariant=True,
+    def forward(self, input_array, max_order=2, rotation_covariant=True,
                 method='standard', points=None, integral_powers=(.5, 1., 2.)):
         """
         The forward pass of 3D solid harmonic scattering
@@ -297,9 +297,9 @@ class Scattering3D(object):
         ----------
         input_array: torch tensor 
             input of size (batchsize, M, N, O)
-        order_2: bool, optional
-            if set to False|True it also excludes|includes second order
-            scattering coefficients (default: True).
+        max_order: int, optional
+            The maximum order of scattering coefficients to compute. Must be
+            either 1 or 2. Defaults to 2.
         rotation_covariant: bool, optional
             if set to True the first order moduli take the form:
 
@@ -325,11 +325,11 @@ class Scattering3D(object):
         Returns
         -------
         output: tuple | torch tensor
-            if order_2 is false it returns a torch tensor with the
+            if max_order is 1 it returns a torch tensor with the
             first order scattering coefficients
-            if order_2 is true it returns a tuple with two elements,
-            the first and second order scattering coefficients
-
+            if max_order is 2 it returns a torch tensor with the
+            first and second order scattering coefficients,
+            concatenated along the feature axis
         """
         self._check_input(input_array)
         if rotation_covariant:
@@ -352,7 +352,7 @@ class Scattering3D(object):
                 conv_modulus = convolution_and_modulus(_input, l, j_1)
                 s_order_1_l.append(compute_scattering_coefs(
                     conv_modulus, method, method_args, j_1))
-                if not order_2:
+                if max_order == 1:
                     continue
                 for j_2 in range(j_1+1, self.J+1):
                     conv_modulus_2 = convolution_and_modulus(
@@ -360,10 +360,10 @@ class Scattering3D(object):
                     s_order_2_l.append(compute_scattering_coefs(
                         conv_modulus_2, method, method_args, j_2))
             s_order_1.append(torch.cat(s_order_1_l, -1))
-            if order_2:
+            if max_order == 2:
                 s_order_2.append(torch.cat(s_order_2_l, -1))
 
-        if order_2:
+        if max_order == 2:
             return torch.cat(
                 [torch.stack(s_order_1, dim=-1),
                 torch.stack(s_order_2, dim=-1)], -2)

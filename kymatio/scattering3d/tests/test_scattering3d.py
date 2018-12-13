@@ -78,7 +78,7 @@ def test_against_standard_computations():
             scattering.cuda()
         order_0 = compute_integrals(x, integral_powers)
         orders_1_and_2 = scattering(
-            x, order_2=True, method='integral',
+            x, max_order=2, method='integral',
             integral_powers=integral_powers)
 
         # WARNING: These are hard-coded values for the setting J = 2.
@@ -130,7 +130,7 @@ def test_solid_harmonic_scattering():
         np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1,2,3)))
     x = generate_weighted_sum_of_gaussians(grid, centers, weights, sigma_gaussian)
     scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet)
-    s = scattering(x, order_2=False, method='integral', integral_powers=[1])
+    s = scattering(x, max_order=1, method='integral', integral_powers=[1])
 
     for j in range(J+1):
         sigma_wavelet = sigma_0_wavelet*2**j
