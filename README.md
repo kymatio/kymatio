@@ -54,7 +54,7 @@ The software uses PyTorch + NumPy FFT on CPU, and PyTorch + CuPy + CuFFT on GPU.
 
 If you use this code in your work please cite our paper:
 
-The scattering authors, [*Kymatio: Fast Scattering in 1-D,2-D,3-D*]()
+~~ The scattering authors, [*Kymatio: Fast Scattering in 1-D,2-D,3-D*]() ~~
 
 This code unifies multiple previous efforts:
     - PyScatWave/ScatWave,
