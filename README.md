@@ -13,10 +13,23 @@ Use Kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets, and
 * runs seamlessly on CPU and GPU hardware.
 
-Website: [http://www.kymat.io](http://www.kymat.io)
-
 
 ## Installation
+
+### Important links
+
+* Official source code repo: [https://github.com/kymatio/kymatio](https://github.com/kymatio/kymatio)
+* Download releases: https://pypi.org/project/????????
+* Issue tracker: [https://github.com/kymatio/kymatio/issues](https://github.com/kymatio/kymatio/issues)
+* Website: [http://www.kymat.io](http://www.kymat.io)
+
+### Source code
+
+You can check the latest sources with the command:
+
+```
+git clone https://github.com/kymatio/kymatio.git
+```
 
 ### Dependencies
 
