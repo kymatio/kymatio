@@ -275,7 +275,7 @@ class Scattering3D(object):
             input of size (batchsize, M, N, O)
         max_order: int, optional
             The maximum order of scattering coefficients to compute. Must be
-            either `1` or `2`. Defaults to `2`.
+            either 1 or 2. Defaults to 2.
         rotation_covariant: bool, optional
             if set to True the first order moduli take the form::
 
@@ -303,9 +303,9 @@ class Scattering3D(object):
         output: tuple | torch tensor
             if max_order is 1 it returns a torch tensor with the
             first order scattering coefficients
-            if max_order is 2 it returns a tuple with two elements,
-            the first and second order scattering coefficients
-
+            if max_order is 2 it returns a torch tensor with the
+            first and second order scattering coefficients,
+            concatenated along the feature axis
         """
         self._check_input(input_array)
         if rotation_covariant:
