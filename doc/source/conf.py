@@ -120,7 +120,7 @@ html_theme_options = {
     'github_repo': 'kymatio',
     'github_banner': True,
     'analytics_id': 'UA-130785726-1',
-    'font_family': 'Arial'
+    'font_family': '"Avenir Next", Avenir, "Helvetica Neue",Helvetica,Arial,sans-serif'
 
 }
 

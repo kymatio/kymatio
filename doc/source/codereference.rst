@@ -1,5 +1,5 @@
-Code documentation of the library
-=================================
+Documentation
+=============
 
 .. automodule:: kymatio
     :members:
