@@ -30,10 +30,12 @@ copyright = '2018, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
-version = LooseVersion(kymatio.__version__)
+v = LooseVersion(kymatio.__version__).version
+
+version = ".".join(map(str,v[:2]))
 
 # The full version, including alpha/beta/rc tags
-release = ".".join(version[:2])
+release = kymatio.__version__
 
 
 # -- General configuration ---------------------------------------------------
