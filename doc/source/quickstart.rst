@@ -2,6 +2,7 @@ Quick Start
 ===========
 
 On Linux or macOS, open a shell and run::
+
      pip install kymatio
 
 More instructions are available on https://github.com/kymatio/kymatio/blob/master/README.md .
