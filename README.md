@@ -73,6 +73,18 @@ after installation to install the optimized `skcuda` backend. To enable it, set
 the `KYMATIO_BACKEND` environment variable to `skcuda`. For more information,
 see the documentation.
 
+### Installation from sources
+
+The software can be installed from sources. After cloning the repository, change the directory to the main folder, then:
+
+```
+conda install pytorch torchvision -c pytorch
+pip install -r requirements.txt
+python setup.py install
+```
+
+Note that you can use `python setup.py develop` that will create a symbolic link to the main folder and is helpful for development.
+
 ## Important note: Large images (e.g. ImageNet)
 
 For those interested in applications of the 2-D Scattering Transform on larger images (e.g. Imagenet), it is recommended that you use the `skcuda` backend by setting the environment variable `KYMATIO_BACKEND_2D=skcuda` or changing the 2D default backend in the config file (`~/.config/kymatio/kymatio.cfg` for Linux). This is substantially faster than the torch backend. 
