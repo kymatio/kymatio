@@ -14,6 +14,11 @@
 #
 import os
 import sys
+import kymatio
+from distutils.version import LooseVersion
+
+
+
 sys.path.insert(0, os.path.abspath('../../kymatio'))
 
 
@@ -25,9 +30,12 @@ copyright = '2018, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
-version = ''
+v = LooseVersion(kymatio.__version__).version
+
+version = ".".join(map(str, v[:2]))
+
 # The full version, including alpha/beta/rc tags
-release = ''
+release = kymatio.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -49,7 +57,10 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
+    'texext'
 ]
+
+html_favicon = '_static/kymatio.ico'
 
 # Add path to sphynx gallery
 sphinx_gallery_conf = {
@@ -81,7 +92,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -103,7 +114,21 @@ html_theme = 'alabaster'
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    'logo': 'kymatio.jpg',
+     'touch_icon': 'kymatio.jpg',
+    'logo_name':'Kymatio',
+    'description': 'Wavelet Scattering in PyTorch',
+    'github_button': True,
+    'github_type': 'star',
+    'travis_button': True,
+    'github_user': 'kymatio',
+    'github_repo': 'kymatio',
+    'github_banner': True,
+    'analytics_id': 'UA-130785726-1',
+    'font_family': '"Avenir Next", Avenir, "Helvetica Neue",Helvetica,Arial,sans-serif'
+
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -173,7 +198,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'kymatio', 'kymatio Documentation',
-     author, 'kymatio', 'One line description of project.',
+     author, 'kymatio', 'Wavelet Scattering in PyTorch',
      'Miscellaneous'),
 ]
 

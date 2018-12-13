@@ -23,31 +23,28 @@ class Scattering1D(object):
     alternated with a complex modulus non-linearity. The scattering transform
     of a 1D signal :math:`x(t)` may be written as
 
-        :math:`S_J x = [S_J^{(0)} x, S_J^{(1)} x, S_J^{(2)} x]`
+        $S_J x = [S_J^{(0)} x, S_J^{(1)} x, S_J^{(2)} x]$
 
     where
 
-        :math:`S_J^{(0)} x(t) = x \\star \\phi_J(t)`,
+        $S_J^{(0)} x(t) = x \star \phi_J(t)$,
 
-        :math:`S_J^{(1)} x(t, \\lambda) =
-            |x \\star \\psi_\\lambda^{(1)}| \\star \\phi_J`, and
+        $S_J^{(1)} x(t, \lambda) =|x \star \psi_\lambda^{(1)}| \star \phi_J$, and
 
-        :math:`S_J^{(2)} x(t, \\lambda, \\mu) =
-            |\\,| x \\star \\psi_\\lambda^{(1)}|
-            \\star \\psi_\\mu^{(2)} | \\star \\phi_J`.
+        $S_J^{(2)} x(t, \lambda, \mu) = |\,| x \star \psi_\lambda^{(1)}| \star \psi_\mu^{(2)} | \star \phi_J$.
 
     In the above formulas, :math:`\\star` denotes convolution in time. The
-    filters :math:`\\psi_\\lambda^{(1)}(t)` and :math:`\\psi_\\mu^{(2)}(t)`
-    are analytic wavelets with center frequencies :math:`\\lambda` and
-    :math:`\\mu``, while :math:`\\phi_J(t)` is a real lowpass filter centered
+    filters $\psi_\lambda^{(1)}(t)$ and $\psi_\mu^{(2)}(t)$
+    are analytic wavelets with center frequencies $\lambda$ and
+    $\mu$, while $\phi_J(t)$ is a real lowpass filter centered
     at the zero frequency.
 
     The `Scattering1D` class implements the 1D scattering transform for a
     given set of filters whose parameters are specified at initialization.
     While the wavelets are fixed, other parameters may be changed after the
     object is created, such as whether to compute all of :math:`S_J^{(0)} x`,
-    :math:`S_J^{(1)} x`, and :math:`S_J^{(2)} x` or just :math:`S_J^{(0)} x`
-    and :math:`S_J^{(1)} x`.
+    $S_J^{(1)} x$, and $S_J^{(2)} x$ or just $S_J^{(0)} x$
+    and $S_J^{(1)} x$.
 
     The scattering transform may be computed on the CPU (the default) or a
     GPU, if available. A `Scattering1D` object may be transferred from one
