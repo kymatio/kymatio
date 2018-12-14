@@ -52,9 +52,7 @@ def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
 
 
 def subsample(input_array, j):
-    return input_array.unfold(3, 1, 2 ** j
-                     ).unfold(2, 1, 2 ** j
-                     ).unfold(1, 1, 2 ** j).contiguous()
+    return input_array[..., ::2 ** j, ::2 ** j, ::2 ** j, :].contiguous()
 
 
 
