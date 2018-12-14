@@ -28,9 +28,34 @@ class Scattering3D(object):
         Number of l values. Defaults to 3.
     sigma_0: float, optional
         Bandwidth of mother wavelet. Defaults to 1.
+    max_order: int, optional
+        The maximum order of scattering coefficients to compute. Must be
+        either 1 or 2. Defaults to 2.
+    rotation_covariant: bool, optional
+        if set to True the first order moduli take the form:
+
+        $\sqrt{\sum_m (x \star \psi_{j,l,m})^2)}$
+
+        if set to False the first order moduli take the form:
+
+        $x \star \psi_{j,l,m}$
+
+        The second order moduli change analogously
+        Defaut: True
+    method: string, optional
+        specifies the method for obtaining scattering coefficients
+        ("standard","local","integral"). Default: "standard"
+    points: array-like, optional
+        List of locations in which to sample wavelet moduli. Used when
+        method == 'local'
+    integral_powers: array-like
+        List of exponents to the power of which moduli are raised before
+        integration. Used with method == 'standard', method == 'integral'
 
     """
-    def __init__(self, J, shape, L=3, sigma_0=1):
+    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
+                 rotation_covariant=True, method='standard', points=None,
+                 integral_powers=(0.5, 1., 2.)):
         super(Scattering3D, self).__init__()
         self.J = J
         self.shape = shape
@@ -38,6 +63,12 @@ class Scattering3D(object):
         self.sigma_0 = sigma_0
 
         self.is_cuda = False
+
+        self.max_order = max_order
+        self.rotation_covariant = rotation_covariant
+        self.method = method
+        self.points = points
+        self.integral_powers = integral_powers
 
         self.build()
 
@@ -284,8 +315,7 @@ class Scattering3D(object):
         if (input_array.dim() != 4):
             raise (RuntimeError('Input tensor must be 4D'))
 
-    def forward(self, input_array, max_order=2, rotation_covariant=True,
-                method='standard', points=None, integral_powers=(.5, 1., 2.)):
+    def forward(self, input_array):
         """
         The forward pass of 3D solid harmonic scattering
 
@@ -293,30 +323,6 @@ class Scattering3D(object):
         ----------
         input_array: torch tensor 
             input of size (batchsize, M, N, O)
-        max_order: int, optional
-            The maximum order of scattering coefficients to compute. Must be
-            either 1 or 2. Defaults to 2.
-        rotation_covariant: bool, optional
-            if set to True the first order moduli take the form:
-
-            $\\sqrt{\\sum_m (x \\star \\psi_{j,l,m})^2)}$
-
-            if set to False the first order moduli take the form:
-
-            $x \\star \\psi_{j,l,m}$
-
-            The second order moduli change analogously
-            Defaut: True
-        method: string, optional
-            specifies the method for obtaining scattering coefficients
-            ("standard","local","integral"). Default: "standard"
-        points: array-like, optional
-            List of locations in which to sample wavelet moduli. Used when
-            method == 'local'
-
-        integral_powers: array-like
-            List of exponents to the power of which moduli are raised before
-            integration. Used with method == 'standard', method == 'integral'
 
         Returns
         -------
@@ -328,7 +334,7 @@ class Scattering3D(object):
             concatenated along the feature axis
         """
         self._check_input(input_array)
-        if rotation_covariant:
+        if self.rotation_covariant:
             convolution_and_modulus = (
                 self._rotation_covariant_convolution_and_modulus)
         else:
@@ -340,25 +346,26 @@ class Scattering3D(object):
         s_order_2 = []
         _input = to_complex(input_array)
 
-        method_args = dict(points=points, integral_powers=integral_powers)
+        method_args = dict(points=self.points,
+                           integral_powers=self.integral_powers)
 
         for l in range(self.L+1):
             s_order_1_l, s_order_2_l = [], []
             for j_1 in range(self.J+1):
                 conv_modulus = convolution_and_modulus(_input, l, j_1)
                 s_order_1_l.append(compute_scattering_coefs(
-                    conv_modulus, method, method_args, j_1))
-                if max_order == 1:
+                    conv_modulus, self.method, method_args, j_1))
+                if self.max_order == 1:
                     continue
                 for j_2 in range(j_1+1, self.J+1):
                     conv_modulus_2 = convolution_and_modulus(
                         conv_modulus, l, j_2)
                     s_order_2_l.append(compute_scattering_coefs(
-                        conv_modulus_2, method, method_args, j_2))
+                        conv_modulus_2, self.method, method_args, j_2))
             s_order_1.append(torch.stack([arr[..., 0] for arr in s_order_1_l], 1))
-            if max_order == 2:
+            if self.max_order == 2:
                 s_order_2.append(torch.stack([arr[..., 0] for arr in s_order_2_l], 1))
-        if max_order == 2:
+        if self.max_order == 2:
             return torch.cat(
                 [torch.stack(s_order_1, dim=2),
                 torch.stack(s_order_2, dim=2)], 1)

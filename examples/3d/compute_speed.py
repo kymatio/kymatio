@@ -101,14 +101,17 @@ for device in devices:
     else:
         x = x.cpu()
 
-    scattering.forward(x, method='integral', integral_powers=integral_powers)
+    scattering.method = 'integral'
+    scattering.integral_powers = integral_powers
+
+    scattering.forward(x)
 
     if device == 'gpu':
         torch.cuda.synchronize()
 
     t_start = time.time()
     for _ in range(times):
-        scattering.forward(x, method='integral', integral_powers=integral_powers)
+        scattering.forward(x)
 
     if device == 'gpu':
         torch.cuda.synchronize()
