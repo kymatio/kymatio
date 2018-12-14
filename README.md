@@ -16,26 +16,33 @@ Use Kymatio if you need a library that:
 
 ## What makes Kymatio different?
 
-The Kymatio organization associates the developers of several pre-existing different packages for wavelet scattering, including `ScatNet`, `scattering.m`, `PyScatWave`, `WaveletScattering.jl`, and `PyScatHarm`.
 Kymatio stands out with respect to these other packages thanks to three assets: flexibility, portability, and scalability.
 
-Kymatio package integrates the construction of wavelet filter banks in 1D, 2D, and 3D, as well as memory-efficient algorithms for extracting wavelet scattering coefficients, under a common application programming interface.
-Each of these algorithms is written in a high-level imperative paradigm, making it portable to any Python library for array operations as long as it enables complex-valued linear algebra and a fast Fourier transform (FFT).
-As of the first stable version, NumPy and CuPy are the two available backends, for CPU and GPU hardware respectively.
+### Flexibility
+
+The Kymatio organization associates the developers of several pre-existing different packages for wavelet scattering, including `ScatNet`, `scattering.m`, `PyScatWave`, `WaveletScattering.jl`, and `PyScatHarm`.
+
 The resort to PyTorch tensors as inputs to Kymatio allows the programmer to backpropagate the gradient of wavelet scattering coefficients, thus integrating them within an end-to-end trainable pipeline, such as a deep neural network.
 
+### Portability
+
+Each of these algorithms is written in a high-level imperative paradigm, making it portable to any Python library for array operations as long as it enables complex-valued linear algebra and a fast Fourier transform (FFT).
+
+As of the first stable version, NumPy and CuPy are the two available backends, for CPU and GPU hardware respectively.
+
+
+### Scalability
+
+Kymatio integrates the construction of wavelet filter banks in 1D, 2D, and 3D, as well as memory-efficient algorithms for extracting wavelet scattering coefficients, under a common application programming interface.
+
+Running Kymatio on a graphics processing unit (GPU) rather than a multi-core conventional computer processing unit (CPU) allows to speed up the scattering transform.
+As of the alpha release, the speedup with respect to CPU-based MATLAB code is of the order of 10 in 1D and of the order of 100 in 2D.
+
+We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchmark-with-previous-versions) for further details.
 
 
 ## Installation
 
-### Important links
-
-* Website: [http://www.kymat.io](kymat.io)
-* Source code repository: [https://github.com/kymatio/kymatio](github.com/kymatio/kymatio)
-* [https://github.com/kymatio/kymatio/issues](Issue tracker)
-* [https://github.com/kymatio/kymatio/blob/master/LICENSE.md](BSD-3-Clause License)
-* [https://github.com/kymatio/kymatio/blob/master/AUTHORS.md](List of authors)
-* [https://github.com/kymatio/kymatio/blob/master/CODE_OF_CONDUCT.md](Code of conduct)
 
 ### Dependencies
 
@@ -64,7 +71,13 @@ The user may control the choice of backend at runtime by setting the environment
 
 At the time of alpha release, the two available backends are PyTorch (`torch`) and scikit-cuda (`skcuda`) for 1D scattering and 2D scattering, and PyTorch only for 3D scattering.
 
-PyTorch is the default backend in 1D, 2D, and 3D scattering. Yet, for applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), we recommend the scikit-cuda backend, which is substantially faster than PyTorch. To install the scikit-cuda dependency, run
+PyTorch is the default backend in 1D, 2D, and 3D scattering. Yet, for applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), we recommend the scikit-cuda backend, which is substantially faster than PyTorch.
+
+
+### GPU acceleration
+
+
+To run Kymatio on a graphics processing unit (GPU), you should install the CUDA library and install the scikit-cuda dependency by running the following pip command:
 
 ```
 pip install -r requirements_optional_cuda.txt
@@ -77,32 +90,28 @@ os.environ["KYMATIO_BACKEND_2D"] = "skcuda"
 ```
 
 
-### GPU acceleration
-
-If you have a CUDA-enabled GPU, you may run
-
-```
-pip install -r requirements_optional_cuda.txt
-```
-
-after installation to install the optimized `skcuda` backend. To enable it, set
-the `KYMATIO_BACKEND` environment variable to `skcuda`. For more information,
-see the documentation.
-
-
-
 ## Documentation
 
-The documentation of Kymatio is officially hosted on the https://www.kymat.io/(kymat.io) website.
+The documentation of Kymatio is officially hosted on the [kymat.io](https://www.kymat.io/) website.
 
-Alternatively, it can also be found on the `doc/` subfolder of the GitHub repository.
+
+### Online resources
+
+* [GitHub repository](https://github.com/kymatio/kymatio)
+* [GitHub issue tracker](https://github.com/kymatio/kymatio/issues)
+* [BSD-3-Clause license](https://github.com/kymatio/kymatio/blob/master/LICENSE.md)
+* [List of authors](https://github.com/kymatio/kymatio/blob/master/AUTHORS.md)
+* [Code of conduct](https://github.com/kymatio/kymatio/blob/master/CODE_OF_CONDUCT.md)
+
+
+### Building the documentation from source.
+The documentation can also be found in the `doc/` subfolder of the GitHub repository.
 To build the documentation locally, please run
 
 ```
 pip install -r requirements_optional.txt
 cd doc; make clean; make html
 ```
-
 
 ## Why the name, Kymatio?
 
