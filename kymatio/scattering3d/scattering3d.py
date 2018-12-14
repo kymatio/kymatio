@@ -24,11 +24,13 @@ class Scattering3D(object):
         number of scales
     shape: tuple of int
         shape (M, N, O) of the input signal
-    L: int
-        number of l values
+    L: int, optional
+        Number of l values. Defaults to 3.
+    sigma_0: float, optional
+        Bandwidth of mother wavelet. Defaults to 1.
 
     """
-    def __init__(self, J, shape, L, sigma_0):
+    def __init__(self, J, shape, L=3, sigma_0=1):
         super(Scattering3D, self).__init__()
         self.J = J
         self.shape = shape
