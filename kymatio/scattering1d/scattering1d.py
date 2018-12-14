@@ -90,31 +90,6 @@ class Scattering1D(object):
     Q : int >= 1
         The number of first-order wavelets per octave (second-order wavelets
         are fixed to one wavelet per octave).
-    normalize : string, optional
-        Normalization of the wavelets: `'l1'`, corresponding to
-        :math:`\\ell^1`-normalization, or `'l2'`, corresponding to
-        :math:`\\ell^2`-normalization. Defaults to `'l1'`.
-    criterion_amplitude : float, optional
-        Controls the padding size (the larger this value, the smaller the
-        padding size). Measures the amount of the Gaussian mass (in the
-        :math:`\\ell^1` norm) which can be ignored after padding. Defaults
-        to `1e-3`.
-    r_psi : float, optional
-        Controls the redundancy of the filters (the larger this value, the
-        larger the overlap between adjacent wavelets). Must be between zero
-        and one. Defaults to `math.sqrt(0.5)`.
-    sigma0 : float, optional
-        Controls the frequency bandwidth of the lowpass filter
-        :math:`\\phi_J(t)`, which is given by `sigma0/2**J`. Defaults to
-        `1e-1`.
-    alpha : float, optional
-        Aliasing tolerance after subsampling. The larger this value, the more
-        conservative the subsampling during the transform. Defaults to `5`.
-    P_max : int > 1, optional
-        Maximum number of periods to use to ensure that the Fourier transform
-        of the filters is periodic. Defaults to `5`.
-    eps : float, optional
-        Required precision for the periodization. Defaults to `1e-7`.
     max_order : int, optional
         The maximum order of scattering coefficients to compute. Must be either
         `1` or `2`. Defaults to `2`.
@@ -184,28 +159,21 @@ class Scattering1D(object):
         or collected into a dictionary. For more details, see the
         documentation for `forward()`.
     """
-    def __init__(self, J, shape, Q, normalize='l1', criterion_amplitude=1e-3,
-                 r_psi=math.sqrt(0.5), sigma0=0.1, alpha=5.,
-                 P_max=5, eps=1e-7, max_order=2, average=True,
+    def __init__(self, J, shape, Q, max_order=2, average=True,
                  oversampling=0, vectorize=True):
         super(Scattering1D, self).__init__()
         # Store the parameters
         self.J = J
         self.shape = shape
         self.Q = Q
-        self.r_psi = r_psi
-        self.sigma0 = sigma0
-        self.alpha = alpha
-        self.P_max = P_max
-        self.eps = eps
-        self.criterion_amplitude = criterion_amplitude
-        self.normalize = normalize
-        # Build internal values
-        self.build()
+
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
         self.vectorize = vectorize
+
+        # Build internal values
+        self.build()
 
     def build(self):
         """Set up padding and filters
@@ -216,6 +184,16 @@ class Scattering1D(object):
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
+
+        # Set these default values for now. In the future, we'll want some
+        # flexibility for these, but for now, let's keep them fixed.
+        self.r_psi = math.sqrt(0.5)
+        self.sigma0 = 0.1
+        self.alpha = 5.
+        self.P_max = 5
+        self.eps = 1e-7
+        self.criterion_amplitude = 1e-3
+        self.normalize = 'l1'
 
         # check the shape
         if isinstance(self.shape, numbers.Integral):
