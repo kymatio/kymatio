@@ -23,7 +23,7 @@ def test_simple_scatterings(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, normalize='l1')
+    scattering = Scattering1D(J, T, Q)
     if force_gpu:
         scattering = scattering.cuda()
     # zero signal
@@ -102,7 +102,7 @@ def test_computation_Ux(random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, normalize='l1', average=False,
+    scattering = Scattering1D(J, T, Q, average=False,
                               max_order=1, vectorize=False)
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float()
