@@ -2,6 +2,8 @@
 Contributing code
 =================
 
+This document is a 'getting started' summary for contributing code, documentation, testing, and filing issues.
+
 How to contribute
 -----------------
 
@@ -15,36 +17,48 @@ GitHub:
 
 2. Clone this copy to your local disk:
 
-          $ git clone git@github.com:YourLogin/kymatio.git
-          $ cd kymatio
+```bash
+   $ git clone git@github.com:YourLogin/kymatio.git
+   $ cd kymatio
+```
 
 3. Remove any previously installed versions of Kymatio:
 
-          $ pip uninstall kymatio
+```bash
+   $ pip uninstall kymatio
+```
 
-and install your local copy with testing dependencies:
+and install your local copy:
 
-          $ pip install -e .[tests]
+```bash
+   $ pip install -e .
+```
 
 4. Create a branch to hold your changes:
 
-          $ git checkout -b my-feature
+```bash
+   $ git checkout -b my-feature
+```
 
    and start making changes. Never work in the ``master`` branch.
 
 5. Work on this copy on your computer using Git to do the version
    control. When you're done editing, do:
 
-          $ git add modified_files
-          $ git commit
+```bash
+   $ git add modified_files
+   $ git commit
+```
 
-   to record your changes in Git, then push them to GitHub with:
+   to record your changes in git, then push them to GitHub with:
 
-          $ git push -u origin my-feature
+```bash
+   $ git push -u origin my-feature
+```
 
 Finally, go to the web page of the your fork of the Kymatio repository,
 and click 'Pull request' to send your changes to the maintainers for
-review. This will send an email to the committers.
+review. This will send an email to the moderators.
 
 For further details on using Git for version control, we recommend you look
 up its [documentation](http://git-scm.com/documentation).
@@ -60,8 +74,8 @@ It is recommended to check that your issue complies with the
 following rules before submitting:
 
 -  Verify that your issue is not being currently addressed by other
-   [issues](https://github.com/kymatio/kymatio/issues?q=)
-   or [pull requests](https://github.com/kymatio/kymatio/pulls?q=).
+   [issues](https://github.com/kymatio/kymatio/issues?)
+   or [pull requests](https://github.com/kymatio/kymatio/pulls).
 
 -  Please ensure all code snippets and error messages are formatted in
    appropriate code blocks.
@@ -89,6 +103,7 @@ following rules before submitting:
   # For security purposes, please check the contents of collect_env.py before running it.
   python collect_env.py
   ```
+  
 
 
 Documentation
@@ -103,7 +118,9 @@ For building the documentation, you will need
 [sphinx](http://sphinx.pocoo.org/),
 [matplotlib](http://matplotlib.sourceforge.net/), and [numpydoc](https://pypi.python.org/pypi/numpydoc).
 
-Note
-----
-This document was gleefully borrowed from [scikit-learn](http://scikit-learn.org/).
+
+
+Acknowledgment
+--------------
+This document was adapted from [scikit-learn](http://scikit-learn.org/).
 
