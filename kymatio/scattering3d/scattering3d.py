@@ -361,7 +361,7 @@ class Scattering3D(object):
                 [torch.stack(s_order_1, dim=2),
                 torch.stack(s_order_2, dim=2)], 1)
         else:
-            return torch.stack(s_order_1, dim=1)
+            return torch.stack(s_order_1, dim=2)
 
 
     __call__ = forward
