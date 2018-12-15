@@ -27,16 +27,16 @@ class Scattering1D(object):
 
     where
 
-        $S_J^{(0)} x(t) = x \star \phi_J(t)$,
+        $S_J^{(0)} x(t) = x \\star \\phi_J(t)$,
 
-        $S_J^{(1)} x(t, \lambda) =|x \star \psi_\lambda^{(1)}| \star \phi_J$, and
+        $S_J^{(1)} x(t, \\lambda) =|x \\star \\psi_\\lambda^{(1)}| \\star \\phi_J$, and
 
-        $S_J^{(2)} x(t, \lambda, \mu) = |\,| x \star \psi_\lambda^{(1)}| \star \psi_\mu^{(2)} | \star \phi_J$.
+        $S_J^{(2)} x(t, \\lambda, \\mu) = |\\,| x \\star \\psi_\\lambda^{(1)}| \\star \\psi_\\mu^{(2)} | \\star \\phi_J$.
 
     In the above formulas, :math:`\\star` denotes convolution in time. The
-    filters $\psi_\lambda^{(1)}(t)$ and $\psi_\mu^{(2)}(t)$
-    are analytic wavelets with center frequencies $\lambda$ and
-    $\mu$, while $\phi_J(t)$ is a real lowpass filter centered
+    filters $\\psi_\\lambda^{(1)}(t)$ and $\\psi_\\mu^{(2)}(t)$
+    are analytic wavelets with center frequencies $\\lambda$ and
+    $\\mu$, while $\\phi_J(t)$ is a real lowpass filter centered
     at the zero frequency.
 
     The `Scattering1D` class implements the 1D scattering transform for a
@@ -597,7 +597,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         (chroma).
         * psi1[(j, n)] is itself a dictionary, with keys corresponding to the
         dilation factors: psi1[(j, n)][j2] corresponds to a support of size
-        :math:`2^{J_\text{max} - j_2}`, where :math:`J_\text{max}` has been
+        :math:`2^{J_\\text{max} - j_2}`, where :math:`J_\\text{max}` has been
         defined a priori (`J_max = size` of the padding support of the input)
         * psi1[(j, n)] only has real values;
         the tensors are complex so that broadcasting applies
