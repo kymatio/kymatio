@@ -9,7 +9,7 @@ from setuptools import setup, find_packages
 # Constants
 DISTNAME = 'kymatio'
 DESCRIPTION = 'Wavelet scattering transforms in Python with GPU acceleration'
-URL = 'https://kymatio.github.io'
+URL = 'https://www.kymat.io'
 LICENSE = 'BSD-3-Clause'
 
 
@@ -47,15 +47,18 @@ setup_info = dict(
                   'tomas.angles@ens.fr, gabriel.huang@umontreal.ca, roberto.leonarduzzi@ens.fr'),
     url=URL,
     download_url='https://github.com/kymatio/kymatio/releases',
+    project_urls={
+        'Documentation': 'https://www.kymat.io/codereference.html',
+        'Source': 'https://github.com/kymatio/kymatio/',
+        'Tracker': 'https://github.com/kymatio/kymatio/issues',
+        'Authors': 'https://github.com/kymatio/kymatio/blob/master/AUTHORS.md'
+    },
     classifiers=['Intended Audience :: Education',
                  'Intended Audience :: Science/Research',
                  'License :: OSI Approved :: BSD License',
                  'Natural Language :: English',
                  'Operating System :: MacOS',
-                 'Operating System :: Microsoft :: Windows',
                  'Operating System :: POSIX :: Linux',
-                 'Programming Language :: Python :: 3.4',
-                 'Programming Language :: Python :: 3.5',
                  'Programming Language :: Python :: 3.6',
                  'Programming Language :: Python :: 3.7',
                  'Programming Language :: Python :: 3.8',
@@ -72,6 +75,7 @@ setup_info = dict(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
+    python_requires='>=3.6',
     license=LICENSE,
     packages=find_packages(exclude=('test',)),
     install_requires=REQUIREMENTS,
