@@ -51,6 +51,7 @@ setup_info = dict(
         'Documentation': 'https://www.kymat.io/codereference.html',
         'Source': 'https://github.com/kymatio/kymatio/',
         'Tracker': 'https://github.com/kymatio/kymatio/issues',
+        'Authors': 'https://github.com/kymatio/kymatio/blob/master/AUTHORS.md'
     },
     classifiers=['Intended Audience :: Education',
                  'Intended Audience :: Science/Research',
