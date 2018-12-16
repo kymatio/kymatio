@@ -70,7 +70,8 @@ Linux and macOS are the two operating systems that are officially supported by K
 To run Kymatio on a graphics processing unit (GPU), you should install the CUDA library and install the scikit-cuda dependency by running the following pip command:
 
 ```
-pip install -r https://raw.githubusercontent.com/kymatio/kymatio/master/requirements_optional.txt
+pip install scikit-cuda cupy
+
 ```
 
 Then, set the `KYMATIO_BACKEND_2D` to `skcuda`:
