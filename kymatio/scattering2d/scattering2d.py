@@ -167,7 +167,6 @@ class Scattering2D(object):
         J = self.J
         phi = self.Phi
         psi = self.Psi
-        n = 0
 
         subsample_fourier = self.subsample_fourier
         modulus = self.modulus
@@ -193,8 +192,9 @@ class Scattering2D(object):
 
         U_J_r = fft(U_1_c, 'C2R')
 
-        S[..., n, :, :] = unpad(U_J_r)
-        n = n + 1
+        S[..., 0, :, :] = unpad(U_J_r)
+        n_order1 = 1
+        n_order2 = 1 + order1_size
 
         for n1 in range(len(psi)):
             j1 = psi[n1]['j']
@@ -207,8 +207,8 @@ class Scattering2D(object):
             # Second low pass filter
             U_2_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
             U_J_r = fft(U_2_c, 'C2R')
-            S[..., n, :, :] = unpad(U_J_r)
-            n = n + 1
+            S[..., n_order1, :, :] = unpad(U_J_r)
+            n_order1 += 1
 
             if self.max_order == 2:
                 for n2 in range(len(psi)):
@@ -222,8 +222,8 @@ class Scattering2D(object):
                         U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
                         U_J_r = fft(U_2_c, 'C2R')
     
-                        S[..., n, :, :] = unpad(U_J_r)
-                        n = n + 1
+                        S[..., n_order2, :, :] = unpad(U_J_r)
+                        n_order2 += 1
 
         scattering_shape = S.shape[-3:]
         S = S.reshape(batch_shape + scattering_shape)
