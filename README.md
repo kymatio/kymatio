@@ -64,16 +64,6 @@ pip install kymatio
 Linux and macOS are the two operating systems that are officially supported by Kymatio.
 
 
-### Available backends: PyTorch and scikit-cuda
-
-Kymatio is designed to interoperate on a variety of backends for array operations.
-The user may control the choice of backend at runtime by setting the environment variable `KYMATIO_BACKEND`, or by editing the Kymatio configuration file (`~/.config/kymatio/kymatio.cfg` on Linux).
-
-At the time of alpha release, the two available backends are PyTorch (`torch`) and scikit-cuda (`skcuda`) for 1D scattering and 2D scattering, and PyTorch only for 3D scattering.
-
-PyTorch is the default backend in 1D, 2D, and 3D scattering. Yet, for applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), we recommend the scikit-cuda backend, which is substantially faster than PyTorch.
-
-
 ### GPU acceleration
 
 
@@ -88,6 +78,16 @@ Then, set the `KYMATIO_BACKEND_2D` to `skcuda`:
 ```
 os.environ["KYMATIO_BACKEND_2D"] = "skcuda"
 ```
+
+
+#### Available backends: PyTorch and scikit-cuda
+
+Kymatio is designed to interoperate on a variety of backends for array operations.
+The user may control the choice of backend at runtime by setting the environment variable `KYMATIO_BACKEND`, or by editing the Kymatio configuration file (`~/.config/kymatio/kymatio.cfg` on Linux).
+
+At the time of alpha release, the two available backends are PyTorch (`torch`) and scikit-cuda (`skcuda`) for 1D scattering and 2D scattering, and PyTorch only for 3D scattering.
+
+PyTorch is the default backend in 1D, 2D, and 3D scattering. Yet, for applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), we recommend the scikit-cuda backend, which is substantially faster than PyTorch.
 
 
 ## Documentation
