@@ -71,7 +71,6 @@ To run Kymatio on a graphics processing unit (GPU), you should install the CUDA 
 
 ```
 pip install scikit-cuda cupy
-
 ```
 
 Then, set the `KYMATIO_BACKEND_2D` to `skcuda`:
