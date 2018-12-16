@@ -342,12 +342,16 @@ class Scattering3D(object):
 
         compute_scattering_coefs = self._compute_scattering_coefs
 
+        s_order_0 = []
         s_order_1 = []
         s_order_2 = []
         _input = to_complex(input_array)
 
         method_args = dict(points=self.points,
                            integral_powers=self.integral_powers)
+
+        s_order_0.append(compute_scattering_coefs(_input, self.method,
+                                                  method_args, 0))
 
         for l in range(self.L+1):
             s_order_1_l, s_order_2_l = [], []
@@ -367,10 +371,13 @@ class Scattering3D(object):
                 s_order_2.append(torch.stack([arr[..., 0] for arr in s_order_2_l], 1))
         if self.max_order == 2:
             return torch.cat(
-                [torch.stack(s_order_1, dim=2),
+                [torch.stack(s_order_0, dim=2),
+                torch.stack(s_order_1, dim=2),
                 torch.stack(s_order_2, dim=2)], 1)
         else:
-            return torch.stack(s_order_1, dim=2)
+            return torch.cat(
+                [torch.stack(s_order_0, dim=2),
+                torch.stack(s_order_1, dim=2)], 1)
 
 
     __call__ = forward
