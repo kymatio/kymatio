@@ -9,11 +9,11 @@ warnings.filterwarnings('always', category=DeprecationWarning,
 __all__ = [
             'Scattering1D',
             'Scattering2D',
-            'Scattering3D'
+            'HarmonicScattering3D'
             ]
 
 from .scattering1d.scattering1d import Scattering1D
 from .scattering2d.scattering2d import Scattering2D
-from .scattering3d.scattering3d import Scattering3D
+from .scattering3d.scattering3d import HarmonicScattering3D
 
 from .version import version as __version__

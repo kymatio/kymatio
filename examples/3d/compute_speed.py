@@ -28,10 +28,10 @@ import time
 import kymatio.scattering3d.backend as backend
 
 ###############################################################################
-# Finally, we import the `Scattering3D` class that computes the scattering
+# Finally, we import the `HarmonicScattering3D` class that computes the scattering
 # transform.
 
-from kymatio import Scattering3D
+from kymatio import HarmonicScattering3D
 ###############################################################################
 # Benchmark setup
 # --------------------
@@ -74,10 +74,10 @@ elif backend.NAME == 'skcuda':
 # ----------------------------------------------
 
 ###############################################################################
-# Create the `Scattering3D` object using the given parameters and generate
+# Create the `HarmonicScattering3D` object using the given parameters and generate
 # some compatible test data with the specified batch size.
 
-scattering = Scattering3D(J, shape=(M, N, O), L=L, sigma_0=sigma_0)
+scattering = HarmonicScattering3D(J, shape=(M, N, O), L=L, sigma_0=sigma_0)
 
 x = torch.randn(batch_size, M, N, O, dtype=torch.float32)
 
