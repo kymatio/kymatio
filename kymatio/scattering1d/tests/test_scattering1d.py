@@ -82,6 +82,33 @@ def test_sample_scattering():
 
     scattering = Scattering1D(J, T, Q)
 
+    # Reorder reference scattering from interleaved to concatenated orders.
+    meta = scattering.meta()
+
+    orders = [[], [], []]
+
+    ind = 0
+
+    orders[0].append(ind)
+    ind = ind + 1
+
+    n1s = [meta['key'][k][0] for k in range(len(meta['key']))
+           if meta['order'][k] == 1]
+    for n1 in n1s:
+        orders[1].append(ind)
+        ind = ind + 1
+
+        n2s = [meta['key'][k][1] for k in range(len(meta['key']))
+               if meta['order'][k] == 2 and meta['key'][k][0] == n1]
+
+        for n2 in n2s:
+            orders[2].append(ind)
+            ind = ind + 1
+
+    perm = torch.from_numpy(np.concatenate(orders))
+
+    Sx0 = Sx0[:,perm,:]
+
     if force_gpu:
         scattering = scattering.cuda()
         x = x.cuda()
