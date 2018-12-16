@@ -172,9 +172,13 @@ class Scattering2D(object):
         subsample_fourier = self.subsample_fourier
         modulus = self.modulus
         pad = self.pad
-        output_size = 1 + self.L*J
+        order0_size = 1
+        order1_size = self.L * J
+        order2_size = self.L ** 2 * J * (J - 1) // 2
+        output_size = order0_size + order1_size
+
         if self.max_order == 2:
-            output_size += self.L*self.L*J*(J - 1) // 2
+            output_size += order2_size
 
         S = input.new(input.size(0),
                       input.size(1),
