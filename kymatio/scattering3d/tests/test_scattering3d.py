@@ -4,7 +4,7 @@ import os
 import warnings
 import numpy as np
 import pytest
-from kymatio import Scattering3D
+from kymatio import HarmonicScattering3D
 from kymatio.scattering3d import backend
 from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals, sqrt
 
@@ -156,7 +156,7 @@ def test_against_standard_computations():
     N, O = M, M
     sigma = 1
 
-    scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
 
     for device in devices:
         if device == 'cpu':
@@ -219,7 +219,7 @@ def test_solid_harmonic_scattering():
     grid = torch.from_numpy(
         np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1,2,3)))
     x = generate_weighted_sum_of_gaussians(grid, centers, weights, sigma_gaussian)
-    scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet)
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet)
 
     scattering.max_order = 1
     scattering.method = 'integral'
@@ -250,7 +250,7 @@ def test_larger_scales():
     x = torch.randn((1,) + shape)
 
     for J in range(3, 4+1):
-        scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+        scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
         if not 'cpu' in devices:
             x = x.cuda()
             scattering.cuda()
@@ -264,7 +264,7 @@ def test_scattering_methods():
     sigma_0 = 1
     x = torch.randn((1,) + shape)
 
-    scattering = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+    scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
 
     if not 'cpu' in devices:
         x = x.cuda()
@@ -291,7 +291,7 @@ def test_cpu_cuda():
     sigma_0 = 1
     x = torch.randn((1,) + shape)
 
-    S = Scattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
+    S = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
 
     assert not S.is_cuda
 

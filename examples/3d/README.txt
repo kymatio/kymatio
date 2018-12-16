@@ -2,4 +2,4 @@
 ===========
 
 These scripts demonstrate the capabilities of the 3D scattering transform
-class, ``Scattering3D``.
+class, ``HarmonicScattering3D``.

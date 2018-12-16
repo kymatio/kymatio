@@ -1,7 +1,7 @@
 # Authors: Louis Thiry, Georgios Exarchakis
 # Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
 
-__all__ = ['Scattering3D']
+__all__ = ['HarmonicScattering3D']
 
 import torch
 from .utils import compute_integrals, subsample
@@ -10,7 +10,7 @@ from .backend import cdgmm3d, fft, complex_modulus, to_complex
 from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
 
 
-class Scattering3D(object):
+class HarmonicScattering3D(object):
     """3D Solid Harmonic scattering .
 
     This class implements solid harmonic scattering on an input 3D image.
@@ -56,7 +56,7 @@ class Scattering3D(object):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
                  rotation_covariant=True, method='standard', points=None,
                  integral_powers=(0.5, 1., 2.)):
-        super(Scattering3D, self).__init__()
+        super(HarmonicScattering3D, self).__init__()
         self.J = J
         self.shape = shape
         self.L = L
