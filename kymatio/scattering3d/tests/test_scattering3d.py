@@ -176,8 +176,14 @@ def test_against_standard_computations():
 
         # Extract orders and make order axis the slowest in accordance with
         # the stored reference scattering transform.
-        order_1 = orders_1_and_2[:,:,0:n_order_1,:]
-        order_2 = orders_1_and_2[:,:,n_order_1:n_order_1+n_order_2,:]
+        order_1 = orders_1_and_2[:,0:n_order_1,...]
+        order_2 = orders_1_and_2[:,n_order_1:n_order_1+n_order_2,...]
+
+        # Permute the axes since reference has (batch index, integral power, j,
+        # ell) while the computed transform has (batch index, j, ell, integral
+        # power).
+        order_1 = order_1.permute(0, 3, 1, 2)
+        order_2 = order_2.permute(0, 3, 1, 2)
 
         order_1 = order_1.reshape((batch_size, -1))
         order_2 = order_2.reshape((batch_size, -1))
@@ -228,7 +234,7 @@ def test_solid_harmonic_scattering():
             sigma_wavelet = sigma_0_wavelet*2**j
             k = sigma_wavelet / np.sqrt(sigma_wavelet**2 + sigma_gaussian**2)
             for l in range(1, L+1):
-                err = torch.abs(s[0, 0, j, l] - k ** l).sum()/(1e-6+s[0, 0, j, l].abs().sum())
+                err = torch.abs(s[0, j, l, 0] - k ** l).sum()/(1e-6+s[0, j, l, 0].abs().sum())
                 assert err<1e-4
 
 def test_larger_scales():

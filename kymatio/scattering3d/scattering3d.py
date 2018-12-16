@@ -118,8 +118,7 @@ class Scattering3D(object):
 
         """
         convolved_input = self._low_pass_filter(input_array, self.J)
-        return subsample(convolved_input, self.J).view(
-            input_array.size(0), -1, 1)
+        return subsample(convolved_input, self.J)
 
     def _compute_local_scattering_coefs(self, input_array, points, j):
         """
@@ -354,16 +353,15 @@ class Scattering3D(object):
                         conv_modulus, l, j_2)
                     s_order_2_l.append(compute_scattering_coefs(
                         conv_modulus_2, method, method_args, j_2))
-            s_order_1.append(torch.cat(s_order_1_l, -1))
+            s_order_1.append(torch.stack([arr[..., 0] for arr in s_order_1_l], 1))
             if max_order == 2:
-                s_order_2.append(torch.cat(s_order_2_l, -1))
-
+                s_order_2.append(torch.stack([arr[..., 0] for arr in s_order_2_l], 1))
         if max_order == 2:
             return torch.cat(
-                [torch.stack(s_order_1, dim=-1),
-                torch.stack(s_order_2, dim=-1)], -2)
+                [torch.stack(s_order_1, dim=2),
+                torch.stack(s_order_2, dim=2)], 1)
         else:
-            return torch.stack(s_order_1, dim=-1)
+            return torch.stack(s_order_1, dim=2)
 
 
     __call__ = forward
