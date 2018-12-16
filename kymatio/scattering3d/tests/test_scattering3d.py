@@ -166,9 +166,10 @@ def test_against_standard_computations():
             x = x.cuda()
             scattering.cuda()
         order_0 = compute_integrals(x, integral_powers)
-        orders_1_and_2 = scattering(
-            x, max_order=2, method='integral',
-            integral_powers=integral_powers)
+        scattering.max_order = 2
+        scattering.method = 'integral'
+        scattering.integral_powers = integral_powers
+        orders_1_and_2 = scattering(x)
 
         # WARNING: These are hard-coded values for the setting J = 2.
         n_order_1 = 3
@@ -220,6 +221,10 @@ def test_solid_harmonic_scattering():
     x = generate_weighted_sum_of_gaussians(grid, centers, weights, sigma_gaussian)
     scattering = Scattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet)
 
+    scattering.max_order = 1
+    scattering.method = 'integral'
+    scattering.integral_powers = [1]
+
     for device in devices:
         if device == 'cpu':
             x = x.cpu()
@@ -228,7 +233,7 @@ def test_solid_harmonic_scattering():
             x = x.cuda()
             scattering.cuda()
 
-        s = scattering(x, max_order=1, method='integral', integral_powers=[1])
+        s = scattering(x)
 
         for j in range(J+1):
             sigma_wavelet = sigma_0_wavelet*2**j
@@ -249,7 +254,8 @@ def test_larger_scales():
         if not 'cpu' in devices:
             x = x.cuda()
             scattering.cuda()
-        Sx = scattering(x, method='integral')
+        scattering.method = 'integral'
+        Sx = scattering(x)
 
 def test_scattering_methods():
     shape = (32, 32, 32)
@@ -264,14 +270,19 @@ def test_scattering_methods():
         x = x.cuda()
         scattering.cuda()
 
-    Sx = scattering(x, method='standard')
-    Sx = scattering(x, method='standard', rotation_covariant=False)
+    scattering.method = 'standard'
+    Sx = scattering(x)
+    scattering.rotation_covariant = False
+    Sx = scattering(x)
 
     points = torch.zeros(1, 1, 3)
     points[0,0,:] = torch.tensor(shape)/2
 
-    Sx = scattering(x, method='local', points=points)
-    Sx = scattering(x, method='local', points=points, rotation_covariant=False)
+    scattering.method = 'local'
+    scattering.points = points
+    Sx = scattering(x)
+    scattering.rotation_covariant = False
+    Sx = scattering(x)
 
 def test_cpu_cuda():
     shape = (32, 32, 32)
