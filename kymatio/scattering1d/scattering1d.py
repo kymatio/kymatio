@@ -89,7 +89,7 @@ class Scattering1D(object):
         The length of the input signals.
     Q : int >= 1
         The number of first-order wavelets per octave (second-order wavelets
-        are fixed to one wavelet per octave).
+        are fixed to one wavelet per octave). Defaults to `1`.
     max_order : int, optional
         The maximum order of scattering coefficients to compute. Must be either
         `1` or `2`. Defaults to `2`.
@@ -159,7 +159,7 @@ class Scattering1D(object):
         or collected into a dictionary. For more details, see the
         documentation for `forward()`.
     """
-    def __init__(self, J, shape, Q, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, max_order=2, average=True,
                  oversampling=0, vectorize=True):
         super(Scattering1D, self).__init__()
         # Store the parameters
