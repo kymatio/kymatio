@@ -348,7 +348,7 @@ class Scattering1D(object):
                     'Options average=False and vectorize=True are ' +
                     'mutually incompatible. Please set vectorize to False.')
             size_scattering = self.precompute_size_scattering(
-                self.J, self.Q, max_order=self.max_order, detail=False)
+                self.J, self.Q, max_order=self.max_order, detail=True)
         else:
             size_scattering = 0
         S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
@@ -420,39 +420,42 @@ class Scattering1D(object):
 
         meta = {}
 
-        meta['order'] = []
-        meta['xi'] = []
-        meta['sigma'] = []
-        meta['j'] = []
-        meta['n'] = []
-        meta['key'] = []
+        meta['order'] = [[], [], []]
+        meta['xi'] = [[], [], []]
+        meta['sigma'] = [[], [], []]
+        meta['j'] = [[], [], []]
+        meta['n'] = [[], [], []]
+        meta['key'] = [[], [], []]
 
-        meta['order'].append(0)
-        meta['xi'].append(())
-        meta['sigma'].append(())
-        meta['j'].append(())
-        meta['n'].append(())
-        meta['key'].append(())
+        meta['order'][0].append(0)
+        meta['xi'][0].append(())
+        meta['sigma'][0].append(())
+        meta['j'][0].append(())
+        meta['n'][0].append(())
+        meta['key'][0].append(())
 
         for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
-            meta['order'].append(1)
-            meta['xi'].append((xi1,))
-            meta['sigma'].append((sigma1,))
-            meta['j'].append((j1,))
-            meta['n'].append((n1,))
-            meta['key'].append((n1,))
+            meta['order'][1].append(1)
+            meta['xi'][1].append((xi1,))
+            meta['sigma'][1].append((sigma1,))
+            meta['j'][1].append((j1,))
+            meta['n'][1].append((n1,))
+            meta['key'][1].append((n1,))
 
             if max_order < 2:
                 continue
 
             for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
                 if j2 > j1:
-                    meta['order'].append(2)
-                    meta['xi'].append((xi1, xi2))
-                    meta['sigma'].append((sigma1, sigma2))
-                    meta['j'].append((j1, j2))
-                    meta['n'].append((n1, n2))
-                    meta['key'].append((n1, n2))
+                    meta['order'][2].append(2)
+                    meta['xi'][2].append((xi1, xi2))
+                    meta['sigma'][2].append((sigma1, sigma2))
+                    meta['j'][2].append((j1, j2))
+                    meta['n'][2].append((n1, n2))
+                    meta['key'][2].append((n1, n2))
+
+        for field, value in meta.items():
+            meta[field] = value[0] + value[1] + value[2]
 
         pad_fields = ['xi', 'sigma', 'j', 'n']
         pad_len = max_order
@@ -582,7 +585,7 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
 
 def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
-               max_order=2, average=True, size_scattering=0, vectorize=False):
+               max_order=2, average=True, size_scattering=(0, 0, 0), vectorize=False):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -627,9 +630,9 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         Whether to compute the 2nd order or not. Defaults to `False`.
     average_U1 : boolean, optional
         whether to average the first order vector. Defaults to `True`
-    size_scattering : dictionary or int, optional
-        contains the number of channels of the scattering,
-        precomputed for speed-up. Defaults to `0`
+    size_scattering : tuple
+        Contains the number of channels of the scattering, precomputed for
+        speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
 
@@ -639,7 +642,7 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         batch_size = x.shape[0]
         kJ = max(J - oversampling, 0)
         temporal_size = ind_end[kJ] - ind_start[kJ]
-        S = x.new(batch_size, size_scattering, temporal_size).fill_(0.)
+        S = x.new(batch_size, sum(size_scattering), temporal_size).fill_(0.)
     else:
         S = {}
 
@@ -647,8 +650,11 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     U0 = pad(x, pad_left=pad_left, pad_right=pad_right, to_complex=True)
     # compute the Fourier transform
     U0_hat = fft1d_c2c(U0)
-    # initialize the cursor
-    cc = 0  # current coordinate
+    if vectorize:
+        # initialize the cursor
+        cc = [0] + list(size_scattering[:-1])  # current coordinate
+        cc[1] = cc[0] + cc[1]
+        cc[2] = cc[1] + cc[2]
     # Get S0
     k0 = max(J - oversampling, 0)
     if average:
@@ -658,8 +664,8 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
     else:
         S0_J = x
     if vectorize:
-        S[:, cc, :] = S0_J.squeeze(dim=1)
-        cc += 1
+        S[:, cc[0], :] = S0_J.squeeze(dim=1)
+        cc[0] += 1
     else:
         S[()] = S0_J
     # First order:
@@ -683,8 +689,8 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
             # just take the real value and unpad
             S1_J = unpad(real(U1), ind_start[k1], ind_end[k1])
         if vectorize:
-            S[:, cc, :] = S1_J.squeeze(dim=1)
-            cc += 1
+            S[:, cc[1], :] = S1_J.squeeze(dim=1)
+            cc[1] += 1
         else:
             S[(n1,)] = S1_J
         if max_order == 2:
@@ -713,8 +719,9 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
                         S2_J = unpad(
                             real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
                     if vectorize:
-                        S[:, cc, :] = S2_J.squeeze(dim=1)
-                        cc += 1
+                        S[:, cc[2], :] = S2_J.squeeze(dim=1)
+                        cc[2] += 1
                     else:
                         S[n1, n2] = S2_J
+
     return S
