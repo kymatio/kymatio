@@ -1,8 +1,11 @@
 language: python
 python:
-  # We don't actually use the Travis Python, but this keeps it organized.
-  - "3.5"
+  # We don't actually use the Travis Python, so just put 3.6.
   - "3.6"
+env:
+  - PYTHON_VERSION=3.5
+  - PYTHON_VERSION=3.6
+  - PYTHON_VERSION=3.7
 install:
   - sudo apt-get update
   # We do this conditionally because it saves us some downloading if the
@@ -21,7 +24,7 @@ install:
   - conda info -a
 
   # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy pytest
+  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy pytest
   - source activate test-environment
   - conda install -c pytorch pytorch-cpu
   - pip install -r requirements.txt
