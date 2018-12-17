@@ -292,6 +292,11 @@ def test_batch_shape_agnostic():
     assert "at least one axis" in ve.value.args[0]
 
     x = torch.zeros(shape)
+
+    if force_gpu:
+        x = x.cuda()
+        S.cuda()
+
     Sx = S(x)
 
     assert Sx.dim() == 2
@@ -303,6 +308,9 @@ def test_batch_shape_agnostic():
 
     for test_shape in test_shapes:
         x = torch.zeros(test_shape)
+
+        if force_gpu:
+            x = x.cuda()
 
         S.vectorize = True
         Sx = S(x)

@@ -234,6 +234,11 @@ def test_batch_shape_agnostic():
     assert "at least two" in ve.value.args[0]
 
     x = torch.zeros(shape)
+
+    if backend.NAME == 'skcuda':
+        x = x.cuda()
+        S.cuda()
+
     Sx = S(x)
 
     assert len(Sx.shape) == 3
@@ -246,6 +251,9 @@ def test_batch_shape_agnostic():
 
     for test_shape in test_shapes:
         x = torch.zeros(test_shape)
+
+        if backend.NAME == 'skcuda':
+            x = x.cuda()
 
         Sx = S(x)
 
