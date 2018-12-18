@@ -14,10 +14,6 @@ Use Kymatio if you need a library that:
 * runs seamlessly on CPU and GPU hardware.
 
 
-## What makes Kymatio different?
-
-Kymatio stands out with respect to these other packages thanks to three assets: flexibility, portability, and scalability.
-
 ### Flexibility
 
 The Kymatio organization associates the developers of several pre-existing different packages for wavelet scattering, including `ScatNet`, `scattering.m`, `PyScatWave`, `WaveletScattering.jl`, and `PyScatHarm`.
@@ -113,7 +109,7 @@ pip install -r requirements_optional.txt
 cd doc; make clean; make html
 ```
 
-## Why the name, Kymatio?
+## Kymatio
 
 Kyma (*κύμα*) means *wave* in Greek. By the same token, Kymatio (*κυμάτιο*) means *wavelet*.
 
