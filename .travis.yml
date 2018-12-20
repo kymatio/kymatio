@@ -23,8 +23,7 @@ install:
   # Useful for debugging any issues with conda
   - conda info -a
 
-  # Replace dep1 dep2 ... with your dependencies
-  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy pytest
+  - conda create -q -n test-environment python=$PYTHON_VERSION numpy scipy pytest pytest-cov
   - source activate test-environment
   - conda install -c pytorch pytorch-cpu
   - pip install -r requirements.txt
@@ -32,8 +31,7 @@ install:
 
 script:
   - pytest
+  - pytest-cov
 
-  
-
-
-
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -c -F $GEOMSTATS_BACKEND
