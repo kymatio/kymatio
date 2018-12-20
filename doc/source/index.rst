@@ -34,7 +34,8 @@ skcuda.
 Use kymatio if you need a library that:
 
 * integrates wavelet scattering in a deep learning architecture,
-* supports 1-D, 2-D, and 3-D wavelets, and
+* supports 1-D, 2-D, and 3-D scattering transforms
+* differentiable transforms for applications in generative modeling, reconstruction and more!
 * runs seamlessly on CPU and GPU hardware.
 
 A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
