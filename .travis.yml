@@ -34,4 +34,4 @@ script:
   - pytest-cov
 
 after_success:
-  - bash <(curl -s https://codecov.io/bash) -c -F $GEOMSTATS_BACKEND
+  - bash <(curl -s https://codecov.io/bash)
