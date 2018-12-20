@@ -63,7 +63,7 @@ Linux and macOS are the two operating systems that are officially supported by K
 ### GPU acceleration
 
 
-To run Kymatio on a graphics processing unit (GPU), you should install the CUDA library and install the scikit-cuda dependency by running the following pip command:
+To run Kymatio on a graphics processing unit (GPU), you can either use the `pytorch`-style `.cuda` method to move your object to GPU. For extra speed, install the CUDA library and install the `scikit-cuda` dependency by running the following pip command:
 
 ```
 pip install scikit-cuda cupy
