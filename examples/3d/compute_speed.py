@@ -97,8 +97,10 @@ for device in devices:
     print(fmt_str.format(backend.NAME, device.upper()))
 
     if device == 'gpu':
+        scattering.cuda()
         x = x.cuda()
     else:
+        scattering.cpu()
         x = x.cpu()
 
     scattering.method = 'integral'
