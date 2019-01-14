@@ -15,9 +15,16 @@ In a shell, please run::
 From source
 ===========
 
-To install the latest version from source, run::
+To install from source, first install `PyTorch <https://pytorch.org/>`_. This is most easily achieved inside the Anaconda enviroment by running::
+
+    conda install pytorch torchvision -c pytorch
+
+We then obtain the latest version of Kymatio::
 
     git clone https://github.com/kymatio/kymatio
+
+Finally, the package is installed by running::
+
     cd kymatio
     pip install -r requirements.txt
     python setup.py install

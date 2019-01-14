@@ -176,24 +176,7 @@ default setting in the configuration file. Alternatively, the backend may be
 specified on a per-dimension basis through the ``KYMATIO_BACKEND_1D``,
 ``KYMATIO_BACKEND_2D``, and ``KYMATIO_BACKEND_3D`` variables.
 
-1-D backend
------------
-
-Currently, two backends exist for the 1D scattering transform:
-
-- ``torch``: A PyTorch-only implementation which is differentiable with respect
-  to its inputs. However, it relies on general-purpose CUDA kernels for GPU
-  computation which reduces performance.
-- ``skcuda``: An implementation using custom CUDA kernels (through ``cupy``) and
-  ``scikit-cuda``. This implementation only runs on the GPU (that is, you must
-  call :meth:`cuda` prior to applying it) and is currently only slightly faster
-  than the default ``torch`` backend. Work to further optimize this backend is
-  currently underway.
-
-2-D backend
------------
-
-Currently, two backends exist for the 2D scattering transform:
+Currently, two backends exist:
 
 - ``torch``: A PyTorch-only implementation which is differentiable with respect
   to its inputs. However, it relies on general-purpose CUDA kernels for GPU
@@ -202,26 +185,21 @@ Currently, two backends exist for the 2D scattering transform:
   ``scikit-cuda``. This implementation only runs on the GPU (that is, you must
   call :meth:`cuda` prior to applying it). Since it uses kernels optimized for
   the various steps of the scattering transform, it achieves better performance
-  compared to the default ``torch`` backend (see benchmarks below).
+  compared to the default ``torch`` backend (see benchmarks below). This
+  improvement is currently small in 1D and 3D, but work is underway to further
+  optimize this backend.
 
-3-D backend
------------
+Benchmarks
+==========
 
-Currently, one backends exists for the 3D scattering transform:
-
-- ``torch``: A PyTorch-only implementation which is differentiable with respect
-  to its inputs. However, it relies on general-purpose CUDA kernels for GPU
-  computation which reduces performance.
-
-Benchmark with previous versions
-================================
-
-1-D backend
+1D backend
 -----------
 
 We compared our implementation with that of the ScatNet MATLAB package
 :cite:`anden2014scatnet` with similar settings. The following table shows the
-average computation time for a batch of size :math:`64 \times 1 \times 65536`:
+average computation time for a batch of size $64 \times 65536$. This
+corresponds to $64$ signals containing $65536$, or a total of about
+$95$ seconds of audio sampled at $44.1~\mathrm{kHz}$.
 
 ==============================================    ==========================
 Name                                              Average time per batch (s)
@@ -235,16 +213,17 @@ Kymatio (``skcuda`` backend, V100 GPU)            0.11
 ==============================================    ==========================
 
 The CPU tests were performed on a 24-core machine. Further optimization of both
-the torch and skcuda backends is currently underway, so we expect these numbers
-to improve in the near future.
+the ``torch`` and ``skcuda`` backends is currently underway, so we expect these
+numbers to improve in the near future.
 
-2-D backend
+2D backend
 -----------
 
 We compared our implementation the ScatNetLight MATLAB package
 :cite:`Oyallon_2015_CVPR` and a previous PyTorch implementation, *PyScatWave*
 :cite:`8413168`. The following table shows the average computation time for a
-batch of size :math:`128 \times 3 \times 256 \times 256`:
+batch of size $128 \times 3 \times 256 \times 256$. This corresponds to
+$128$ three-channel (e.g., RGB) images of size $256 \times 256$.
 
 ==============================================    ==========================
 Name                                              Average time per batch (s)
@@ -259,10 +238,32 @@ Kymatio (``skcuda`` backend, 1080Ti GPU)          0.5
 
 The CPU tests were performed on a 48-core machine.
 
-
-3-D backend
+3D backend
 -----------
 
+We compared our implementation for different backends with a batch size of $8 \times 128 \times 128 \times 128$.
+This means that eight different volumes of size $128 \times 128 \times 128$ were processed at the same time. The resulting timings are:
+
+==============================================    ==========================
+Name                                              Average time per batch (s)
+==============================================    ==========================
+Kymatio (``torch`` backend, CPU)                  45
+Kymatio (``torch`` backend, Quadro M4000 GPU)     7.5
+Kymatio (``torch`` backend, V100 GPU)             0.88
+Kymatio (``skcuda`` backend, Quadro M4000 GPU)    6.4
+Kymatio (``skcuda`` backend, V100 GPU)            0.74
+==============================================    ==========================
+
+The CPU tests were performed on a 24-core machine. Further optimization of both
+the ``torch`` and ``skcuda`` backends is currently underway, so we expect these
+numbers to improve in the near future.
+
+How to cite
+===========
+
+If you use this package, please cite the following paper:
+
+Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J., Belilovsky E., Bruna J., Lostanlen V., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M (2019). Kymatio: Scattering Transforms in Python. arXiv preprint arXiv:1812.11214. `[paper] <https://arxiv.org/abs/1812.11214>`_
 
 .. rubric:: References
 
