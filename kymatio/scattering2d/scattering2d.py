@@ -34,9 +34,9 @@ class Scattering2D(object):
     Example
     -------
         # 1) Define a Scattering object as:
-        s = Scattering2D(J, M, N)
+        s = Scattering2D(J, shape=(M, N))
         #    where (M, N) are the image sizes and 2**J the scale of the scattering
-        # 2) Forward on an input Variable x of shape B x 1 x M x N,
+        # 2) Forward on an input Tensor x of shape B x M x N,
         #     where B is the batch size.
         result_s = s(x)
 
