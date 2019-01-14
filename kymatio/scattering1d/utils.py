@@ -2,19 +2,6 @@ import numpy as np
 import torch
 
 
-
-def ceiling_strict(s):
-    """
-    String ceiling of an input.
-    """
-    c = np.ceil(s)
-    if c == s:
-        return int(s + 1)
-    else:
-        return int(c)
-
-
-
 def compute_border_indices(J, i0, i1):
     """
     Computes border indices at all scales which correspond to the original
