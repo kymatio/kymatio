@@ -5,6 +5,7 @@ from kymatio.scattering1d.filter_bank import adaptive_choice_P
 from kymatio.scattering1d.filter_bank import periodize_filter_fourier
 from kymatio.scattering1d.filter_bank import get_normalizing_factor
 from kymatio.scattering1d.filter_bank import compute_sigma_psi
+from kymatio.scattering1d.filter_bank import compute_temporal_support
 from kymatio.scattering1d.filter_bank import compute_xi_max
 from kymatio.scattering1d.filter_bank import morlet_1d
 from kymatio.scattering1d.filter_bank import calibrate_scattering_filters
@@ -12,6 +13,7 @@ from kymatio.scattering1d.filter_bank import get_max_dyadic_subsampling
 from kymatio.scattering1d.filter_bank import gauss_1d
 import numpy as np
 import math
+import pytest
 
 
 def test_adaptive_choice_P():
@@ -72,6 +74,14 @@ def test_normalizing_factor(random_state=42):
             elif norm == 'l2':
                 assert np.isclose(np.sqrt(np.sum(np.abs(x_norm)**2)) - 1., 0.)
 
+    with pytest.raises(ValueError) as ve:
+        get_normalizing_factor(np.zeros(4))
+    assert "Zero division error is very likely" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        get_normalizing_factor(np.ones(4), normalize='l0')
+    assert "normalizations only include" in ve.value.args[0]
+
 
 def test_morlet_1d():
     """
@@ -105,6 +115,18 @@ def test_morlet_1d():
                     xi_emp = float(k_max) / float(N)
                     assert np.abs(xi_emp - xi) / xi < 1e-2
 
+    Q = 1
+    xi = compute_xi_max(Q)
+    sigma = compute_sigma_psi(xi, Q)
+
+    with pytest.raises(ValueError) as ve:
+        morlet_1d(size_signal[0], xi, sigma, P_max=5.1)
+    assert "should be an int" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        morlet_1d(size_signal[0], xi, sigma, P_max=-5)
+    assert "should be non-negative" in ve.value.args[0]
+
 
 def test_gauss_1d():
     """
@@ -128,6 +150,17 @@ def test_gauss_1d():
             assert np.min(phi) > - tol
             assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
 
+    Q = 1
+    xi = compute_xi_max(Q)
+    sigma = compute_sigma_psi(xi, Q)
+
+    with pytest.raises(ValueError) as ve:
+        gauss_1d(N, xi, sigma, P_max=5.1)
+    assert "should be an int" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        gauss_1d(N, xi, sigma, P_max=-5)
+    assert "should be non-negative" in ve.value.args[0]
 
 def test_calibrate_scattering_filters():
     """
@@ -153,6 +186,10 @@ def test_calibrate_scattering_filters():
                 assert sig >= sigma_low
             for sig in sigma2:
                 assert sig >= sigma_low
+
+    with pytest.raises(ValueError) as ve:
+        calibrate_scattering_filters(J_range[0], 0.9)
+    assert "should always be >= 1" in ve.value.args[0]
 
 
 def test_compute_xi_max():
@@ -189,3 +226,12 @@ def test_get_max_dyadic_subsampling():
                 # find the integer k such that
                 k = N // 2**(j + 1)
                 assert np.abs(psi_f[k]) / np.max(np.abs(psi_f)) < 1e-2
+
+
+def test_compute_temporal_support():
+    # Define constant averaging filter. This will be "too long" to avoid
+    # border effects.
+    h_f = np.fft.fft(np.ones((1, 4)), axis=1)
+    with pytest.warns(UserWarning) as record:
+        compute_temporal_support(h_f)
+    assert "too small to avoid border effects" in record[0].message.args[0]
