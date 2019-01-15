@@ -114,6 +114,7 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         raise ValueError('P_max should be non-negative, got {}'.format(P_max))
     # Find the adequate value of P
     P = min(adaptive_choice_P(sigma, eps=eps), P_max)
+    assert P >= 1
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
     if P == 1:
@@ -122,8 +123,6 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         freqs_low = np.fft.fftfreq(N)
     elif P > 1:
         freqs_low = freqs
-    else:
-        raise ValueError('P should be > 0, got ', P)
     # define the gabor at freq xi and the low-pass, both of width sigma
     gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
@@ -202,13 +201,12 @@ def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
     if P_max < 1:
         raise ValueError('P_max should be non-negative, got {}'.format(P_max))
     P = min(adaptive_choice_P(sigma, eps=eps), P_max)
+    assert P >= 1
     # switch cases
     if P == 1:
         freqs_low = np.fft.fftfreq(N)
     elif P > 1:
         freqs_low = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
-    else:
-        raise ValueError('P should be an integer > 0, got {}'.format(P))
     # define the low pass
     g_f = np.exp(-freqs_low**2 / (2 * sigma**2))
     # periodize it

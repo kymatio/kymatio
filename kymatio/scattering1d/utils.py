@@ -55,8 +55,6 @@ def cast_psi(Psi, _type):
         for k in filt.keys():
             if torch.is_tensor(filt[k]):
                 filt[k] = filt[k].type(_type).contiguous().requires_grad_(False)
-            else:
-                pass  # for the float entries
 
 
 def cast_phi(Phi, _type):
@@ -78,8 +76,6 @@ def cast_phi(Phi, _type):
     for k in Phi.keys():
         if torch.is_tensor(Phi[k]):
             Phi[k] = Phi[k].type(_type).contiguous().requires_grad_(False)
-        else:
-            pass
 
 
 def compute_padding(J_pad, T):
