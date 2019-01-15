@@ -83,25 +83,27 @@ def test_morlet_1d():
     """
     size_signal = [2**13]
     Q_range = np.arange(1, 20, dtype=int)
+    P_range = [1, 5]
     for N in size_signal:
         for Q in Q_range:
             xi_max = compute_xi_max(Q)
             xi_range = xi_max / np.power(2, np.arange(7))
             for xi in xi_range:
-                sigma = compute_sigma_psi(xi, Q)
-                # get the morlet for these parameters
-                psi_f = morlet_1d(N, xi, sigma, normalize='l2')
-                # make sure that it has zero mean
-                assert np.isclose(psi_f[0], 0.)
-                # make sure that it has a fast decay in time
-                psi = np.fft.ifft(psi_f)
-                psi_abs = np.abs(psi)
-                assert np.min(psi_abs) / np.max(psi_abs) < 1e-4
-                # Check that the maximal frequency is relatively close to xi,
-                # up to 1 percent
-                k_max = np.argmax(np.abs(psi_f))
-                xi_emp = float(k_max) / float(N)
-                assert np.abs(xi_emp - xi) / xi < 1e-2
+                for P in P_range:
+                    sigma = compute_sigma_psi(xi, Q)
+                    # get the morlet for these parameters
+                    psi_f = morlet_1d(N, xi, sigma, normalize='l2', P_max=P)
+                    # make sure that it has zero mean
+                    assert np.isclose(psi_f[0], 0.)
+                    # make sure that it has a fast decay in time
+                    psi = np.fft.ifft(psi_f)
+                    psi_abs = np.abs(psi)
+                    assert np.min(psi_abs) / np.max(psi_abs) < 1e-3
+                    # Check that the maximal frequency is relatively close to xi,
+                    # up to 1 percent
+                    k_max = np.argmax(np.abs(psi_f))
+                    xi_emp = float(k_max) / float(N)
+                    assert np.abs(xi_emp - xi) / xi < 1e-2
 
 
 def test_gauss_1d():
@@ -112,17 +114,19 @@ def test_gauss_1d():
     """
     N = 2**13
     J = 7
+    P_range = [1, 5]
     sigma0 = 0.1
     tol = 1e-7
     for j in range(1, J + 1):
-        sigma_low = sigma0 / math.pow(2, j)
-        g_f = gauss_1d(N, sigma_low)
-        # check the symmetry of g_f
-        assert np.max(np.abs(g_f[1:N // 2] - g_f[N // 2 + 1:][::-1])) < tol
-        # make sure that it has a fast decay in time
-        phi = np.fft.ifft(g_f)
-        assert np.min(phi) > - tol
-        assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
+        for P in P_range:
+            sigma_low = sigma0 / math.pow(2, j)
+            g_f = gauss_1d(N, sigma_low, P_max=P)
+            # check the symmetry of g_f
+            assert np.max(np.abs(g_f[1:N // 2] - g_f[N // 2 + 1:][::-1])) < tol
+            # make sure that it has a fast decay in time
+            phi = np.fft.ifft(g_f)
+            assert np.min(phi) > - tol
+            assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
 
 
 def test_calibrate_scattering_filters():
