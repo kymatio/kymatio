@@ -26,6 +26,8 @@ def test_simple_scatterings(random_state=42):
     scattering = Scattering1D(J, T, Q)
     if force_gpu:
         scattering = scattering.cuda()
+    else:
+        scattering.cpu()
     # zero signal
     x0 = torch.zeros(128, T)
     if force_gpu:
