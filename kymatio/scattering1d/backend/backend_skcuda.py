@@ -151,10 +151,10 @@ class SubsampleFourier(object):
         if not input.is_cuda and self.backend == 'skcuda':
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
-        out = input.new(input.size(0), input.size(1), input.size(2) // k, 2)
-
         if not is_complex(input):
             raise (TypeError('The input and outputs should be complex'))
+
+        out = input.new(input.size(0), input.size(1), input.size(2) // k, 2)
 
         input = input.contiguous()
 
