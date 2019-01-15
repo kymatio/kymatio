@@ -202,24 +202,27 @@ def test_coordinates(random_state=42):
         scattering.cuda()
         x = x.cuda()
 
-    scattering.vectorize = False
-    s_dico = scattering.forward(x)
-    s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-    scattering.vectorize = True
-    s_vec = scattering.forward(x)
+    for max_order in [1, 2]:
+        scattering.max_order = max_order
 
-    if force_gpu:
-        s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
-        s_vec = s_vec.cpu()
+        scattering.vectorize = False
+        s_dico = scattering.forward(x)
+        s_dico = {k: s_dico[k].data for k in s_dico.keys()}
+        scattering.vectorize = True
+        s_vec = scattering.forward(x)
 
-    meta = scattering.meta()
+        if force_gpu:
+            s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
+            s_vec = s_vec.cpu()
 
-    assert len(s_dico) == s_vec.shape[1]
+        meta = scattering.meta()
 
-    for cc in range(s_vec.shape[1]):
-        k = meta['key'][cc]
-        diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
-        assert torch.max(torch.abs(diff)) < 1e-7
+        assert len(s_dico) == s_vec.shape[1]
+
+        for cc in range(s_vec.shape[1]):
+            k = meta['key'][cc]
+            diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
+            assert torch.max(torch.abs(diff)) < 1e-7
 
 
 def test_precompute_size_scattering(random_state=42):
