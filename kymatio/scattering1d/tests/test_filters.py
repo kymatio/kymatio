@@ -177,14 +177,11 @@ def test_get_max_dyadic_subsampling():
         for xi in xi_range:
             sigma = compute_sigma_psi(xi, Q)
             j = get_max_dyadic_subsampling(xi, sigma)
-            if j > 0:  # if there is subsampling
+            # Check for subsampling. If there is no subsampling, the filters
+            # cannot be aliased, so no need to check them.
+            if j > 0:
                 # compute the corresponding Morlet
                 psi_f = morlet_1d(N, xi, sigma)
                 # find the integer k such that
                 k = N // 2**(j + 1)
                 assert np.abs(psi_f[k]) / np.max(np.abs(psi_f)) < 1e-2
-            else:
-                # pass this case: we have detected that there cannot
-                # be any subsampling, and we assume that the filters are not
-                # aliased already
-                pass
