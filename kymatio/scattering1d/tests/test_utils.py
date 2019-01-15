@@ -1,6 +1,6 @@
 import torch
 from kymatio.scattering1d.backend import pad_1d, modulus_complex, subsample_fourier
-from kymatio.scattering1d.utils import compute_border_indices
+from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 import numpy as np
 import pytest
 import kymatio.scattering1d.backend as backend
@@ -151,3 +151,19 @@ def test_border_indices(random_state=42):
             assert np.min(x_sub[:ind_start[j]]) > 0.
         if ind_end[j] < x_sub.shape[-1]:
             assert np.min(x_sub[ind_end[j]:]) > 0.
+
+def test_compute_padding():
+    """
+    Test the compute_padding function
+    """
+
+    pad_left, pad_right = compute_padding(5, 16)
+    assert pad_left == 8 and pad_right == 8
+
+    with pytest.raises(ValueError) as ve:
+        _, _ = compute_padding(3, 16)
+    assert "should be larger" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _, _ = compute_padding(6, 16)
+    assert "Too large padding value" in ve.value.args[0]
