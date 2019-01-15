@@ -511,7 +511,10 @@ class Scattering1D(object):
                 if j2[n2] > j1[n1]:
                     size_order2 += 1
         if detail:
-            return size_order0, size_order1, size_order2
+            if max_order == 2:
+                return size_order0, size_order1, size_order2
+            else:
+                return size_order0, size_order1
         else:
             if max_order == 2:
                 return size_order0 + size_order1 + size_order2
@@ -654,7 +657,8 @@ def scattering(x, psi1, psi2, phi, J, pad_left=0, pad_right=0,
         # initialize the cursor
         cc = [0] + list(size_scattering[:-1])  # current coordinate
         cc[1] = cc[0] + cc[1]
-        cc[2] = cc[1] + cc[2]
+        if max_order == 2:
+            cc[2] = cc[1] + cc[2]
     # Get S0
     k0 = max(J - oversampling, 0)
     if average:
