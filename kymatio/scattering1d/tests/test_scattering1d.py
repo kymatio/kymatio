@@ -151,6 +151,26 @@ def test_computation_Ux(random_state=42):
         else:
             assert True
 
+    scattering.max_order = 2
+
+    s = scattering.forward(x)
+
+    count = 1
+    for k1, filt1 in enumerate(scattering.psi1_f):
+        assert (k1,) in s.keys()
+        count += 1
+        for k2, filt2 in enumerate(scattering.psi2_f):
+            if filt2['j'] > filt1['j']:
+                assert (k1, k2) in s.keys()
+                count += 1
+
+    assert count == len(s)
+
+    with pytest.raises(ValueError) as ve:
+        scattering.vectorize = True
+        scattering.forward(x)
+    assert "mutually incompatible" in ve.value.args[0]
+
 
 # Technical tests
 
