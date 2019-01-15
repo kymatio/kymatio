@@ -77,6 +77,22 @@ def test_modulus(random_state=42):
         x2 = x2.cpu()
     diff = x_abs2[..., 0] - torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2)
     assert torch.max(torch.abs(diff)) <= 1e-6
+
+    # If we are using a GPU-only backend, make sure it raises the proper
+    # errors for CPU tensors.
+    if force_gpu:
+        with pytest.raises(RuntimeError) as re:
+            x_bad = torch.randn((4, 2))
+            modulus_complex(x_bad)
+        assert "for cpu tensors" in re.value.args[0].lower()
+
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4)
+        if force_gpu:
+            x_bad = x_bad.cuda()
+        modulus_complex(x_bad)
+    assert "should be complex" in te.value.args[0]
+
     if backend.NAME == "skcuda":
         warnings.warn(("The skcuda backend does not pass differentiability"
             "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
@@ -120,6 +136,21 @@ def test_subsample_fourier(random_state=42):
         x_f_sub.dtype = 'complex128'
         x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
         assert np.max(np.abs(x[:, :, ::2**j] - x_sub)) < 1e-7
+
+    # If we are using a GPU-only backend, make sure it raises the proper
+    # errors for CPU tensors.
+    if force_gpu:
+        with pytest.raises(RuntimeError) as re:
+            x_bad = torch.randn((4, 2))
+            subsample_fourier(x_bad, 1)
+        assert "for cpu tensors" in re.value.args[0].lower()
+
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4)
+        if force_gpu:
+            x_bad = x_bad.cuda()
+        subsample_fourier(x_bad, 1)
+    assert "should be complex" in te.value.args[0]
 
 
 def test_border_indices(random_state=42):
