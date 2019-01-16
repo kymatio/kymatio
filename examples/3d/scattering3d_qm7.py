@@ -166,16 +166,17 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
             axes=(1, 2, 3)))
     pos, full_charges, valence_charges = get_qm7_positions_and_charges(sigma)
 
+    n_molecules = pos.size(0)
+    n_batches = np.ceil(n_molecules / batch_size).astype(int)
+
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
+
     if cuda:
         grid = grid.cuda()
         pos = pos.cuda()
         full_charges = full_charges.cuda()
         valence_charges = valence_charges.cuda()
-
-    n_molecules = pos.size(0)
-    n_batches = np.ceil(n_molecules / batch_size).astype(int)
-
-    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
+        scattering.cuda()
 
     order_0, order_1, order_2 = [], [], []
     print('Computing solid harmonic scattering coefficients of {} molecules '
