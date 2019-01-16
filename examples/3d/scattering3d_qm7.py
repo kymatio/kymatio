@@ -177,7 +177,7 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
 
     scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
 
-    order_0, order_1, order_2 = [], [], []
+    order_0, orders_1_and_2 = [], []
     print('Computing solid harmonic scattering coefficients of {} molecules '
         'of QM7 database on {}'.format(pos.size(0), 'GPU' if cuda else 'CPU'))
     print('sigma: {}, L: {}, J: {}, integral powers: {}'.format(sigma, L, J, integral_powers))
