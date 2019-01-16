@@ -39,7 +39,7 @@ setup_info = dict(
     author=('Edouard Oyallon, Eugene Belilovsky, Sergey Zagoruyko, '
             'Michael Eickenberg, Mathieu Andreux, Georgios Exarchakis, '
             'Louis Thiry, Vincent Lostanlen, Joakim Andén, '
-            'Tomás Angles, Gabriel Huang, Roberto Leonarduzzi'),
+            'Tomás Angles, Gabriel Huang, Roberto Leonarduzzi, Oussama Ennafii'),
     author_email=('edouard.oyallon@centralesupelec.fr, belilove@iro.umontreal.ca, '
                   'sergey.zagoruyko@inria.fr, michael.eickenberg@berkeley.edu, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
@@ -59,6 +59,7 @@ setup_info = dict(
                  'Natural Language :: English',
                  'Operating System :: MacOS',
                  'Operating System :: POSIX :: Linux',
+                 'Programming Language :: Python :: 3.5',
                  'Programming Language :: Python :: 3.6',
                  'Programming Language :: Python :: 3.7',
                  'Programming Language :: Python :: 3.8',
