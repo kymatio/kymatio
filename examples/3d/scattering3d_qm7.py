@@ -88,7 +88,7 @@ def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
     """
         Loads the positions and charges of the molecules of the QM7 dataset.
         QM7 is a dataset of 7165 organic molecules with up to 7 non-hydrogen
-        atoms, whose energies were computed with a quantun chemistry
+        atoms, whose energies were computed with a quantum chemistry
         computational method named Density Functional Theory.
         This dataset has been made available to train machine learning models
         to predict these energies.
