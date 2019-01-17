@@ -1,5 +1,5 @@
-# Authors: Mathieu Andreux, Joakim Andén, Edouard Oyallon
-# Scientific Ancestry: Joakim Andén, Mathieu Andreux, Vincent Lostanlen
+# Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
+# Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
 import math
 import numbers
