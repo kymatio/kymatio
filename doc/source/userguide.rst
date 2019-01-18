@@ -29,7 +29,7 @@ signals such as natural images, textures, audio recordings, biomedical signals,
 or molecular density functions.
 
 Let us consider a set of wavelets :math:`\{\psi_\lambda\}_\lambda`, such that
-ther exists some :math:`\epsilon` satisfying:
+there exists some :math:`\epsilon` satisfying:
 
 .. math:: 1-\epsilon \leq \sum_\lambda |\hat \psi_\lambda(\omega)|^2 \leq 1
 
@@ -84,6 +84,7 @@ exactly match those of ScatNet :cite:`anden2014scatnet`.
 3-D
 ---
 
+...
 
 Output size
 ===========
@@ -92,8 +93,8 @@ Output size
 ---
 
 If the input :math:`x` is a Tensor of size :math:`(B, 1, T)`, the output of the
-1D scattering transform is of size :math:`(B, P, T/2**J)`, where :math:`P` is
-the number of scattering coefficients and `2**J` is the maximum scale of the
+1D scattering transform is of size :math:`(B, P, T/2^J)`, where :math:`P` is
+the number of scattering coefficients and :math:`2^J` is the maximum scale of the
 transform. The value of :math:`P` depends on the maximum order of the scattering
 transform and the parameters :math:`Q` and :math:`J`. It is roughly proportional
 to :math:`1 + J Q + J (J-1) Q / 2`.
@@ -101,7 +102,7 @@ to :math:`1 + J Q + J (J-1) Q / 2`.
 2-D
 ---
 
-Let us assume that :math:`x` is a tensor of size :math:`(B,C,N_1,N_2)`. Then, if the
+Let us assume that :math:`x` is a tensor of size :math:`(B,C,N_1,N_2)`. Then the
 output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` angles will have
 size:
 
@@ -110,6 +111,8 @@ size:
 
 3-D
 ---
+
+...
 
 Switching from CPU to GPU
 =========================
