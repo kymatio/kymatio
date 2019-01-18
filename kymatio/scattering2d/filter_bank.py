@@ -8,7 +8,6 @@ __all__ = ['filter_bank']
 import torch
 import numpy as np
 from .utils import fft2
-from ..caching import get_cache_dir
 
 
 def filter_bank(M, N, J, L=8):
