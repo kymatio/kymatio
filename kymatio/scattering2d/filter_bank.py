@@ -46,7 +46,7 @@ def filter_bank(M, N, J, L=8):
                 (int(L-L/2-1)-theta) * np.pi / L,
                 3.0 / 4.0 * np.pi /2**j, 4.0/L, offset=offset_unpad)
             psi_signal_fourier = fft2(psi_signal)
-            for res in range(j + 1):
+            for res in range(min(j + 1, J - 1)):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
                 psi[res] = torch.FloatTensor(
