@@ -49,7 +49,7 @@ Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zar
 
 Kymatio requires:
 
-* Python (>= 3.6)
+* Python (>= 3.5)
 * PyTorch (>= 0.4)
 * SciPy (>= 0.13)
 
