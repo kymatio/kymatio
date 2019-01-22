@@ -178,7 +178,7 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
     A, B = A.contiguous(), B.contiguous()
-    if A.size()[-3:-1] != B.size()[:-1]:
+    if A.size()[-3:-1] != B.size()[-3:-1]:
         raise RuntimeError('The filters are not compatible for multiplication!')
 
     if not iscomplex(A):
