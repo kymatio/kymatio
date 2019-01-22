@@ -45,12 +45,14 @@ def filter_bank(M, N, J, L=8):
                 (int(L-L/2-1)-theta) * np.pi / L,
                 3.0 / 4.0 * np.pi /2**j, 4.0/L)
             psi_signal_fourier = fft2(psi_signal)
+            # drop the imaginary part, it is zero anyway
+            psi_signal_fourier = np.real(psi_signal_fourier)
             for res in range(min(j + 1, J - 1)):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
-                psi[res] = torch.FloatTensor(
-                    psi_signal_fourier_res.view(np.float32).reshape(
-                        psi_signal_fourier_res.shape + (2,)))
+                # add a trailing singleton dimension to mark it as non-complex
+                psi_signal_fourier_res = psi_signal_fourier_res[..., np.newaxis]
+                psi[res] = torch.FloatTensor(psi_signal_fourier_res)
                 # Normalization to avoid doing it with the FFT.
                 psi[res].div_(M*N// 2**(2*j))
             filters['psi'].append(psi)
@@ -58,12 +60,15 @@ def filter_bank(M, N, J, L=8):
     filters['phi'] = {}
     phi_signal = gabor_2d(M, N, 0.8 * 2**(J-1), 0, 0)
     phi_signal_fourier = fft2(phi_signal)
+    # drop the imaginary part, it is zero anyway
+    phi_signal_fourier = np.real(phi_signal_fourier)
     filters['phi']['j'] = J
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        filters['phi'][res] = torch.FloatTensor(
-            phi_signal_fourier_res.view(np.float32).reshape(
-                phi_signal_fourier_res.shape + (2,)))
+        # add a trailing singleton dimension to mark it as non-complex
+        phi_signal_fourier_res = phi_signal_fourier_res[..., np.newaxis]
+        filters['phi'][res] = torch.FloatTensor(phi_signal_fourier_res)
+        # Normalization to avoid doing it with the FFT.
         filters['phi'][res].div_(M*N // 2 ** (2 * J))
 
     return filters
@@ -87,7 +92,7 @@ def periodize_filter_fft(x, res):
     M = x.shape[0]
     N = x.shape[1]
 
-    crop = np.zeros((M // 2 ** res, N // 2 ** res), np.complex64)
+    crop = np.zeros((M // 2 ** res, N // 2 ** res), x.dtype)
 
     mask = np.ones(x.shape, np.float32)
     len_x = int(M * (1 - 2 ** (-res)))

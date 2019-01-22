@@ -30,6 +30,10 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
+def isreal(input):
+    return input.size(-1) == 1
+
+
 class Pad(object):
     def __init__(self, pad_size, pre_pad=False):
         """
@@ -252,9 +256,9 @@ def cdgmm(A, B, inplace=False):
         Parameters
         ----------
         A : tensor
-            input tensor with size (B, C, M, N, 2)
+            A is a complex tensor of size (B, C, M, N, 2)
         B : tensor
-            B is a complex tensor of size (M, N, 2)
+            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1)
         inplace : boolean, optional
             if set to True, all the operations are performed inplace
 
@@ -265,32 +269,34 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
     A, B = A.contiguous(), B.contiguous()
-    if A.size()[-3:] != B.size():
+    if A.size()[-3:-1] != B.size()[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication!')
 
-    if not iscomplex(A) or not iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
+    if not iscomplex(A):
+        raise TypeError('The input must be complex')
+
+    if not iscomplex(B) and not isreal(B):
+        raise TypeError('The filter must be complex or real')
 
     if B.ndimension() != 3:
-        raise RuntimeError('The filters must be simply a complex array!')
+        raise RuntimeError('The filter must be a 3-tensor')
 
     if type(A) is not type(B):
         raise RuntimeError('A and B should be same type!')
 
-    if not A.is_cuda:
-        raise RuntimeError('Use the torch backend for cpu tensors!')
-
-    C = A.new(A.size()) if not inplace else A
-    m, n = B.nelement() // 2, A.nelement() // B.nelement()
-    lda = m
-    ldc = m
-    incx = 1
-    handle = torch.cuda.current_blas_handle()
-    stream = torch.cuda.current_stream()._as_parameter_
-    cublas.cublasSetStream(handle, stream)
-    cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
-    return C
-
-
-
-
+    if isreal(B):
+        if inplace:
+            return A.mul_(B)
+        else:
+            return A * B
+    else:
+        C = A.new(A.size()) if not inplace else A
+        m, n = B.nelement() // 2, A.nelement() // B.nelement()
+        lda = m
+        ldc = m
+        incx = 1
+        handle = torch.cuda.current_blas_handle()
+        stream = torch.cuda.current_stream()._as_parameter_
+        cublas.cublasSetStream(handle, stream)
+        cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
+        return C
