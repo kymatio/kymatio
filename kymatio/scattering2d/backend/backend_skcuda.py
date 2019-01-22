@@ -281,8 +281,11 @@ def cdgmm(A, B, inplace=False):
     if B.ndimension() != 3:
         raise RuntimeError('The filter must be a 3-tensor')
 
-    if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
+    if A.dtype is not B.dtype:
+        raise RuntimeError('A and B must be of the same dtype')
+
+    if A.device != B.device:
+        raise RuntimeError('A and B must be on the same device')
 
     if isreal(B):
         if inplace:
