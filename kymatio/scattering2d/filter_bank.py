@@ -49,8 +49,8 @@ def filter_bank(M, N, J, L=8):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
                 psi[res] = torch.FloatTensor(
-                    np.stack((np.real(psi_signal_fourier_res),
-                    np.imag(psi_signal_fourier_res)), axis=2))
+                    psi_signal_fourier_res.view(np.float32).reshape(
+                        psi_signal_fourier_res.shape + (2,)))
                 # Normalization to avoid doing it with the FFT.
                 psi[res].div_(M*N// 2**(2*j))
             filters['psi'].append(psi)
@@ -61,9 +61,9 @@ def filter_bank(M, N, J, L=8):
     filters['phi']['j'] = J
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        filters['phi'][res] = torch.FloatTensor(np.stack(
-            (np.real(phi_signal_fourier_res), np.imag(phi_signal_fourier_res)),
-            axis=2))
+        filters['phi'][res] = torch.FloatTensor(
+            phi_signal_fourier_res.view(np.float32).reshape(
+                phi_signal_fourier_res.shape + (2,)))
         filters['phi'][res].div_(M*N // 2 ** (2 * J))
 
     return filters
