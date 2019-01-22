@@ -184,8 +184,9 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0):
             [xx, yy] = np.mgrid[offset + ex * M:offset + M + ex * M, offset + ey * N:offset + N + ey * N]
             arg = -(curv[0, 0] * np.multiply(xx, xx) + (curv[0, 1] + curv[1, 0]) * np.multiply(xx, yy) + curv[
                 1, 1] * np.multiply(yy, yy)) + 1.j * (xx * xi * np.cos(theta) + yy * xi * np.sin(theta))
-            gab = gab + np.exp(arg)
+            gab += np.exp(arg)
 
     norm_factor = (2 * 3.1415 * sigma * sigma / slant)
-    gab = gab / norm_factor
+    gab /= norm_factor
+
     return gab
