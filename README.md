@@ -34,7 +34,7 @@ Kymatio integrates the construction of wavelet filter banks in 1D, 2D, and 3D, a
 Running Kymatio on a graphics processing unit (GPU) rather than a multi-core conventional computer processing unit (CPU) allows for significant speedups in computing the scattering transform.
 The current speedup with respect to CPU-based MATLAB code is of the order of 10 in 1D and 3D and of the order of 100 in 2D.
 
-We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchmark-with-previous-versions) for further details.
+We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchmarks) for further details.
 
 ### How to cite
 
