@@ -34,11 +34,11 @@ class HarmonicScattering3D(object):
     rotation_covariant: bool, optional
         if set to True the first order moduli take the form:
 
-        $\sqrt{\sum_m (x \star \psi_{j,l,m})^2)}$
+        $\\sqrt{\\sum_m (x \\star \\psi_{j,l,m})^2)}$
 
         if set to False the first order moduli take the form:
 
-        $x \star \psi_{j,l,m}$
+        $x \\star \\psi_{j,l,m}$
 
         The second order moduli change analogously
         Defaut: True
