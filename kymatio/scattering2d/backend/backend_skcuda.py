@@ -248,24 +248,6 @@ def fft(input, direction='C2C', inverse=False):
 class cdgmmMul(Function):
     @staticmethod
     def forward(ctx, A, B):
-        """
-        Complex pointwise multiplication between (batched) tensor A and tensor B.
-
-        Parameters
-        ----------
-        A : tensor
-            input tensor with size (B, C, M, N, 2)
-        B : tensor
-            B is a complex tensor of size (M, N, 2)
-        inplace : boolean, optional
-            if set to True, all the operations are performed inplace
-
-        Returns
-        -------
-        C : tensor
-            output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
-        """
         A, B = A.contiguous(), B.contiguous()
         if A.size()[-3:] != B.size():
             raise RuntimeError('The filters are not compatible for multiplication!')
@@ -348,33 +330,8 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    A, B = A.contiguous(), B.contiguous()
-    if A.size()[-3:] != B.size():
-        raise RuntimeError('The filters are not compatible for multiplication!')
+    if inplace:
+        raise RuntimeError('In-place multiplication not supported by the '
+                           'skcuda backend')
 
-    if not iscomplex(A) or not iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
-
-    if B.ndimension() != 3:
-        raise RuntimeError('The filters must be simply a complex array!')
-
-    if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
-
-    if not A.is_cuda:
-        raise RuntimeError('Use the torch backend for cpu tensors!')
-
-    C = A.new(A.size()) if not inplace else A
-    m, n = B.nelement() // 2, A.nelement() // B.nelement()
-    lda = m
-    ldc = m
-    incx = 1
-    handle = torch.cuda.current_blas_handle()
-    stream = torch.cuda.current_stream()._as_parameter_
-    cublas.cublasSetStream(handle, stream)
-    cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
-    return C
-
-
-
-
+    return cdgmmMul.apply(A, B)
