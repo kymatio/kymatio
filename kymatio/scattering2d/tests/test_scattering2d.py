@@ -142,11 +142,6 @@ def test_Cublas():
                 assert (y - z).abs().max() < 1e-6
 
 def test_diff_cdgmm():
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend does not pass differentiability "
-            "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
-        return
-
     for device in devices:
         x = torch.rand(2, 3, 4, 4, 2)
         y = torch.rand(4, 4, 2)
