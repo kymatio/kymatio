@@ -4,6 +4,7 @@ import os
 import numpy as np
 import torch
 import pytest
+import warnings
 from kymatio.scattering2d import Scattering2D
 from kymatio.scattering2d import backend
 
@@ -139,6 +140,36 @@ def test_Cublas():
                 z = backend.cdgmm(x, filter)
 
                 assert (y - z).abs().max() < 1e-6
+
+def test_diff_cdgmm():
+    if backend.NAME == "skcuda":
+        warnings.warn(("The skcuda backend does not pass differentiability "
+            "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
+        return
+
+    for device in devices:
+        x = torch.rand(2, 3, 4, 4, 2)
+        y = torch.rand(4, 4, 2)
+
+        if device == 'gpu':
+            x = x.cuda()
+            y = y.cuda()
+
+        x.requires_grad_(True)
+
+        z = backend.cdgmm(x, y).sum()
+
+        z.backward()
+
+        print(backend.cdgmm)
+        print(z)
+        print(x)
+        print(x.grad)
+
+        x_grad = torch.stack((y[...,0] + y[...,1], y[...,0] - y[...,1]),
+                             dim=-1)
+
+        assert(x_grad - x.grad).abs().max() < 1e-6
 
 
 def reorder_coefficients_from_interleaved(J, L):
