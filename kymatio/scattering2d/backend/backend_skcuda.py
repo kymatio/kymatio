@@ -288,7 +288,7 @@ class cdgmmMul(Function):
         # n is the B*C
         # m is the M*N
         gradA = conjA.new(conjA.size()) # (n,m), col-major
-        gradC = grad_output # (n,m), col-major
+        gradC = grad_output.contiguous() # (n,m), col-major
         # grad_A = grad_C * conj(B)
         lda = m
         ldc = m
