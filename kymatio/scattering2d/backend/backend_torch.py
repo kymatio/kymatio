@@ -177,7 +177,6 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    A, B = A.contiguous(), B.contiguous()
     if A.size()[-3:-1] != B.size()[-3:-1]:
         raise RuntimeError('The filters are not compatible for multiplication!')
 
