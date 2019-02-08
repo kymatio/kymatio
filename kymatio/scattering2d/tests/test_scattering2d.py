@@ -143,6 +143,9 @@ def test_Cublas():
 
 def test_diff_cdgmm():
     for device in devices:
+        if device == 'cpu' and backend.NAME == 'skcuda':
+            continue
+
         x = torch.rand(2, 3, 4, 4, 2)
         y = torch.rand(4, 4, 2)
 
