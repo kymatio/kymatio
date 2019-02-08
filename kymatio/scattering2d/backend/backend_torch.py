@@ -177,17 +177,21 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    if A.size()[-3:-1] != B.size()[-3:-1]:
-        raise RuntimeError('The filters are not compatible for multiplication!')
-
     if not iscomplex(A):
-        raise TypeError('The input must be complex')
-
-    if not iscomplex(B) and not isreal(B):
-        raise TypeError('The filter must be complex or real')
+        raise TypeError('The input must be complex, indicated by a last '
+                        'dimension of size 2')
 
     if B.ndimension() != 3:
-        raise RuntimeError('The filter must be a 3-tensor')
+        raise RuntimeError('The filter must be a 3-tensor, with a last '
+                           'dimension of size 1 or 2 to indicate it is real '
+                           'or complex, respectively')
+
+    if not iscomplex(B) and not isreal(B):
+        raise TypeError('The filter must be complex or real, indicated by a '
+                        'last dimension of size 2 or 1, respectively')
+
+    if A.size()[-3:-1] != B.size()[-3:-1]:
+        raise RuntimeError('The filters are not compatible for multiplication!')
 
     if A.dtype is not B.dtype:
         raise RuntimeError('A and B must be of the same dtype')
