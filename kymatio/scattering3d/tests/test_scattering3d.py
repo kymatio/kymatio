@@ -15,16 +15,6 @@ if backend.NAME == 'torch' and torch.cuda.is_available():
     devices.append('gpu')
 if backend.NAME == 'skcuda' and torch.cuda.is_available():
     devices.append('gpu')
-
-def linfnorm(x,y):
-    return torch.max(torch.abs(x-y))
-
-def rerror(x,y):
-    nx= np.sum(np.abs(x))
-    if nx==0:
-        return np.sum(np.abs(y))
-    else:
-        return np.sum(np.abs(x-y))/nx
       
 def relative_difference(a, b):
     return np.sum(np.abs(a - b)) / max(np.sum(np.abs(a)), np.sum(np.abs(b)))
