@@ -19,6 +19,9 @@ def load_kernel(kernel_name, code, **kwargs):
 Stream = namedtuple('Stream', ['ptr'])
 
 
+def convert_filters(psi):
+
+
 def getDtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
