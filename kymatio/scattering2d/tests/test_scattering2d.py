@@ -295,8 +295,8 @@ def test_scattering2d_errors():
 
 # Check that several input size works
 def test_input_size_agnostic():
-    for N in [13,17,45,57]:
-        for J in [2,3,4]:
+    for N in [13,32,47,224]:
+        for J in [2,4]:
             scattering = Scattering2D(J, shape=(N, N))
             x = torch.zeros(3,3,N,N)
             S = scattering(x)
