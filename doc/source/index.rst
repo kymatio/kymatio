@@ -1,9 +1,13 @@
 
 .. |pic1| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 
-.. |pic2| image:: https://img.shields.io/badge/python-3.6-blue.svg
+.. |pic2| image:: https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg
 
-.. |pic3| image:: https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png
+.. |picDL| image:: https://pepy.tech/badge/kymatio
+
+.. |piccodecov| image:: https://codecov.io/gh/kymatio/kymatio/branch/master/graph/badge.svg
+
+.. |pic3| image:: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
           :width: 30px
           :target: https://github.com/kymatio/kymatio
 
@@ -21,7 +25,7 @@
 Kymatio
 *******
 
-|pic1|  |pic2|
+|pic2|  |pic1| |picDL| |piccodecov|
 
 |pic3|  |pic4|
 
