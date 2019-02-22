@@ -292,3 +292,5 @@ def test_scattering2d_errors():
     with pytest.raises(RuntimeError) as record:
         S(x)
     assert('Padded tensor must be of spatial size' in record.value.args[0])
+
+def test_input_size_agnostic():
