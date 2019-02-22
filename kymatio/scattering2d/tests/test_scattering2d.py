@@ -300,3 +300,6 @@ def test_input_size_agnostic():
             scattering = Scattering2D(J, shape=(N, N))
             x = torch.zeros(3,3,N,N)
             S = scattering(x)
+            scattering = Scattering2D(J, shape=(N, N), pre_pad=True)
+            x = torch.zeros(3,3,scattering.M_padded, scattering.N_padded)
+            S = scattering(x)
