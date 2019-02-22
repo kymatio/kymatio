@@ -47,13 +47,10 @@ class Pad(object):
         self.padding_module = ReflectionPad2d(pad_size)
 
     def __call__(self, input):
-        if(self.pre_pad):
-            output = input.new_zeros(input.size(0), input.size(1), input.size(2), input.size(3), 2)
-            output.narrow(output.ndimension()-1, 0, 1)[:] = input
-        else:
-            out_ = self.padding_module(input)
-            output = input.new_zeros(*(out_.size() + (2,)))
-            output.select(4, 0)[:] = out_
+        if(not self.pre_pad):
+            input = self.padding_module(input)
+        output = input.new_zeros(*(input.size() + (2,)))
+        output.select(4, 0)[:] = input
         return output
 
 def unpad(in_):
