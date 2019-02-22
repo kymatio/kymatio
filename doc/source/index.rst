@@ -3,7 +3,7 @@
 
 .. |pic2| image:: https://img.shields.io/badge/python-3.6-blue.svg
 
-.. |pic3| image:: https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png
+.. |pic3| image:: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
           :width: 30px
           :target: https://github.com/kymatio/kymatio
 
