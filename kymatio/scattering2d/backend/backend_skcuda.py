@@ -20,6 +20,9 @@ Stream = namedtuple('Stream', ['ptr'])
 
 
 def convert_filters(psi):
+    for k, v in psi.items():
+        if type(k) is int:
+            psi[k]=torch.FloatTensor(v)
 
 
 def getDtype(t):

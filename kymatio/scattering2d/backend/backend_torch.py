@@ -42,6 +42,11 @@ class Pad(object):
         output[...,0] = x
         return output
 
+def convert_filters(psi):
+    for k, v in psi.items():
+        if type(k) is int:
+            psi[k]=torch.FloatTensor(v)
+
 def unpad(in_):
     """
         Slices the input tensor at indices between 1::-1
