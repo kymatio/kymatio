@@ -105,7 +105,7 @@ class Scattering2D(object):
         # Create the filters
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
         self.Psi = convert_filters(filters['psi'])
-        self.Phi = [convert_filters(filters['phi'][j]) for j in range(self.J)]
+        self.Phi = convert_filters([filters['phi'][j] for j in range(self.J)])
 
     def _type(self, _type):
         for key, item in enumerate(self.Psi):

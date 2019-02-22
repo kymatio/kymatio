@@ -53,7 +53,7 @@ def filter_bank(M, N, J, L=8):
                 psi_signal_fourier_res = psi_signal_fourier_res[..., np.newaxis]
                 psi[res] = psi_signal_fourier_res
                 # Normalization to avoid doing it with the FFT.
-                psi[res].div_(M*N// 2**(2*j))
+                psi[res]/=M*N// 2**(2*j)
             filters['psi'].append(psi)
 
     filters['phi'] = {}
@@ -68,7 +68,7 @@ def filter_bank(M, N, J, L=8):
         phi_signal_fourier_res = phi_signal_fourier_res[..., np.newaxis]
         filters['phi'][res] = phi_signal_fourier_res
         # Normalization to avoid doing it with the FFT.
-        filters['phi'][res].div_(M*N // 2 ** (2 * J))
+        filters['phi'][res]/=M*N // 2 ** (2 * J)
 
     return filters
 

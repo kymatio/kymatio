@@ -2,6 +2,7 @@
 
 import torch
 from torch.nn import ReflectionPad2d
+import numpy as np
 
 NAME = 'torch'
 
@@ -42,10 +43,16 @@ class Pad(object):
         output[...,0] = x
         return output
 
-def convert_filters(psi):
-    for k, v in psi.items():
-        if type(k) is int:
-            psi[k]=torch.FloatTensor(v)
+def convert_filters(bank):
+    for c, psi in enumerate(bank):
+        if isinstance(psi, (np.ndarray, np.generic)):
+            bank[c] = torch.FloatTensor(bank[c])
+            print('oui')
+        else:
+            for k, v in psi.items():
+                if type(k) is int:
+                    bank[c][k]=torch.FloatTensor(v)
+    return bank
 
 def unpad(in_):
     """

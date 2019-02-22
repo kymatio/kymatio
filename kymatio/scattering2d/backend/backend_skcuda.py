@@ -19,10 +19,17 @@ def load_kernel(kernel_name, code, **kwargs):
 Stream = namedtuple('Stream', ['ptr'])
 
 
-def convert_filters(psi):
-    for k, v in psi.items():
-        if type(k) is int:
-            psi[k]=torch.FloatTensor(v)
+def convert_filters(bank):
+    for c, psi in enumerate(bank):
+        if isinstance(psi, (np.ndarray, np.generic)):
+            bank[c] = torch.FloatTensor(bank[c])
+            print('oui')
+        else:
+            for k, v in psi.items():
+                if type(k) is int:
+                    bank[c][k]=torch.FloatTensor(v)
+    return bank
+
 
 
 def getDtype(t):
