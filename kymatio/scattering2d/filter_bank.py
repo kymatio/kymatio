@@ -108,7 +108,7 @@ def periodize_filter_fft(x, res):
     return crop
 
 
-def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=False):
+def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0):
     """
         Computes a 2D Morlet filter.
         A Morlet filter is the sum of a Gabor filter and a low-pass filter
@@ -132,23 +132,21 @@ def morlet_2d(M, N, sigma, theta, xi, slant=0.5, offset=0, fft_shift=False):
             parameter which guides the elipsoidal shape of the morlet
         offset : int, optional
             offset by which the signal starts
-        fft_shift : boolean
-            if true, shift the signal in a numpy style
 
         Returns
         -------
         morlet_fft : ndarray
             numpy array of size (M, N)
     """
-    wv = gabor_2d(M, N, sigma, theta, xi, slant, offset, fft_shift)
-    wv_modulus = gabor_2d(M, N, sigma, theta, 0, slant, offset, fft_shift)
+    wv = gabor_2d(M, N, sigma, theta, xi, slant, offset)
+    wv_modulus = gabor_2d(M, N, sigma, theta, 0, slant, offset)
     K = np.sum(wv) / np.sum(wv_modulus)
 
     mor = wv - K * wv_modulus
     return mor
 
 
-def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
+def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0):
     """
         Computes a 2D Gabor filter.
         A Gabor filter is defined by the following formula in space:
@@ -169,8 +167,6 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
             parameter which guides the elipsoidal shape of the morlet
         offset : int, optional
             offset by which the signal starts
-        fft_shift : boolean
-            if true, shift the signal in a numpy style
 
         Returns
         -------
@@ -192,7 +188,4 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0, fft_shift=False):
 
     norm_factor = (2 * 3.1415 * sigma * sigma / slant)
     gab = gab / norm_factor
-
-    if (fft_shift):
-        gab = np.fft.fftshift(gab, axes=(0, 1))
     return gab
