@@ -42,7 +42,7 @@ We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchm
 
 If you use this package, please cite the following paper:
 
-Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J., Belilovsky E., Bruna J., Lostanlen V., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M (2019). Kymatio: Scattering Transforms in Python. arXiv preprint arXiv:1812.11214. [[paper]](https://arxiv.org/abs/1812.11214)
+Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J., Belilovsky E., Bruna J., Lostanlen V., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M. (2019). Kymatio: Scattering Transforms in Python. arXiv preprint arXiv:1812.11214. [(paper)](https://arxiv.org/abs/1812.11214)
 
 ## Installation
 
