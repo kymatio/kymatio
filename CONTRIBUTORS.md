@@ -10,5 +10,6 @@ Vincent Lostanlen
 nshervt
 Jan Schlüter
 Edouard Oyallon
+Dylan Simon
 Louis Thiry
 Sergey Zagoruyko
