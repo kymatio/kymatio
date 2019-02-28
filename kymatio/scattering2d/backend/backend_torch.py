@@ -24,13 +24,18 @@ class Pad(object):
                 if set to true, then there is no padding, one simply adds the imaginarty part.
         """
         self.pre_pad = pre_pad
-        self.padding_module = ReflectionPad2d(pad_size)
+        self.pad_size = pad_size
 
-    def __call__(self, input):
-        if(not self.pre_pad):
-            input = self.padding_module(input)
-        output = input.new_zeros(*(input.size() + (2,)))
-        output.select(4, 0)[:] = input
+        self.build()
+
+    def build(self):
+        self.padding_module = ReflectionPad2d(self.pad_size)
+
+    def __call__(self, x):
+        if not self.pre_pad:
+            x = self.padding_module(x)
+        output = x.new_zeros(*(x.size() + (2,)))
+        output.select(4, 0)[:] = x
         return output
 
 def unpad(in_):
