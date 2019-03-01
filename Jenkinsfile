@@ -46,6 +46,7 @@ pipeline {
 	HOME = pwd(tmp:true)
       }
       steps {
+	sh 'false'
 	sh 'python3 -m venv $HOME'
 	sh '''#!/bin/bash -ex
 	  source $HOME/bin/activate
