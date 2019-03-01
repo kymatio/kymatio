@@ -38,7 +38,7 @@ class Pad(object):
 
             Parameters
             ----------
-            pad_size : int
+            pad_size : list of 4 integers
                 size of padding to apply.
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
@@ -54,8 +54,8 @@ class Pad(object):
     def __call__(self, x):
         if not self.pre_pad:
             x = self.padding_module(x)
-        output = x.new_zeros(*(x.size() + (2,)))
-        output.select(4, 0)[:] = x
+        output = torch.zeros(x.shape + (2,), dtype=x.dtype)
+        output[...,0] = x
         return output
 
 def unpad(in_):
