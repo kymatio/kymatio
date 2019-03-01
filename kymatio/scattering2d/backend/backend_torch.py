@@ -104,10 +104,12 @@ class Modulus(object):
         output: a tensor with imaginary part set to 0, real part set equal to
         the modulus of x.
     """
-    def __call__(self, input):
+    def __call__(self, x):
 
-        norm = input.norm(p=2, dim=-1, keepdim=True)
-        return torch.cat([norm, torch.zeros_like(norm)], -1)
+        norm = torch.zeros_like(x)
+        norm[...,0] = (x[...,0]*x[...,0] +
+                       x[...,1]*x[...,1]).sqrt()
+        return norm
 
 
 
