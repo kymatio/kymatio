@@ -63,7 +63,7 @@ Chages:
 $CHANGES
 
 End of build log:
-${BUILD_LOG,maxLines=60}
+${BUILD_LOG,maxLines=200}
 ''',
 	       recipientProviders: [
 		 [$class: 'DevelopersRecipientProvider'],
