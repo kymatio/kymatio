@@ -105,7 +105,7 @@ class ModulusStable(Function):
         # Special case at 0 where we return a subgradient containing 0
         grad_input.masked_fill_(output == 0, 0)
 
-        return grad_input, None, None, None
+        return grad_input
 
 # shortcut for ModulusStable.apply
 modulus = ModulusStable.apply
