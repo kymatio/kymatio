@@ -54,7 +54,7 @@ class Pad(object):
     def __call__(self, x):
         if not self.pre_pad:
             x = self.padding_module(x)
-        output = torch.zeros(x.shape + (2,), dtype=x.dtype)
+        output = x.new_zeros(x.shape + (2,))
         output[...,0] = x
         return output
 
