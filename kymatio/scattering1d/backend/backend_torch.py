@@ -1,6 +1,5 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
@@ -104,7 +103,7 @@ class ModulusStable(Function):
 
         # Special case at 0 where we return a subgradient containing 0
         grad_input.masked_fill_(output == 0, 0)
-
+        assert 1==0
         return grad_input
 
 # shortcut for ModulusStable.apply
