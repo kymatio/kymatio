@@ -261,3 +261,34 @@ def test_batch_shape_agnostic():
         assert Sx.shape[-2:] == shape_ds
         assert Sx.shape[-3] == n_coeffs
         assert Sx.shape[:-3] == test_shape[:-2]
+
+# Make sure we test for the errors that may be raised by
+# `Scattering2D.forward`.
+def test_scattering2d_errors():
+    S = Scattering2D(3, (32, 32))
+
+    if backend.NAME == 'skcuda':
+        S.cuda()
+
+    with pytest.raises(TypeError) as record:
+        S(None)
+    assert('input should be' in record.value.args[0])
+
+    x = torch.randn(4,4)
+    y = x[::2,::2]
+
+    with pytest.raises(RuntimeError) as record:
+        S(y)
+    assert('must be contiguous' in record.value.args[0])
+
+    x = torch.randn(31, 31)
+
+    with pytest.raises(RuntimeError) as record:
+        S(x)
+    assert('Tensor must be of spatial size' in record.value.args[0])
+
+    S = Scattering2D(3, (32, 32), pre_pad=True)
+
+    with pytest.raises(RuntimeError) as record:
+        S(x)
+    assert('Padded tensor must be of spatial size' in record.value.args[0])
