@@ -130,6 +130,14 @@ pip install -r requirements_optional.txt
 cd doc; make clean; make html
 ```
 
+## Support
+
+Those institutes support this software:
+
+[![Flatiron](https://pbs.twimg.com/profile_images/826182985162579968/280lHV8L_400x400.jpg)](https://www.simonsfoundation.org/flatiron)
+[![ENS](https://www.ens.fr/sites/default/files/inline-images/logo.jpg)](https://www.ens.fr/)
+
+
 ## Kymatio
 
 Kyma (*κύμα*) means *wave* in Greek. By the same token, Kymatio (*κυμάτιο*) means *wavelet*.

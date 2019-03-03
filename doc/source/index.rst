@@ -15,6 +15,14 @@
           :width: 30px
           :target: https://twitter.com/KymatioWavelets
 
+.. |flatiron| image:: https://pbs.twimg.com/profile_images/826182985162579968/280lHV8L_400x400.jpg
+          :height: 70px
+          :target: https://www.simonsfoundation.org/flatiron
+
+.. |ens| image:: https://www.ens.fr/sites/default/files/inline-images/logo.jpg
+          :height: 70px
+          :target: https://www.ens.fr/
+
 .. scattering documentation master file, created by
    sphinx-quickstart on Tue Oct  2 23:41:09 2018.
    You can adapt this file completely to your liking, but it should at least
@@ -45,6 +53,12 @@ Use kymatio if you need a library that:
 A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
 list of publications see
 `Publications <https://www.di.ens.fr/data/publications>`_.
+
+Those institutes support this software:
+
+|flatiron| |ens|
+
+
 
 .. include:: quickstart.rst
 
