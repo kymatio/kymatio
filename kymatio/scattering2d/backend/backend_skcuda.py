@@ -1,6 +1,6 @@
 # Authors: Edouard Oyallon, Sergey Zagoruyko
 
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 import torch
 from skcuda import cublas
 import cupy
@@ -38,22 +38,24 @@ class Pad(object):
 
             Parameters
             ----------
-            pad_size : int
+            pad_size : list of 4 integers
                 size of padding to apply.
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
         """
         self.pre_pad = pre_pad
-        self.padding_module = ReflectionPad2d(pad_size)
+        self.pad_size = pad_size
 
-    def __call__(self, input):
-        if(self.pre_pad):
-            output = input.new_zeros(input.size(0), input.size(1), input.size(2), input.size(3), 2)
-            output.narrow(output.ndimension()-1, 0, 1)[:] = input
-        else:
-            out_ = self.padding_module(input)
-            output = input.new_zeros(*(out_.size() + (2,)))
-            output.select(4, 0)[:] = out_
+        self.build()
+
+    def build(self):
+        self.padding_module = ReflectionPad2d(self.pad_size)
+
+    def __call__(self, x):
+        if not self.pre_pad:
+            x = self.padding_module(x)
+        output = x.new_zeros(x.shape + (2,))
+        output[...,0] = x
         return output
 
 def unpad(in_):
