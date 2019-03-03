@@ -303,10 +303,6 @@ def test_differentiability_scattering(random_state=42):
     scattering = Scattering1D(J, T, Q)
     x = torch.randn(128, T, requires_grad=True)
 
-    if force_gpu:
-        scattering.cuda()
-        x = x.cuda()
-
     s = scattering.forward(x)
     loss = torch.sum(torch.abs(s))
     loss.backward()
