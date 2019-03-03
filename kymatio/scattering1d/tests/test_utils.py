@@ -120,8 +120,6 @@ def test_modulus(random_state=42):
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True)
-    if force_gpu:
-        x0 = x0.cuda()
     x_abs0 = modulus_complex(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
