@@ -10,6 +10,10 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
+def isreal(input):
+    return input.size(-1) == 1
+
+
 class Pad(object):
     def __init__(self, pad_size, pre_pad=False):
         """
@@ -165,9 +169,9 @@ def cdgmm(A, B, inplace=False):
         Parameters
         ----------
         A : tensor
-            input tensor with size (B, C, M, N, 2)
+            A is a complex tensor of size (B, C, M, N, 2)
         B : tensor
-            B is a complex tensor of size (M, N, 2)
+            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1)
         inplace : boolean, optional
             if set to True, all the operations are performed inplace
 
@@ -177,32 +181,43 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    A, B = A.contiguous(), B.contiguous()
-    if A.size()[-3:] != B.size():
-        raise RuntimeError('The filters are not compatible for multiplication!')
-
-    if not iscomplex(A) or not iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
+    if not iscomplex(A):
+        raise TypeError('The input must be complex, indicated by a last '
+                        'dimension of size 2')
 
     if B.ndimension() != 3:
-        raise RuntimeError('The filters must be simply a complex array!')
+        raise RuntimeError('The filter must be a 3-tensor, with a last '
+                           'dimension of size 1 or 2 to indicate it is real '
+                           'or complex, respectively')
 
-    if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
+    if not iscomplex(B) and not isreal(B):
+        raise TypeError('The filter must be complex or real, indicated by a '
+                        'last dimension of size 2 or 1, respectively')
 
+    if A.size()[-3:-1] != B.size()[-3:-1]:
+        raise RuntimeError('The filters are not compatible for multiplication!')
 
-    C = A.new(A.size())
+    if A.dtype is not B.dtype:
+        raise RuntimeError('A and B must be of the same dtype')
 
-    A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
-    A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
+    if A.device != B.device:
+        raise RuntimeError('A and B must be on the same device')
 
-    B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
-    B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
+    if isreal(B):
+        if inplace:
+            return A.mul_(B)
+        else:
+            return A * B
+    else:
+        C = A.new(A.size())
 
-    C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
-    C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
+        A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
+        A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
 
-    return C if not inplace else A.copy_(C)
+        B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
+        B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
 
+        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
 
-
+        return C if not inplace else A.copy_(C)
