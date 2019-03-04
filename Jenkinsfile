@@ -1,32 +1,3 @@
-def notifyFailure() {
-  if (env.BRANCH_NAME.startsWith('PR-')) {
-    gitHubPRStatus statusMessage: [content: '''
-End of failed build log:
-${BUILD_LOG,maxLines=200}
-''']
-  } else {
-    emailext subject: '$PROJECT_NAME - Build #$BUILD_NUMBER - $BUILD_STATUS',
-	     body: '''$PROJECT_NAME - Build #$BUILD_NUMBER - $BUILD_STATUS
-
-Check console output at $BUILD_URL to view full results.
-
-Building $BRANCH_NAME for $CAUSE
-$JOB_DESCRIPTION
-
-Chages:
-$CHANGES
-
-End of build log:
-${BUILD_LOG,maxLines=200}
-''',
-	     recipientProviders: [
-	       [$class: 'DevelopersRecipientProvider'],
-	     ],
-	     replyTo: '$DEFAULT_REPLYTO',
-	     to: 'janden@flatironinstitute.org'
-  }
-}
-
 pipeline {
   agent none
   options {
@@ -79,7 +50,30 @@ pipeline {
   }
   post {
     failure {
-      notifyFailure()
+      // if (env.BRANCH_NAME.startsWith('PR-'))
+      githubPRComment comment: [content: '''
+End of failed build log:
+${BUILD_LOG,maxLines=200}
+''']
+      // else
+      emailext subject: '$PROJECT_NAME - Build #$BUILD_NUMBER - $BUILD_STATUS',
+	       body: '''$PROJECT_NAME - Build #$BUILD_NUMBER - $BUILD_STATUS
+
+Check console output at $BUILD_URL to view full results.
+
+Building $BRANCH_NAME for $CAUSE
+$JOB_DESCRIPTION
+
+Chages:
+$CHANGES
+
+End of build log:
+${BUILD_LOG,maxLines=200}
+''',
+	       recipientProviders: [
+		 [$class: 'DevelopersRecipientProvider'],
+	       ],
+	       replyTo: '$DEFAULT_REPLYTO'
     }
   }
 }
