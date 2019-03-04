@@ -16,11 +16,11 @@
           :target: https://twitter.com/KymatioWavelets
 
 .. |flatiron| image:: _static/FL_Full_Logo_Mark_Small.png
-          :height: 70px
+          :width: 300px
           :target: https://www.simonsfoundation.org/flatiron
 
 .. |ens| image:: https://www.ens.fr/sites/default/files/inline-images/logo.jpg
-          :height: 70px
+          :width: 300px
           :target: https://www.ens.fr/
 
 .. scattering documentation master file, created by
