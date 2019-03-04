@@ -132,11 +132,13 @@ cd doc; make clean; make html
 
 ## Support
 
-Those institutes support this software:
+We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
 
-[![Flatiron](https://pbs.twimg.com/profile_images/826182985162579968/280lHV8L_400x400.jpg)](https://www.simonsfoundation.org/flatiron)
+[![Flatiron](doc/source/_static/FL_Full_Logo_Mark_Small.png)](https://www.simonsfoundation.org/flatiron)
+
+We would also like to thank École Normale Supérieure for their support.
+
 [![ENS](https://www.ens.fr/sites/default/files/inline-images/logo.jpg)](https://www.ens.fr/)
-
 
 ## Kymatio
 

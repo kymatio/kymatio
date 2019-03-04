@@ -15,7 +15,7 @@
           :width: 30px
           :target: https://twitter.com/KymatioWavelets
 
-.. |flatiron| image:: https://pbs.twimg.com/profile_images/826182985162579968/280lHV8L_400x400.jpg
+.. |flatiron| image:: _static/FL_Full_Logo_Mark_Small.png
           :height: 70px
           :target: https://www.simonsfoundation.org/flatiron
 
@@ -54,11 +54,13 @@ A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
 list of publications see
 `Publications <https://www.di.ens.fr/data/publications>`_.
 
-Those institutes support this software:
+We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
 
-|flatiron| |ens|
+|flatiron|
 
+We would also like to thank École Normale Supérieure for their support.
 
+|ens|
 
 .. include:: quickstart.rst
 
