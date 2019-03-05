@@ -22,13 +22,12 @@ Stream = namedtuple('Stream', ['ptr'])
 
 def convert_filters(bank):
     for c, psi in enumerate(bank):
-        if isinstance(psi, (np.ndarray, np.generic)):
-            bank[c] = torch.FloatTensor(bank[c])
-            print('oui')
+        if isinstance(psi, np.ndarray):
+            bank[c] = torch.from_numpy(bank[c])
         else:
             for k, v in psi.items():
-                if type(k) is int:
-                    bank[c][k]=torch.FloatTensor(v)
+                if isinstance(k, int):
+                    bank[c][k] = torch.from_numpy(v)
     return bank
 
 
