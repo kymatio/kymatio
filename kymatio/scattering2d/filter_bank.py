@@ -5,7 +5,6 @@ All rights reserved, 2017.
 
 __all__ = ['filter_bank']
 
-import torch
 import numpy as np
 from .utils import fft2
 
@@ -52,9 +51,9 @@ def filter_bank(M, N, J, L=8):
                     psi_signal_fourier, res)
                 # add a trailing singleton dimension to mark it as non-complex
                 psi_signal_fourier_res = psi_signal_fourier_res[..., np.newaxis]
-                psi[res] = torch.FloatTensor(psi_signal_fourier_res)
+                psi[res] = psi_signal_fourier_res
                 # Normalization to avoid doing it with the FFT.
-                psi[res].div_(M*N// 2**(2*j))
+                psi[res] /= M*N// 2**(2*j)
             filters['psi'].append(psi)
 
     filters['phi'] = {}
@@ -67,9 +66,9 @@ def filter_bank(M, N, J, L=8):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
         # add a trailing singleton dimension to mark it as non-complex
         phi_signal_fourier_res = phi_signal_fourier_res[..., np.newaxis]
-        filters['phi'][res] = torch.FloatTensor(phi_signal_fourier_res)
+        filters['phi'][res] = phi_signal_fourier_res
         # Normalization to avoid doing it with the FFT.
-        filters['phi'][res].div_(M*N // 2 ** (2 * J))
+        filters['phi'][res] /= M*N // 2 ** (2 * J)
 
     return filters
 

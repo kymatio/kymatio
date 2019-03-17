@@ -6,6 +6,7 @@ from skcuda import cublas
 import cupy
 from string import Template
 from torch.nn import ReflectionPad2d
+import numpy as np
 
 NAME = 'skcuda'
 
@@ -17,6 +18,18 @@ def load_kernel(kernel_name, code, **kwargs):
 
 
 Stream = namedtuple('Stream', ['ptr'])
+
+
+def convert_filters(bank):
+    for c, psi in enumerate(bank):
+        if isinstance(psi, np.ndarray):
+            bank[c] = torch.from_numpy(bank[c])
+        else:
+            for k, v in psi.items():
+                if isinstance(k, int):
+                    bank[c][k] = torch.from_numpy(v)
+    return bank
+
 
 
 def getDtype(t):

@@ -5,7 +5,7 @@
 __all__ = ['Scattering2D']
 
 import torch
-from .backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
+from .backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad, convert_filters
 from .filter_bank import filter_bank
 from .utils import compute_padding
 
@@ -104,8 +104,8 @@ class Scattering2D(object):
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
-        self.Psi = filters['psi']
-        self.Phi = [filters['phi'][j] for j in range(self.J)]
+        self.Psi = convert_filters(filters['psi'])
+        self.Phi = convert_filters([filters['phi'][j] for j in range(self.J)])
 
     def _type(self, _type):
         for key, item in enumerate(self.Psi):

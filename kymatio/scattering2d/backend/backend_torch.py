@@ -2,6 +2,7 @@
 
 import torch
 from torch.nn import ReflectionPad2d
+import numpy as np
 
 NAME = 'torch'
 
@@ -41,6 +42,16 @@ class Pad(object):
         output = x.new_zeros(x.shape + (2,))
         output[...,0] = x
         return output
+
+def convert_filters(bank):
+    for c, psi in enumerate(bank):
+        if isinstance(psi, np.ndarray):
+            bank[c] = torch.from_numpy(bank[c])
+        else:
+            for k, v in psi.items():
+                if isinstance(k, int):
+                    bank[c][k] = torch.from_numpy(v)
+    return bank
 
 def unpad(in_):
     """
