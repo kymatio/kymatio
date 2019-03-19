@@ -82,3 +82,5 @@ plt.suptitle(("The corresponding low-pass filter, also known as scaling "
               "complex magnitude and complex phase"), fontsize=13)
 filter_c = np.abs(filter_c)
 plt.imshow(filter_c)
+
+plt.show()
