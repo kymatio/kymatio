@@ -10,19 +10,18 @@ pipeline {
       agent {
 	dockerfile {
 	  dir 'tools'
-	  args '--device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm'
 	}
       }
       environment {
-	HOME = pwd(tmp:true)
+	HOME = "$WORKSPACE/build"
       }
       steps {
-	sh 'python3 -m venv $HOME'
+	sh 'python3 -c "import torch; torch.cuda.current_device()"'
+	sh 'python3 -m venv --system-site-packages --without-pip $HOME'
 	sh '''#!/bin/bash -ex
 	  source $HOME/bin/activate
-	  pip3 install -r requirements.txt pytest pytest-cov torchvision
 	  python3 setup.py develop
-	  KYMATIO_BACKEND=$STAGE_NAME pytest --cov=kymatio
+	  KYMATIO_BACKEND=$STAGE_NAME python3 -m pytest --cov=kymatio
 	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME
 	'''
       }
@@ -31,19 +30,17 @@ pipeline {
       agent {
 	dockerfile {
 	  dir 'tools'
-	  args '--device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm'
 	}
       }
       environment {
-	HOME = pwd(tmp:true)
+	HOME = "$WORKSPACE/build"
       }
       steps {
-	sh 'python3 -m venv $HOME'
+	sh 'python3 -m venv --system-site-packages --without-pip $HOME'
 	sh '''#!/bin/bash -ex
 	  source $HOME/bin/activate
-	  pip3 install -r requirements.txt pytest pytest-cov scikit-cuda cupy
 	  python3 setup.py develop
-	  KYMATIO_BACKEND=$STAGE_NAME pytest --cov=kymatio
+	  KYMATIO_BACKEND=$STAGE_NAME python3 -m pytest --cov=kymatio
 	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME
 	'''
       }
