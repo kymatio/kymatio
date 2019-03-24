@@ -22,7 +22,7 @@ pipeline {
 	  source $HOME/bin/activate
 	  python3 setup.py develop
 	  KYMATIO_BACKEND=$STAGE_NAME python3 -m pytest --cov=kymatio
-	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME
+	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME -s $HOME
 	'''
       }
     }
@@ -41,7 +41,7 @@ pipeline {
 	  source $HOME/bin/activate
 	  python3 setup.py develop
 	  KYMATIO_BACKEND=$STAGE_NAME python3 -m pytest --cov=kymatio
-	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME
+	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME -s $HOME
 	'''
       }
     }
