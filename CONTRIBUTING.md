@@ -88,7 +88,7 @@ following rules before submitting:
   ```python
   import platform; print(platform.platform())
   import sys; print("Python", sys.version)
-  import scipy; print("NumPy", scipy.__version__)
+  import numpy; print("NumPy", numpy.__version__)
   import scipy; print("SciPy", scipy.__version__)
   import torch; print("PyTorch", torch.__version__)
   import kymatio; print("Kymatio", kymatio.__version__)
@@ -103,7 +103,7 @@ following rules before submitting:
   # For security purposes, please check the contents of collect_env.py before running it.
   python collect_env.py
   ```
-  
+
 
 
 Documentation
@@ -123,4 +123,3 @@ For building the documentation, you will need
 Acknowledgment
 --------------
 This document was adapted from [scikit-learn](http://scikit-learn.org/).
-
