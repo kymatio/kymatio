@@ -163,6 +163,19 @@ class TestCDGMM:
                 backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
             assert "must be on the same device" in exc.value.args[0]
 
+def test_FFT():
+    x = torch.rand(4, 4, 1)
+    with pytest.raises(TypeError) as record:
+        backend.fft(x)
+    assert ('must be complex' in record.value.args[0])
+
+    x = torch.randn(4, 4, 2)
+    y = x[::2, ::2]
+
+    with pytest.raises(RuntimeError) as record:
+        backend.fft(y)
+    assert ('must be contiguous' in record.value.args[0])
+
 
 def reorder_coefficients_from_interleaved(J, L):
     # helper function to obtain positions of order0, order1, order2 from interleaved
