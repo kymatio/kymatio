@@ -93,7 +93,7 @@ class Scattering2D(object):
         self.max_order = max_order
         self.shape = shape
         if 2**J>shape[0] or 2**J>shape[1]:
-            raise (RuntimeError('The largest dimension should be larger than 2^J'))
+            raise (RuntimeError('The smallest dimension should be larger than 2^J'))
 
         self.build()
 

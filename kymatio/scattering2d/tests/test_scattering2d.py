@@ -346,4 +346,13 @@ def test_input_size_agnostic():
         x = x.cuda()
         scattering.cuda()
 
+    N = 32
+    J = 5
+    scattering = Scattering2D(J, shape=(N+5, N))
+    x = torch.zeros(3, 3, N+5, N)
+
+    if backend.NAME == 'skcuda':
+        x = x.cuda()
+        scattering.cuda()
+
     S = scattering(x)
