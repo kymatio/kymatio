@@ -24,6 +24,8 @@ class Pad(object):
             ----------
             pad_size : list of 4 integers
                 size of padding to apply.
+            input_size : list of 2 integers
+                size of the original signal
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
         """
