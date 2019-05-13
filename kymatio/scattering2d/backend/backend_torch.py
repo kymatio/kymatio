@@ -211,8 +211,12 @@ def cdgmm(A, B, inplace=False):
     if A.dtype is not B.dtype:
         raise RuntimeError('A and B must be of the same dtype')
 
-    if A.device != B.device:
-        raise RuntimeError('A and B must be on the same device')
+    if A.device.type != B.device.type:
+        raise RuntimeError('A and B must be of the same device type')
+
+    if A.device.type == 'cuda':
+        if A.device.index != B.device.index:
+            raise RuntimeError('A and B must be on the same GPU!')
 
     if isreal(B):
         if inplace:
