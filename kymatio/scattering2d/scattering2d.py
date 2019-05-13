@@ -122,6 +122,17 @@ class Scattering2D(object):
         """
         return self._type(torch.cuda.FloatTensor)
 
+    def to(self, device):
+        """
+            Moves the parameters of the scattering to the GPU
+        """
+        for key, item in enumerate(self.Psi):
+            for key2, item2 in self.Psi[key].items():
+                if torch.is_tensor(item2):
+                    self.Psi[key][key2] = item2.to(device)
+        self.Phi = [v.to(device) for v in self.Phi]
+        self.pad.padding_module.to(device)
+
     def cpu(self):
         """
             Moves the parameters of the scattering to the CPU
