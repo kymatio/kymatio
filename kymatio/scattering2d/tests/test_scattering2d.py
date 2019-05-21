@@ -15,11 +15,10 @@ try:
 except:
     pass
 
-try:
-    from kymatio.scattering2d.backend import backend_torch
-    backends.append(backend_torch)
-except:
-    pass
+
+from kymatio.scattering2d.backend import backend_torch
+backends.append(backend_torch)
+
 
 if torch.cuda.is_available():
     devices = ['gpu', 'cpu']
