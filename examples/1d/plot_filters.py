@@ -25,6 +25,12 @@ import matplotlib.pyplot as plt
 ###############################################################################
 # Filter parameters and generation
 # --------------------------------
+# Kymatio implements different wavelets: 'morlet', 'battle-lemarie' and 'meyer'.
+# We start by choosing morlet, and we will compare it with other filter banks
+# later.
+wavelet_type = 'morlet'
+
+
 # The filters are defined for a certain support size `T` which corresponds to
 # the size of the input signal. The only restriction is that `T` must be a
 # power of two. Since we are not computing any scattering transforms here, we
@@ -60,12 +66,13 @@ Q = 8
 # first-order wavelet filters (`psi1_f`), and the second-order filters
 # (`psi2_f`).
 
-phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(T), J, Q)
+phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(T), J, Q,
+                                                     wav_type=wavelet_type)
 
 ###############################################################################
 # The `phi_f` output is a dictionary where each integer key corresponds points
 # to the instantiation of the filter at a certain resolution. In other words,
-# `phi_f[0]` corresponds to the lowpass filter at resolution `T`, while 
+# `phi_f[0]` corresponds to the lowpass filter at resolution `T`, while
 # `phi_f[1]` corresponds to the filter at resolution `T/2`, and so on.
 #
 # While `phi_f` only contains a single filter (at different resolutions),
@@ -91,7 +98,7 @@ plt.xlim(0, 0.5)
 
 plt.xlabel(r'$\omega$', fontsize=18)
 plt.ylabel(r'$\hat\psi_j(\omega)$', fontsize=18)
-plt.title('First-order filters (Q = {})'.format(Q), fontsize=18)
+plt.title('First-order Morlet filters (Q = {})'.format(Q), fontsize=18)
 
 ###############################################################################
 # Do the same plot for the second-order filters. Note that since here `Q = 1`,
@@ -105,7 +112,25 @@ plt.xlim(0, 0.5)
 plt.ylim(0, 1.2)
 plt.xlabel(r'$\omega$', fontsize=18)
 plt.ylabel(r'$\hat\psi_j(\omega)$', fontsize=18)
-plt.title('Second-order filters (Q = 1)', fontsize=18)
+plt.title('Second-order Morlet filters (Q = 1)', fontsize=18)
+
+###############################################################################
+# Now we will compare the available filter banks, for `Q=1`
+Q = 1
+wavelets = ['Morlet', 'Battle-Lemarie', 'Meyer']
+
+plt.figure()
+for k, wav_type in enumerate(wavelets):
+    phi_f, psi1_f, _, _ = scattering_filter_factory(np.log2(T), J, Q,
+                                                    wav_type=wav_type.lower())
+    plt.subplot(len(wavelets), 1, k + 1)
+    plt.plot(np.arange(T)/T, phi_f[0])
+    for psi_f in psi1_f:
+        plt.plot(np.arange(T)/T, psi_f[0], 'b')
+    plt.title('{} filter bank'.format(wav_type), fontsize=18)
+    plt.ylabel(r'$\hat\psi_j(\omega)$', fontsize=18)
+plt.xlabel(r'$\omega$', fontsize=18)
+plt.tight_layout()
 
 ###############################################################################
 # Display the plots!
