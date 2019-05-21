@@ -52,8 +52,6 @@ def test_Modulus():
                 u = u.squeeze()
                 v = v.squeeze()
                 assert (u - v).abs().max() < 1e-6
-        else:
-            raise('No backend or device detected.')
 
 
 
@@ -102,8 +100,6 @@ def test_SubsampleFourier():
                 if backend.NAME == 'torch':
                     z = subsample_fourier(x.cpu(), k=16)
                     assert (y.cpu() - z).abs().max() < 1e-8
-        else:
-            raise ('No backend or device detected.')
 
 
 # Check the CUBLAS routines
