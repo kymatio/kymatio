@@ -1,24 +1,24 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import adaptive_choice_P
+from kymatio.scattering1d.filter_bank import adaptive_choice_P_morlet
 from kymatio.scattering1d.filter_bank import periodize_filter_fourier
 from kymatio.scattering1d.filter_bank import get_normalizing_factor
-from kymatio.scattering1d.filter_bank import compute_sigma_psi
+from kymatio.scattering1d.filter_bank import compute_sigma_psi_morlet
 from kymatio.scattering1d.filter_bank import compute_temporal_support
-from kymatio.scattering1d.filter_bank import compute_xi_max
+from kymatio.scattering1d.filter_bank import compute_xi_max_morlet
 from kymatio.scattering1d.filter_bank import morlet_1d
 from kymatio.scattering1d.filter_bank import calibrate_scattering_filters
-from kymatio.scattering1d.filter_bank import get_max_dyadic_subsampling
+from kymatio.scattering1d.filter_bank import get_max_dyadic_subsampling_morlet
 from kymatio.scattering1d.filter_bank import gauss_1d
 import numpy as np
 import math
 import pytest
 
 
-def test_adaptive_choice_P():
+def test_adaptive_choice_P_morlet():
     """
-    Tests whether adaptive_choice_P provides a bound P which satisfies
+    Tests whether adaptive_choice_P_morlet provides a bound P which satisfies
     the adequate requirements
     """
     sigma_range = np.logspace(-5, 2, num=10)
@@ -28,7 +28,7 @@ def test_adaptive_choice_P():
             sigma = sigma_range[i]
             eps = eps_range[j]
             # choose the formula
-            P = adaptive_choice_P(sigma, eps=eps)
+            P = adaptive_choice_P_morlet(sigma, eps=eps)
             # check at the boundaries
             denom = 2 * (sigma**2)
             lim_left = np.exp(-((1 - P)**2) / denom)
@@ -96,11 +96,11 @@ def test_morlet_1d():
     P_range = [1, 5]
     for N in size_signal:
         for Q in Q_range:
-            xi_max = compute_xi_max(Q)
+            xi_max = compute_xi_max_morlet(Q)
             xi_range = xi_max / np.power(2, np.arange(7))
             for xi in xi_range:
                 for P in P_range:
-                    sigma = compute_sigma_psi(xi, Q)
+                    sigma = compute_sigma_psi_morlet(xi, Q)
                     # get the morlet for these parameters
                     psi_f = morlet_1d(N, xi, sigma, normalize='l2', P_max=P)
                     # make sure that it has zero mean
@@ -116,8 +116,8 @@ def test_morlet_1d():
                     assert np.abs(xi_emp - xi) / xi < 1e-2
 
     Q = 1
-    xi = compute_xi_max(Q)
-    sigma = compute_sigma_psi(xi, Q)
+    xi = compute_xi_max_morlet(Q)
+    sigma = compute_sigma_psi_morlet(xi, Q)
 
     with pytest.raises(ValueError) as ve:
         morlet_1d(size_signal[0], xi, sigma, P_max=5.1)
@@ -151,8 +151,8 @@ def test_gauss_1d():
             assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
 
     Q = 1
-    xi = compute_xi_max(Q)
-    sigma = compute_sigma_psi(xi, Q)
+    xi = compute_xi_max_morlet(Q)
+    sigma = compute_sigma_psi_morlet(xi, Q)
 
     with pytest.raises(ValueError) as ve:
         gauss_1d(N, xi, sigma, P_max=5.1)
@@ -192,18 +192,18 @@ def test_calibrate_scattering_filters():
     assert "should always be >= 1" in ve.value.args[0]
 
 
-def test_compute_xi_max():
+def test_compute_xi_max_morlet():
     """
     Tests that 0.25 <= xi_max(Q) <= 0.5, whatever Q
     """
     Q_range = np.arange(1, 21, dtype=int)
     for Q in Q_range:
-        xi_max = compute_xi_max(Q)
+        xi_max = compute_xi_max_morlet(Q)
         assert xi_max <= 0.5
         assert xi_max >= 0.25
 
 
-def test_get_max_dyadic_subsampling():
+def test_get_max_dyadic_subsampling_morlet():
     """
     Tests on the subsampling formula for wavelets, to check that the retained
     value does not create aliasing (the wavelet should have decreased by
@@ -213,11 +213,11 @@ def test_get_max_dyadic_subsampling():
     Q_range = np.arange(1, 20, dtype=int)
     J = 7
     for Q in Q_range:
-        xi_max = compute_xi_max(Q)
+        xi_max = compute_xi_max_morlet(Q)
         xi_range = xi_max * np.power(0.5, np.arange(J * Q) / float(Q))
         for xi in xi_range:
-            sigma = compute_sigma_psi(xi, Q)
-            j = get_max_dyadic_subsampling(xi, sigma)
+            sigma = compute_sigma_psi_morlet(xi, Q)
+            j = get_max_dyadic_subsampling_morlet(xi, sigma)
             # Check for subsampling. If there is no subsampling, the filters
             # cannot be aliased, so no need to check them.
             if j > 0:
