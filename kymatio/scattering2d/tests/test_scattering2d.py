@@ -117,6 +117,13 @@ class TestCDGMM:
             filter = filter[..., :1]
         return x, filter, y
 
+    if 'gpu' in devices:
+        x, filter, y = data
+        x, filter = x.to('cpu'), filter.to('gpu')
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(x, filter)
+        assert ('device' in exc.value.args[0])
+
     @pytest.mark.parametrize("backend", backends)
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("inplace", (False, True))
