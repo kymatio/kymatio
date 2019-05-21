@@ -489,33 +489,73 @@ def compute_params_filterbank_morlet(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5
     # return results
     return xi, sigma, j
 
-def get_max_dyadic_subsampling_battle_lemarie(xi, sigma):
-    return 0
+def get_max_dyadic_subsampling_numeric(filter_hat, eps=1e-6):
+    """
+    Compute numerically the maximum subsampling factor for filter filter_hat,
+    i.e. the largest integer j such that:
+    omega_0 < 2^{-(j + 1)}
+    where omega_0 is the right boundary of the filter.
 
-def compute_params_filterbank_battle_lemarie(J, Q, high_freq=0.5):
-    xi_curr = high_freq
-    xi, sigma, j = [], [], []
-    factor = 1. / math.pow(2., 1. / Q)
-    for nq in range(N * Q):
-        xi.append(xi_curr)
-        j.append(get_max_dyadic_subsampling_battle_lemarie(xi_curr, sigma))
-        xi_curr *= factor
+    This ensures that the filter can be subsampled by a factor 2^j without
+    aliasing.
 
-    return xi, sigma, j
+    Parameters
+    ----------
+    filter_hat : array-like
+        Fourier transform of a filter.
+    eps : float, optional
+        Tolerance to determine the filter boundary.
 
-BL_XI0 =0.75 * 1.012470304985129
+    Returns
+    -------
+    xi : list
+        list containing the central frequencies of the wavelets.
+    """
+    N = filter_hat.size
+    filter_hat_mod = np.abs(filter_hat)**2
+    # Get indices of small coefficients
+    idx = (filter_hat_mod < eps).nonzero()[0]
+    # Remove indices on the left of the maximum
+    idx = idx[idx > np.argmax(filter_hat_mod)]
+    j = np.floor(np.log2(N / idx[0])) - 1
+    j = j if j > 0 else 0
+    return j
 
-def battle_lemarie_psi(N, Q, xi):
-    #if Q != 1:
-    #    raise NotImplementedError("Scaling battle-lemarie wavelets to multiple wavelets per octave not implemented yet.")
+
+# Battle-Lemarie mother wavelet center frequency
+BL_XI0 = 0.75 * 1.012470304985129
+
+def battle_lemarie_psi(N, Q, xi, normalize='l1', xi0_mult=0.75):
+    """
+    Computes the Fourier transform of a cubic spline Battle-Lemarie filter.
+
+    Polynomial Battle-Lemarie filters are computed from box spline multiresolution
+    approximations. Here, a box spline of order 3 is used.
+
+    Parameters
+    ----------
+    N : int
+        size of the temporal support
+    Q : int
+        number of wavelets per octave
+    xi : float
+        central frequency (in [0, 1])
+    normalize : string, optional
+        normalization types for the filters. Defaults to 'l1'.
+        Supported normalizations are 'l1' and 'l2' (understood in time domain).
+
+    Returns
+    -------
+    psi_hat : array_like
+        numpy array of size (N,) containing the Fourier transform of the Battle-Lemarie
+        filter at the frequencies given by np.fft.fftfreq(N).
+    """
+    if Q != 1:
+        raise NotImplementedError("Multiple Battle-Lemarie wavelets per octave are not implemented.")
     xi0 = BL_XI0  # mother wavelet center
     N = int(N)
-    # frequencies for mother wavelet with 1 wavelet per octave
-    abs_freqs = np.linspace(0, 1, N + 1)[:-1]
-    # frequencies for wavelet centered in xi with 1 wavelet1 per octave
-    freqs = abs_freqs * xi0 / xi
-    # frequencies for wavelet centered in xi with Q wavelets per octave
-    #freqs = xi0 + (xi_freqs - xi0) * Q
+
+    freqs = np.linspace(0, 1, N + 1)[:-1] * xi0 / xi
 
     num, den = battle_lemarie_b_function(freqs)
     num2, den2 = battle_lemarie_b_function(freqs / 2)
@@ -524,7 +564,7 @@ def battle_lemarie_psi(N, Q, xi):
     stable_den = np.empty_like(freqs)
     stable_den[freqs != 0] = np.sqrt(den[freqs != 0])  / (2 * np.pi * freqs[freqs != 0]) ** 4
     # protection in omega = 0
-    stable_den[freqs == 0] = 2 ** (-4)
+    stable_den[freqs == 0] = 2 ** (-2)
 
     mask = np.mod(freqs, 2) != 1
     stable_den[mask] *= np.sqrt(den2[mask] / denpi[mask])
@@ -535,14 +575,38 @@ def battle_lemarie_psi(N, Q, xi):
     psi_hat = np.sqrt(numpi / (num * num2)) * stable_den
     psi_hat[freqs < 0] = 0
 
+    psi_hat *= get_normalizing_factor(psi_hat, normalize=normalize)
+
     return psi_hat
 
-def battle_lemarie_phi(N, Q, xi_min):
-    xi0 = BL_XI0  # mother wavelet center
+def battle_lemarie_phi(N, Q, xi_min, normalize='l1', xi0_mult=0.75):
+    """
+    Computes the low-pass filter for spline Battle-Lemarie wavelets in the
+    Fourier domain.
 
+    Parameters
+    ----------
+    N : int
+        size of the temporal support
+    Q : int
+        number of wavelets per octave
+    xi : float
+        central frequency (in [0, 1])
+    normalize : string, optional
+        normalization types for the filters. Defaults to 'l1'.
+        Supported normalizations are 'l1' and 'l2' (understood in time domain).
+
+    Returns
+    -------
+    phi_hat : array_like
+        numpy array of size (N,) containing the Fourier transform of the Battle-Lemarie
+        filter at the frequencies given by np.fft.fftfreq(N).
+    """
+    #xi0 = BL_XI0  # mother wavelet center
+    xi0 = 1.012470304985129 * xi0_mult
     N = int(N)
 
-    abs_freqs = np.fft.fftfreq(N)  # Remove amateurish call to fftfreq
+    abs_freqs = np.fft.fftfreq(N)
     freqs = abs_freqs * xi0 / xi_min
     # freqs = xi_freqs * Q
 
@@ -553,61 +617,237 @@ def battle_lemarie_phi(N, Q, xi_min):
     stable_den[freqs == 0] = 2 ** (-4)
 
     phi_hat = stable_den / np.sqrt(num)
+    phi_hat *= get_normalizing_factor(phi_hat, normalize=normalize)
+
     return phi_hat
 
-def battle_lemarie_b_function(freqs, eps=1e-7):
+def battle_lemarie_b_function(freqs):
+    """
+    Computes an auxiliary function needed to compute Battle-Lemarie wavelets.
+
+    Parameters
+    ----------
+    freqs : array-like
+        numpy array containing the frequenecies where the auxiliary function will be computed.
+
+    Returns
+    -------
+    num : array-like
+        numerator of the auxialiary function at frequencies freqs
+    den : array-like
+        denominator of the auxiliary function at frequencies freqs
+    """
     cos2 = np.cos(freqs * np.pi) ** 2
     sin2 = np.sin(freqs * np.pi) ** 2
 
     num = 5 + 30 * cos2 + 30 * sin2 * cos2 + 70 * cos2 ** 2 + 2 * sin2 ** 2 * cos2 + 2 * sin2 ** 3 / 3
     num /= 105 * 2 ** 8
-    sin8 = sin2 ** 4
+    den = sin2 ** 4
 
-    return num, sin8
+    return num, den
+def compute_params_filterbank_dyadic_wavelet(J, Q, T, psi_func=battle_lemarie_psi, high_freq=0.425):
+    """
+    High-level function to compute the parameters of dyadic wavelet filter banks.
 
-def compute_params_filterbank_meyer(N, Q, high_freq):
-    return compute_battle_lemarie_parameters(N, Q, high_freq=high_freq)
+    Parameters
+    ----------
+    J : int
+    Q : int
+        number of wavelets per octave.
+    T : int
+        temporal support
+    psi_func: function
+        function to sytnhesize the wavelet filter, with the same signature that meyer_psi
+    high_freq : float, optional
+        Center frequency of the mother wavelet (highest frequency wavelet
+        filter). Defaults to 0.5.
 
+    Returns
+    -------
+    xi : list
+        list containing the central frequencies of the wavelets.
+    sigma : list
+        list containing the frequential widths of the wavelets.
+    j : list
+        list containing the maximum dyadic subsampling for each wavelet.
+    """
+    xi_curr = high_freq
+    xi, sigma, j = [], [], []
+    factor = 1. / math.pow(2., 1. / Q)
+    for nq in range(J * Q):
+        xi.append(xi_curr)
+
+        # Compute the maximum dyadic subsampling dyadically
+        # Doing this here requires precomputing the filter, which is inefficient but
+        # preserves the interfaces.
+        # This should be better structured in the future.
+        filter_hat = psi_func(T, Q, xi_curr)
+        j.append(int(get_max_dyadic_subsampling_numeric(filter_hat)))
+        sigma.append(np.std(filter_hat))
+
+        xi_curr *= factor
+    return xi, sigma, j
+
+def compute_params_filterbank_battle_lemarie(J, Q, T, high_freq=0.4):
+    """
+    Computes the parameters of a cubic Battle-Lemarie wavelet filterbank.
+
+    Parameters
+    ----------
+    J : int
+    Q : int
+        number of wavelets per octave.
+    T : int
+        temporal support
+    high_freq : float, optional
+        Center frequency of the mother wavelet (highest frequency wavelet
+        filter). Defaults to 0.5.
+
+    Returns
+    -------
+    xi : list
+        list containing the central frequencies of the wavelets.
+    sigma : list
+        list containing the frequential widths of the wavelets.
+    j : list
+        list containing the maximum dyadic subsampling for each wavelet.
+    """
+    return compute_params_filterbank_dyadic_wavelet(J, Q, T, psi_func=battle_lemarie_psi, high_freq=high_freq)
+
+# Mother wavelet center frequency
 M_XI0 = 5/3
-def meyer_psi(N, Q, xi):
+
+def meyer_psi(N, Q, xi, normalize='l1'):
+    """
+    Computes the Fourier transform of a Meyer wavelet filter.
+
+    Meyer wavelets have a compact frequency support and are smooth in the
+    Fourier domain.
+
+    Parameters
+    ----------
+    N : int
+        size of the temporal support
+    Q : int
+        number of wavelets per octave
+    xi : float
+        central frequency (in [0, 1])
+    normalize : string, optional
+        normalization types for the filters. Defaults to 'l1'.
+        Supported normalizations are 'l1' and 'l2' (understood in time domain).
+
+    Returns
+    -------
+    psi_hat : array_like
+        numpy array of size (N,) containing the Fourier transform of the Meyer
+        filter at the frequencies given by np.fft.fftfreq(N).
+    """
+    if Q != 1:
+        raise NotImplementedError("Multiple Battle-Lemarie wavelets per octave are not implemented.")
     N = int(N)
+
     # frequencies for mother wavelet with 1 wavelet per octave
-    abs_freqs = np.linspace(-0.5, 0.5, N + 1)[:-1]
-    psi = meyer_mother_psi(M_XI0 * np.pi * (abs_freqs) / xi)
-    return np.fft.fftshift(psi)
+    f = np.linspace(0, 1, N + 1)[:-1]
+    f = M_XI0 * np.pi * f / xi
 
-def meyer_phi(N, Q, xi):
+    psi_hat = np.zeros(f.shape)
+    idx = np.logical_and(2*np.pi/3 < f, f < 4*np.pi/3)
+    psi_hat[idx] = np.sin(np.pi/2 * meyer_nu(3*np.abs(f[idx])/2/np.pi - 1)) / np.sqrt(2*np.pi)
+
+    idx = np.logical_and(4*np.pi/3 < f, f < 8*np.pi/3)
+    psi_hat[idx] = np.cos(np.pi/2 * meyer_nu(3*np.abs(f[idx])/4/np.pi - 1)) / np.sqrt(2*np.pi)
+
+    psi_hat *= get_normalizing_factor(psi_hat, normalize=normalize)
+    return psi_hat
+
+def meyer_phi(N, Q, xi, normalize='l1'):
+    """
+    Computes the low-pass filter for Meyer wavelets in the Fourier domain.
+
+    Parameters
+    ----------
+    N : int
+        size of the temporal support
+    Q : int
+        number of wavelets per octave
+    xi : float
+        central frequency (in [0, 1])
+    normalize : string, optional
+        normalization types for the filters. Defaults to 'l1'.
+        Supported normalizations are 'l1' and 'l2' (understood in time domain).
+
+    Returns
+    -------
+    phi_hat : array_like
+        numpy array of size (N,) containing the Fourier transform of the Meyer
+        filter at the frequencies given by np.fft.fftfreq(N).
+    """
     N = int(N)
-    abs_freqs = np.linspace(-0.5, 0.5, N + 1)[:-1]
-    phi = meyer_mother_phi(M_XI0 * np.pi * (abs_freqs) / xi)
-    return np.fft.fftshift(phi)
+    f = np.linspace(-0.5, 0.5, N + 1)[:-1]
+    f = M_XI0 * np.pi * f / xi
+
+    phi_hat = np.zeros(f.shape)
+    idx = np.abs(f) < 2*np.pi/3
+    phi_hat[idx] = 1 / np.sqrt(2*np.pi)
+    idx = np.logical_and(2*np.pi/3 < np.abs(f), np.abs(f) < 4*np.pi/3)
+    phi_hat[idx] = np.cos(np.pi/2 * meyer_nu(3*np.abs(f[idx])/2/np.pi - 1)) / np.sqrt(2*np.pi)
+
+    phi_hat = np.fft.fftshift(phi_hat)
+    phi_hat *= get_normalizing_factor(phi_hat, normalize=normalize)
+    return phi_hat
 
 
-def meyer_nu(x):
-    out = np.zeros(x.shape)
-    idx = np.logical_and(0 < x, x < 1)
-    out[idx] = x[idx]**4 * (35 - 84*x[idx] + 70*x[idx]**2 - 20*x[idx]**3)
+def meyer_nu(f):
+    """
+    Computes the auxiliary function needed to compute Meyer wavelets.
+
+    Parameters
+    ----------
+    f : array-like
+        numpy array containing the frequenecies where the auxiliary function will be computed.
+
+    Returns
+    -------
+    num : array-like
+        numerator of the auxialiary function at frequencies freqs
+    den : array-like
+        denominator of the auxiliary function at frequencies freqs
+    """
+    out = np.zeros(f.shape)
+    idx = np.logical_and(0 < f, f < 1)
+    out[idx] = f[idx]**4 * (35 - 84*f[idx] + 70*f[idx]**2 - 20*f[idx]**3)
     return out
 
-def meyer_mother_psi(w):
-    psi = np.zeros(w.shape) #+ 1j * np.zeros(w.shape)
-    idx = np.logical_and(2*np.pi/3 < w, w < 4*np.pi/3)
-    psi[idx] = np.sin(np.pi/2 * meyer_nu(3*np.abs(w[idx])/2/np.pi - 1))  / np.sqrt(2*np.pi) # * np.exp(1j*w[idx]/2)
+def compute_params_filterbank_meyer(J, Q, T, high_freq=0.4):
+    """
+    Computes the parameters of a Meyer wavelet filterbank.
 
-    idx = np.logical_and(4*np.pi/3 < w, w < 8*np.pi/3)
-    psi[idx] = np.cos(np.pi/2 * meyer_nu(3*np.abs(w[idx])/4/np.pi - 1))  / np.sqrt(2*np.pi) # * np.exp(1j*w[idx]/2)
+    This family is defined by constant ratios between the frequencies of
+    adjacent filters.
 
-    return 2 * psi
+    Parameters
+    ----------
+    J : int
+    Q : int
+        number of wavelets per octave.
+    T : int
+        temporal support
+    high_freq : float, optional
+        Center frequency of the mother wavelet (highest frequency wavelet
+        filter). Defaults to 0.5.
 
-def meyer_mother_phi(w):
-    phi = np.zeros(w.shape) #+ 1j * np.zeros(w.shape)
-    idx = np.abs(w) < 2*np.pi/3
-    phi[idx] = 1 / np.sqrt(2*np.pi)
-    idx = np.logical_and(2*np.pi/3 < np.abs(w), np.abs(w) < 4*np.pi/3)
-    phi[idx] = np.cos(np.pi/2 * meyer_nu(3*np.abs(w[idx])/2/np.pi - 1)) / np.sqrt(2*np.pi)
-    return  phi * 2
+    Returns
+    -------
+    xi : list
+        list containing the central frequencies of the wavelets.
+    sigma : list
+        list containing the frequential widths of the wavelets.
+    j : list
+        list containing the maximum dyadic subsampling for each wavelet.
+    """
+    return compute_params_filterbank_dyadic_wavelet(J, Q, T, psi_func=meyer_psi, high_freq=high_freq)
 
-def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
+def calibrate_scattering_filters(J, Q, T=-1, r_psi=math.sqrt(0.5), sigma0=0.1,
                                  alpha=5., wav_type='morlet'):
     """
     Calibrates the parameters of the filters used at the 1st and 2nd orders
@@ -628,6 +868,8 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
         maximal scale of the scattering (controls the number of wavelets)
     Q : int
         number of wavelets per octave for the first order
+    T : int
+        temporal support of data. Not needed for Morlet wavelets.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -658,20 +900,22 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
         dictionary containing the frequential width of the second order
         filters. See above for a description of the keys.
     """
+    if wav_type != 'morlet' and T == -1:
+        raise ValueError('Need to provide size of temporal support T for wavelets other than Morlet')
     if Q < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
+    sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
     if wav_type == 'morlet':
-        sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
         xi1, sigma1, j1 = compute_params_filterbank_morlet(sigma_low, Q, r_psi=r_psi,
                                                            alpha=alpha)
         xi2, sigma2, j2 = compute_params_filterbank_morlet(sigma_low, 1, r_psi=r_psi,
                                                            alpha=alpha)
     elif wav_type == 'battle-lemarie':
-        xi1, sigma1, j1 = compute_params_filterbank_battle_lemarie(J, Q)
-        xi2, sigma2, j2 = compute_params_filterbank_battle_lemarie(J, 1)
+        xi1, sigma1, j1 = compute_params_filterbank_battle_lemarie(J, Q, T)
+        xi2, sigma2, j2 = compute_params_filterbank_battle_lemarie(J, 1, T)
     elif wav_type == 'meyer':
-        xi1, sigma1, j1 = compute_params_filterbank_meyer(J, Q)
-        xi2, sigma2, j2 = compute_params_filterbank_meyer(J, 1)
+        xi1, sigma1, j1 = compute_params_filterbank_meyer(J, Q, T)
+        xi2, sigma2, j2 = compute_params_filterbank_meyer(J, 1, T)
     else:
         raise ValueError('Unknown wavelet type: {}'.format(wav_type))
     return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
@@ -739,6 +983,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         required machine precision for the periodization (single
         floating point is enough for deep learning applications).
         Defaults to 1e-7
+    wavelet_type : string, optional
+        wavelet to be used.
+        Defaults to 'morlet'. Possible choices are 'morlet', 'battle-lemarie', 'meyer'
 
     Returns
     -------
@@ -777,9 +1024,11 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
+    T = 2**J_support
+
     # compute the spectral parameters of the filters
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
-        J_scattering, Q, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+        J_scattering, Q, T, r_psi=r_psi, sigma0=sigma0, alpha=alpha, wav_type=wav_type)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
@@ -801,17 +1050,16 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         else:
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
-        T = 2**J_support
 
         psi_f = {}
         if wav_type == 'morlet':
             psi_f[0] = morlet_1d(
                 T, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
                 eps=eps)
-        elif wav_type == 'battle_lemarie':
-            psi_f[0] = battle_lemarie_psi(T, 1, xi2[n2])
+        elif wav_type == 'battle-lemarie':
+            psi_f[0] = battle_lemarie_psi(T, 1, xi2[n2], normalize=normalize)
         elif wav_type == 'meyer':
-            psi_f[0] = meyer_psi(T, 1, xi2[n2])
+            psi_f[0] = meyer_psi(T, 1, xi2[n2], normalize=normalize)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -827,10 +1075,10 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         if wav_type == 'morlet':
             psi = morlet_1d(T, xi1[n1], sigma1[n1], normalize=normalize,
                             P_max=P_max, eps=eps)
-        elif wav_type == 'battle_lemarie':
-            psi = battle_lemarie_psi(T, Q, xi1[n1])
+        elif wav_type == 'battle-lemarie':
+            psi = battle_lemarie_psi(T, Q, xi1[n1], normalize=normalize)
         elif wav_type == 'meyer':
-            psi = meyer_psi(T, Q, xi1[n1])
+            psi = meyer_psi(T, Q, xi1[n1], normalize=normalize)
         psi1_f.append({0: psi})
 
     # compute the low-pass filters phi
@@ -847,7 +1095,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # compute the filters at all possible subsamplings
     if wav_type == 'morlet':
         phi_f[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
-    elif wav_type == 'battle_lemarie':
+    elif wav_type == 'battle-lemarie':
         phi_f[0] = battle_lemarie_phi(T, Q, xi1[-1])
     elif wav_type == 'meyer':
         phi_f[0] = meyer_phi(T, Q, xi1[-1])
