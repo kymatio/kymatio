@@ -373,7 +373,7 @@ class Scattering1D(object):
         return self.forward(x)
 
     @staticmethod
-    def compute_meta_scattering(J, Q, max_order=2):
+    def compute_meta_scattering(J, Q, max_order=2, T=-1, wav_type='morlet'):
         """Get metadata on the transform.
 
         This information specifies the content of each scattering coefficient,
@@ -390,6 +390,10 @@ class Scattering1D(object):
         max_order : int, optional
             The maximum order of scattering coefficients to compute.
             Must be either equal to `1` or `2`. Defaults to `2`.
+        T : int
+            Temporal support of the data. Not needed for morlet wavelets.
+        wav_type: string
+            Wavelet type.
 
         Returns
         -------
@@ -416,7 +420,7 @@ class Scattering1D(object):
                 in the non-vectorized output.
         """
         sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-            calibrate_scattering_filters(J, Q)
+            calibrate_scattering_filters(J, Q, T, wav_type=wav_type)
 
         meta = {}
 
@@ -471,7 +475,7 @@ class Scattering1D(object):
         return meta
 
     @staticmethod
-    def precompute_size_scattering(J, Q, max_order=2, detail=False):
+    def precompute_size_scattering(J, Q, max_order=2, detail=False, T=-1, wav_type='morlet'):
         """Get size of the scattering transform
 
         The number of scattering coefficients depends on the filter
@@ -492,6 +496,10 @@ class Scattering1D(object):
         detail : boolean, optional
             Specifies whether to provide a detailed size (number of coefficient
             per order) or an aggregate size (total number of coefficients).
+        T : int
+            Temporal support of the data.
+        wav_type: string
+            Wavelet type.
 
         Returns
         -------
@@ -501,7 +509,7 @@ class Scattering1D(object):
             the number of coefficients in each order.
         """
         sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-            calibrate_scattering_filters(J, Q)
+            calibrate_scattering_filters(J, Q, T, wav_type=wav_type)
 
         size_order0 = 1
         size_order1 = len(xi1)
