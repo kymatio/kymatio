@@ -167,7 +167,7 @@ def test_FFT():
     x = torch.rand(4, 4, 1)
     with pytest.raises(TypeError) as record:
         backend.fft(x)
-    assert ('must be complex' in record.value.args[0])
+    assert ('complex' in record.value.args[0])
 
     x = torch.randn(4, 4, 2)
     y = x[::2, ::2]
