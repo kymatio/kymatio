@@ -1,11 +1,14 @@
 """
 Inverting scattering via mse
-===========================
+============================
 This script aims to quantify the information loss for natural images by
-performing a reconstruction of an image from its scattering coefficients
-via a L2-norm minimization.
+performing a reconstruction of an image from its scattering coefficients via a
+L2-norm minimization.
 """
 
+###############################################################################
+# Imports
+# -------
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -17,21 +20,25 @@ from kymatio import Scattering2D
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-# Load src image
-img_name = "./images/lena_64.png"
+###############################################################################
+# Load test image
+# ---------------
+img_name = "./images/baboon - Copie.PNG"
 src_img = Image.open(img_name).convert("RGB")
 src_img = np.array(src_img).astype(np.float32)
 src_img = src_img / 255.0
-y_true = np.array(src_img)  # copy of src_img
-plt.imshow(y_true)
+plt.imshow(src_img)
 plt.title("Original image")
 
 src_img = np.moveaxis(src_img, -1, 0)  # HWC to CHW
-print("img shape: ", src_img.shape)
+print("Image shape: ", src_img.shape)
 channels, height, width = src_img.shape
 
+###############################################################################
+#  Main loop
+# ----------
 for order in [1]:
-    for J in [2, 5]:
+    for J in [2, 4]:
 
         # Compute scattering coefficients
         scattering = Scattering2D(J=J, shape=(height, width), max_order=order)
@@ -49,7 +56,7 @@ for order in [1]:
         # Training
         best_img = None
         best_loss = float("inf")
-        for epoch in range(1, 300):
+        for epoch in range(1, 500):
             new_coefficients = scattering(input_tensor)
             loss = F.mse_loss(input=new_coefficients, target=scattering_coefficients)
             print("Epoch {}, loss: {}".format(epoch, loss.item()), end="\r")
@@ -57,24 +64,19 @@ for order in [1]:
             loss.backward()
             optimizer.step()
             if loss < best_loss:
-                best_loss = loss
-                best_img = input_tensor.clone().detach()
+                best_loss = loss.detach().cpu().item()
+                best_img = input_tensor.detach().cpu().numpy()
 
-        y_pred = best_img.cpu().detach().numpy()
-        y_pred = np.moveaxis(y_pred, 0, -1)  # CHW to HWC
-
-        y_pred = np.clip(y_pred, 0.0, 1.0)
+        best_img = np.clip(best_img, 0.0, 1.0)
 
         # PSNR
-        print("")
-        mse = np.mean((y_true - y_pred) ** 2)
+        mse = np.mean((src_img - best_img) ** 2)
         psnr = 20 * np.log10(1.0 / np.sqrt(mse))
-        print("PSNR: {:.2f}dB for order {} and J={}".format(psnr, order, J))
+        print("\nPSNR: {:.2f}dB for order {} and J={}".format(psnr, order, J))
 
         # Plot
         plt.figure()
-        plt.imshow(y_pred)
+        plt.imshow(np.moveaxis(best_img, 0, -1))
         plt.title("PSNR: {:.2f}dB (order {}, J={})".format(psnr, order, J))
-
 
 plt.show()
