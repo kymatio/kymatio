@@ -24,7 +24,7 @@ except:
 
 
 if torch.cuda.is_available():
-    devices = ['gpu', 'cpu']
+    devices = ['cuda', 'cpu']
 else:
     devices = ['cpu']
 
@@ -32,7 +32,7 @@ else:
 # Checked the modulus
 def test_Modulus():
     for device in devices:
-        if device == 'gpu':
+        if device == 'cuda':
             for backend in backends:
                 modulus = backend.Modulus()
                 x = torch.rand(100, 10, 4, 2).cuda().float()
@@ -60,7 +60,7 @@ def test_Modulus():
 # Checked the subsampling
 def test_SubsampleFourier():
     for device in devices:
-        if device == 'gpu':
+        if device == 'cuda':
             for backend in backends:
                 x = torch.rand(100, 1, 128, 128, 2).cuda().double()
                 y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
@@ -128,7 +128,6 @@ class TestCDGMM:
             pytest.skip("skcuda backend can only run on gpu")
         x, filt, y = data
         # move to device
-        device = 'cuda' if device == 'gpu' else device
         x, filt, y = x.to(device), filt.to(device), y.to(device)
         # call cdgmm
         if inplace:
@@ -156,7 +155,7 @@ class TestCDGMM:
         with pytest.raises(RuntimeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
         assert "must be of the same dtype" in exc.value.args[0]
-        if 'gpu' in devices:
+        if 'cuda' in devices:
             with pytest.raises(RuntimeError) as exc:
                 backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
             assert "type" in exc.value.args[0]
@@ -235,7 +234,7 @@ def test_Scattering2D():
         Sg = []
 
         for device in devices:
-            if device == 'gpu':
+            if device == 'cuda':
                 print('torch-gpu backend tested!')
                 x = x.cuda()
                 scattering.cuda()
