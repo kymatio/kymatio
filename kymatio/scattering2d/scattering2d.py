@@ -108,6 +108,9 @@ class Scattering2D(object):
         self.Phi = convert_filters([filters['phi'][j] for j in range(self.J)])
 
     def _apply(self, fn):
+        """
+            Mimicates the behavior of the function _apply() of a nn.Module()
+        """
         for key, item in enumerate(self.Psi):
             for key2, item2 in self.Psi[key].items():
                 if torch.is_tensor(item2):
@@ -118,13 +121,13 @@ class Scattering2D(object):
 
     def cuda(self, device=None):
         """
-            Moves the parameters of the scattering to the GPU
+            Mimicates the behavior of the function cuda() of a nn.Module()
         """
         return self._apply(lambda t: t.cuda(device))
 
     def to(self, *args, **kwargs):
         """
-            Moves the parameters of the scattering to the GPU
+            Mimicates the behavior of the function to() of a nn.Module()
         """
         device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
 
@@ -140,7 +143,7 @@ class Scattering2D(object):
 
     def cpu(self):
         """
-            Moves the parameters of the scattering to the CPU
+            Mimicates the behavior of the function cpu() of a nn.Module()
         """
         return self._apply(lambda t: t.cpu())
 
