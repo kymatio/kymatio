@@ -9,15 +9,18 @@ from kymatio.scattering2d import backend
 
 
 backends = []
+
 try:
     from kymatio.scattering2d.backend import backend_skcuda
     backends.append(backend_skcuda)
 except:
     pass
 
-
-from kymatio.scattering2d.backend import backend_torch
-backends.append(backend_torch)
+try:
+    from kymatio.scattering2d.backend import backend_torch
+    backends.append(backend_torch)
+except:
+    pass
 
 
 if torch.cuda.is_available():
@@ -107,21 +110,21 @@ class TestCDGMM:
     def data(self, request):
         real_filter = request.param
         x = torch.rand(100, 128, 128, 2)
-        filter = torch.rand(128, 128, 2)
+        filt = torch.rand(128, 128, 2)
         y = torch.ones(100, 128, 128, 2)
         if real_filter:
-            filter[..., 1] = 0
-        y[..., 0] = x[..., 0] * filter[..., 0] - x[..., 1] * filter[..., 1]
-        y[..., 1] = x[..., 1] * filter[..., 0] + x[..., 0] * filter[..., 1]
+            filt[..., 1] = 0
+        y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
+        y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
         if real_filter:
-            filter = filter[..., :1]
-        return x, filter, y
+            filt = filt[..., :1]
+        return x, filt, y
 
     if 'gpu' in devices:
-        x, filter, y = data
-        x, filter = x.to('cpu'), filter.to('gpu')
+        x, filt, y = data
+        x, filt = x.to('cpu'), filt.to('gpu')
         with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(x, filter)
+            backend.cdgmm(x, filt)
         assert ('device' in exc.value.args[0])
 
     @pytest.mark.parametrize("backend", backends)
@@ -130,14 +133,14 @@ class TestCDGMM:
     def test_cdgmm_forward(self, data, backend, device, inplace):
         if device == 'cpu' and backend.NAME == 'skcuda':
             pytest.skip("skcuda backend can only run on gpu")
-        x, filter, y = data
+        x, filt, y = data
         # move to device
         device = 'cuda' if device == 'gpu' else device
-        x, filter, y = x.to(device), filter.to(device), y.to(device)
+        x, filt, y = x.to(device), filt.to(device), y.to(device)
         # call cdgmm
         if inplace:
             x = x.clone()
-        z = backend.cdgmm(x, filter, inplace=inplace)
+        z = backend.cdgmm(x, filt, inplace=inplace)
         if inplace:
             z = x
         # compare
