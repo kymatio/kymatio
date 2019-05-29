@@ -23,7 +23,7 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 ###############################################################################
 # Load test image
 # ---------------
-img_name = "./images/baboon - Copie.PNG"
+img_name = "./images/baboon.bmp"
 src_img = Image.open(img_name).convert("RGB")
 src_img = np.array(src_img).astype(np.float32)
 src_img = src_img / 255.0
@@ -31,6 +31,7 @@ plt.imshow(src_img)
 plt.title("Original image")
 
 src_img = np.moveaxis(src_img, -1, 0)  # HWC to CHW
+max_iter = 5 # number of steps for the GD
 print("Image shape: ", src_img.shape)
 channels, height, width = src_img.shape
 
@@ -44,7 +45,8 @@ for order in [1]:
         scattering = Scattering2D(J=J, shape=(height, width), max_order=order)
         if device == "cuda":
             scattering = scattering.cuda()
-        src_img_tensor = torch.from_numpy(src_img).to(device)
+            max_iter = 500
+        src_img_tensor = torch.from_numpy(src_img).to(device).contiguous()
         scattering_coefficients = scattering(src_img_tensor)
 
         # Create trainable input image
@@ -56,7 +58,7 @@ for order in [1]:
         # Training
         best_img = None
         best_loss = float("inf")
-        for epoch in range(1, 500):
+        for epoch in range(1, max_iter):
             new_coefficients = scattering(input_tensor)
             loss = F.mse_loss(input=new_coefficients, target=scattering_coefficients)
             print("Epoch {}, loss: {}".format(epoch, loss.item()), end="\r")
