@@ -10,7 +10,7 @@ from .backend import (fft1d_c2c, ifft1d_c2c, modulus_complex, pad, real,
     subsample_fourier, unpad)
 from .filter_bank import (calibrate_scattering_filters,
     scattering_filter_factory)
-from .utils import cast_phi, cast_psi, compute_border_indices, compute_padding
+from .utils import _apply_phi, _apply_psi, compute_border_indices, compute_padding
 
 
 __all__ = ['Scattering1D']
@@ -237,9 +237,9 @@ class Scattering1D(object):
         """
             Mimicates the behavior of the function _apply() of a nn.Module()
         """
-        _apply_psi(self.psi1_f, target_type)
-        _apply_psi(self.psi2_f, target_type)
-        _apply_phi(self.phi_f, target_type)
+        _apply_psi(self.psi1_f, fn)
+        _apply_psi(self.psi2_f, fn)
+        _apply_phi(self.phi_f, fn)
         return self
 
     def cuda(self, device=None):
