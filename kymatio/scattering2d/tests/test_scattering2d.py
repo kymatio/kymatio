@@ -332,7 +332,7 @@ def test_scattering2d_errors():
     for device in devices:
         x = x.to(device)
         S = S.to(device)
-        if not (device == 'cpu' and backend == 'skcuda'):
+        if not (device == 'cpu' and backend.NAME == 'skcuda'):
             y = S(x)
             assert(x.device == y.device)
 
