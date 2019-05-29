@@ -107,37 +107,42 @@ class Scattering2D(object):
         self.Psi = convert_filters(filters['psi'])
         self.Phi = convert_filters([filters['phi'][j] for j in range(self.J)])
 
-    def _type(self, _type):
+    def _apply(self, fn):
         for key, item in enumerate(self.Psi):
             for key2, item2 in self.Psi[key].items():
                 if torch.is_tensor(item2):
-                    self.Psi[key][key2] = item2.type(_type)
-        self.Phi = [v.type(_type) for v in self.Phi]
-        self.pad.padding_module.type(_type)
+                    self.Psi[key][key2] = fn(item2)
+        self.Phi = [fn(v) for v in self.Phi]
+        self.pad.padding_module._apply(fn)
         return self
 
-    def cuda(self):
+    def cuda(self, device=None):
         """
             Moves the parameters of the scattering to the GPU
         """
-        return self._type(torch.cuda.FloatTensor)
+        return self._apply(lambda t: t.cuda(device))
 
-    def to(self, device):
+    def to(self, *args, **kwargs):
         """
             Moves the parameters of the scattering to the GPU
         """
-        for key, item in enumerate(self.Psi):
-            for key2, item2 in self.Psi[key].items():
-                if torch.is_tensor(item2):
-                    self.Psi[key][key2] = item2.to(device)
-        self.Phi = [v.to(device) for v in self.Phi]
-        self.pad.padding_module.to(device)
+        device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+
+        if dtype is not None:
+            if not dtype.is_floating_point:
+                raise TypeError('nn.Module.to only accepts floating point '
+                                'dtypes, but got desired dtype={}'.format(dtype))
+
+        def convert(t):
+            return t.to(device, dtype if t.is_floating_point() else None, non_blocking)
+
+        return self._apply(convert)
 
     def cpu(self):
         """
             Moves the parameters of the scattering to the CPU
         """
-        return self._type(torch.FloatTensor)
+        return self._apply(lambda t: t.cpu())
 
     def forward(self, input):
         """Forward pass of the scattering.
