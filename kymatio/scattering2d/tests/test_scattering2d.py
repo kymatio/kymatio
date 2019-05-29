@@ -327,7 +327,7 @@ def test_scattering2d_errors():
     assert('Padded tensor must be of spatial size' in record.value.args[0])
 
     x = torch.randn(8,8)
-    S = Scattering2D(3, (8, 8))
+    S = Scattering2D(2, (8, 8))
 
     for device in devices:
         x = x.to(device)
