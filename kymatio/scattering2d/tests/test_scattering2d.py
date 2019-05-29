@@ -332,8 +332,9 @@ def test_scattering2d_errors():
     for device in devices:
         x = x.to(device)
         S = S.to(device)
-        y = S(x)
-        assert(x.device == y.device)
+        if not (device == 'cpu' and backend == 'skcuda'):
+            y = S(x)
+            assert(x.device == y.device)
 
 # Check that several input size works
 def test_input_size_agnostic():
