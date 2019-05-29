@@ -120,13 +120,6 @@ class TestCDGMM:
             filt = filt[..., :1]
         return x, filt, y
 
-    if 'gpu' in devices:
-        x, filt, y = data
-        x, filt = x.to('cpu'), filt.to('gpu')
-        with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(x, filt)
-        assert ('device' in exc.value.args[0])
-
     @pytest.mark.parametrize("backend", backends)
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("inplace", (False, True))
@@ -166,7 +159,7 @@ class TestCDGMM:
         if 'gpu' in devices:
             with pytest.raises(RuntimeError) as exc:
                 backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-            assert "must be on the same device" in exc.value.args[0]
+            assert "type" in exc.value.args[0]
 
 def test_FFT():
     x = torch.rand(4, 4, 1)
