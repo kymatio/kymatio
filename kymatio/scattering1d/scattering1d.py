@@ -250,19 +250,33 @@ class Scattering1D(object):
         cast_phi(self.phi_f, target_type)
         return self
 
+    def cuda(self, device=None):
+        """
+            Moves the parameters of the scattering to the GPU
+        """
+        return self._apply(lambda t: t.cuda(device))
+
+    def to(self, *args, **kwargs):
+        """
+            Moves the parameters of the scattering to the GPU
+        """
+        device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+
+        if dtype is not None:
+            if not dtype.is_floating_point:
+                raise TypeError('nn.Module.to only accepts floating point '
+                                'dtypes, but got desired dtype={}'.format(dtype))
+
+        def convert(t):
+            return t.to(device, dtype if t.is_floating_point() else None, non_blocking)
+
+        return self._apply(convert)
+
     def cpu(self):
-        """Move to the CPU
-
-        This function prepares the object to accept input Tensors on the CPU.
         """
-        return self._type(torch.FloatTensor)
-
-    def cuda(self):
-        """Move to the GPU
-
-        This function prepares the object to accept input Tensors on the GPU.
+            Moves the parameters of the scattering to the CPU
         """
-        return self._type(torch.cuda.FloatTensor)
+        return self._apply(lambda t: t.cpu())
 
     def meta(self):
         """Get meta information on the transform
