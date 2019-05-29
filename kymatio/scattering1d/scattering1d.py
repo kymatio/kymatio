@@ -233,32 +233,24 @@ class Scattering1D(object):
         self.phi_f = phi_f
         self._type(torch.FloatTensor)
 
-    def _type(self, target_type):
-        """Change the datatype of the filters
-
-        This function is used internally to convert the filters. It does not
-        need to be called explicitly.
-
-        Parameters
-        ----------
-        target_type : type
-            The desired type of the filters, typically `torch.FloatTensor`
-            or `torch.cuda.FloatTensor`.
+    def _apply(self, fn):
         """
-        cast_psi(self.psi1_f, target_type)
-        cast_psi(self.psi2_f, target_type)
-        cast_phi(self.phi_f, target_type)
+            Mimicates the behavior of the function _apply() of a nn.Module()
+        """
+        _apply_psi(self.psi1_f, target_type)
+        _apply_psi(self.psi2_f, target_type)
+        _apply_phi(self.phi_f, target_type)
         return self
 
     def cuda(self, device=None):
         """
-            Moves the parameters of the scattering to the GPU
+            Mimicates the behavior of the function cuda() of a nn.Module()
         """
         return self._apply(lambda t: t.cuda(device))
 
     def to(self, *args, **kwargs):
         """
-            Moves the parameters of the scattering to the GPU
+            Mimicates the behavior of the function to() of a nn.Module()
         """
         device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
 
@@ -274,7 +266,7 @@ class Scattering1D(object):
 
     def cpu(self):
         """
-            Moves the parameters of the scattering to the CPU
+            Mimicates the behavior of the function cpu() of a nn.Module()
         """
         return self._apply(lambda t: t.cpu())
 
