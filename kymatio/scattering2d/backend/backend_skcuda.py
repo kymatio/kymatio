@@ -1,11 +1,12 @@
 # Authors: Edouard Oyallon, Sergey Zagoruyko
 
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 import torch
 from skcuda import cublas
 import cupy
 from string import Template
 from torch.nn import ReflectionPad2d
+import numpy as np
 
 NAME = 'skcuda'
 
@@ -19,6 +20,18 @@ def load_kernel(kernel_name, code, **kwargs):
 Stream = namedtuple('Stream', ['ptr'])
 
 
+def convert_filters(bank):
+    for c, psi in enumerate(bank):
+        if isinstance(psi, np.ndarray):
+            bank[c] = torch.from_numpy(bank[c])
+        else:
+            for k, v in psi.items():
+                if isinstance(k, int):
+                    bank[c][k] = torch.from_numpy(v)
+    return bank
+
+
+
 def getDtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
@@ -30,6 +43,10 @@ def iscomplex(input):
     return input.size(-1) == 2
 
 
+def isreal(input):
+    return input.size(-1) == 1
+
+
 class Pad(object):
     def __init__(self, pad_size, pre_pad=False):
         """
@@ -38,22 +55,24 @@ class Pad(object):
 
             Parameters
             ----------
-            pad_size : int
+            pad_size : list of 4 integers
                 size of padding to apply.
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
         """
         self.pre_pad = pre_pad
-        self.padding_module = ReflectionPad2d(pad_size)
+        self.pad_size = pad_size
 
-    def __call__(self, input):
-        if(self.pre_pad):
-            output = input.new_zeros(input.size(0), input.size(1), input.size(2), input.size(3), 2)
-            output.narrow(output.ndimension()-1, 0, 1)[:] = input
-        else:
-            out_ = self.padding_module(input)
-            output = input.new_zeros(*(out_.size() + (2,)))
-            output.select(4, 0)[:] = out_
+        self.build()
+
+    def build(self):
+        self.padding_module = ReflectionPad2d(self.pad_size)
+
+    def __call__(self, x):
+        if not self.pre_pad:
+            x = self.padding_module(x)
+        output = x.new_zeros(x.shape + (2,))
+        output[...,0] = x
         return output
 
 def unpad(in_):
@@ -252,9 +271,9 @@ def cdgmm(A, B, inplace=False):
         Parameters
         ----------
         A : tensor
-            input tensor with size (B, C, M, N, 2)
+            A is a complex tensor of size (B, C, M, N, 2)
         B : tensor
-            B is a complex tensor of size (M, N, 2)
+            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1)
         inplace : boolean, optional
             if set to True, all the operations are performed inplace
 
@@ -264,33 +283,46 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    A, B = A.contiguous(), B.contiguous()
-    if A.size()[-3:] != B.size():
-        raise RuntimeError('The filters are not compatible for multiplication!')
-
-    if not iscomplex(A) or not iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
+    if not iscomplex(A):
+        raise TypeError('The input must be complex, indicated by a last '
+                        'dimension of size 2')
 
     if B.ndimension() != 3:
-        raise RuntimeError('The filters must be simply a complex array!')
+        raise RuntimeError('The filter must be a 3-tensor, with a last '
+                           'dimension of size 1 or 2 to indicate it is real '
+                           'or complex, respectively')
 
-    if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
+    if not iscomplex(B) and not isreal(B):
+        raise TypeError('The filter must be complex or real, indicated by a '
+                        'last dimension of size 2 or 1, respectively')
 
-    if not A.is_cuda:
-        raise RuntimeError('Use the torch backend for cpu tensors!')
+    if A.size()[-3:-1] != B.size()[-3:-1]:
+        raise RuntimeError('The filters are not compatible for multiplication!')
 
-    C = A.new(A.size()) if not inplace else A
-    m, n = B.nelement() // 2, A.nelement() // B.nelement()
-    lda = m
-    ldc = m
-    incx = 1
-    handle = torch.cuda.current_blas_handle()
-    stream = torch.cuda.current_stream()._as_parameter_
-    cublas.cublasSetStream(handle, stream)
-    cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
-    return C
+    if A.dtype is not B.dtype:
+        raise RuntimeError('A and B must be of the same dtype')
 
+    if A.device.type != B.device.type:
+        raise RuntimeError('A and B must be of the same device type')
 
+    if A.device.type == 'cuda':
+        if A.device.index != B.device.index:
+            raise RuntimeError('A and B must be on the same GPU!')
 
-
+    if isreal(B):
+        if inplace:
+            return A.mul_(B)
+        else:
+            return A * B
+    else:
+        A, B = A.contiguous(), B.contiguous()
+        C = A.new(A.size()) if not inplace else A
+        m, n = B.nelement() // 2, A.nelement() // B.nelement()
+        lda = m
+        ldc = m
+        incx = 1
+        handle = torch.cuda.current_blas_handle()
+        stream = torch.cuda.current_stream()._as_parameter_
+        cublas.cublasSetStream(handle, stream)
+        cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
+        return C

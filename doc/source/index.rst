@@ -1,15 +1,27 @@
 
 .. |pic1| image:: https://img.shields.io/badge/License-BSD%203--Clause-blue.svg
 
-.. |pic2| image:: https://img.shields.io/badge/python-3.6-blue.svg
+.. |pic2| image:: https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg
 
-.. |pic3| image:: https://assets-cdn.github.com/images/modules/logos_page/GitHub-Mark.png
+.. |picDL| image:: https://pepy.tech/badge/kymatio
+
+.. |piccodecov| image:: https://codecov.io/gh/kymatio/kymatio/branch/master/graph/badge.svg
+
+.. |pic3| image:: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
           :width: 30px
           :target: https://github.com/kymatio/kymatio
 
 .. |pic4| image:: https://avatars3.githubusercontent.com/u/50278?s=200&v=4
           :width: 30px
           :target: https://twitter.com/KymatioWavelets
+
+.. |flatiron| image:: _static/FL_Full_Logo_Mark_Small.png
+          :width: 300px
+          :target: https://www.simonsfoundation.org/flatiron
+
+.. |ens| image:: https://www.ens.fr/sites/default/files/inline-images/logo.jpg
+          :width: 300px
+          :target: https://www.ens.fr/
 
 .. scattering documentation master file, created by
    sphinx-quickstart on Tue Oct  2 23:41:09 2018.
@@ -21,7 +33,7 @@
 Kymatio
 *******
 
-|pic1|  |pic2|
+|pic2|  |pic1| |picDL| |piccodecov|
 
 |pic3|  |pic4|
 
@@ -41,6 +53,14 @@ Use kymatio if you need a library that:
 A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
 list of publications see
 `Publications <https://www.di.ens.fr/data/publications>`_.
+
+We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
+
+|flatiron|
+
+We would also like to thank École Normale Supérieure for their support.
+
+|ens|
 
 .. include:: quickstart.rst
 

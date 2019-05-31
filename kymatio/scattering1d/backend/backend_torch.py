@@ -7,6 +7,9 @@ from torch.autograd import Function
 
 NAME = 'torch'
 
+def is_complex(input):
+    return input.size(-1) == 2
+
 class ModulusStable(Function):
     """Stable complex modulus
 
@@ -92,17 +95,12 @@ class ModulusStable(Function):
             grad_output = grad_output.unsqueeze(ctx.dim)
             output = output.unsqueeze(ctx.dim)
 
-        if ctx.p == 2:
-            grad_input = x.mul(grad_output).div(output)
-        else:
-            input_pow = x.abs().pow(ctx.p - 2)
-            output_pow = output.pow(ctx.p - 1)
-            grad_input = x.mul(input_pow).mul(grad_output).div(output_pow)
+        grad_input = x.mul(grad_output).div(output)
 
         # Special case at 0 where we return a subgradient containing 0
         grad_input.masked_fill_(output == 0, 0)
 
-        return grad_input, None, None, None
+        return grad_input
 
 # shortcut for ModulusStable.apply
 modulus = ModulusStable.apply
@@ -125,6 +123,9 @@ def modulus_complex(x):
         A tensor with the same dimensions as x, such that res[..., 0] contains
         the complex modulus of x, while res[..., 1] = 0.
     """
+    if not is_complex(x):
+        raise TypeError('The input should be complex.')
+
     norm = modulus(x)
 
     res = torch.zeros_like(x)
@@ -155,6 +156,9 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
+    if not is_complex(x):
+        raise TypeError('The input should be complex.')
+
     N = x.shape[-2]
     res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
     return res

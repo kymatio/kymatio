@@ -3,14 +3,6 @@ import warnings
 
 NAME = 'torch'
 
-
-def getDtype(t):
-    if isinstance(t, torch.cuda.FloatTensor):
-        return 'float'
-    elif isinstance(t, torch.cuda.DoubleTensor):
-        return 'double'
-
-
 def iscomplex(input):
     return input.size(-1) == 2
 

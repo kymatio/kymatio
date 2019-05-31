@@ -2,12 +2,17 @@
 
 import torch
 from torch.nn import ReflectionPad2d
+import numpy as np
 
 NAME = 'torch'
 
 
 def iscomplex(input):
     return input.size(-1) == 2
+
+
+def isreal(input):
+    return input.size(-1) == 1
 
 
 class Pad(object):
@@ -18,23 +23,35 @@ class Pad(object):
 
             Parameters
             ----------
-            pad_size : int
+            pad_size : list of 4 integers
                 size of padding to apply.
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
         """
         self.pre_pad = pre_pad
-        self.padding_module = ReflectionPad2d(pad_size)
+        self.pad_size = pad_size
 
-    def __call__(self, input):
-        if(self.pre_pad):
-            output = input.new_zeros(input.size(0), input.size(1), input.size(2), input.size(3), 2)
-            output.narrow(output.ndimension()-1, 0, 1)[:] = input
-        else:
-            out_ = self.padding_module(input)
-            output = input.new_zeros(*(out_.size() + (2,)))
-            output.select(4, 0)[:] = out_
+        self.build()
+
+    def build(self):
+        self.padding_module = ReflectionPad2d(self.pad_size)
+
+    def __call__(self, x):
+        if not self.pre_pad:
+            x = self.padding_module(x)
+        output = x.new_zeros(x.shape + (2,))
+        output[...,0] = x
         return output
+
+def convert_filters(bank):
+    for c, psi in enumerate(bank):
+        if isinstance(psi, np.ndarray):
+            bank[c] = torch.from_numpy(bank[c])
+        else:
+            for k, v in psi.items():
+                if isinstance(k, int):
+                    bank[c][k] = torch.from_numpy(v)
+    return bank
 
 def unpad(in_):
     """
@@ -104,10 +121,12 @@ class Modulus(object):
         output: a tensor with imaginary part set to 0, real part set equal to
         the modulus of x.
     """
-    def __call__(self, input):
+    def __call__(self, x):
 
-        norm = input.norm(p=2, dim=-1, keepdim=True)
-        return torch.cat([norm, torch.zeros_like(norm)], -1)
+        norm = torch.zeros_like(x)
+        norm[...,0] = (x[...,0]*x[...,0] +
+                       x[...,1]*x[...,1]).sqrt()
+        return norm
 
 
 
@@ -161,9 +180,9 @@ def cdgmm(A, B, inplace=False):
         Parameters
         ----------
         A : tensor
-            input tensor with size (B, C, M, N, 2)
+            A is a complex tensor of size (B, C, M, N, 2)
         B : tensor
-            B is a complex tensor of size (M, N, 2)
+            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1)
         inplace : boolean, optional
             if set to True, all the operations are performed inplace
 
@@ -173,32 +192,47 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    A, B = A.contiguous(), B.contiguous()
-    if A.size()[-3:] != B.size():
-        raise RuntimeError('The filters are not compatible for multiplication!')
-
-    if not iscomplex(A) or not iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
+    if not iscomplex(A):
+        raise TypeError('The input must be complex, indicated by a last '
+                        'dimension of size 2')
 
     if B.ndimension() != 3:
-        raise RuntimeError('The filters must be simply a complex array!')
+        raise RuntimeError('The filter must be a 3-tensor, with a last '
+                           'dimension of size 1 or 2 to indicate it is real '
+                           'or complex, respectively')
 
-    if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
+    if not iscomplex(B) and not isreal(B):
+        raise TypeError('The filter must be complex or real, indicated by a '
+                        'last dimension of size 2 or 1, respectively')
 
+    if A.size()[-3:-1] != B.size()[-3:-1]:
+        raise RuntimeError('The filters are not compatible for multiplication!')
 
-    C = A.new(A.size())
+    if A.dtype is not B.dtype:
+        raise RuntimeError('A and B must be of the same dtype')
 
-    A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
-    A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
+    if A.device.type != B.device.type:
+        raise RuntimeError('A and B must be of the same device type')
 
-    B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
-    B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
+    if A.device.type == 'cuda':
+        if A.device.index != B.device.index:
+            raise RuntimeError('A and B must be on the same GPU!')
 
-    C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
-    C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
+    if isreal(B):
+        if inplace:
+            return A.mul_(B)
+        else:
+            return A * B
+    else:
+        C = A.new(A.size())
 
-    return C if not inplace else A.copy_(C)
+        A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
+        A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
 
+        B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
+        B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
 
+        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
 
+        return C if not inplace else A.copy_(C)

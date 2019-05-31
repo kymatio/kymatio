@@ -9,6 +9,7 @@ from kymatio.scattering2d import backend
 
 
 backends = []
+
 try:
     from kymatio.scattering2d.backend import backend_skcuda
     backends.append(backend_skcuda)
@@ -20,6 +21,7 @@ try:
     backends.append(backend_torch)
 except:
     pass
+
 
 if torch.cuda.is_available():
     devices = ['gpu', 'cpu']
@@ -52,8 +54,6 @@ def test_Modulus():
                 u = u.squeeze()
                 v = v.squeeze()
                 assert (u - v).abs().max() < 1e-6
-        else:
-            raise('No backend or device detected.')
 
 
 
@@ -102,43 +102,84 @@ def test_SubsampleFourier():
                 if backend.NAME == 'torch':
                     z = subsample_fourier(x.cpu(), k=16)
                     assert (y.cpu() - z).abs().max() < 1e-8
-        else:
-            raise ('No backend or device detected.')
 
 
 # Check the CUBLAS routines
-def test_Cublas():
-    for device in devices:
-        if device == 'gpu':
-            for backend in backends:
-                x = torch.rand(100, 128, 128, 2).cuda()
-                filter = torch.rand(128, 128, 2).cuda()
-                filter[..., 1] = 0
-                y = torch.ones(100, 128, 128, 2).cuda()
-                z = torch.Tensor(100, 128, 128, 2).cuda()
+class TestCDGMM:
+    @pytest.fixture(params=(False, True))
+    def data(self, request):
+        real_filter = request.param
+        x = torch.rand(100, 128, 128, 2)
+        filt = torch.rand(128, 128, 2)
+        y = torch.ones(100, 128, 128, 2)
+        if real_filter:
+            filt[..., 1] = 0
+        y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
+        y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
+        if real_filter:
+            filt = filt[..., :1]
+        return x, filt, y
 
-                for i in range(100):
-                    y[i,:,:,0]=x[i,:,:,0] * filter[:,:,0]-x[i,:,:,1] * filter[:,:,1]
-                    y[i, :, :, 1] = x[i, :, :, 1] * filter[:, :, 0] + x[i, :, :, 0] * filter[:, :, 1]
-                z = backend.cdgmm(x, filter)
+    if 'gpu' in devices:
+        x, filt, y = data
+        x, filt = x.to('cpu'), filt.to('gpu')
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(x, filt)
+        assert ('device' in exc.value.args[0])
 
-                assert (y-z).abs().max() < 1e-6
-        elif device == 'cpu':
-            for backend in backends:
-                if backend.NAME == 'skcuda':
-                    continue
-                x = torch.rand(100, 128, 128, 2)
-                filter = torch.rand(128, 128, 2)
-                filter[..., 1] = 0
-                y = torch.ones(100, 128, 128, 2)
-                z = torch.Tensor(100, 128, 128, 2)
+    @pytest.mark.parametrize("backend", backends)
+    @pytest.mark.parametrize("device", devices)
+    @pytest.mark.parametrize("inplace", (False, True))
+    def test_cdgmm_forward(self, data, backend, device, inplace):
+        if device == 'cpu' and backend.NAME == 'skcuda':
+            pytest.skip("skcuda backend can only run on gpu")
+        x, filt, y = data
+        # move to device
+        device = 'cuda' if device == 'gpu' else device
+        x, filt, y = x.to(device), filt.to(device), y.to(device)
+        # call cdgmm
+        if inplace:
+            x = x.clone()
+        z = backend.cdgmm(x, filt, inplace=inplace)
+        if inplace:
+            z = x
+        # compare
+        assert (y - z).abs().max() < 1e-6
 
-                for i in range(100):
-                    y[i, :, :, 0] = x[i, :, :, 0] * filter[:, :, 0] - x[i, :, :, 1] * filter[:, :, 1]
-                    y[i, :, :, 1] = x[i, :, :, 1] * filter[:, :, 0] + x[i, :, :, 0] * filter[:, :, 1]
-                z = backend.cdgmm(x, filter)
+    @pytest.mark.parametrize("backend", backends)
+    def test_cdgmm_exceptions(self, backend):
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 3, 2))
+        assert "not compatible" in exc.value.args[0]
+        with pytest.raises(TypeError) as exc:
+            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
+        assert "input must be complex" in exc.value.args[0]
+        with pytest.raises(TypeError) as exc:
+            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
+        assert "filter must be complex or real" in exc.value.args[0]
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(3, 4, 5, 2))
+        assert "filter must be a 3-tensor" in exc.value.args[0]
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
+        assert "must be of the same dtype" in exc.value.args[0]
+        if 'gpu' in devices:
+            with pytest.raises(RuntimeError) as exc:
+                backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
+            assert "must be on the same device" in exc.value.args[0]
 
-                assert (y - z).abs().max() < 1e-6
+def test_FFT():
+    x = torch.rand(4, 4, 1)
+    with pytest.raises(TypeError) as record:
+        backend.fft(x)
+    assert ('complex' in record.value.args[0])
+
+    x = torch.randn(4, 4, 2)
+    y = x[::2, ::2]
+
+    with pytest.raises(RuntimeError) as record:
+        backend.fft(y)
+    assert ('must be contiguous' in record.value.args[0])
 
 
 def reorder_coefficients_from_interleaved(J, L):
@@ -261,3 +302,55 @@ def test_batch_shape_agnostic():
         assert Sx.shape[-2:] == shape_ds
         assert Sx.shape[-3] == n_coeffs
         assert Sx.shape[:-3] == test_shape[:-2]
+
+# Make sure we test for the errors that may be raised by
+# `Scattering2D.forward`.
+def test_scattering2d_errors():
+    S = Scattering2D(3, (32, 32))
+
+    if backend.NAME == 'skcuda':
+        S.cuda()
+
+    with pytest.raises(TypeError) as record:
+        S(None)
+    assert('input should be' in record.value.args[0])
+
+    x = torch.randn(4,4)
+    y = x[::2,::2]
+
+    with pytest.raises(RuntimeError) as record:
+        S(y)
+    assert('must be contiguous' in record.value.args[0])
+
+    x = torch.randn(31, 31)
+
+    with pytest.raises(RuntimeError) as record:
+        S(x)
+    assert('Tensor must be of spatial size' in record.value.args[0])
+
+    S = Scattering2D(3, (32, 32), pre_pad=True)
+
+    with pytest.raises(RuntimeError) as record:
+        S(x)
+    assert('Padded tensor must be of spatial size' in record.value.args[0])
+
+# Check that several input size works
+def test_input_size_agnostic():
+    for N in [31, 32, 33]:
+        for J in [1, 2, 4]:
+            scattering = Scattering2D(J, shape=(N, N))
+            x = torch.zeros(3,3,N,N)
+
+            if backend.NAME == 'skcuda':
+                x = x.cuda()
+                scattering.cuda()
+
+            S = scattering(x)
+            scattering = Scattering2D(J, shape=(N, N), pre_pad=True)
+            x = torch.zeros(3,3,scattering.M_padded, scattering.N_padded)
+
+            if backend.NAME == 'skcuda':
+                x = x.cuda()
+                scattering.cuda()
+
+            S = scattering(x)

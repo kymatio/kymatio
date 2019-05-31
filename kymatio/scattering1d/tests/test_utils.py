@@ -1,6 +1,6 @@
 import torch
 from kymatio.scattering1d.backend import pad_1d, modulus_complex, subsample_fourier
-from kymatio.scattering1d.utils import compute_border_indices
+from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 import numpy as np
 import pytest
 import kymatio.scattering1d.backend as backend
@@ -77,6 +77,22 @@ def test_modulus(random_state=42):
         x2 = x2.cpu()
     diff = x_abs2[..., 0] - torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2)
     assert torch.max(torch.abs(diff)) <= 1e-6
+
+    # If we are using a GPU-only backend, make sure it raises the proper
+    # errors for CPU tensors.
+    if force_gpu:
+        with pytest.raises(RuntimeError) as re:
+            x_bad = torch.randn((4, 2))
+            modulus_complex(x_bad)
+        assert "for cpu tensors" in re.value.args[0].lower()
+
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4)
+        if force_gpu:
+            x_bad = x_bad.cuda()
+        modulus_complex(x_bad)
+    assert "should be complex" in te.value.args[0]
+
     if backend.NAME == "skcuda":
         warnings.warn(("The skcuda backend does not pass differentiability"
             "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
@@ -89,10 +105,21 @@ def test_modulus(random_state=42):
     diff = x.grad - x_grad
     assert torch.max(torch.abs(diff)) <= 1e-7
 
+    # Manually check `forward`/`backward` using fake context object. This
+    # ensures that `backward` is included in code coverage since going through
+    # the PyTorch C extension seems to not play well with `coverage.py`.
+    class FakeContext:
+        def save_for_backward(self, *args):
+            self.saved_tensors = args
+
+    ctx = FakeContext()
+    y = backend.ModulusStable.forward(ctx, x)
+    y_grad = torch.ones_like(y)
+    x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
+    assert (x_grad_manual - x_grad).abs().max() < 1e-7
+
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True)
-    if force_gpu:
-        x0 = x0.cuda()
     x_abs0 = modulus_complex(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
@@ -120,6 +147,21 @@ def test_subsample_fourier(random_state=42):
         x_f_sub.dtype = 'complex128'
         x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
         assert np.max(np.abs(x[:, :, ::2**j] - x_sub)) < 1e-7
+
+    # If we are using a GPU-only backend, make sure it raises the proper
+    # errors for CPU tensors.
+    if force_gpu:
+        with pytest.raises(RuntimeError) as re:
+            x_bad = torch.randn((4, 2))
+            subsample_fourier(x_bad, 1)
+        assert "for cpu tensors" in re.value.args[0].lower()
+
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4)
+        if force_gpu:
+            x_bad = x_bad.cuda()
+        subsample_fourier(x_bad, 1)
+    assert "should be complex" in te.value.args[0]
 
 
 def test_border_indices(random_state=42):
@@ -151,3 +193,19 @@ def test_border_indices(random_state=42):
             assert np.min(x_sub[:ind_start[j]]) > 0.
         if ind_end[j] < x_sub.shape[-1]:
             assert np.min(x_sub[ind_end[j]:]) > 0.
+
+def test_compute_padding():
+    """
+    Test the compute_padding function
+    """
+
+    pad_left, pad_right = compute_padding(5, 16)
+    assert pad_left == 8 and pad_right == 8
+
+    with pytest.raises(ValueError) as ve:
+        _, _ = compute_padding(3, 16)
+    assert "should be larger" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _, _ = compute_padding(6, 16)
+    assert "Too large padding value" in ve.value.args[0]

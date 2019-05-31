@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 import csv
 import importlib
 import os
@@ -14,7 +16,7 @@ LICENSE = 'BSD-3-Clause'
 
 
 # Parse description
-with open('README.md') as f:
+with open('README.md', encoding='utf8') as f:
     README = f.read().split('\n')
     LONG_DESCRIPTION = '\n'.join([x for x in README if not x[:3]=='[!['])
 
@@ -59,6 +61,7 @@ setup_info = dict(
                  'Natural Language :: English',
                  'Operating System :: MacOS',
                  'Operating System :: POSIX :: Linux',
+                 'Programming Language :: Python :: 3.5',
                  'Programming Language :: Python :: 3.6',
                  'Programming Language :: Python :: 3.7',
                  'Programming Language :: Python :: 3.8',
@@ -75,7 +78,7 @@ setup_info = dict(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    python_requires='>=3.6',
+    python_requires='>=3.5',
     license=LICENSE,
     packages=find_packages(exclude=('test',)),
     install_requires=REQUIREMENTS,

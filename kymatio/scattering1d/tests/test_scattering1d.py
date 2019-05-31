@@ -26,6 +26,8 @@ def test_simple_scatterings(random_state=42):
     scattering = Scattering1D(J, T, Q)
     if force_gpu:
         scattering = scattering.cuda()
+    else:
+        scattering.cpu()
     # zero signal
     x0 = torch.zeros(128, T)
     if force_gpu:
@@ -149,6 +151,26 @@ def test_computation_Ux(random_state=42):
         else:
             assert True
 
+    scattering.max_order = 2
+
+    s = scattering.forward(x)
+
+    count = 1
+    for k1, filt1 in enumerate(scattering.psi1_f):
+        assert (k1,) in s.keys()
+        count += 1
+        for k2, filt2 in enumerate(scattering.psi2_f):
+            if filt2['j'] > filt1['j']:
+                assert (k1, k2) in s.keys()
+                count += 1
+
+    assert count == len(s)
+
+    with pytest.raises(ValueError) as ve:
+        scattering.vectorize = True
+        scattering.forward(x)
+    assert "mutually incompatible" in ve.value.args[0]
+
 
 # Technical tests
 
@@ -200,24 +222,27 @@ def test_coordinates(random_state=42):
         scattering.cuda()
         x = x.cuda()
 
-    scattering.vectorize = False
-    s_dico = scattering.forward(x)
-    s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-    scattering.vectorize = True
-    s_vec = scattering.forward(x)
+    for max_order in [1, 2]:
+        scattering.max_order = max_order
 
-    if force_gpu:
-        s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
-        s_vec = s_vec.cpu()
+        scattering.vectorize = False
+        s_dico = scattering.forward(x)
+        s_dico = {k: s_dico[k].data for k in s_dico.keys()}
+        scattering.vectorize = True
+        s_vec = scattering.forward(x)
 
-    meta = scattering.meta()
+        if force_gpu:
+            s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
+            s_vec = s_vec.cpu()
 
-    assert len(s_dico) == s_vec.shape[1]
+        meta = scattering.meta()
 
-    for cc in range(s_vec.shape[1]):
-        k = meta['key'][cc]
-        diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
-        assert torch.max(torch.abs(diff)) < 1e-7
+        assert len(s_dico) == s_vec.shape[1]
+
+        for cc in range(s_vec.shape[1]):
+            k = meta['key'][cc]
+            diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
+            assert torch.max(torch.abs(diff)) < 1e-7
 
 
 def test_precompute_size_scattering(random_state=42):
@@ -277,10 +302,6 @@ def test_differentiability_scattering(random_state=42):
     T = 2**12
     scattering = Scattering1D(J, T, Q)
     x = torch.randn(128, T, requires_grad=True)
-
-    if force_gpu:
-        scattering.cuda()
-        x = x.cuda()
 
     s = scattering.forward(x)
     loss = torch.sum(torch.abs(s))
