@@ -93,17 +93,27 @@ def main():
 
     fixed_dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
     fixed_batch = next(iter(fixed_dataloader))
-    fixed_batch = fixed_batch[0].float().cuda()
+    if torch.cuda.is_available():
+        fixed_batch = fixed_batch[0].float().cuda()
+    else:
+        fixed_batch = fixed_batch[0].float().cpu()
 
     scattering = Scattering(J=2, shape=(28, 28))
-    scattering.cuda()
+    if torch.cuda.is_available():
+        scattering.cuda()
+    else:
+        scattering.cpu()
 
     scattering_fixed_batch = scattering(fixed_batch).squeeze(1)
     num_input_channels = scattering_fixed_batch.shape[1]
     num_hidden_channels = num_input_channels
 
     generator = Generator(num_input_channels, num_hidden_channels)
-    generator.cuda()
+    if torch.cuda.is_available():
+        generator.cuda()
+    else:
+        generator.cpu()
+
     generator.train()
 
     # Either train the network or load a trained model
@@ -119,7 +129,10 @@ def main():
             print('Training epoch {}'.format(idx_epoch))
             for _, current_batch in enumerate(tqdm(dataloader)):
                 generator.zero_grad()
-                batch_images = Variable(current_batch[0]).float().cuda()
+                if torch.cuda.is_available():
+                    batch_images = Variable(current_batch[0]).float().cuda()
+                else:
+                    batch_images = Variable(current_batch[0]).float().cpu()
                 batch_scattering = scattering(batch_images).squeeze(1)
                 batch_inverse_scattering = generator(batch_scattering)
                 loss = criterion(batch_inverse_scattering, batch_images)
@@ -144,7 +157,10 @@ def main():
             zt = (1 - t) * z0 + t * z1
             batch_z = np.vstack((batch_z, zt))
 
-    z = torch.from_numpy(batch_z).float().cuda()
+    if torch.cuda.is_available():
+        z = torch.from_numpy(batch_z).float().cuda()
+    else:
+        z = torch.from_numpy(batch_z).float().cpu()
     path = generator(z).data.cpu().numpy().squeeze(1)
     path = (path + 1) / 2  # The pixels are now in [0, 1]
 
