@@ -24,6 +24,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from PIL import Image
+from tqdm import tqdm
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -116,7 +117,7 @@ def main():
 
         for idx_epoch in range(num_epochs):
             print('Training epoch {}'.format(idx_epoch))
-            for _, current_batch in enumerate(dataloader):
+            for _, current_batch in enumerate(tqdm(dataloader)):
                 generator.zero_grad()
                 batch_images = Variable(current_batch[0]).float().cuda()
                 batch_scattering = scattering(batch_images).squeeze(1)
@@ -162,7 +163,6 @@ def main():
         plt.axis('off')
         plt.pause(0.1)
         plt.draw()
-
 
 if __name__ == '__main__':
     main()
