@@ -143,7 +143,6 @@ def sqrt(x):
     return y
 
 def _apply_filters(filters, fn):
-
-    
-
-def _apply_gaussian_filters(filters, fn):
+    for k in range(len(filters)):
+        if torch.is_tensor(filters):
+            filters[k] = fn(filters[k])

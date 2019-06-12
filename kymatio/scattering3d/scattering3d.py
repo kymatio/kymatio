@@ -4,7 +4,7 @@
 __all__ = ['HarmonicScattering3D']
 
 import torch
-from .utils import compute_integrals, subsample
+from .utils import compute_integrals, subsample, _apply_filters
 
 from .backend import cdgmm3d, fft, complex_modulus, to_complex
 from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
@@ -62,8 +62,6 @@ class HarmonicScattering3D(object):
         self.L = L
         self.sigma_0 = sigma_0
 
-        self.is_cuda = False
-
         self.max_order = max_order
         self.rotation_covariant = rotation_covariant
         self.method = method
@@ -84,7 +82,7 @@ class HarmonicScattering3D(object):
             Mimics the behavior of the function _apply() of a nn.Module()
         """
         _apply_filters(self.filters, fn)
-        _apply_gaussian_filters(self.gaussian_filters, fn)
+        self.gaussian_filters = fn(self.gaussian_filters)
         return self
 
     def cuda(self, device=None):
@@ -152,10 +150,7 @@ class HarmonicScattering3D(object):
         output: the result of input_array :math:`\\star phi_J`
 
         """
-        cuda = input_array.is_cuda
         low_pass = self.gaussian_filters[j]
-        if cuda:
-            low_pass = low_pass.cuda()
         return self._fft_convolve(input_array, low_pass)
 
     def _compute_standard_scattering_coefs(self, input_array):
@@ -270,10 +265,7 @@ class HarmonicScattering3D(object):
             which is covariant to 3D translations and rotations
 
         """
-        cuda = input_array.is_cuda
         filters_l_j = self.filters[l][j]
-        if cuda:
-            filters_l_j = filters_l_j.cuda()
         convolution_modulus = input_array.new(input_array.size()).fill_(0)
         for m in range(filters_l_j.size(0)):
             convolution_modulus[..., 0] += (self._fft_convolve(
@@ -305,10 +297,7 @@ class HarmonicScattering3D(object):
                 .. math:: \\text{input}_\\text{array} \\star \\psi_{j,l,m})
 
         """
-        cuda = input_array.is_cuda
         filters_l_m_j = self.filters[l][j][m]
-        if cuda:
-            filters_l_m_j = filters_l_m_j.cuda()
         return complex_modulus(self._fft_convolve(input_array, filters_l_m_j))
 
     def _check_input(self, input_array):
@@ -316,14 +305,6 @@ class HarmonicScattering3D(object):
             raise(TypeError(
                 'The input should be a torch.cuda.FloatTensor, '
                 'a torch.FloatTensor or a torch.DoubleTensor'))
-
-        if self.is_cuda and not input_array.is_cuda:
-            raise(TypeError('This transform is in GPU mode, but the input is '
-                            'on the CPU.'))
-
-        if not self.is_cuda and input_array.is_cuda:
-            raise(TypeError('This transform is in CPU mode, but the input is '
-                            'on the GPU.'))
 
         if (not input_array.is_contiguous()):
             input_array = input_array.contiguous()

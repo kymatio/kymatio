@@ -283,8 +283,6 @@ def test_cpu_cuda():
 
     S = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
 
-    assert not S.is_cuda
-
     if 'cpu' in devices:
         Sx = S(x)
 
@@ -297,11 +295,7 @@ def test_cpu_cuda():
 
         S.cuda()
 
-        assert S.is_cuda
-
         Sx_gpu = S(x_gpu)
-
-        assert Sx_gpu.is_cuda
 
         with pytest.raises(TypeError) as record:
             Sx = S(x)
@@ -309,7 +303,6 @@ def test_cpu_cuda():
 
     S.cpu()
 
-    assert not S.is_cuda
 
 def test_utils():
     # Simple test
