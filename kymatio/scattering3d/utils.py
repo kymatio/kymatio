@@ -146,5 +146,4 @@ def _apply_filters(filters, fn):
 
     
 
-
 def _apply_gaussian_filters(filters, fn):
