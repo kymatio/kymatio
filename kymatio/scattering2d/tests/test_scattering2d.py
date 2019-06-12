@@ -24,7 +24,7 @@ except:
 
 
 if torch.cuda.is_available():
-    devices = ['gpu', 'cpu']
+    devices = ['cuda', 'cpu']
 else:
     devices = ['cpu']
 
@@ -32,7 +32,7 @@ else:
 # Checked the modulus
 def test_Modulus():
     for device in devices:
-        if device == 'gpu':
+        if device == 'cuda':
             for backend in backends:
                 modulus = backend.Modulus()
                 x = torch.rand(100, 10, 4, 2).cuda().float()
@@ -60,7 +60,7 @@ def test_Modulus():
 # Checked the subsampling
 def test_SubsampleFourier():
     for device in devices:
-        if device == 'gpu':
+        if device == 'cuda':
             for backend in backends:
                 x = torch.rand(100, 1, 128, 128, 2).cuda().double()
                 y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
@@ -120,13 +120,6 @@ class TestCDGMM:
             filt = filt[..., :1]
         return x, filt, y
 
-    if 'gpu' in devices:
-        x, filt, y = data
-        x, filt = x.to('cpu'), filt.to('gpu')
-        with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(x, filt)
-        assert ('device' in exc.value.args[0])
-
     @pytest.mark.parametrize("backend", backends)
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("inplace", (False, True))
@@ -135,7 +128,6 @@ class TestCDGMM:
             pytest.skip("skcuda backend can only run on gpu")
         x, filt, y = data
         # move to device
-        device = 'cuda' if device == 'gpu' else device
         x, filt, y = x.to(device), filt.to(device), y.to(device)
         # call cdgmm
         if inplace:
@@ -163,10 +155,10 @@ class TestCDGMM:
         with pytest.raises(RuntimeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
         assert "must be of the same dtype" in exc.value.args[0]
-        if 'gpu' in devices:
+        if 'cuda' in devices:
             with pytest.raises(RuntimeError) as exc:
                 backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-            assert "must be on the same device" in exc.value.args[0]
+            assert "type" in exc.value.args[0]
 
 def test_FFT():
     x = torch.rand(4, 4, 1)
@@ -242,7 +234,7 @@ def test_Scattering2D():
         Sg = []
 
         for device in devices:
-            if device == 'gpu':
+            if device == 'cuda':
                 print('torch-gpu backend tested!')
                 x = x.cuda()
                 scattering.cuda()
@@ -333,6 +325,16 @@ def test_scattering2d_errors():
     with pytest.raises(RuntimeError) as record:
         S(x)
     assert('Padded tensor must be of spatial size' in record.value.args[0])
+
+    x = torch.randn(8,8)
+    S = Scattering2D(2, (8, 8))
+
+    for device in devices:
+        x = x.to(device)
+        S = S.to(device)
+        if not (device == 'cpu' and backend.NAME == 'skcuda'):
+            y = S(x)
+            assert(x.device == y.device)
 
 # Check that several input size works
 def test_input_size_agnostic():
