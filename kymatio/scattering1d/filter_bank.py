@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 import math
 import warnings
 
@@ -553,9 +552,8 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
 
 def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
                               criterion_amplitude=1e-3, normalize='l1',
-                              to_torch=False, max_subsampling=None,
-                              sigma0=0.1, alpha=5., P_max=5, eps=1e-7,
-                              **kwargs):
+                              max_subsampling=None, sigma0=0.1, alpha=5.,
+                              P_max=5, eps=1e-7, **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -590,9 +588,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         Normalization convention for the filters (in the
         temporal domain). Supported values include 'l1' and 'l2'; a ValueError
         is raised otherwise. Defaults to 'l1'.
-    to_torch: boolean, optional
-        whether the filters should be provided as torch
-        tensors (true) or numpy arrays (false). Defaults to False.
     max_subsampling: int or None, optional
         maximal dyadic subsampling to compute, in order
         to save computation time if it is not required. Defaults to None, in
@@ -733,26 +728,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # at the finest resolution
     t_max_phi = compute_temporal_support(
         phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
-
-    # prepare for pytorch if necessary
-    if to_torch:
-        for k in phi_f.keys():
-            if type(k) != str:
-                # view(-1, 1).repeat(1, 2) because real numbers!
-                phi_f[k] = torch.from_numpy(
-                    phi_f[k]).view(-1, 1).repeat(1, 2)
-        for psi_f in psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
-        for psi_f in psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi
