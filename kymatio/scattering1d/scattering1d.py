@@ -235,7 +235,7 @@ class Scattering1D(object):
 
     def _apply(self, fn):
         """
-            Mimicates the behavior of the function _apply() of a nn.Module()
+            Mimics the behavior of the function _apply() of a nn.Module()
         """
         _apply_psi(self.psi1_f, fn)
         _apply_psi(self.psi2_f, fn)
@@ -244,13 +244,13 @@ class Scattering1D(object):
 
     def cuda(self, device=None):
         """
-            Mimicates the behavior of the function cuda() of a nn.Module()
+            Mimics the behavior of the function cuda() of a nn.Module()
         """
         return self._apply(lambda t: t.cuda(device))
 
     def to(self, *args, **kwargs):
         """
-            Mimicates the behavior of the function to() of a nn.Module()
+            Mimics the behavior of the function to() of a nn.Module()
         """
         device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
 
@@ -266,7 +266,7 @@ class Scattering1D(object):
 
     def cpu(self):
         """
-            Mimicates the behavior of the function cpu() of a nn.Module()
+            Mimics the behavior of the function cpu() of a nn.Module()
         """
         return self._apply(lambda t: t.cpu())
 
