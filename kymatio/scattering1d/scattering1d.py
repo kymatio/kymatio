@@ -231,7 +231,7 @@ class Scattering1D(object):
         self.psi1_f = psi1_f
         self.psi2_f = psi2_f
         self.phi_f = phi_f
-        self.to(torch.FloatTensor)
+        self.to(torch.float32)
 
     def _apply(self, fn):
         """
