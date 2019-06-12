@@ -10,7 +10,7 @@ from .backend import (fft1d_c2c, ifft1d_c2c, modulus_complex, pad, real,
     subsample_fourier, unpad)
 from .filter_bank import (calibrate_scattering_filters,
     scattering_filter_factory)
-from .utils import cast_phi, cast_psi, compute_border_indices, compute_padding
+from .utils import _apply_phi, _apply_psi, compute_border_indices, compute_padding
 
 
 __all__ = ['Scattering1D']
@@ -231,38 +231,44 @@ class Scattering1D(object):
         self.psi1_f = psi1_f
         self.psi2_f = psi2_f
         self.phi_f = phi_f
-        self._type(torch.FloatTensor)
+        self.to(torch.float32)
 
-    def _type(self, target_type):
-        """Change the datatype of the filters
-
-        This function is used internally to convert the filters. It does not
-        need to be called explicitly.
-
-        Parameters
-        ----------
-        target_type : type
-            The desired type of the filters, typically `torch.FloatTensor`
-            or `torch.cuda.FloatTensor`.
+    def _apply(self, fn):
         """
-        cast_psi(self.psi1_f, target_type)
-        cast_psi(self.psi2_f, target_type)
-        cast_phi(self.phi_f, target_type)
+            Mimics the behavior of the function _apply() of a nn.Module()
+        """
+        _apply_psi(self.psi1_f, fn)
+        _apply_psi(self.psi2_f, fn)
+        _apply_phi(self.phi_f, fn)
         return self
 
+    def cuda(self, device=None):
+        """
+            Mimics the behavior of the function cuda() of a nn.Module()
+        """
+        return self._apply(lambda t: t.cuda(device))
+
+    def to(self, *args, **kwargs):
+        """
+            Mimics the behavior of the function to() of a nn.Module()
+        """
+        device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+
+        if dtype is not None:
+            if not dtype.is_floating_point:
+                raise TypeError('nn.Module.to only accepts floating point '
+                                'dtypes, but got desired dtype={}'.format(dtype))
+
+        def convert(t):
+            return t.to(device, dtype if t.is_floating_point() else None, non_blocking)
+
+        return self._apply(convert)
+
     def cpu(self):
-        """Move to the CPU
-
-        This function prepares the object to accept input Tensors on the CPU.
         """
-        return self._type(torch.FloatTensor)
-
-    def cuda(self):
-        """Move to the GPU
-
-        This function prepares the object to accept input Tensors on the GPU.
+            Mimics the behavior of the function cpu() of a nn.Module()
         """
-        return self._type(torch.cuda.FloatTensor)
+        return self._apply(lambda t: t.cpu())
 
     def meta(self):
         """Get meta information on the transform

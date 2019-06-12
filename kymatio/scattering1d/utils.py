@@ -35,7 +35,7 @@ def compute_border_indices(J, i0, i1):
     return ind_start, ind_end
 
 
-def cast_psi(Psi, _type):
+def _apply_psi(Psi, fn):
     """
     Casts the filters contained in Psi to the required type, by following
     the dictionary structure.
@@ -54,10 +54,10 @@ def cast_psi(Psi, _type):
     for filt in Psi:
         for k in filt.keys():
             if torch.is_tensor(filt[k]):
-                filt[k] = filt[k].type(_type).contiguous().requires_grad_(False)
+                filt[k] = fn(filt[k])
 
 
-def cast_phi(Phi, _type):
+def _apply_phi(Phi, fn):
     """
     Casts the filters contained in Phi to the required type, by following
     the dictionary structure.
@@ -75,7 +75,7 @@ def cast_phi(Phi, _type):
     """
     for k in Phi.keys():
         if torch.is_tensor(Phi[k]):
-            Phi[k] = Phi[k].type(_type).contiguous().requires_grad_(False)
+            Phi[k] = fn(Phi[k])
 
 
 def compute_padding(J_pad, T):
