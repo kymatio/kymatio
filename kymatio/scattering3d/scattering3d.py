@@ -79,19 +79,42 @@ class HarmonicScattering3D(object):
         self.gaussian_filters = gaussian_filter_bank(
                                 self.M, self.N, self.O, self.J + 1, self.sigma_0)
 
-    def cuda(self):
-        """Move to the GPU
-
-        This function prepares the object to accept input Tensors on the GPU.
+    def _apply(self, fn):
         """
-        self.is_cuda = True
+            Mimics the behavior of the function _apply() of a nn.Module()
+        """
+        _apply_psi(self.psi1_f, fn)
+        _apply_psi(self.psi2_f, fn)
+        _apply_phi(self.phi_f, fn)
+        return self
+
+    def cuda(self, device=None):
+        """
+            Mimics the behavior of the function cuda() of a nn.Module()
+        """
+        return self._apply(lambda t: t.cuda(device))
+
+    def to(self, *args, **kwargs):
+        """
+            Mimics the behavior of the function to() of a nn.Module()
+        """
+        device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+
+        if dtype is not None:
+            if not dtype.is_floating_point:
+                raise TypeError('nn.Module.to only accepts floating point '
+                                'dtypes, but got desired dtype={}'.format(dtype))
+
+        def convert(t):
+            return t.to(device, dtype if t.is_floating_point() else None, non_blocking)
+
+        return self._apply(convert)
 
     def cpu(self):
-        """Move to the CPU
-
-        This function prepares the object to accept input Tensors on the CPU.
         """
-        self.is_cuda = False
+            Mimics the behavior of the function cpu() of a nn.Module()
+        """
+        return self._apply(lambda t: t.cpu())
 
     def _fft_convolve(self, input_array, filter_array):
         """
