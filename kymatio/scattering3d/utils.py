@@ -141,3 +141,10 @@ def sqrt(x):
     np.seterr(**old_settings)
 
     return y
+
+def _apply_filters(filters, fn):
+
+    
+
+
+def _apply_gaussian_filters(filters, fn):

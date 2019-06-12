@@ -83,9 +83,8 @@ class HarmonicScattering3D(object):
         """
             Mimics the behavior of the function _apply() of a nn.Module()
         """
-        _apply_psi(self.psi1_f, fn)
-        _apply_psi(self.psi2_f, fn)
-        _apply_phi(self.phi_f, fn)
+        _apply_filters(self.filters, fn)
+        _apply_gaussian_filters(self.gaussian_filters, fn)
         return self
 
     def cuda(self, device=None):
