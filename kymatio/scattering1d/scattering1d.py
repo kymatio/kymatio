@@ -225,9 +225,29 @@ class Scattering1D(object):
         # Finally, precompute the filters
         phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(
             self.J_pad, self.J, self.Q, normalize=self.normalize,
-            to_torch=True, criterion_amplitude=self.criterion_amplitude,
+            criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
+
+        # prepare for pytorch
+        for k in phi_f.keys():
+            if type(k) != str:
+                # view(-1, 1).repeat(1, 2) because real numbers!
+                phi_f[k] = torch.from_numpy(
+                    phi_f[k]).view(-1, 1).repeat(1, 2)
+        for psi_f in psi1_f:
+            for sub_k in psi_f.keys():
+                if type(sub_k) != str:
+                    # view(-1, 1).repeat(1, 2) because real numbers!
+                    psi_f[sub_k] = torch.from_numpy(
+                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+        for psi_f in psi2_f:
+            for sub_k in psi_f.keys():
+                if type(sub_k) != str:
+                    # view(-1, 1).repeat(1, 2) because real numbers!
+                    psi_f[sub_k] = torch.from_numpy(
+                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+
         self.psi1_f = psi1_f
         self.psi2_f = psi2_f
         self.phi_f = phi_f
