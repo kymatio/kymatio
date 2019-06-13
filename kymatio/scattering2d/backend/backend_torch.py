@@ -16,7 +16,7 @@ def isreal(input):
 
 
 class Pad(object):
-    def __init__(self, pad_size, pre_pad=False):
+    def __init__(self, pad_size, input_size, pre_pad=False):
         """
             Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
@@ -25,20 +25,37 @@ class Pad(object):
             ----------
             pad_size : list of 4 integers
                 size of padding to apply.
+            input_size : list of 2 integers
+                size of the original signal
             pre_pad : boolean
                 if set to true, then there is no padding, one simply adds the imaginarty part.
         """
         self.pre_pad = pre_pad
         self.pad_size = pad_size
+        self.input_size = input_size
 
         self.build()
 
     def build(self):
-        self.padding_module = ReflectionPad2d(self.pad_size)
+        pad_size_tmp = self.pad_size
+
+        # This allow to handle the case where the padding is equal to the image size
+        if pad_size_tmp[0] == self.input_size[0]:
+            pad_size_tmp[0] -= 1
+            pad_size_tmp[1] -= 1
+        if pad_size_tmp[2] == self.input_size[1]:
+            pad_size_tmp[2] -= 1
+            pad_size_tmp[3] -= 1
+        self.padding_module = ReflectionPad2d(pad_size_tmp)
 
     def __call__(self, x):
         if not self.pre_pad:
             x = self.padding_module(x)
+            if self.pad_size[0] == self.input_size[0]:
+                x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
+            if self.pad_size[2] == self.input_size[1]:
+                x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
+
         output = x.new_zeros(x.shape + (2,))
         output[...,0] = x
         return output

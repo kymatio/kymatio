@@ -92,6 +92,8 @@ class Scattering2D(object):
         self.pre_pad = pre_pad
         self.max_order = max_order
         self.shape = shape
+        if 2**J>shape[0] or 2**J>shape[1]:
+            raise (RuntimeError('The smallest dimension should be larger than 2^J'))
 
         self.build()
 
@@ -100,7 +102,7 @@ class Scattering2D(object):
         self.modulus = Modulus()
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
-        self.pad = Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N+1) // 2, (self.M_padded - self.M) // 2, (self.M_padded - self.M + 1) // 2], pre_pad=self.pre_pad)
+        self.pad = Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N+1) // 2, (self.M_padded - self.M) // 2, (self.M_padded - self.M + 1) // 2], [self.N, self.M], pre_pad=self.pre_pad)
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
