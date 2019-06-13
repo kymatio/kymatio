@@ -81,7 +81,7 @@ class HarmonicScattering3D(object):
         """
             Mimics the behavior of the function _apply() of a nn.Module()
         """
-        _apply_filters(self.filters, fn)
+        self.filters = _apply_filters(self.filters, fn)
         self.gaussian_filters = fn(self.gaussian_filters)
         return self
 
