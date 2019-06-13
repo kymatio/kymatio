@@ -1,9 +1,14 @@
-class TemplateClassifier(BaseEstimator, ClassifierMixin):
+from sklearn import
+
+class transformer(BaseEstimator, ClassifierMixin):
         """This class is a transformer for sklearn users"""
      def __init__(self, demo_param='demo'):
          self.demo_param = demo_param
+         self.end_shape = ()
 
-     def fit(self, X, y):
+     def transform(self, data):
+         n_sample = data.numelements()/np.prod(self.end_shape)
+         data = data.reshape()
 
 
         return self
