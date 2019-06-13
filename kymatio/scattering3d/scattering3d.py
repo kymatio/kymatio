@@ -266,7 +266,7 @@ class HarmonicScattering3D(object):
 
         """
         filters_l_j = self.filters[l][j]
-        convolution_modulus = input_array.new(input_array.size()).fill_(0)
+        convolution_modulus = torch.zeros_like(input_array)
         for m in range(filters_l_j.size(0)):
             convolution_modulus[..., 0] += (self._fft_convolve(
                 input_array, filters_l_j[m]) ** 2).sum(-1)
