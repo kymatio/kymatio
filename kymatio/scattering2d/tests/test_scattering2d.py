@@ -341,7 +341,7 @@ def test_input_size_agnostic():
     for N in [31, 32, 33]:
         for J in [1, 2, 4]:
             scattering = Scattering2D(J, shape=(N, N))
-            x = torch.zeros(3,3,N,N)
+            x = torch.zeros(3, 3, N, N)
 
             if backend.NAME == 'skcuda':
                 x = x.cuda()
@@ -356,3 +356,23 @@ def test_input_size_agnostic():
                 scattering.cuda()
 
             S = scattering(x)
+
+    N = 32
+    J = 5
+    scattering = Scattering2D(J, shape=(N, N))
+    x = torch.zeros(3, 3, N, N)
+
+    if backend.NAME == 'skcuda':
+        x = x.cuda()
+        scattering.cuda()
+
+    N = 32
+    J = 5
+    scattering = Scattering2D(J, shape=(N+5, N))
+    x = torch.zeros(3, 3, N+5, N)
+
+    if backend.NAME == 'skcuda':
+        x = x.cuda()
+        scattering.cuda()
+
+    S = scattering(x)
