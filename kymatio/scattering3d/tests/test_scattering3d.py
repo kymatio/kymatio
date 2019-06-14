@@ -274,27 +274,6 @@ def test_scattering_methods():
     scattering.rotation_covariant = False
     Sx = scattering(x)
 
-def test_cpu_cuda():
-    shape = (32, 32, 32)
-    J = 4
-    L = 3
-    sigma_0 = 1
-    x = torch.randn((1,) + shape)
-
-    S = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
-
-    Sx = S(x)
-
-    if 'gpu' in devices:
-        x_gpu = x.cuda()
-        S.cuda()
-        Sx_gpu = S(x_gpu)
-        err = torch.norm(Sx_gpu-Sx.cuda())/torch.norm(Sx_gpu)
-
-        assert err < 1e-6, "CPU-GPU does not match"
-
-
-
 
 def test_utils():
     # Simple test
