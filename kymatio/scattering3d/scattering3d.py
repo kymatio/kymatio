@@ -79,8 +79,8 @@ class HarmonicScattering3D(object):
 
         # transfer the filters from numpy to torch
         for k in range(len(self.filters)):
-            self.filters[k] = torch.from_numpy(self.filters[k])
-        self.gaussian_filters = torch.from_numpy(self.gaussian_filters)
+            self.filters[k] = torch.from_numpy(self.filters[k]).type(torch.Tensor)
+        self.gaussian_filters = torch.from_numpy(self.gaussian_filters).type(torch.Tensor)
 
     def _apply(self, fn):
         """

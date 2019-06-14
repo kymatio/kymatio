@@ -69,7 +69,7 @@ def gaussian_filter_bank(M, N, O, J, sigma_0, fourier=True):
             torch array array of size (J+1, M, N, O, 2) containing the (J+1)
             Gaussian filters.
     """
-    gaussians = np.zeros(J + 1, M, N, O, 2)
+    gaussians = np.zeros((J + 1, M, N, O, 2))
     for j in range(J + 1):
         sigma = sigma_0 * 2 ** j
         gaussian = gaussian_3d(M, N, O, sigma, fourier=fourier)
