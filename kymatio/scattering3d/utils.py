@@ -154,6 +154,5 @@ def _apply_filters(filters, fn):
         filters: the filters modified
     """
     for k in range(len(filters)):
-        if torch.is_tensor(filters):
-            filters[k] = fn(filters[k])
+        filters[k] = fn(filters[k])
     return filters
