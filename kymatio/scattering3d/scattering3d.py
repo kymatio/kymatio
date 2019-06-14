@@ -77,6 +77,11 @@ class HarmonicScattering3D(object):
         self.gaussian_filters = gaussian_filter_bank(
                                 self.M, self.N, self.O, self.J + 1, self.sigma_0)
 
+        # transfer the filters from numpy to torch
+        for k in range(len(self.filters)):
+            self.filters[k] = torch.from_numpy(self.filters[k])
+        self.gaussian_filters = torch.from_numpy(self.gaussian_filters)
+
     def _apply(self, fn):
         """
             Mimics the behavior of the function _apply() of a nn.Module()
