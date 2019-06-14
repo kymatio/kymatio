@@ -149,6 +149,96 @@ class Scattering2D(object):
         """
         return self._apply(lambda t: t.cpu())
 
+    def meta(self):
+        """Get metadata on the transform.
+
+        This information specifies the content of each scattering coefficient,
+        which order, which frequencies, which filters were used, and so on.
+
+        Parameters
+        ----------
+        J : int
+            The maximum log-scale of the scattering transform.
+            In other words, the maximum scale is given by `2**J`.
+        L : int
+            The number of rotation applied to the mother wavelet.
+        max_order : int, optional
+            The maximum order of scattering coefficients to compute.
+            Must be either equal to `1` or `2`. Defaults to `2`.
+
+        Returns
+        -------
+        meta : dictionary
+            A dictionary with the following keys:
+
+            - `'order`' : tensor
+                A Tensor of length `C`, the total number of scattering
+                coefficients, specifying the scattering order.
+            - `'theta'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the angle
+                of the rotation applied to the filter (padded with NaNs).
+            - `'j'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the dyadic scale
+                of the filter used at each order (padded with NaNs).
+            - `'n'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the indices of
+                the filters used at each order (padded with NaNs).
+            - `'key'` : list
+                The tuples indexing the corresponding scattering coefficient
+                in the non-vectorized output.
+        """
+        meta = {}
+
+        meta['order'] = [[], [], []]
+        meta['theta'] = [[], [], []]
+        meta['j'] = [[], [], []]
+        meta['n'] = [[], [], []]
+        meta['key'] = [[], [], []]
+
+        meta['order'][0].append(0)
+        meta['theta'][0].append(())
+        meta['j'][0].append(())
+        meta['n'][0].append(())
+        meta['key'][0].append(())
+
+
+        psi = self.Psi
+
+        for j1 in range(len(psi)):
+            meta['order'][1].append(1)
+            meta['theta'][1].append((3.142*psi[j1]['theta']/self.L,))
+            meta['j'][1].append((psi[j1]['j'],))
+            meta['n'][1].append((j1,))
+            meta['key'][1].append((j1,))
+
+            if self.max_order < 2:
+                continue
+
+            if self.max_order == 2:
+                for j2 in range(len(psi)):
+                    if (j1 < j2):
+                        meta['order'][2].append(2)
+                        meta['theta'][2].append(((3.142*psi[j1]['theta']/self.L,), (3.142*psi[j2]['theta']/self.L,)))
+                        meta['j'][2].append((psi[j1]['j'], psi[j2]['j']))
+                        meta['n'][2].append((j1, j2))
+                        meta['key'][2].append((n1, n2))
+
+        for field, value in meta.items():
+            meta[field] = value[0] + value[1] + value[2]
+
+        pad_fields = ['theta', 'j', 'n']
+        pad_len = max_order
+
+        for field in pad_fields:
+            meta[field] = [x+(math.nan,)*(pad_len-len(x)) for x in meta[field]]
+
+        array_fields = ['order', 'theta', 'sigma', 'j', 'n']
+
+        for field in array_fields:
+            meta[field] = torch.from_numpy(np.array(meta[field]))
+
+        return meta
+
     def forward(self, input):
         """Forward pass of the scattering.
 
