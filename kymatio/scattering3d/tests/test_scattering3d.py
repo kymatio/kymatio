@@ -283,25 +283,17 @@ def test_cpu_cuda():
 
     S = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0)
 
-    if 'cpu' in devices:
-        Sx = S(x)
+    Sx = S(x)
 
     if 'gpu' in devices:
         x_gpu = x.cuda()
-
-        with pytest.raises(TypeError) as record:
-            Sx_gpu = S(x_gpu)
-        assert "is in CPU mode" in record.value.args[0]
-
         S.cuda()
-
         Sx_gpu = S(x_gpu)
+        err = torch.norm(Sx_gpu-Sx)
 
-        with pytest.raises(TypeError) as record:
-            Sx = S(x)
-        assert "is in GPU mode" in record.value.args[0]
+        assert err < 1e-6, "CPU-GPU does not match"
 
-    S.cpu()
+
 
 
 def test_utils():
