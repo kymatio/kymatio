@@ -289,7 +289,7 @@ def test_cpu_cuda():
         x_gpu = x.cuda()
         S.cuda()
         Sx_gpu = S(x_gpu)
-        err = torch.norm(Sx_gpu-Sx)
+        err = torch.norm(Sx_gpu-Sx.cuda())/torch.norm(Sx_gpu)
 
         assert err < 1e-6, "CPU-GPU does not match"
 
