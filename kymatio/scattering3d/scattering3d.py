@@ -4,7 +4,7 @@
 __all__ = ['HarmonicScattering3D']
 
 import torch
-from .utils import compute_integrals, subsample
+from .utils import compute_integrals, subsample, _apply_filters
 
 from .backend import cdgmm3d, fft, complex_modulus, to_complex
 from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
@@ -62,8 +62,6 @@ class HarmonicScattering3D(object):
         self.L = L
         self.sigma_0 = sigma_0
 
-        self.is_cuda = False
-
         self.max_order = max_order
         self.rotation_covariant = rotation_covariant
         self.method = method
@@ -79,19 +77,46 @@ class HarmonicScattering3D(object):
         self.gaussian_filters = gaussian_filter_bank(
                                 self.M, self.N, self.O, self.J + 1, self.sigma_0)
 
-    def cuda(self):
-        """Move to the GPU
+        # transfer the filters from numpy to torch
+        for k in range(len(self.filters)):
+            self.filters[k] = torch.from_numpy(self.filters[k]).type(torch.Tensor)
+        self.gaussian_filters = torch.from_numpy(self.gaussian_filters).type(torch.Tensor)
 
-        This function prepares the object to accept input Tensors on the GPU.
+    def _apply(self, fn):
         """
-        self.is_cuda = True
+            Mimics the behavior of the function _apply() of a nn.Module()
+        """
+        self.filters = _apply_filters(self.filters, fn)
+        self.gaussian_filters = fn(self.gaussian_filters)
+        return self
+
+    def cuda(self, device=None):
+        """
+            Mimics the behavior of the function cuda() of a nn.Module()
+        """
+        return self._apply(lambda t: t.cuda(device))
+
+    def to(self, *args, **kwargs):
+        """
+            Mimics the behavior of the function to() of a nn.Module()
+        """
+        device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
+
+        if dtype is not None:
+            if not dtype.is_floating_point:
+                raise TypeError('nn.Module.to only accepts floating point '
+                                'dtypes, but got desired dtype={}'.format(dtype))
+
+        def convert(t):
+            return t.to(device, dtype if t.is_floating_point() else None, non_blocking)
+
+        return self._apply(convert)
 
     def cpu(self):
-        """Move to the CPU
-
-        This function prepares the object to accept input Tensors on the CPU.
         """
-        self.is_cuda = False
+            Mimics the behavior of the function cpu() of a nn.Module()
+        """
+        return self._apply(lambda t: t.cpu())
 
     def _fft_convolve(self, input_array, filter_array):
         """
@@ -130,10 +155,7 @@ class HarmonicScattering3D(object):
         output: the result of input_array :math:`\\star phi_J`
 
         """
-        cuda = input_array.is_cuda
         low_pass = self.gaussian_filters[j]
-        if cuda:
-            low_pass = low_pass.cuda()
         return self._fft_convolve(input_array, low_pass)
 
     def _compute_standard_scattering_coefs(self, input_array):
@@ -248,11 +270,8 @@ class HarmonicScattering3D(object):
             which is covariant to 3D translations and rotations
 
         """
-        cuda = input_array.is_cuda
         filters_l_j = self.filters[l][j]
-        if cuda:
-            filters_l_j = filters_l_j.cuda()
-        convolution_modulus = input_array.new(input_array.size()).fill_(0)
+        convolution_modulus = torch.zeros_like(input_array)
         for m in range(filters_l_j.size(0)):
             convolution_modulus[..., 0] += (self._fft_convolve(
                 input_array, filters_l_j[m]) ** 2).sum(-1)
@@ -283,10 +302,7 @@ class HarmonicScattering3D(object):
                 .. math:: \\text{input}_\\text{array} \\star \\psi_{j,l,m})
 
         """
-        cuda = input_array.is_cuda
         filters_l_m_j = self.filters[l][j][m]
-        if cuda:
-            filters_l_m_j = filters_l_m_j.cuda()
         return complex_modulus(self._fft_convolve(input_array, filters_l_m_j))
 
     def _check_input(self, input_array):
@@ -294,14 +310,6 @@ class HarmonicScattering3D(object):
             raise(TypeError(
                 'The input should be a torch.cuda.FloatTensor, '
                 'a torch.FloatTensor or a torch.DoubleTensor'))
-
-        if self.is_cuda and not input_array.is_cuda:
-            raise(TypeError('This transform is in GPU mode, but the input is '
-                            'on the CPU.'))
-
-        if not self.is_cuda and input_array.is_cuda:
-            raise(TypeError('This transform is in CPU mode, but the input is '
-                            'on the GPU.'))
 
         if (not input_array.is_contiguous()):
             input_array = input_array.contiguous()
