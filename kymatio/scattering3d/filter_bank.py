@@ -5,7 +5,6 @@ All rights reserved, 2017.
 
 __all__ = ['solid_harmonic_filter_bank']
 
-import torch
 import numpy as np
 from scipy.special import sph_harm, factorial
 from .utils import get_3d_angles, double_factorial, sqrt
@@ -44,7 +43,7 @@ def solid_harmonic_filter_bank(M, N, O, J, L, sigma_0, fourier=True):
             solid_harm = solid_harmonic_3d(M, N, O, sigma, l, fourier=fourier)
             filters_l[j, :, :, :, :, 0] = solid_harm.real
             filters_l[j, :, :, :, :, 1] = solid_harm.imag
-        filters.append(torch.from_numpy(filters_l))
+        filters.append(filters_l)
     return filters
 
 
@@ -70,11 +69,11 @@ def gaussian_filter_bank(M, N, O, J, sigma_0, fourier=True):
             torch array array of size (J+1, M, N, O, 2) containing the (J+1)
             Gaussian filters.
     """
-    gaussians = torch.zeros(J + 1, M, N, O, 2)
+    gaussians = np.zeros((J + 1, M, N, O, 2))
     for j in range(J + 1):
         sigma = sigma_0 * 2 ** j
         gaussian = gaussian_3d(M, N, O, sigma, fourier=fourier)
-        gaussians[j, :, :, :, 0] = torch.from_numpy(gaussian)
+        gaussians[j, :, :, :, 0] = gaussian
     return gaussians
 
 

@@ -141,3 +141,18 @@ def sqrt(x):
     np.seterr(**old_settings)
 
     return y
+
+def _apply_filters(filters, fn):
+    """
+        Parameters
+        ----------
+        filters: a filter bank
+        fn: a function to apply on the parameters
+
+        Returns
+        -------
+        filters: the filters modified
+    """
+    for k in range(len(filters)):
+        filters[k] = fn(filters[k])
+    return filters
