@@ -23,19 +23,19 @@ Stream = namedtuple('Stream', ['ptr'])
 def convert_filters(bank):
     for c, psi in enumerate(bank):
         if isinstance(psi, np.ndarray):
-            bank[c] = torch_b.from_numpy(bank[c])
+            bank[c] = torch.from_numpy(bank[c])
         else:
             for k, v in psi.items():
                 if isinstance(k, int):
-                    bank[c][k] = torch_b.from_numpy(v)
+                    bank[c][k] = torch.from_numpy(v)
     return bank
 
 
 
 def getDtype(t):
-    if isinstance(t, torch_b.cuda.FloatTensor):
+    if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
-    elif isinstance(t, torch_b.cuda.DoubleTensor):
+    elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
 
@@ -84,9 +84,9 @@ class Pad(object):
         if not self.pre_pad:
             x = self.padding_module(x)
             if self.pad_size[0] == self.input_size[0]:
-                x = torch_b.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
+                x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
             if self.pad_size[2] == self.input_size[1]:
-                x = torch_b.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
+                x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
 
         output = x.new_zeros(x.shape + (2,))
         output[...,0] = x
@@ -180,7 +180,7 @@ class SubsampleFourier(object):
                 self.GET_BLOCKS(out.size(-2), self.block[1]),
                 self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
         periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
-                  stream=Stream(ptr=torch_b.cuda.current_stream().cuda_stream))
+                  stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
 
@@ -233,7 +233,7 @@ class Modulus(object):
         fabs(grid=(self.GET_BLOCKS(int(out.nelement())//2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
              args=[input.data_ptr(), out.data_ptr(), out.numel() // 2],
-             stream=Stream(ptr=torch_b.cuda.current_stream().cuda_stream))
+             stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
 
@@ -272,9 +272,9 @@ def fft(input, direction='C2C', inverse=False):
         output = torch_b.irfft(input, 2, normalized=False, onesided=False) * input.size(-2) * input.size(-3)
     elif direction == 'C2C':
         if inverse:
-            output = torch_b.ifft(input, 2, normalized=False) * input.size(-2) * input.size(-3)
+            output = torch.ifft(input, 2, normalized=False) * input.size(-2) * input.size(-3)
         else:
-            output = torch_b.fft(input, 2, normalized=False)
+            output = torch.fft(input, 2, normalized=False)
 
     return output
 
@@ -338,8 +338,8 @@ def cdgmm(A, B, inplace=False):
         lda = m
         ldc = m
         incx = 1
-        handle = torch_b.cuda.current_blas_handle()
-        stream = torch_b.cuda.current_stream()._as_parameter_
+        handle = torch.cuda.current_blas_handle()
+        stream = torch.cuda.current_stream()._as_parameter_
         cublas.cublasSetStream(handle, stream)
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
         return C
