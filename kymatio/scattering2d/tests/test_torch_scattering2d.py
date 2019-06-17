@@ -11,14 +11,14 @@ from kymatio.scattering2d import backend
 backends = []
 
 try:
-    from kymatio.scattering2d.backend import backend_skcuda
-    backends.append(backend_skcuda)
+    from kymatio.scattering2d.backend import torch_skcuda_b
+    backends.append(torch_skcuda_b)
 except:
     pass
 
 try:
-    from kymatio.scattering2d.backend import backend_torch
-    backends.append(backend_torch)
+    from kymatio.scattering2d.backend import torch_b
+    backends.append(torch_b)
 except:
     pass
 

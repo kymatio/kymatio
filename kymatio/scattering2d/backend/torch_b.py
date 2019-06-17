@@ -1,42 +1,10 @@
 # Authors: Edouard Oyallon, Sergey Zagoruyko
 
-from collections import namedtuple
 import torch
-from skcuda import cublas
-import cupy
-from string import Template
 from torch.nn import ReflectionPad2d
 import numpy as np
 
-NAME = 'skcuda'
-
-@cupy.util.memoize(for_each_device=True)
-def load_kernel(kernel_name, code, **kwargs):
-    code = Template(code).substitute(**kwargs)
-    kernel_code = cupy.cuda.compile_with_cache(code)
-    return kernel_code.get_function(kernel_name)
-
-
-Stream = namedtuple('Stream', ['ptr'])
-
-
-def convert_filters(bank):
-    for c, psi in enumerate(bank):
-        if isinstance(psi, np.ndarray):
-            bank[c] = torch.from_numpy(bank[c])
-        else:
-            for k, v in psi.items():
-                if isinstance(k, int):
-                    bank[c][k] = torch.from_numpy(v)
-    return bank
-
-
-
-def getDtype(t):
-    if isinstance(t, torch.cuda.FloatTensor):
-        return 'float'
-    elif isinstance(t, torch.cuda.DoubleTensor):
-        return 'double'
+NAME = 'torch'
 
 
 def iscomplex(input):
@@ -129,58 +97,16 @@ class SubsampleFourier(object):
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
-    def __init__(self):
-        self.block = (32, 32, 1)
-
-    def GET_BLOCKS(self, N, threads):
-        return (N + threads - 1) // threads
-
     def __call__(self, input, k):
-        if not input.is_cuda:
-            raise RuntimeError('Use the torch backend for cpu tensors!')
-
         out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
 
-        if not iscomplex(input):
-            raise (TypeError('The input and outputs should be complex'))
 
-        input = input.contiguous()
+        y = input.view(input.size(0), input.size(1),
+                       input.size(2)//out.size(2), out.size(2),
+                       input.size(3)//out.size(3), out.size(3),
+                       2)
 
-        kernel = '''
-        #define NW ${W} / ${k}
-        #define NH ${H} / ${k}
-        extern "C"
-        __global__ void periodize(const ${Dtype}2 *input, ${Dtype}2 *output)
-        {
-          int tx = blockIdx.x * blockDim.x + threadIdx.x;
-          int ty = blockIdx.y * blockDim.y + threadIdx.y;
-          int tz = blockIdx.z * blockDim.z + threadIdx.z;
-          if(tx >= NW || ty >= NH || tz >= ${B})
-            return;
-          input += tz * ${H} * ${W} + ty * ${W} + tx;
-          ${Dtype}2 res = make_${Dtype}2(0.f, 0.f);
-          for (int j=0; j<${k}; ++j)
-            for (int i=0; i<${k}; ++i)
-            {
-              const ${Dtype}2 &c = input[j * NH * ${W} + i * NW];
-              res.x += c.x;
-              res.y += c.y;
-            }
-          res.x /= ${k} * ${k};
-          res.y /= ${k} * ${k};
-          output[tz * NH * NW + ty * NW + tx] = res;
-        }
-        '''
-        B = input.nelement() // (2*input.size(-2) * input.size(-3))
-        W = input.size(-2)
-        H = input.size(-3)
-        k = input.size(-2) // out.size(-2)
-        periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(input))
-        grid = (self.GET_BLOCKS(out.size(-3), self.block[0]),
-                self.GET_BLOCKS(out.size(-2), self.block[1]),
-                self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
-        periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
-                  stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
+        out = y.mean(4, keepdim=False).mean(2, keepdim=False)
         return out
 
 
@@ -202,39 +128,12 @@ class Modulus(object):
         output: a tensor with imaginary part set to 0, real part set equal to
         the modulus of x.
     """
-    def __init__(self):
-        self.CUDA_NUM_THREADS = 1024
+    def __call__(self, x):
 
-    def GET_BLOCKS(self, N):
-        return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
-
-    def __call__(self, input):
-        if not input.is_cuda:
-            raise RuntimeError('Use the torch backend for cpu tensors!')
-
-        out = input.new(input.size())
-        input = input.contiguous()
-
-        if not iscomplex(input):
-            raise TypeError('The input and outputs should be complex')
-
-        kernel = """
-        extern "C"
-        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype}2 * z, int n)
-        {
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i >= n)
-            return;
-        z[i] = make_${Dtype}2(normf(2, x + 2*i), 0);
-
-        }
-        """
-        fabs = load_kernel('abs_complex_value', kernel, Dtype=getDtype(input))
-        fabs(grid=(self.GET_BLOCKS(int(out.nelement())//2), 1, 1),
-             block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[input.data_ptr(), out.data_ptr(), out.numel() // 2],
-             stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
-        return out
+        norm = torch.zeros_like(x)
+        norm[...,0] = (x[...,0]*x[...,0] +
+                       x[...,1]*x[...,1]).sqrt()
+        return norm
 
 
 
@@ -269,10 +168,10 @@ def fft(input, direction='C2C', inverse=False):
         raise (RuntimeError('Tensors must be contiguous!'))
 
     if direction == 'C2R':
-        output = torch.irfft(input, 2, normalized=False, onesided=False)*input.size(-2)*input.size(-3)
+        output = torch.irfft(input, 2, normalized=False, onesided=False) * input.size(-2) * input.size(-3)
     elif direction == 'C2C':
         if inverse:
-            output = torch.ifft(input, 2, normalized=False)*input.size(-2)*input.size(-3)
+            output = torch.ifft(input, 2, normalized=False) * input.size(-2) * input.size(-3)
         else:
             output = torch.fft(input, 2, normalized=False)
 
@@ -332,14 +231,15 @@ def cdgmm(A, B, inplace=False):
         else:
             return A * B
     else:
-        A, B = A.contiguous(), B.contiguous()
-        C = A.new(A.size()) if not inplace else A
-        m, n = B.nelement() // 2, A.nelement() // B.nelement()
-        lda = m
-        ldc = m
-        incx = 1
-        handle = torch.cuda.current_blas_handle()
-        stream = torch.cuda.current_stream()._as_parameter_
-        cublas.cublasSetStream(handle, stream)
-        cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
-        return C
+        C = A.new(A.size())
+
+        A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
+        A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
+
+        B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
+        B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
+
+        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
+
+        return C if not inplace else A.copy_(C)
