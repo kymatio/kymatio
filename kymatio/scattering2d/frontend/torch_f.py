@@ -126,6 +126,21 @@ class Scattering2D(Scattering):
                     n += 1
 
     def scattering(self, input):
+        # each time scattering is run, one needs to make sure self.psi and self.phi point to
+        # the correct buffers
+        n=0
+
+        for c, phi in self.phi.items():
+            if isinstance(c, int):
+                self.phi[c] =  self.buffer['tensor' + str(n)]
+                n += 1
+
+        for j in range(len(self.psi)):
+            for k, v in self.psi[j].items():
+                if isinstance(k, int):
+                    self.psi[j][k] = self.buffer['tensor' + str(n)]
+                    n += 1
+
         return scattering2d(input, self.J, self.L, self.subsample_fourier, self.pad, self.modulus, fft, cdgmm, unpad, self.phi, self.psi, self.max_order, self.M_padded, self.N_padded)
 
     def forward(self, input):
