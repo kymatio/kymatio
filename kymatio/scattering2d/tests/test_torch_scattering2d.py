@@ -11,8 +11,8 @@ from kymatio.scattering2d import backend
 backends = []
 
 try:
-    from kymatio.scattering2d.backend import torch_skcuda_b
-    backends.append(torch_skcuda_b)
+    from kymatio.scattering2d.backend import skcuda_b
+    backends.append(skcuda_b)
 except:
     pass
 
@@ -44,7 +44,7 @@ def test_Modulus():
                 assert (u - v).abs().max() < 1e-6
         elif device == 'cpu':
             for backend in backends:
-                if backend.NAME == 'torch_skcuda':
+                if backend.NAME == 'skcuda':
                     continue
                 modulus = backend.Modulus()
                 x = torch.rand(100, 10, 4, 2).float()
@@ -82,7 +82,7 @@ def test_SubsampleFourier():
                     assert (y.cpu() - z).abs().max() < 1e-8
         elif device == 'cpu':
             for backend in backends:
-                if backend.NAME == 'torch_skcuda':
+                if backend.NAME == 'skcuda':
                     continue
                 x = torch.rand(100, 1, 128, 128, 2).double()
                 y = torch.zeros(100, 1, 8, 8, 2).double()
@@ -124,8 +124,8 @@ class TestCDGMM:
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("inplace", (False, True))
     def test_cdgmm_forward(self, data, backend, device, inplace):
-        if device == 'cpu' and backend.NAME == 'torch_skcuda':
-            pytest.skip("torch_skcuda backend can only run on gpu")
+        if device == 'cpu' and backend.NAME == 'skcuda':
+            pytest.skip("skcuda backend can only run on gpu")
         x, filt, y = data
         # move to device
         x, filt, y = x.to(device), filt.to(device), y.to(device)
@@ -219,8 +219,8 @@ def test_Scattering2D():
 
     import kymatio.scattering2d.backend as backend
 
-    if backend.NAME == 'torch_skcuda':
-        print('torch_skcuda backend tested!')
+    if backend.NAME == 'skcuda':
+        print('skcuda backend tested!')
         # First, let's check the Jit
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
         scattering.cuda()
@@ -268,7 +268,7 @@ def test_batch_shape_agnostic():
 
     x = torch.zeros(shape)
 
-    if backend.NAME == 'torch_skcuda':
+    if backend.NAME == 'skcuda':
         x = x.cuda()
         S.cuda()
 
@@ -285,7 +285,7 @@ def test_batch_shape_agnostic():
     for test_shape in test_shapes:
         x = torch.zeros(test_shape)
 
-        if backend.NAME == 'torch_skcuda':
+        if backend.NAME == 'skcuda':
             x = x.cuda()
 
         Sx = S(x)
@@ -300,7 +300,7 @@ def test_batch_shape_agnostic():
 def test_scattering2d_errors():
     S = Scattering2D(3, (32, 32))
 
-    if backend.NAME == 'torch_skcuda':
+    if backend.NAME == 'skcuda':
         S.cuda()
 
     with pytest.raises(TypeError) as record:
@@ -332,7 +332,7 @@ def test_scattering2d_errors():
     for device in devices:
         x = x.to(device)
         S = S.to(device)
-        if not (device == 'cpu' and backend.NAME == 'torch_skcuda'):
+        if not (device == 'cpu' and backend.NAME == 'skcuda'):
             y = S(x)
             assert(x.device == y.device)
 
@@ -343,7 +343,7 @@ def test_input_size_agnostic():
             scattering = Scattering2D(J, shape=(N, N))
             x = torch.zeros(3, 3, N, N)
 
-            if backend.NAME == 'torch_skcuda':
+            if backend.NAME == 'skcuda':
                 x = x.cuda()
                 scattering.cuda()
 
@@ -351,7 +351,7 @@ def test_input_size_agnostic():
             scattering = Scattering2D(J, shape=(N, N), pre_pad=True)
             x = torch.zeros(3,3,scattering.M_padded, scattering.N_padded)
 
-            if backend.NAME == 'torch_skcuda':
+            if backend.NAME == 'skcuda':
                 x = x.cuda()
                 scattering.cuda()
 
@@ -362,7 +362,7 @@ def test_input_size_agnostic():
     scattering = Scattering2D(J, shape=(N, N))
     x = torch.zeros(3, 3, N, N)
 
-    if backend.NAME == 'torch_skcuda':
+    if backend.NAME == 'skcuda':
         x = x.cuda()
         scattering.cuda()
 
@@ -371,7 +371,7 @@ def test_input_size_agnostic():
     scattering = Scattering2D(J, shape=(N+5, N))
     x = torch.zeros(3, 3, N+5, N)
 
-    if backend.NAME == 'torch_skcuda':
+    if backend.NAME == 'skcuda':
         x = x.cuda()
         scattering.cuda()
 
