@@ -237,7 +237,7 @@ def test_Scattering2D():
             if device == 'cuda':
                 print('torch-gpu backend tested!')
                 x = x.cuda()
-                scattering.cuda()
+                scattering = scattering.cuda()
                 S = S.cuda()
                 Sg = scattering(x)
             else:
