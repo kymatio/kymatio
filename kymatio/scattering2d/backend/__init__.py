@@ -62,7 +62,7 @@ BACKEND = os.environ.get("KYMATIO_BACKEND_2D", BACKEND)
 
 if BACKEND == 'torch':
     from .torch_b import *
-elif BACKEND == 'skcuda':
+elif BACKEND == 'torch_skcuda':
     from .torch_skcuda_b import *
 else:
     # For now, raise and error
