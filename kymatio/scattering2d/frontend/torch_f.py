@@ -1,15 +1,14 @@
 __all__ = ['Scattering2D']
 
-import numpy as np
 import torch
-from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
+from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad, NAME
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
 from ..scattering2d import scattering2d
 from ...frontend.torch_f import Scattering
 
-#if 'torch' not in backend.NAME:
-#    sys.error('bug')
+if NAME != 'torch' and NAME != 'skcuda':
+    raise (RuntimeError('The only supported backend by the torch frontend are torch and skcuda.'))
 
 class Scattering2D(Scattering):
     """Main module implementing the scattering transform in 2D.

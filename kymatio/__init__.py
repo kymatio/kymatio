@@ -18,7 +18,7 @@ __all__ = [
 from .scattering1d.scattering1d import Scattering1D
 
 # if torch is loaded
-if 'torch' not in sys.modules:
+if 'torch' in sys.modules:
     from .scattering2d.frontend import Scattering2D
 else:
     from .scattering2d.frontend import Scattering2D
