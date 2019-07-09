@@ -83,6 +83,20 @@ def test_cdgmm3d():
     elif 'gpu' in devices:
         tdev = torch.device('cuda')
 
+    with pytest.warns(UserWarning) as record:
+        x = torch.randn((3, 4, 3, 2), device=tdev)
+        x = x[:,0:3,...]
+        y = torch.randn((3, 3, 3, 2), device=tdev)
+        backend.cdgmm3d(x, y)
+    assert "A is converted" in record[0].message.args[0]
+
+    with pytest.warns(UserWarning) as record:
+        x = torch.randn((3, 3, 3, 2), device=tdev)
+        y = torch.randn((3, 4, 3, 2), device=tdev)
+        y = y[:,0:3,...]
+        backend.cdgmm3d(x, y)
+    assert "B is converted" in record[0].message.args[0]
+
     with pytest.raises(RuntimeError) as record:
         x = torch.randn((3, 3, 3, 2), device=tdev)
         y = torch.randn((4, 4, 4, 2), device=tdev)
