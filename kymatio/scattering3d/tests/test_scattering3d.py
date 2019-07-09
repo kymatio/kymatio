@@ -31,6 +31,12 @@ def test_FFT3d_central_freq_batch():
         c = y[:,0,0,0].sum()
         assert (c-a).abs().sum()<1e-6
 
+def test_fft3d_error():
+    x = torch.zeros(8, 1)
+    with pytest.raises(TypeError) as record:
+        backend.fft(x)
+    assert "should be complex" in record.value.args[0]
+
 def test_cdgmm3d():
     # Not all backends currently implement the inplace variant
     if backend.NAME == 'torch':
