@@ -132,6 +132,12 @@ def test_cdgmm3d():
         backend.cdgmm3d(x, y)
     assert "should be same type" in record.value.args[0]
 
+    if backend.NAME == 'skcuda':
+        x = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
+        y = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
+        with pytest.raises(RuntimeError) as record:
+            backend.cdgmm3d(x, y)
+        assert "for cpu tensors" in record.value.args[0]
 
 def test_iscomplex():
     assert backend.iscomplex(torch.zeros(4, 2))
