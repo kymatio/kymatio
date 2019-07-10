@@ -3,38 +3,34 @@
 Information for developers
 **************************
 
-Something something how the code works
+Kymatio implements the scattering transform for different architectures (currently ``torch`` and ``scikit-cuda``/``cupy``) through backends. This way, the generic algorithm can be written in an architecture-agnostic manner, since all low-level operations are relegated to the backend.
 
 Backend: core of the algorithm
 ==============================
 
-Common to the 1-2-3-D routines of the Scattering Transform, four low-level functions
-must be optimized:
+Common to the 1D, 2D and 3D scattering transform routine are four low-level functions which must be optimized:
 
-1. FFT/iFFT
-2. SubsamplingFourier
-3. Non-linearity (e.g. modulus for 1-2D)
-4. Dotwise complex multiplication
-5. Padding/unpadding
+1. Fast Fourier transform (FFT) and its inverse (IFFT)
+2. Subsampling in the Fourier domain (periodization)
+3. Non-linearity (modulus in 1D and 2D, quadratic mean in 3D)
+4. Dotwise complex multiplication (``cdgmm``)
+5. Padding and unpadding
 
 Unit tests
 ==========
 
-For running all the unit tests and avoiding bugs, please simply run from the
-main folder::
+For running all the unit tests and avoiding bugs, please run (in the root directory)::
 
     pytest
 
-If all the tests pass, then you might be able to submit your Pull Request as explained
-in the next section!
+If all the tests pass, you may submit your pull request as explained below.
 
 Checking speed
 ==============
 
-Please check `examples/.d/compute_speed.py` to benchmark your modification of backend.
+Please check out the `examples/*d/compute_speed.py` scripts to benchmark your modifications.
 
-Proposing a Pull Request(PR)
-============================
+Proposing a pull request
+========================
 
-Each PR must be documented using docstings, illustrated with an example and must run the
-unit tests.
+Each pull request (PR) must be documented using docstrings, illustrated with an example and must pass the unit tests.
