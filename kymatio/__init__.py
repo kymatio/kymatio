@@ -17,12 +17,7 @@ __all__ = [
 
 from .scattering1d.scattering1d import Scattering1D
 
-# if torch is loaded
-if 'torch' in sys.modules:
-    from .scattering2d.frontend import Scattering2D
-else:
-    from .scattering2d.frontend import Scattering2D
-
+from .scattering2d.frontend import Scattering2D
 
 from .scattering3d.scattering3d import HarmonicScattering3D
 
