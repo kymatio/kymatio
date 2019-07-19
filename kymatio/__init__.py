@@ -2,8 +2,6 @@
 ### Snippet copied from sklearn.__init__
 import warnings
 import re
-import sys
-
 
 warnings.filterwarnings('always', category=DeprecationWarning,
                         module=r'^{0}.*'.format(re.escape(__name__)))
