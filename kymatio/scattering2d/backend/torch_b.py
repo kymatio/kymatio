@@ -159,13 +159,14 @@ def fft(input, direction='C2C', inverse=False):
             is automatically inverse.
     """
     if direction == 'C2R':
-        inverse = True
+        if not inverse:
+            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if not iscomplex(input):
-        raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
+        raise TypeError('The input should be complex. (e.g. last dimension is 2)')
 
-    if (not input.is_contiguous()):
-        raise (RuntimeError('Tensors must be contiguous!'))
+    if not input.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous!')
 
     if direction == 'C2R':
         output = torch.irfft(input, 2, normalized=False, onesided=False) * input.size(-2) * input.size(-3)

@@ -24,14 +24,14 @@ def scattering2d(input, J, L, subsample_fourier, pad, modulus, fft, cdgmm, unpad
                   M_padded//(2**J)-2,
                   N_padded//(2**J)-2)
     U_r = pad(input)
-    U_0_c = fft(U_r, 'C2C')  # We trick here with U_r and U_2_c
+    U_0_c = fft(U_r, 'C2C')
 
     # First low pass filter
     U_1_c = subsample_fourier(cdgmm(U_0_c, phi[0]), k=2**J)
 
-    U_J_r = fft(U_1_c, 'C2R')
+    S_0 = fft(U_1_c, 'C2R', inverse=True)
 
-    S[..., 0, :, :] = unpad(U_J_r)
+    S[..., 0, :, :] = unpad(S_0)
     n_order1 = 1
     n_order2 = 1 + order1_size
 
@@ -44,9 +44,9 @@ def scattering2d(input, J, L, subsample_fourier, pad, modulus, fft, cdgmm, unpad
         U_1_c = fft(modulus(U_1_c), 'C2C')
 
         # Second low pass filter
-        U_2_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
-        U_J_r = fft(U_2_c, 'C2R')
-        S[..., n_order1, :, :] = unpad(U_J_r)
+        S_1_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
+        S_1_r = fft(S_1_c, 'C2R', inverse=True)
+        S[..., n_order1, :, :] = unpad(S_1_r)
         n_order1 += 1
 
         if max_order == 2:
@@ -58,10 +58,10 @@ def scattering2d(input, J, L, subsample_fourier, pad, modulus, fft, cdgmm, unpad
                     U_2_c = fft(modulus(U_2_c), 'C2C')
 
                     # Third low pass filter
-                    U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
-                    U_J_r = fft(U_2_c, 'C2R')
+                    S_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
+                    S_2_r = fft(S_2_c, 'C2R', inverse=True)
 
-                    S[..., n_order2, :, :] = unpad(U_J_r)
+                    S[..., n_order2, :, :] = unpad(S_2_r)
                     n_order2 += 1
 
     scattering_shape = S.shape[-3:]
