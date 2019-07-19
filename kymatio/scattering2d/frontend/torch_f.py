@@ -43,44 +43,44 @@ class Scattering2D(Scattering):
         Parameters
         ----------
         J : int
-            logscale of the scattering
-        shape : tuple of int
-            spatial support (M, N) of the input
+            Log-2 of the scattering scale.
+        shape : tuple of ints
+            Spatial support (M, N) of the input.
         L : int, optional
-            number of angles used for the wavelet transform
+            Number of angles used for the wavelet transform.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be either
             `1` or `2`. Defaults to `2`.
         pre_pad : boolean, optional
-            controls the padding: if set to False, a symmetric padding is applied
+            Controls the padding: if set to False, a symmetric padding is applied
             on the signal. If set to true, the software will assume the signal was
             padded externally.
 
         Attributes
         ----------
         J : int
-            logscale of the scattering
+            Log-2 of the scattering scale.
         shape : tuple of int
-            spatial support (M, N) of the input
+            Spatial support (M, N) of the input.
         L : int, optional
-            number of angles used for the wavelet transform
+            Number of angles used for the wavelet transform.
         max_order : int, optional
             The maximum order of scattering coefficients to compute.
             Must be either equal to `1` or `2`. Defaults to `2`.
         pre_pad : boolean
-            controls the padding
+            Controls the padding.
         Psi : dictionary
-            containing the wavelets filters at all resolutions. See
+            Contains the wavelets filters at all resolutions. See
             filter_bank.filter_bank for an exact description.
         Phi : dictionary
-            containing the low-pass filters at all resolutions. See
+            Containing the low-pass filters at all resolutions. See
             filter_bank.filter_bank for an exact description.
         M_padded, N_padded : int
-             spatial support of the padded input
+             Spatial support of the padded input.
 
         Notes
         -----
-        The design of the filters is optimized for the value L = 8
+        The design of the filters is optimized for the value L = 8.
 
         pre_pad is particularly useful when doing crops of a bigger
          image because the padding is then extremely accurate. Defaults
