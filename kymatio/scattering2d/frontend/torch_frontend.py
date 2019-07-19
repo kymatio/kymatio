@@ -5,7 +5,7 @@ from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad, BACKEND
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
 from ..scattering2d import scattering2d
-from ...frontend.torch_f import Scattering
+from ...frontend.torch_frontend import Scattering
 
 if BACKEND_NAME != 'torch' and BACKEND_NAME != 'skcuda':
     raise (RuntimeError('The only supported backend by the torch frontend are torch and skcuda.'))

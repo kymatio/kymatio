@@ -61,9 +61,9 @@ BACKEND = os.environ.get("KYMATIO_BACKEND_2D", BACKEND)
 
 
 if BACKEND == 'torch':
-    from .torch_b import *
+    from .torch_backend import *
 elif BACKEND == 'skcuda':
-    from .torch_skcuda_b import *
+    from .torch_skcuda_backend import *
 else:
     # For now, raise and error
     raise ValueError("Backend {} unknown".format(BACKEND))

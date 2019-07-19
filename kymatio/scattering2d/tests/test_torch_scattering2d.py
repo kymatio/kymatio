@@ -17,8 +17,8 @@ except:
     pass
 
 try:
-    from kymatio.scattering2d.backend import torch_b
-    backends.append(torch_b)
+    from kymatio.scattering2d.backend import torch_backend
+    backends.append(torch_backend)
 except:
     pass
 
