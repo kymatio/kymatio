@@ -102,7 +102,7 @@ class Scattering2D(object):
         self.modulus = Modulus()
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
-        self.pad = Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N+1) // 2, (self.M_padded - self.M) // 2, (self.M_padded - self.M + 1) // 2], [self.N, self.M], pre_pad=self.pre_pad)
+        self.pad = Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N+1) // 2, (self.M_padded - self.M) // 2, (self.M_padded - self.M + 1) // 2], [self.M, self.N], pre_pad=self.pre_pad)
         self.subsample_fourier = SubsampleFourier()
         # Create the filters
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
@@ -239,11 +239,11 @@ class Scattering2D(object):
                         U_2_c = subsample_fourier(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
                         U_2_c = fft(U_2_c, 'C2C', inverse=True)
                         U_2_c = fft(modulus(U_2_c), 'C2C')
-    
+
                         # Third low pass filter
                         U_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
                         U_J_r = fft(U_2_c, 'C2R')
-    
+
                         S[..., n_order2, :, :] = unpad(U_J_r)
                         n_order2 += 1
 
