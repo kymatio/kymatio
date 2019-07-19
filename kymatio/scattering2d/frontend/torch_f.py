@@ -18,24 +18,24 @@ class Scattering2D(Scattering):
 
             S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
 
-        where::
+        for::
 
             S_J^0 x = x * phi_J
             S_J^1 x = [|x * psi^1_lambda| * phi_J]_lambda
             S_J^2 x = [||x * psi^1_lambda| * psi^2_mu| * phi_J]_{lambda, mu}
 
-        where * denotes the convolution (in space), phi_J is a low pass
-        filter, psi^1_lambda is a family of band pass
-        filters and psi^2_mu is another family of band pass filters.
+        where * denotes the convolution (in space), phi_J is a lowpass
+        filter, psi^1_lambda is a family of bandpass
+        filters and psi^2_mu is another family of bandpass filters.
         Only Morlet filters are used in this implementation.
         Convolutions are efficiently performed in the Fourier domain
         with this implementation.
 
         Example
         -------
-            # 1) Define a Scattering object as:
+            # 1) Define a Scattering2D object as:
             s = Scattering2D(J, shape=(M, N))
-            #    where (M, N) are the image sizes and 2**J the scale of the scattering
+            #    where (M, N) is the image size and 2**J the scale of the scattering
             # 2) Forward on an input Tensor x of shape B x M x N,
             #     where B is the batch size.
             result_s = s(x)
