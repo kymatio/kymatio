@@ -1,17 +1,17 @@
 __all__ = ['Scattering2D']
 
 import torch
-from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad, NAME
+from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad, BACKEND_NAME
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
 from ..scattering2d import scattering2d
 from ...frontend.torch_f import Scattering
 
-if NAME != 'torch' and NAME != 'skcuda':
+if BACKEND_NAME != 'torch' and BACKEND_NAME != 'skcuda':
     raise (RuntimeError('The only supported backend by the torch frontend are torch and skcuda.'))
 
 class Scattering2D(Scattering):
-    """Main module implementing the scattering transform in 2D.
+    """ Main module implementing the scattering transform in 2D.
         The scattering transform computes two wavelet transform followed
         by modulus non-linearity.
         It can be summarized as::
@@ -46,14 +46,14 @@ class Scattering2D(Scattering):
         shape : tuple of ints
             Spatial support (M, N) of the input.
         L : int, optional
-            Number of angles used for the wavelet transform.
+            Number of angles used for the wavelet transform. Defaults to `8`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be either
             `1` or `2`. Defaults to `2`.
         pre_pad : boolean, optional
             Controls the padding: if set to False, a symmetric padding is applied
             on the signal. If set to true, the software will assume the signal was
-            padded externally.
+            padded externally. Defaults to `False`.
 
         Attributes
         ----------
@@ -62,10 +62,10 @@ class Scattering2D(Scattering):
         shape : tuple of int
             Spatial support (M, N) of the input.
         L : int, optional
-            Number of angles used for the wavelet transform. Defaults to `8`.
+            Number of angles used for the wavelet transform.
         max_order : int, optional
             The maximum order of scattering coefficients to compute.
-            Must be either equal to `1` or `2`. Defaults to `2`.
+            Must be either equal to `1` or `2`.
         pre_pad : boolean
             Controls the padding: if set to False, a symmetric padding is applied
             on the signal. If set to true, the software will assume the signal was
@@ -83,13 +83,12 @@ class Scattering2D(Scattering):
         -----
         The design of the filters is optimized for the value L = 8.
 
-        pre_pad is particularly useful when doing crops of a bigger
-         image because the padding is then extremely accurate. Defaults
-         to False.
+        pre_pad is particularly useful when cropping bigger images because
+        this does not introduce border effects inherent to padding.
 
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False):
-        super(Scattering2D, self).__init__(J, shape, max_order = max_order)
+        super(Scattering2D, self).__init__(J, shape, max_order=max_order)
         self.pre_pad, self.L = pre_pad, L
         if 2 ** J > shape[0] or 2 ** J > shape[1]:
             raise RuntimeError('The smallest dimension should be larger than 2^J')
@@ -151,23 +150,24 @@ class Scattering2D(Scattering):
         Parameters
         ----------
         input : tensor
-           tensor with 3 dimensions :math:`(B, C, M, N)` where :math:`(B, C)` are arbitrary.
-           :math:`B` typically is the batch size, whereas :math:`C` is the number of input channels.
+           Tensor with k+2 dimensions :math:`(n_1, ..., n_k, M, N)` where :math:`(n_1, ...,n_k)` is
+           arbitrary. Currently, k=2 is hardcoded. :math:`n_1` typically is the batch size, whereas
+            :math:`n_2` is the number of
+           input channels.
 
         Returns
         -------
         S : tensor
-           scattering of the input, a 4D tensor :math:`(B, C, D, Md, Nd)` where :math:`D` corresponds
-           to a new channel dimension and :math:`(Md, Nd)` are downsampled sizes by a factor :math:`2^J`.
+           Scattering of the input, a tensor with k+3 dimensions :math:`(n_1, ...,n_k, D, Md, Nd)`
+           where :math:`D` corresponds to a new channel dimension and :math:`(Md, Nd)` are
+           downsampled sizes by a factor :math:`2^J`. Currently, k=2 is hardcoded.
 
         """
         if not torch.is_tensor(input):
-            raise TypeError('The input should be a torch.cuda.FloatTensor, a torch.FloatTensor or a '
-                            'torch.DoubleTensor')
+            raise TypeError('The input should be a PyTorch Tensor.')
 
         if len(input.shape) < 2:
-            raise RuntimeError('Input tensor must have at least two '
-                               'dimensions')
+            raise RuntimeError('Input tensor must have at least two dimensions.')
 
         if not input.is_contiguous():
             raise RuntimeError('Tensor must be contiguous!')

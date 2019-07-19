@@ -4,7 +4,7 @@ import torch
 from torch.nn import ReflectionPad2d
 import numpy as np
 
-NAME = 'torch'
+BACKEND_NAME = 'torch'
 
 
 def iscomplex(input):

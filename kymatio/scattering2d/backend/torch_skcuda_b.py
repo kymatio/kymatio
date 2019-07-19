@@ -8,7 +8,7 @@ from string import Template
 from torch.nn import ReflectionPad2d
 import numpy as np
 
-NAME = 'skcuda'
+BACKEND_NAME = 'skcuda'
 
 @cupy.util.memoize(for_each_device=True)
 def load_kernel(kernel_name, code, **kwargs):
