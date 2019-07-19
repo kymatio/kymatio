@@ -28,8 +28,7 @@ class Scattering2D(Scattering):
         filter, psi^1_lambda is a family of bandpass
         filters and psi^2_mu is another family of bandpass filters.
         Only Morlet filters are used in this implementation.
-        Convolutions are efficiently performed in the Fourier domain
-        with this implementation.
+        Convolutions are efficiently performed in the Fourier domain.
 
         Example
         -------
@@ -63,17 +62,19 @@ class Scattering2D(Scattering):
         shape : tuple of int
             Spatial support (M, N) of the input.
         L : int, optional
-            Number of angles used for the wavelet transform.
+            Number of angles used for the wavelet transform. Defaults to `8`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute.
             Must be either equal to `1` or `2`. Defaults to `2`.
         pre_pad : boolean
-            Controls the padding.
+            Controls the padding: if set to False, a symmetric padding is applied
+            on the signal. If set to true, the software will assume the signal was
+            padded externally.
         Psi : dictionary
             Contains the wavelets filters at all resolutions. See
             filter_bank.filter_bank for an exact description.
         Phi : dictionary
-            Containing the low-pass filters at all resolutions. See
+            Contains the low-pass filters at all resolutions. See
             filter_bank.filter_bank for an exact description.
         M_padded, N_padded : int
              Spatial support of the padded input.
@@ -93,7 +94,7 @@ class Scattering2D(Scattering):
         self.pre_pad = pre_pad
         self.shape = shape
         if 2 ** J > shape[0] or 2 ** J > shape[1]:
-            raise (RuntimeError('The smallest dimension should be larger than 2^J'))
+            raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.build()
 
     def build(self):
