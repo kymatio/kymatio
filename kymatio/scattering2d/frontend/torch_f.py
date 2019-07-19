@@ -90,8 +90,7 @@ class Scattering2D(Scattering):
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False):
         super(Scattering2D, self).__init__(J, shape, max_order = max_order)
-        self.pre_pad = pre_pad
-        self.shape = shape
+        self.pre_pad, self.L = pre_pad, L
         if 2 ** J > shape[0] or 2 ** J > shape[1]:
             raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.build()
@@ -104,7 +103,7 @@ class Scattering2D(Scattering):
         self.pad = Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N + 1) // 2, (self.M_padded - self.M) // 2,
                        (self.M_padded - self.M + 1) // 2], [self.N, self.M], pre_pad=self.pre_pad)
         self.subsample_fourier = SubsampleFourier()
-        self.filters = self.create_and_register_filters()
+        self.create_and_register_filters()
 
     def create_and_register_filters(self):
         """ This function run the filterbank function that
