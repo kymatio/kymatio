@@ -90,7 +90,6 @@ class Scattering2D(Scattering):
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False):
         super(Scattering2D, self).__init__(J, shape, max_order = max_order)
-        self.L, self.J, self.max_order = L, J, max_order
         self.pre_pad = pre_pad
         self.shape = shape
         if 2 ** J > shape[0] or 2 ** J > shape[1]:
@@ -108,6 +107,10 @@ class Scattering2D(Scattering):
         self.filters = self.create_and_register_filters()
 
     def create_and_register_filters(self):
+        """ This function run the filterbank function that
+            will create the filters as numpy array, and then, it
+            saves those arrays as module's buffers."""
+
         # Create the filters
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
         n = 0
