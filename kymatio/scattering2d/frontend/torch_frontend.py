@@ -7,9 +7,6 @@ from ..utils import compute_padding
 from ..scattering2d import scattering2d
 from ...frontend.torch_frontend import Scattering
 
-if BACKEND_NAME != 'torch' and BACKEND_NAME != 'skcuda':
-    raise (RuntimeError('The only supported backend by the torch frontend are torch and skcuda.'))
-
 class Scattering2D(Scattering):
     """ Main module implementing the scattering transform in 2D.
         The scattering transform computes two wavelet transform followed
@@ -90,12 +87,12 @@ class Scattering2D(Scattering):
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False):
         super(Scattering2D, self).__init__(J, shape, max_order=max_order)
         self.pre_pad, self.L = pre_pad, L
-        if 2 ** J > shape[0] or 2 ** J > shape[1]:
-            raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.build()
 
     def build(self):
         self.M, self.N = self.shape
+        if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
+            raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.modulus = Modulus()
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
@@ -129,7 +126,7 @@ class Scattering2D(Scattering):
     def scattering(self, input):
         # each time scattering is run, one needs to make sure self.psi and self.phi point to
         # the correct buffers
-        n=0
+        n = 0
         buffer_dict = dict(self.named_buffers())
         for c, phi in self.phi.items():
             if isinstance(c, int):
