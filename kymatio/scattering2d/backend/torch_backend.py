@@ -5,9 +5,6 @@ from torch.nn import ReflectionPad2d
 
 BACKEND_NAME = 'torch'
 
-class backend(object):
-    def __init__(self):
-
 
 def iscomplex(input):
     return input.size(-1) == 2

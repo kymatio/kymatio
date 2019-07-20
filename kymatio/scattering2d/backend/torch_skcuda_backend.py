@@ -28,7 +28,6 @@ def getDtype(t):
 def iscomplex(input):
     return input.size(-1) == 2
 
-
 def isreal(input):
     return input.size(-1) == 1
 
