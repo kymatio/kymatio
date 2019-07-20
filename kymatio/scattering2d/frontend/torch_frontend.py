@@ -1,11 +1,13 @@
 __all__ = ['Scattering2D']
 
 import torch
-from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad, BACKEND_NAME
+
+from kymatio.scattering2d.core.scattering2d import scattering2d
+from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
-from ..scattering2d import scattering2d
 from ...frontend.torch_frontend import Scattering
+
 
 class Scattering2D(Scattering):
     """ Main module implementing the scattering transform in 2D.
