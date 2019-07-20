@@ -2,9 +2,11 @@
 
 import torch
 from torch.nn import ReflectionPad2d
-import numpy as np
 
 BACKEND_NAME = 'torch'
+
+class backend(object):
+    def __init__(self):
 
 
 def iscomplex(input):

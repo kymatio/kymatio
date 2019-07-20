@@ -16,20 +16,7 @@ def load_kernel(kernel_name, code, **kwargs):
     kernel_code = cupy.cuda.compile_with_cache(code)
     return kernel_code.get_function(kernel_name)
 
-
 Stream = namedtuple('Stream', ['ptr'])
-
-
-def convert_filters(bank):
-    for c, psi in enumerate(bank):
-        if isinstance(psi, np.ndarray):
-            bank[c] = torch.from_numpy(bank[c])
-        else:
-            for k, v in psi.items():
-                if isinstance(k, int):
-                    bank[c][k] = torch.from_numpy(v)
-    return bank
-
 
 
 def getDtype(t):
@@ -38,14 +25,12 @@ def getDtype(t):
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-
 def iscomplex(input):
     return input.size(-1) == 2
 
 
 def isreal(input):
     return input.size(-1) == 1
-
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
