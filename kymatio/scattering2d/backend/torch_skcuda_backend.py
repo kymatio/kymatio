@@ -6,7 +6,8 @@ from skcuda import cublas
 import cupy
 from string import Template
 from torch.nn import ReflectionPad2d
-import numpy as np
+
+
 
 BACKEND_NAME = 'skcuda'
 
