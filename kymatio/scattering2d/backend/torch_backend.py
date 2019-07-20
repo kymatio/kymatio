@@ -2,9 +2,9 @@
 
 import torch
 from torch.nn import ReflectionPad2d
+from collections import namedtuple
 
 BACKEND_NAME = 'torch'
-
 
 def iscomplex(input):
     return input.size(-1) == 2
@@ -243,3 +243,12 @@ def cdgmm(A, B, inplace=False):
         C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
 
         return C if not inplace else A.copy_(C)
+
+backend = namedtuple('backend', ['name', 'cdgmm', 'Modulus', 'SubsampleFourier', 'fft', 'Pad', 'unpad'])
+backend.name = 'torch'
+backend.cdgmm = cdgmm
+backend.modulus = Modulus()
+backend.subsample_fourier = SubsampleFourier()
+backend.fft = fft
+backend.Pad = Pad
+backend.unpad = unpad

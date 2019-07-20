@@ -329,3 +329,12 @@ def cdgmm(A, B, inplace=False):
         cublas.cublasSetStream(handle, stream)
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
         return C
+
+backend = namedtuple('backend', ['name', 'cdgmm', 'Modulus', 'SubsampleFourier', 'fft', 'Pad', 'unpad'])
+backend.name = 'skcuda'
+backend.cdgmm = cdgmm
+backend.modulus = Modulus()
+backend.subsample_fourier = SubsampleFourier()
+backend.fft = fft
+backend.Pad = Pad
+backend.unpad = unpad

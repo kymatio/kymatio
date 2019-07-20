@@ -4,7 +4,9 @@
 
 __all__ = ['scattering2d']
 
-def scattering2d(input, J, L, subsample_fourier, pad, modulus, fft, cdgmm, unpad, phi, psi, max_order, M_padded, N_padded):
+def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded, N_padded):
+    subsample_fourier, modulus, fft, cdgmm, unpad = backend.subsample_fourier, backend.modulus,\
+                                                         backend.fft, backend.cdgmm, backend.unpad,
     batch_shape = input.shape[:-2]
     signal_shape = input.shape[-2:]
 

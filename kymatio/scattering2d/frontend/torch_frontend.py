@@ -3,7 +3,7 @@ __all__ = ['Scattering2D']
 import torch
 
 from kymatio.scattering2d.core.scattering2d import scattering2d
-from ..backend import cdgmm, Modulus, SubsampleFourier, fft, Pad, unpad
+from ..backend import backend
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
 from ...frontend.torch_frontend import Scattering
@@ -95,12 +95,11 @@ class Scattering2D(Scattering):
         self.M, self.N = self.shape
         if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
             raise RuntimeError('The smallest dimension should be larger than 2^J')
-        self.modulus = Modulus()
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
-        self.pad = Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N + 1) // 2, (self.M_padded - self.M) // 2,
+        self.pad = backend.Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N + 1) // 2, (self.M_padded - self.M) // 2,
                        (self.M_padded - self.M + 1) // 2], [self.N, self.M], pre_pad=self.pre_pad)
-        self.subsample_fourier = SubsampleFourier()
+        self.unpad = backend.unpad
         self.create_and_register_filters()
 
     def create_and_register_filters(self):
@@ -141,7 +140,7 @@ class Scattering2D(Scattering):
                     self.psi[j][k] = buffer_dict['tensor' + str(n)]
                     n += 1
 
-        return scattering2d(input, self.J, self.L, self.subsample_fourier, self.pad, self.modulus, fft, cdgmm, unpad, self.phi, self.psi, self.max_order, self.M_padded, self.N_padded)
+        return scattering2d(input, self.pad, self.unpad, backend, self.J, self.L, self.phi, self.psi, self.max_order, self.M_padded, self.N_padded)
 
     def forward(self, input):
         """Forward pass of the scattering.
