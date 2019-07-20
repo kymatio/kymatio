@@ -3,17 +3,17 @@
 import numpy as np
 from collections import namedtuple
 
-BACKEND_NAME = 'torch'
+BACKEND_NAME = 'numpy'
 
 def iscomplex(input):
-    return input.size(-1) == 2
+    return input.shape[-1] == 2
 
 
 def isreal(input):
-    return input.size(-1) == 1
+    return input.shape[-1] == 1
 
 
-class Pad(object):
+class Pad(object): # cf https://docs.scipy.org/doc/numpy/reference/generated/numpy.pad.html
     def __init__(self, pad_size, input_size, pre_pad=False):
         """
             Padding which allows to simultaneously pad in a reflection fashion
@@ -119,10 +119,7 @@ class Modulus(object):
         the modulus of x.
     """
     def __call__(self, x):
-
-        norm = torch.zeros_like(x)
-        norm[...,0] = (x[...,0]*x[...,0] +
-                       x[...,1]*x[...,1]).sqrt()
+        norm = np.abs(x)
         return norm
 
 
@@ -153,16 +150,13 @@ def fft(input, direction='C2C', inverse=False):
     if not iscomplex(input):
         raise TypeError('The input should be complex. (e.g. last dimension is 2)')
 
-    if not input.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous!')
-
     if direction == 'C2R':
-        output = np.irfft(input, 2, normalized=False, onesided=False) * input.size(-2) * input.size(-3)
+        output = np.fft.irfft2(input, norm='ortho')
     elif direction == 'C2C':
         if inverse:
-            output = np.ifft2(input, norm='ortho')
+            output = np.fft.ifft2(input, norm='ortho')
         else:
-            output = np.ifft2(input, norm='ortho')
+            output = np.fft.ifft2(input, norm='ortho')
 
     return output
 
