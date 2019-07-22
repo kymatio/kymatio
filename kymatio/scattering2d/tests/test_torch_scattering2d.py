@@ -63,7 +63,8 @@ class TestModulus:
 # Checked the subsampling
 class TestSubsampleFourier:
     @pytest.mark.parametrize("device", devices)
-    def test_SubsampleFourier(self, device):
+    @pytest.mark.parametrize("backend", backends)
+    def test_SubsampleFourier(self, device, backend):
         if device == 'cuda':
             for backend in backends:
                 x = torch.rand(100, 1, 128, 128, 2).cuda().double()
@@ -84,28 +85,25 @@ class TestSubsampleFourier:
                 if backend.name == 'torch':
                     z = subsample_fourier(x.cpu(), k=16)
                     assert torch.allclose(y, z)
-        elif device == 'cpu':
-            for backend in backends:
-                if backend.name == 'skcuda':
-                    continue
-                x = torch.rand(100, 1, 128, 128, 2).double()
-                y = torch.zeros(100, 1, 8, 8, 2).double()
+        elif device == 'cpu' and backend.name != 'skcuda':
+            x = torch.rand(100, 1, 128, 128, 2).cpu().double()
+            y = torch.zeros(100, 1, 8, 8, 2).cpu().double()
 
-                for i in range(8):
-                    for j in range(8):
-                        for m in range(16):
-                            for n in range(16):
-                                y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
+            for i in range(8):
+                for j in range(8):
+                    for m in range(16):
+                        for n in range(16):
+                            y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
 
-                y = y / (16*16)
+            y = y / (16*16)
 
-                subsample_fourier = backend.subsample_fourier
+            subsample_fourier = backend.subsample_fourier
 
-                z = subsample_fourier(x, k=16)
+            z = subsample_fourier(x, k=16)
+            assert torch.allclose(y, z)
+            if backend.name == 'torch':
+                z = subsample_fourier(x.cpu(), k=16)
                 assert torch.allclose(y, z)
-                if backend.name == 'torch':
-                    z = subsample_fourier(x.cpu(), k=16)
-                    assert torch.allclose(y, z)
 
 
 # Check the CUBLAS routines
