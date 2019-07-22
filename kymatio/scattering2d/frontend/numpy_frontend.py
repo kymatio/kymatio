@@ -14,9 +14,8 @@ class Scattering2D_numpy(Scattering_numpy):
     def build(self):
         self.M, self.N = self.shape
         if not self.backend:
-            from ..backend import numpy_backend as backend
+            from ..backend import numpy_backend as backend # is imported like a module and not a class?
             self.backend = backend
-            print(self.backend.subsample_fourier)
         if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
             raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)

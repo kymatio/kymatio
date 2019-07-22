@@ -2,7 +2,6 @@ import os
 import io
 import numpy as np
 from kymatio.scattering2d import Scattering2D_numpy
-import pickle
 import torch
 
 def reorder_coefficients_from_interleaved(J, L):
