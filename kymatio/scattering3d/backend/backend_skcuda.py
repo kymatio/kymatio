@@ -1,4 +1,5 @@
 import torch
+import warnings
 from skcuda import cublas
 
 NAME = 'skcuda'
@@ -54,7 +55,13 @@ def cdgmm3d(A, B, inplace=False):
     output : tensor of the same size as A containing the result of the
              elementwise complex multiplication of  A with B
     """
-    A, B = A.contiguous(), B.contiguous()
+    if not A.is_contiguous():
+        warnings.warn("cdgmm3d: tensor A is converted to a contiguous array")
+        A = A.contiguous()
+    if not B.is_contiguous():
+        warnings.warn("cdgmm3d: tensor B is converted to a contiguous array")
+        B = B.contiguous()
+
     if A.size()[-4:] != B.size():
         raise RuntimeError('The filters are not compatible for multiplication.')
 

@@ -31,6 +31,12 @@ def test_FFT3d_central_freq_batch():
         c = y[:,0,0,0].sum()
         assert (c-a).abs().sum()<1e-6
 
+def test_fft3d_error():
+    x = torch.zeros(8, 1)
+    with pytest.raises(TypeError) as record:
+        backend.fft(x)
+    assert "should be complex" in record.value.args[0]
+
 def test_cdgmm3d():
     # Not all backends currently implement the inplace variant
     if backend.NAME == 'torch':
@@ -77,6 +83,20 @@ def test_cdgmm3d():
     elif 'gpu' in devices:
         tdev = torch.device('cuda')
 
+    with pytest.warns(UserWarning) as record:
+        x = torch.randn((3, 4, 3, 2), device=tdev)
+        x = x[:,0:3,...]
+        y = torch.randn((3, 3, 3, 2), device=tdev)
+        backend.cdgmm3d(x, y)
+    assert "A is converted" in record[0].message.args[0]
+
+    with pytest.warns(UserWarning) as record:
+        x = torch.randn((3, 3, 3, 2), device=tdev)
+        y = torch.randn((3, 4, 3, 2), device=tdev)
+        y = y[:,0:3,...]
+        backend.cdgmm3d(x, y)
+    assert "B is converted" in record[0].message.args[0]
+
     with pytest.raises(RuntimeError) as record:
         x = torch.randn((3, 3, 3, 2), device=tdev)
         y = torch.randn((4, 4, 4, 2), device=tdev)
@@ -112,6 +132,12 @@ def test_cdgmm3d():
         backend.cdgmm3d(x, y)
     assert "should be same type" in record.value.args[0]
 
+    if backend.NAME == 'skcuda':
+        x = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
+        y = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
+        with pytest.raises(RuntimeError) as record:
+            backend.cdgmm3d(x, y)
+        assert "for cpu tensors" in record.value.args[0]
 
 def test_iscomplex():
     assert backend.iscomplex(torch.zeros(4, 2))
