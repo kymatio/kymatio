@@ -236,7 +236,7 @@ class TestScattering2D_Torch:
             assert ((S - y)).abs().max() < 1e-6
         elif backend.name == 'torch':
             # Then, let's check when using pure pytorch code
-            scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
+            scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend)
             Sg = []
             if device == 'cuda':
                 print('torch-gpu backend tested!')
@@ -260,7 +260,7 @@ class TestScattering2D_Torch:
 
         shape_ds = tuple(n // 2 **J for n in shape)
 
-        S = Scattering2D(J, shape, L)
+        S = Scattering2D(J, shape, L, backend=backend)
 
         with pytest.raises(RuntimeError) as ve:
             S(torch.zeros(()))
@@ -304,7 +304,7 @@ class TestScattering2D_Torch:
     @pytest.mark.parametrize("backend", backends)
     @pytest.mark.parametrize("device", devices)
     def test_scattering2d_errors(self, backend, device):
-        S = Scattering2D(3, (32, 32))
+        S = Scattering2D(3, (32, 32), backend=backend)
 
         if backend.name == 'skcuda':
             S.cuda()
@@ -326,14 +326,14 @@ class TestScattering2D_Torch:
             S(x)
         assert('Tensor must be of spatial size' in record.value.args[0])
 
-        S = Scattering2D(3, (32, 32), pre_pad=True)
+        S = Scattering2D(3, (32, 32), pre_pad=True, backend=backend)
 
         with pytest.raises(RuntimeError) as record:
             S(x)
         assert('Padded tensor must be of spatial size' in record.value.args[0])
 
         x = torch.randn(8,8)
-        S = Scattering2D(2, (8, 8))
+        S = Scattering2D(2, (8, 8), backend=backend)
 
 
         x = x.to(device)
@@ -347,7 +347,7 @@ class TestScattering2D_Torch:
     def test_input_size_agnostic(self, backend):
         for N in [31, 32, 33]:
             for J in [1, 2, 4]:
-                scattering = Scattering2D(J, shape=(N, N))
+                scattering = Scattering2D(J, shape=(N, N), backend=backend)
                 x = torch.zeros(3, 3, N, N)
 
                 if backend.name == 'skcuda':
@@ -355,7 +355,7 @@ class TestScattering2D_Torch:
                     scattering.cuda()
 
                 S = scattering(x)
-                scattering = Scattering2D(J, shape=(N, N), pre_pad=True)
+                scattering = Scattering2D(J, shape=(N, N), pre_pad=True, backend=backend)
                 x = torch.zeros(3,3,scattering.M_padded, scattering.N_padded)
 
                 if backend.name == 'skcuda':
@@ -366,7 +366,7 @@ class TestScattering2D_Torch:
 
         N = 32
         J = 5
-        scattering = Scattering2D(J, shape=(N, N))
+        scattering = Scattering2D(J, shape=(N, N), backend=backend)
         x = torch.zeros(3, 3, N, N)
 
         if backend.name == 'skcuda':
@@ -378,7 +378,7 @@ class TestScattering2D_Torch:
 
         N = 32
         J = 5
-        scattering = Scattering2D(J, shape=(N+5, N))
+        scattering = Scattering2D(J, shape=(N+5, N), backend=backend)
         x = torch.zeros(3, 3, N+5, N)
 
         if backend.name == 'skcuda':
