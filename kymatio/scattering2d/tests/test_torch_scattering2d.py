@@ -47,7 +47,7 @@ class TestModulus:
             v = v.squeeze()
             assert torch.allclose(u, v)
         elif device == 'cpu':
-            if backend.NAME == 'skcuda':
+            if backend.name == 'skcuda':
                 pytest.skip("skcuda backend can only run on gpu")
             modulus = backend.modulus
             x = torch.rand(100, 10, 4, 2).float()
@@ -84,7 +84,7 @@ class TestSubsampleFourier:
                 z = subsample_fourier(x, k=16)
                 assert torch.allclose(y, z)
         elif device == 'cpu':
-            if backend.NAME == 'skcuda':
+            if backend.name == 'skcuda':
                 pytest.skip("skcuda backend can only run on gpu")
             x = torch.rand(100, 1, 128, 128, 2).cpu().double()
             y = torch.zeros(100, 1, 8, 8, 2).cpu().double()
