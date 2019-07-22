@@ -97,8 +97,8 @@ class Scattering2D_torch(Scattering_torch):
             raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
-        self.pad = backend.Pad([(self.N_padded - self.N) // 2, (self.N_padded - self.N + 1) // 2, (self.M_padded - self.M) // 2,
-                       (self.M_padded - self.M + 1) // 2], [self.N, self.M], pre_pad=self.pre_pad)
+        self.pad = backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
+                                (self.N_padded - self.N + 1) // 2], [self.M, self.N], pre_pad=self.pre_pad)
         self.unpad = backend.unpad
         self.create_and_register_filters()
 
