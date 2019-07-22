@@ -35,29 +35,26 @@ else:
 # Checked the modulus
 class TestModulus:
     @pytest.mark.parametrize("device", devices)
-    def test_Modulus(self, device):
+    @pytest.mark.parametrize("backend", backends)
+    def test_Modulus(self, device, backend):
         if device == 'cuda':
-            for backend in backends:
-                modulus = backend.modulus
-                x = torch.rand(100, 10, 4, 2).cuda().float()
-                y = modulus(x)
-                u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-                v = y.narrow(3, 0, 1)
-                u = u.squeeze()
-                v = v.squeeze()
-                assert torch.allclose(u, v)
-        elif device == 'cpu':
-            for backend in backends:
-                if backend.name == 'skcuda':
-                    continue
-                modulus = backend.modulus
-                x = torch.rand(100, 10, 4, 2).float()
-                y = modulus(x)
-                u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-                v = y.narrow(3, 0, 1)
-                u = u.squeeze()
-                v = v.squeeze()
-                assert torch.allclose(u, v)
+            modulus = backend.modulus
+            x = torch.rand(100, 10, 4, 2).cuda().float()
+            y = modulus(x)
+            u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
+            v = y.narrow(3, 0, 1)
+            u = u.squeeze()
+            v = v.squeeze()
+            assert torch.allclose(u, v)
+        elif device == 'cpu' and backend.name != 'skcuda':
+            modulus = backend.modulus
+            x = torch.rand(100, 10, 4, 2).float()
+            y = modulus(x)
+            u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
+            v = y.narrow(3, 0, 1)
+            u = u.squeeze()
+            v = v.squeeze()
+            assert torch.allclose(u, v)
 
 
 # Checked the subsampling
@@ -66,25 +63,24 @@ class TestSubsampleFourier:
     @pytest.mark.parametrize("backend", backends)
     def test_SubsampleFourier(self, device, backend):
         if device == 'cuda':
-            for backend in backends:
-                x = torch.rand(100, 1, 128, 128, 2).cuda().double()
-                y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
+            x = torch.rand(100, 1, 128, 128, 2).cuda().double()
+            y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
 
-                for i in range(8):
-                    for j in range(8):
-                        for m in range(16):
-                            for n in range(16):
-                                y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
+            for i in range(8):
+                for j in range(8):
+                    for m in range(16):
+                        for n in range(16):
+                            y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
 
-                y = y / (16*16)
+            y = y / (16*16)
 
-                subsample_fourier = backend.subsample_fourier
+            subsample_fourier = backend.subsample_fourier
 
-                z = subsample_fourier(x, k=16)
+            z = subsample_fourier(x, k=16)
+            assert torch.allclose(y, z)
+            if backend.name == 'torch':
+                z = subsample_fourier(x.cpu(), k=16)
                 assert torch.allclose(y, z)
-                if backend.name == 'torch':
-                    z = subsample_fourier(x.cpu(), k=16)
-                    assert torch.allclose(y, z)
         elif device == 'cpu' and backend.name != 'skcuda':
             x = torch.rand(100, 1, 128, 128, 2).cpu().double()
             y = torch.zeros(100, 1, 8, 8, 2).cpu().double()
