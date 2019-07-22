@@ -55,12 +55,10 @@ def test_Scattering2D():
     N = x.shape[3]
 
     # Then, let's check when using pure pytorch code
-    scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
-    Sg = []
+    scattering = Scattering2D_numpy(J, shape=(M, N), pre_pad=pre_pad)
 
-
-        x = x.cpu()
-        S = S.cpu()
-        scattering.cpu()
-        Sg = scattering(x)
+    x = x.cpu()
+    S = S.cpu()
+    scattering.cpu()
+    Sg = scattering(x)
     assert (Sg - S).abs().max() < 1e-6
