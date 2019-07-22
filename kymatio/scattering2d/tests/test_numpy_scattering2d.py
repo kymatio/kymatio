@@ -1,27 +1,42 @@
 import os
 import numpy as np
-import pytest
+from kymatio.scattering2d import Scattering2D
+
+
+backends = []
 
 try:
-    from kymatio.scattering2d.backend import skcuda_b
-    backends.append(skcuda_b)
+    from kymatio.scattering2d.backend import numpy_backend
+    backends.append(numpy_backend)
 except:
     pass
 
-try:
-    from kymatio.scattering2d.backend import torch_backend
-    backends.append(torch_backend)
-except:
-    pass
 
-
+def reorder_coefficients_from_interleaved(J, L):
+    # helper function to obtain positions of order0, order1, order2 from interleaved
+    order0, order1, order2 = [], [], []
+    n_order0, n_order1, n_order2 = 1, J * L, L ** 2 * J * (J - 1) // 2
+    n = 0
+    order0.append(n)
+    for j1 in range(J):
+        for l1 in range(L):
+            n += 1
+            order1.append(n)
+            for j2 in range(j1 + 1, J):
+                for l2 in range(L):
+                    n += 1
+                    order2.append(n)
+    assert len(order0) == n_order0
+    assert len(order1) == n_order1
+    assert len(order2) == n_order2
+    return order0, order1, order2
 
 # Check the scattering
 # FYI: access the two different tests in here by setting envs
 # KYMATIO_BACKEND=skcuda and KYMATIO_BACKEND=torch
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
-    data = torch.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
+    data = np.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
 
     x = data['x']
     S = data['Sx']
@@ -31,7 +46,7 @@ def test_Scattering2D():
     # (which is how it's now computed)
 
     o0, o1, o2 = reorder_coefficients_from_interleaved(J, L=8)
-    reorder = torch.from_numpy(np.concatenate((o0, o1, o2)))
+    reorder = np.concatenate((o0, o1, o2))
     S = S[..., reorder, :, :]
 
     pre_pad = data['pre_pad']
@@ -39,33 +54,13 @@ def test_Scattering2D():
     M = x.shape[2]
     N = x.shape[3]
 
-    import kymatio.scattering2d.backend as backend
+    # Then, let's check when using pure pytorch code
+    scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
+    Sg = []
 
-    if backend.BACKEND_NAME == 'skcuda':
-        print('skcuda backend tested!')
-        # First, let's check the Jit
-        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
-        scattering.cuda()
-        x = x.cuda()
-        S = S.cuda()
-        y = scattering(x)
-        assert ((S - y)).abs().max() < 1e-6
-    elif backend.BACKEND_NAME == 'torch':
-        # Then, let's check when using pure pytorch code
-        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
-        Sg = []
 
-        for device in devices:
-            if device == 'cuda':
-                print('torch-gpu backend tested!')
-                x = x.cuda()
-                scattering.cuda()
-                S = S.cuda()
-                Sg = scattering(x)
-            else:
-                print('torch-cpu backend tested!')
-                x = x.cpu()
-                S = S.cpu()
-                scattering.cpu()
-                Sg = scattering(x)
-            assert (Sg - S).abs().max() < 1e-6
+        x = x.cpu()
+        S = S.cpu()
+        scattering.cpu()
+        Sg = scattering(x)
+    assert (Sg - S).abs().max() < 1e-6
