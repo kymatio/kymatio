@@ -226,7 +226,7 @@ class TestScattering2D_Torch:
             x = x.cuda()
             S = S.cuda()
             y = scattering(x)
-            assert ((S - y)).abs().max() < 1e-6
+            assert torch.allclose(S, y)
         elif backend.name == 'torch':
             # Then, let's check when using pure pytorch code
             scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend)
