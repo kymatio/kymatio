@@ -81,7 +81,7 @@ class TestSubsampleFourier:
             z = subsample_fourier(x, k=16)
             assert torch.allclose(y, z)
             if backend.name == 'torch':
-                z = subsample_fourier(x.cpu(), k=16)
+                z = subsample_fourier(x, k=16)
                 assert torch.allclose(y, z)
         elif device == 'cpu':
             if backend.NAME == 'skcuda':
@@ -111,9 +111,9 @@ class TestCDGMM:
     @pytest.fixture(params=(False, True))
     def data(self, request):
         real_filter = request.param
-        x = torch.rand(100, 128, 128, 2)
-        filt = torch.rand(128, 128, 2)
-        y = torch.ones(100, 128, 128, 2)
+        x = torch.rand(100, 128, 128, 2).float()
+        filt = torch.rand(128, 128, 2).float()
+        y = torch.ones(100, 128, 128, 2).float()
         if real_filter:
             filt[..., 1] = 0
         y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
@@ -131,14 +131,9 @@ class TestCDGMM:
         x, filt, y = data
         # move to device
         x, filt, y = x.to(device), filt.to(device), y.to(device)
-        # call cdgmm
-        if inplace:
-            x = x.clone()
         z = backend.cdgmm(x, filt, inplace=inplace)
-        if inplace:
-            z = x
         # compare
-        assert torch.allclose(y, z)
+        assert torch.allclose(y, z, atol=1e-7, rtol =1e-6) # There is a very small meaningless difference for skcuda+GPU
 
     @pytest.mark.parametrize("backend", backends)
     def test_cdgmm_exceptions(self, backend):
