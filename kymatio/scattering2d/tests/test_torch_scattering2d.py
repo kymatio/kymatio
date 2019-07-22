@@ -231,19 +231,20 @@ class TestScattering2D_Torch:
             # Then, let's check when using pure pytorch code
             scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend)
             Sg = []
-            if device == 'cuda':
-                print('torch-gpu backend tested!')
-                x = x.cuda()
-                scattering.cuda()
-                S = S.cuda()
-                Sg = scattering(x)
-            else:
-                print('torch-cpu backend tested!')
-                x = x.cpu()
-                S = S.cpu()
-                scattering.cpu()
-                Sg = scattering(x)
+            x = x.to(device)
+            scattering.to(device)
+            S = S.to(device)
+            Sg = scattering(x)
             assert torch.allclose(Sg, S)
+
+        # check also the default backend
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
+        Sg = []
+        x = x.to(device)
+        scattering.to(device)
+        S = S.to(device)
+        Sg = scattering(x)
+        assert torch.allclose(Sg, S)
 
     @pytest.mark.parametrize("backend", backends)
     def test_batch_shape_agnostic(self, backend):
