@@ -13,6 +13,8 @@ def isreal(input):
     return input.shape[-1] == 1
 
 
+import torch
+from torch.nn import ReflectionPad2d
 class Pad(object): # cf https://docs.scipy.org/doc/numpy/reference/generated/numpy.pad.html
     def __init__(self, pad_size, input_size, pre_pad=False):
         """
@@ -184,7 +186,7 @@ def cdgmm(A, B, inplace=False):
         raise TypeError('The input must be complex, indicated by a last '
                         'dimension of size 2')
 
-    if B.ndimension() != 3:
+    if B.ndim() != 3:
         raise RuntimeError('The filter must be a 3-tensor, with a last '
                            'dimension of size 1 or 2 to indicate it is real '
                            'or complex, respectively')
@@ -225,7 +227,7 @@ def cdgmm(A, B, inplace=False):
 
         return C if not inplace else A.copy_(C)
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'Modulus', 'SubsampleFourier', 'fft', 'Pad', 'unpad'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
