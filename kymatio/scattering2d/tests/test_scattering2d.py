@@ -366,6 +366,9 @@ def test_input_size_agnostic():
         x = x.cuda()
         scattering.cuda()
 
+    S = scattering(x)
+    assert(S.shape[-2:] == (1, 1))
+
     N = 32
     J = 5
     scattering = Scattering2D(J, shape=(N+5, N))
@@ -376,3 +379,4 @@ def test_input_size_agnostic():
         scattering.cuda()
 
     S = scattering(x)
+    assert (S.shape[-2:] == (1, 1))
