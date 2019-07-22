@@ -1,9 +1,8 @@
-__all__ = ['Scattering2D']
+__all__ = ['Scattering2D_torch']
 
 import torch
 
 from kymatio.scattering2d.core.scattering2d import scattering2d
-from ..backend import backend
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
 from ...frontend.torch_frontend import Scattering_torch
@@ -86,20 +85,24 @@ class Scattering2D_torch(Scattering_torch):
         this does not introduce border effects inherent to padding.
 
         """
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None):
         super(Scattering2D_torch, self).__init__(J, shape, max_order=max_order)
-        self.pre_pad, self.L = pre_pad, L
+        self.pre_pad, self.L, self.backend = pre_pad, L, backend
         self.build()
 
     def build(self):
         self.M, self.N = self.shape
+        # use the default backend if no backend is provided
+        if not self.backend:
+            from ..backend import torch_backend as backend
+            self.backend = backend
         if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
             raise RuntimeError('The smallest dimension should be larger than 2^J')
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
-        self.pad = backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
+        self.pad = self.backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
                                 (self.N_padded - self.N + 1) // 2], [self.M, self.N], pre_pad=self.pre_pad)
-        self.unpad = backend.unpad
+        self.unpad = self.backend.unpad
         self.create_and_register_filters()
 
     def create_and_register_filters(self):
@@ -140,7 +143,7 @@ class Scattering2D_torch(Scattering_torch):
                     self.psi[j][k] = buffer_dict['tensor' + str(n)]
                     n += 1
 
-        return scattering2d(input, self.pad, self.unpad, backend, self.J, self.L, self.phi, self.psi, self.max_order, self.M_padded, self.N_padded)
+        return scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order, self.M_padded, self.N_padded)
 
     def forward(self, input):
         """Forward pass of the scattering.
