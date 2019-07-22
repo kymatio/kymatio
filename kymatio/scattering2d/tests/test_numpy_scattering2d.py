@@ -1,16 +1,9 @@
 import os
+import io
 import numpy as np
-from kymatio.scattering2d import Scattering2D
-
-
-backends = []
-
-try:
-    from kymatio.scattering2d.backend import numpy_backend
-    backends.append(numpy_backend)
-except:
-    pass
-
+from kymatio.scattering2d import Scattering2D_numpy
+import pickle
+import torch
 
 def reorder_coefficients_from_interleaved(J, L):
     # helper function to obtain positions of order0, order1, order2 from interleaved
@@ -36,7 +29,10 @@ def reorder_coefficients_from_interleaved(J, L):
 # KYMATIO_BACKEND=skcuda and KYMATIO_BACKEND=torch
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
-    data = np.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
+    data = None
+    with open(os.path.join(test_data_dir, 'test_data_2d.pt'), 'rb') as f:
+        buffer = io.BytesIO(f.read())
+        data = torch.load(buffer)
 
     x = data['x']
     S = data['Sx']
@@ -57,8 +53,7 @@ def test_Scattering2D():
     # Then, let's check when using pure pytorch code
     scattering = Scattering2D_numpy(J, shape=(M, N), pre_pad=pre_pad)
 
-    x = x.cpu()
-    S = S.cpu()
-    scattering.cpu()
+    x = x
+    S = S
     Sg = scattering(x)
     assert (Sg - S).abs().max() < 1e-6

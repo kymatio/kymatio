@@ -16,6 +16,7 @@ __all__ = [
 from .scattering1d.scattering1d import Scattering1D
 
 from .scattering2d.frontend import Scattering2D_torch
+from .scattering2d.frontend import Scattering2D_numpy
 
 from .scattering3d.scattering3d import HarmonicScattering3D
 
