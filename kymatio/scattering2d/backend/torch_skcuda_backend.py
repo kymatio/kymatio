@@ -332,7 +332,7 @@ def cdgmm(A, B, inplace=False):
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
         return C
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'Modulus', 'SubsampleFourier', 'fft', 'Pad', 'unpad'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
 backend.name = 'skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
