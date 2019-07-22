@@ -24,7 +24,7 @@ class Pad(object):
             Parameters
             ----------
             pad_size : list of 4 integers
-                size of padding to apply [left, right, top, bottom].
+                size of padding to apply [top, bottom, left, right].
             input_size : list of 2 integers
                 size of the original signal [height, width].
             pre_pad : boolean
@@ -40,22 +40,22 @@ class Pad(object):
         pad_size_tmp = list(self.pad_size)
 
         # This allow to handle the case where the padding is equal to the image size
-        # We need to take care that the order of the pad sizes is reversed with
-        # respect to the input size.
-        if pad_size_tmp[2] == self.input_size[0]:
-            pad_size_tmp[2] -= 1
-            pad_size_tmp[3] -= 1
-        if pad_size_tmp[0] == self.input_size[1]:
+        if pad_size_tmp[0] == self.input_size[0]:
             pad_size_tmp[0] -= 1
             pad_size_tmp[1] -= 1
-        self.padding_module = ReflectionPad2d(pad_size_tmp)
+        if pad_size_tmp[2] == self.input_size[1]:
+            pad_size_tmp[2] -= 1
+            pad_size_tmp[3] -= 1
+        # Pytorch expects its padding as [left, right, top, bottom]
+        self.padding_module = ReflectionPad2d([pad_size_tmp[2], pad_size_tmp[3],
+                                               pad_size_tmp[0], pad_size_tmp[1]])
 
     def __call__(self, x):
         if not self.pre_pad:
             x = self.padding_module(x)
-            if self.pad_size[2] == self.input_size[0]:
+            if self.pad_size[0] == self.input_size[0]:
                 x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
-            if self.pad_size[0] == self.input_size[1]:
+            if self.pad_size[2] == self.input_size[1]:
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
 
         output = x.new_zeros(x.shape + (2,))
