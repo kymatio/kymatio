@@ -24,11 +24,11 @@ class Pad(object):
             Parameters
             ----------
             pad_size : list of 4 integers
-                size of padding to apply.
+                size of padding to apply [top, bottom, left, right].
             input_size : list of 2 integers
-                size of the original signal
+                size of the original signal [height, width].
             pre_pad : boolean
-                if set to true, then there is no padding, one simply adds the imaginarty part.
+                if set to true, then there is no padding, one simply adds the imaginary part.
         """
         self.pre_pad = pre_pad
         self.pad_size = pad_size
@@ -37,7 +37,7 @@ class Pad(object):
         self.build()
 
     def build(self):
-        pad_size_tmp = self.pad_size
+        pad_size_tmp = list(self.pad_size)
 
         # This allow to handle the case where the padding is equal to the image size
         if pad_size_tmp[0] == self.input_size[0]:
@@ -46,7 +46,9 @@ class Pad(object):
         if pad_size_tmp[2] == self.input_size[1]:
             pad_size_tmp[2] -= 1
             pad_size_tmp[3] -= 1
-        self.padding_module = ReflectionPad2d(pad_size_tmp)
+        # Pytorch expects its padding as [left, right, top, bottom]
+        self.padding_module = ReflectionPad2d([pad_size_tmp[2], pad_size_tmp[3],
+                                               pad_size_tmp[0], pad_size_tmp[1]])
 
     def __call__(self, x):
         if not self.pre_pad:
