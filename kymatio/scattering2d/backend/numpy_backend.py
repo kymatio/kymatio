@@ -186,7 +186,7 @@ def cdgmm(A, B, inplace=False):
         raise TypeError('The input must be complex, indicated by a last '
                         'dimension of size 2')
 
-    if B.ndim() != 3:
+    if B.ndim != 3:
         raise RuntimeError('The filter must be a 3-tensor, with a last '
                            'dimension of size 1 or 2 to indicate it is real '
                            'or complex, respectively')
@@ -195,7 +195,7 @@ def cdgmm(A, B, inplace=False):
         raise TypeError('The filter must be complex or real, indicated by a '
                         'last dimension of size 2 or 1, respectively')
 
-    if A.size()[-3:-1] != B.size()[-3:-1]:
+    if A.shape[-3:-1] != B.shape[-3:-1]:
         raise RuntimeError('The filters are not compatible for multiplication!')
 
     if A.dtype is not B.dtype:
