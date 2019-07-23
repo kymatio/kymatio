@@ -138,12 +138,12 @@ def fft(input, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifft2(input, norm='ortho'))
+        output = np.real(np.fft.ifft2(input, norm=None))*input.shape[-1]*input.shape[-2]
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifft2(input, norm='ortho')
+            output = np.fft.ifft2(input, norm=None)*input.shape[-1]*input.shape[-2]
         else:
-            output = np.fft.ifft2(input, norm='ortho')
+            output = np.fft.fft2(input, norm=None)
 
     return output
 

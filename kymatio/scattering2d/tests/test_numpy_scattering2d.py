@@ -55,5 +55,4 @@ def test_Scattering2D():
     x = x
     S = S
     Sg = scattering(x)
-    print(np.sum(np.abs(Sg-S)))
     assert np.allclose(Sg, S)
