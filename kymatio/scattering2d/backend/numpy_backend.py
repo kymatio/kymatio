@@ -5,9 +5,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'numpy'
 
-import torch
-from torch.nn import ReflectionPad2d
-class Pad(object): # cf https://docs.scipy.org/doc/numpy/reference/generated/numpy.pad.html
+class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
         """
             Padding which allows to simultaneously pad in a reflection fashion
@@ -23,31 +21,16 @@ class Pad(object): # cf https://docs.scipy.org/doc/numpy/reference/generated/num
         """
         self.pre_pad = pre_pad
         self.pad_size = pad_size
-        self.input_size = input_size
-
         self.build()
 
     def build(self):
-        pad_size_tmp = self.pad_size
-
-        # This allow to handle the case where the padding is equal to the image size
-        if pad_size_tmp[0] == self.input_size[0]:
-            pad_size_tmp[0] -= 1
-            pad_size_tmp[1] -= 1
-        if pad_size_tmp[2] == self.input_size[1]:
-            pad_size_tmp[2] -= 1
-            pad_size_tmp[3] -= 1
-        self.padding_module = ReflectionPad2d(pad_size_tmp)
+        self.np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
 
     def __call__(self, x):
-        x = torch.from_numpy(x)
-        if not self.pre_pad:
-            x = self.padding_module(x)
-            if self.pad_size[0] == self.input_size[0]:
-                x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
-            if self.pad_size[2] == self.input_size[1]:
-                x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
-        return x.numpy()
+        if self.pre_pad:
+            return x
+        else:
+            return np.pad(x, ((0,0), (0,0), self.np_pad[0], self.np_pad[1]), mode='reflect')
 
 def unpad(in_):
     """
