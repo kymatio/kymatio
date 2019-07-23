@@ -165,7 +165,7 @@ def new(x, O, M, N):
     shape = x.shape[:-2] + (O,) + (M,) + (N,)
     return np.zeros(shape, dtype=x.dtype)
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'new'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()

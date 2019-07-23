@@ -336,8 +336,8 @@ def new(x, O, M, N):
     shape = x.shape[:-2] + (O,) + (M,) + (N,)
     return x.new(shape)
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
-backend.name = 'skcuda'
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'new'])
+backend.name = 'torch_skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()

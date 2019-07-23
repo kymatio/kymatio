@@ -251,7 +251,7 @@ def new(x, O, M, N):
     return x.new(shape)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'new'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()

@@ -31,7 +31,7 @@ class Scattering2D_torch(Scattering_torch):
         Example
         -------
             # 1) Define a Scattering2D object as:
-                s = Scattering2D(J, shape=(M, N))
+                s = Scattering2D_torch(J, shape=(M, N))
             #    where (M, N) is the image size and 2**J the scale of the scattering
             # 2) Forward on an input Tensor x of shape B x M x N,
             #     where B is the batch size.
@@ -52,6 +52,8 @@ class Scattering2D_torch(Scattering_torch):
             Controls the padding: if set to False, a symmetric padding is applied
             on the signal. If set to true, the software will assume the signal was
             padded externally. Defaults to `False`.
+        backend : object, optional
+            Controls the backend which is combined with the frontend.
 
         Attributes
         ----------
@@ -96,8 +98,11 @@ class Scattering2D_torch(Scattering_torch):
         if not self.backend:
             from ..backend import torch_backend as backend
             self.backend = backend
+        elif self.backend.name[0:5] != 'torch':
+            raise RuntimeError('This backend is not supported.')
+
         if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
-            raise RuntimeError('The smallest dimension should be larger than 2^J')
+            raise RuntimeError('The smallest dimension should be larger than 2^J.')
         self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
         self.pad = self.backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,

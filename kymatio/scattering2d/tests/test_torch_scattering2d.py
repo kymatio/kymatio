@@ -193,9 +193,6 @@ class TestScattering2D_Torch:
         assert len(order2) == n_order2
         return order0, order1, order2
 
-    # Check the scattering
-    # FYI: access the two different tests in here by setting envs
-    # KYMATIO_BACKEND=skcuda and KYMATIO_BACKEND=torch
     @pytest.mark.parametrize("backend", backends)
     @pytest.mark.parametrize("device", devices)
     def test_Scattering2D(self, backend, device):
