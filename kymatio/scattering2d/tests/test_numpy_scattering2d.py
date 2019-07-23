@@ -33,8 +33,8 @@ def test_Scattering2D():
         buffer = io.BytesIO(f.read())
         data = torch.load(buffer)
 
-    x = data['x']
-    S = data['Sx']
+    x = data['x'].numpy()
+    S = data['Sx'].numpy()
     J = data['J']
 
     # we need to reorder S from interleaved (how it's saved) to o0, o1, o2
@@ -55,4 +55,5 @@ def test_Scattering2D():
     x = x
     S = S
     Sg = scattering(x)
-    assert (Sg - S).abs().max() < 1e-6
+    print(np.sum(np.abs(Sg-S)))
+    assert np.allclose(Sg, S)

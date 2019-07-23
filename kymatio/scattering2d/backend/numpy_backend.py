@@ -5,14 +5,6 @@ from collections import namedtuple
 
 BACKEND_NAME = 'numpy'
 
-def iscomplex(input):
-    return input.shape[-1] == 2
-
-
-def isreal(input):
-    return input.shape[-1] == 1
-
-
 import torch
 from torch.nn import ReflectionPad2d
 class Pad(object): # cf https://docs.scipy.org/doc/numpy/reference/generated/numpy.pad.html
@@ -48,16 +40,14 @@ class Pad(object): # cf https://docs.scipy.org/doc/numpy/reference/generated/num
         self.padding_module = ReflectionPad2d(pad_size_tmp)
 
     def __call__(self, x):
+        x = torch.from_numpy(x)
         if not self.pre_pad:
             x = self.padding_module(x)
             if self.pad_size[0] == self.input_size[0]:
                 x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
             if self.pad_size[2] == self.input_size[1]:
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
-
-        output = x.new_zeros(x.shape + (2,))
-        output[...,0] = x
-        return output
+        return x.numpy()
 
 def unpad(in_):
     """
@@ -93,15 +83,13 @@ class SubsampleFourier(object):
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
     def __call__(self, input, k):
-        out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
+        out = np.zeros((input.shape[0], input.shape[1], input.shape[2] // k, input.shape[3] // k), dtype=input.dtype)
 
+        y = input.reshape((input.shape[0], input.shape[1],
+                       input.shape[2]//out.shape[2], out.shape[2],
+                       input.shape[3]//out.shape[3], out.shape[3]))
 
-        y = input.view(input.size(0), input.size(1),
-                       input.size(2)//out.size(2), out.size(2),
-                       input.size(3)//out.size(3), out.size(3),
-                       2)
-
-        out = y.mean(4, keepdim=False).mean(2, keepdim=False)
+        out = y.mean(axis=4).mean(axis=2)
         return out
 
 
@@ -149,11 +137,8 @@ def fft(input, direction='C2C', inverse=False):
         if not inverse:
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
-    if not iscomplex(input):
-        raise TypeError('The input should be complex. (e.g. last dimension is 2)')
-
     if direction == 'C2R':
-        output = np.fft.irfft2(input, norm='ortho')
+        output = np.real(np.fft.ifft2(input, norm='ortho'))
     elif direction == 'C2C':
         if inverse:
             output = np.fft.ifft2(input, norm='ortho')
@@ -182,50 +167,20 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    if not iscomplex(A):
-        raise TypeError('The input must be complex, indicated by a last '
-                        'dimension of size 2')
 
-    if B.ndim != 3:
+    if B.ndim != 2:
         raise RuntimeError('The filter must be a 3-tensor, with a last '
                            'dimension of size 1 or 2 to indicate it is real '
                            'or complex, respectively')
 
-    if not iscomplex(B) and not isreal(B):
-        raise TypeError('The filter must be complex or real, indicated by a '
-                        'last dimension of size 2 or 1, respectively')
-
-    if A.shape[-3:-1] != B.shape[-3:-1]:
-        raise RuntimeError('The filters are not compatible for multiplication!')
-
-    if A.dtype is not B.dtype:
-        raise RuntimeError('A and B must be of the same dtype')
-
-    if A.device.type != B.device.type:
-        raise RuntimeError('A and B must be of the same device type')
-
-    if A.device.type == 'cuda':
-        if A.device.index != B.device.index:
-            raise RuntimeError('A and B must be on the same GPU!')
-
-    if isreal(B):
-        if inplace:
-            return A.mul_(B)
-        else:
-            return A * B
+    if inplace:
+        return A.mul_(B)
     else:
-        C = A.new(A.size())
+        return A * B
 
-        A_r = A[..., 0].contiguous().view(-1, A.size(-2)*A.size(-3))
-        A_i = A[..., 1].contiguous().view(-1, A.size(-2)*A.size(-3))
-
-        B_r = B[...,0].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_i)
-        B_i = B[..., 1].contiguous().view(B.size(-2)*B.size(-3)).unsqueeze(0).expand_as(A_r)
-
-        C[..., 0].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_r - A_i * B_i
-        C[..., 1].view(-1, C.size(-2)*C.size(-3))[:] = A_r * B_i + A_i * B_r
-
-        return C if not inplace else A.copy_(C)
+def new(x, O, M, N):
+    shape = x.shape[:-2] + (O,) + (M,) + (N,)
+    return np.zeros(shape, dtype=x.dtype)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
 backend.name = 'numpy'
@@ -235,3 +190,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
+backend.new = new

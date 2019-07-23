@@ -116,14 +116,16 @@ class Scattering2D_torch(Scattering_torch):
         self.phi, self.psi = filters['phi'], filters['psi']
         for c, phi in self.phi.items():
             if isinstance(c, int):
-                self.phi[c] = torch.from_numpy(self.phi[c])
+                self.phi[c] = torch.from_numpy(self.phi[c]).unsqueeze(-1) # add a trailing singleton dimension to mark
+                # it as non-complex
                 self.register_buffer('tensor' + str(n), self.phi[c])
                 n += 1
 
         for j in range(len(self.psi)):
             for k, v in self.psi[j].items():
                 if isinstance(k, int):
-                    self.psi[j][k] = torch.from_numpy(v)
+                    self.psi[j][k] = torch.from_numpy(v).unsqueeze(-1) # add a trailing singleton dimension to mark it
+                    # as non-complex
                     self.register_buffer('tensor' + str(n), self.psi[j][k])
                     n += 1
 

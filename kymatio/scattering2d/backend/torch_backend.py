@@ -246,6 +246,11 @@ def cdgmm(A, B, inplace=False):
 
         return C if not inplace else A.copy_(C)
 
+def new(x, O, M, N):
+    shape = x.shape[:-2] + (O,) + (M,) + (N,)
+    return x.new(shape)
+
+
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
@@ -254,3 +259,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
+backend.new = new

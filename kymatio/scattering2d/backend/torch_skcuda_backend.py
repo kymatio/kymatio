@@ -332,6 +332,10 @@ def cdgmm(A, B, inplace=False):
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
         return C
 
+def new(x, O, M, N):
+    shape = x.shape[:-2] + (O,) + (M,) + (N,)
+    return x.new(shape)
+
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad'])
 backend.name = 'skcuda'
 backend.cdgmm = cdgmm
@@ -340,3 +344,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
+backend.new = new

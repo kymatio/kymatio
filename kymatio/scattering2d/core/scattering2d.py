@@ -5,8 +5,8 @@
 __all__ = ['scattering2d']
 
 def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded, N_padded):
-    subsample_fourier, modulus, fft, cdgmm = backend.subsample_fourier, backend.modulus,\
-                                                         backend.fft, backend.cdgmm
+    subsample_fourier, modulus, fft, cdgmm, new = backend.subsample_fourier, backend.modulus,\
+                                                         backend.fft, backend.cdgmm, backend.new
     batch_shape = input.shape[:-2]
     signal_shape = input.shape[-2:]
 
@@ -20,11 +20,7 @@ def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded
     if max_order == 2:
         output_size += order2_size
 
-    S = input.new(input.size(0),
-                  input.size(1),
-                  output_size,
-                  M_padded//(2**J)-2,
-                  N_padded//(2**J)-2)
+    S = new(input, output_size, M_padded//(2**J)-2, N_padded//(2**J)-2)
     U_r = pad(input)
     U_0_c = fft(U_r, 'C2C')
 
