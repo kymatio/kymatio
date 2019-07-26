@@ -24,7 +24,6 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from PIL import Image
-from tqdm import tqdm
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -68,7 +67,6 @@ class Generator(nn.Module):
     def forward(self, input_tensor):
         return self.main(input_tensor)
 
-
 def main():
     parser = argparse.ArgumentParser(description='Regularized inverse scattering')
     parser.add_argument('--num_epochs', default=2, help='Number of epochs to train')
@@ -93,27 +91,17 @@ def main():
 
     fixed_dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
     fixed_batch = next(iter(fixed_dataloader))
-    if torch.cuda.is_available():
-        fixed_batch = fixed_batch[0].float().cuda()
-    else:
-        fixed_batch = fixed_batch[0].float().cpu()
+    fixed_batch = fixed_batch[0].float().cuda()
 
     scattering = Scattering(J=2, shape=(28, 28))
-    if torch.cuda.is_available():
-        scattering.cuda()
-    else:
-        scattering.cpu()
+    scattering.cuda()
 
     scattering_fixed_batch = scattering(fixed_batch).squeeze(1)
     num_input_channels = scattering_fixed_batch.shape[1]
     num_hidden_channels = num_input_channels
 
     generator = Generator(num_input_channels, num_hidden_channels)
-    if torch.cuda.is_available():
-        generator.cuda()
-    else:
-        generator.cpu()
-
+    generator.cuda()
     generator.train()
 
     # Either train the network or load a trained model
@@ -127,12 +115,9 @@ def main():
 
         for idx_epoch in range(num_epochs):
             print('Training epoch {}'.format(idx_epoch))
-            for _, current_batch in enumerate(tqdm(dataloader)):
+            for _, current_batch in enumerate(dataloader):
                 generator.zero_grad()
-                if torch.cuda.is_available():
-                    batch_images = Variable(current_batch[0]).float().cuda()
-                else:
-                    batch_images = Variable(current_batch[0]).float().cpu()
+                batch_images = Variable(current_batch[0]).float().cuda()
                 batch_scattering = scattering(batch_images).squeeze(1)
                 batch_inverse_scattering = generator(batch_scattering)
                 loss = criterion(batch_inverse_scattering, batch_images)
@@ -157,10 +142,7 @@ def main():
             zt = (1 - t) * z0 + t * z1
             batch_z = np.vstack((batch_z, zt))
 
-    if torch.cuda.is_available():
-        z = torch.from_numpy(batch_z).float().cuda()
-    else:
-        z = torch.from_numpy(batch_z).float().cpu()
+    z = torch.from_numpy(batch_z).float().cuda()
     path = generator(z).data.cpu().numpy().squeeze(1)
     path = (path + 1) / 2  # The pixels are now in [0, 1]
 
@@ -179,6 +161,7 @@ def main():
         plt.axis('off')
         plt.pause(0.1)
         plt.draw()
+
 
 if __name__ == '__main__':
     main()
