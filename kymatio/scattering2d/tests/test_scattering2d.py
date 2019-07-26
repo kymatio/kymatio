@@ -181,17 +181,11 @@ def test_FFT():
         backend.fft(y)
     assert ('must be contiguous' in record.value.args[0])
 
-    pad = backend.Pad(2 ** 0, pre_pad=False)
-
-    # -- synthesise data
-    y = torch.rand(1, 1, 8, 8)
-
-    y_pad = pad(y)                                          # pad to add complex dimension
-    y_fft = backend.fft(y_pad, 'C2C')                       # fft
+    y = torch.rand(1, 1, 8, 8, 2)                           # synthesise complex data
+    y_fft = backend.fft(y, 'C2C')                           # fft
     y_fft_inv = backend.fft(y_fft, 'C2C', inverse=True)     # inverse fft
-    y_fft_inv_un = y_fft_inv[..., 1:-1, 1:-1, 0]            # unpad
 
-    assert torch.allclose(y, y_fft_inv_un)
+    assert torch.allclose(y, y_fft_inv)
 
 def reorder_coefficients_from_interleaved(J, L):
     # helper function to obtain positions of order0, order1, order2 from interleaved
