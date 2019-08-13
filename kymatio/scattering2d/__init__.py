@@ -1,5 +1,5 @@
-__all__ = ['Scattering2D_torch']
+__all__ = ['Scattering2DTorch', 'Scattering2DNumpy']
 
 
-from .frontend import Scattering2D_torch
-from .frontend import Scattering2D_numpy
+from .frontend import Scattering2DTorch
+from .frontend import Scattering2DNumpy

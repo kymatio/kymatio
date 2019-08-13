@@ -65,14 +65,14 @@ class SubsampleFourier(object):
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
-    def __call__(self, input, k):
-        out = np.zeros((input.shape[0], input.shape[1], input.shape[2] // k, input.shape[3] // k), dtype=input.dtype)
+    def __call__(self, x, k):
+        out = np.zeros((x.shape[0], x.shape[1], x.shape[2] // k, x.shape[3] // k), dtype=x.dtype)
 
-        y = input.reshape((input.shape[0], input.shape[1],
-                       input.shape[2]//out.shape[2], out.shape[2],
-                       input.shape[3]//out.shape[3], out.shape[3]))
+        y = x.reshape((x.shape[0], x.shape[1],
+                       x.shape[2]//out.shape[2], out.shape[2],
+                       x.shape[3]//out.shape[3], out.shape[3]))
 
-        out = y.mean(axis=4).mean(axis=2)
+        out = y.mean(axis=(2, 4))
         return out
 
 
@@ -85,7 +85,7 @@ class Modulus(object):
         x_mod = modulus(x)
         Parameters
         ---------
-        x: input tensor, with last dimension = 2 for complex numbers
+        x: input complex tensor.
         Returns
         -------
         output: a tensor with imaginary part set to 0, real part set equal to
@@ -98,7 +98,7 @@ class Modulus(object):
 
 
 
-def fft(input, direction='C2C', inverse=False):
+def fft(x, direction='C2C', inverse=False):
     """
         Interface with torch FFT routines for 2D signals.
         Example
@@ -121,12 +121,12 @@ def fft(input, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifft2(input, norm=None))*input.shape[-1]*input.shape[-2]
+        output = np.real(np.fft.ifft2(x, norm=None))*x.shape[-1]*x.shape[-2]
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifft2(input, norm=None)*input.shape[-1]*input.shape[-2]
+            output = np.fft.ifft2(x, norm=None)*x.shape[-1]*x.shape[-2]
         else:
-            output = np.fft.fft2(input, norm=None)
+            output = np.fft.fft2(x, norm=None)
 
     return output
 
@@ -141,7 +141,7 @@ def cdgmm(A, B, inplace=False):
         A : tensor
             A is a complex tensor of size (B, C, M, N, 2)
         B : tensor
-            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1)
+            B is a complex tensor of size (M, N) or real tensor of (M, N)
         inplace : boolean, optional
             if set to True, all the operations are performed inplace
         Returns
@@ -152,17 +152,18 @@ def cdgmm(A, B, inplace=False):
     """
 
     if B.ndim != 2:
-        raise RuntimeError('The filter must be a 3-tensor, with a last '
-                           'dimension of size 1 or 2 to indicate it is real '
-                           'or complex, respectively')
+        raise RuntimeError('The dimension of the second input must be 2.')
 
     if inplace:
-        return A.mul_(B)
+        return np.multiply(A, B, out=A)
     else:
         return A * B
 
 def new(x, O, M, N):
-    shape = x.shape[:-2] + (O,) + (M,) + (N,)
+    """
+        Create a new tensor with appropriate dimension.
+    """
+    shape = x.shape[:-2] + (O, M, N)
     return np.zeros(shape, dtype=x.dtype)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'new'])

@@ -26,11 +26,11 @@ def getDtype(t):
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-def iscomplex(input):
-    return input.size(-1) == 2
+def iscomplex(x):
+    return x.size(-1) == 2
 
-def isreal(input):
-    return input.size(-1) == 1
+def isreal(x):
+    return x.size(-1) == 1
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -122,16 +122,16 @@ class SubsampleFourier(object):
     def GET_BLOCKS(self, N, threads):
         return (N + threads - 1) // threads
 
-    def __call__(self, input, k):
-        if not input.is_cuda:
+    def __call__(self, x, k):
+        if not x.is_cuda:
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
-        out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
+        out = x.new(x.size(0), x.size(1), x.size(2) // k, x.size(3) // k, 2)
 
-        if not iscomplex(input):
-            raise (TypeError('The input and outputs should be complex'))
+        if not iscomplex(x):
+            raise (TypeError('The x and outputs should be complex'))
 
-        input = input.contiguous()
+        x = x.contiguous()
 
         kernel = '''
         #define NW ${W} / ${k}
@@ -158,15 +158,15 @@ class SubsampleFourier(object):
           output[tz * NH * NW + ty * NW + tx] = res;
         }
         '''
-        B = input.nelement() // (2*input.size(-2) * input.size(-3))
-        W = input.size(-2)
-        H = input.size(-3)
-        k = input.size(-2) // out.size(-2)
-        periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(input))
+        B = x.nelement() // (2*x.size(-2) * x.size(-3))
+        W = x.size(-2)
+        H = x.size(-3)
+        k = x.size(-2) // out.size(-2)
+        periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(x))
         grid = (self.GET_BLOCKS(out.size(-3), self.block[0]),
                 self.GET_BLOCKS(out.size(-2), self.block[1]),
                 self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
-        periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
+        periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
@@ -195,14 +195,14 @@ class Modulus(object):
     def GET_BLOCKS(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
-    def __call__(self, input):
-        if not input.is_cuda:
+    def __call__(self, x):
+        if not x.is_cuda:
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
-        out = input.new(input.size())
-        input = input.contiguous()
+        out = x.new(x.size())
+        x = x.contiguous()
 
-        if not iscomplex(input):
+        if not iscomplex(x):
             raise TypeError('The input and outputs should be complex')
 
         kernel = """
@@ -216,17 +216,17 @@ class Modulus(object):
 
         }
         """
-        fabs = load_kernel('abs_complex_value', kernel, Dtype=getDtype(input))
+        fabs = load_kernel('abs_complex_value', kernel, Dtype=getDtype(x))
         fabs(grid=(self.GET_BLOCKS(int(out.nelement())//2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[input.data_ptr(), out.data_ptr(), out.numel() // 2],
+             args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
 
 
 
-def fft(input, direction='C2C', inverse=False):
+def fft(x, direction='C2C', inverse=False):
     """
         Interface with torch FFT routines for 2D signals.
 
@@ -237,7 +237,7 @@ def fft(input, direction='C2C', inverse=False):
 
         Parameters
         ----------
-        input : tensor
+        x : tensor
             complex input for the FFT
         direction : string
             'C2R' for complex to real, 'C2C' for complex to complex
@@ -250,19 +250,19 @@ def fft(input, direction='C2C', inverse=False):
         if not inverse:
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
-    if not iscomplex(input):
+    if not iscomplex(x):
         raise TypeError('The input should be complex (e.g. last dimension is 2)')
 
-    if not input.is_contiguous():
+    if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous!')
 
     if direction == 'C2R':
-        output = torch.irfft(input, 2, normalized=False, onesided=False) * input.size(-2) * input.size(-3)
+        output = torch.irfft(x, 2, normalized=False, onesided=False) * x.size(-2) * x.size(-3)
     elif direction == 'C2C':
         if inverse:
-            output = torch.ifft(input, 2, normalized=False) * input.size(-2) * input.size(-3)
+            output = torch.ifft(x, 2, normalized=False) * x.size(-2) * x.size(-3)
         else:
-            output = torch.fft(input, 2, normalized=False)
+            output = torch.fft(x, 2, normalized=False)
 
     return output
 
@@ -333,7 +333,10 @@ def cdgmm(A, B, inplace=False):
         return C
 
 def new(x, O, M, N):
-    shape = x.shape[:-2] + (O,) + (M,) + (N,)
+    """
+        Create a new tensor with appropriate dimension.
+    """
+    shape = x.shape[:-2] + (O, M, N)
     return x.new(shape)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'new'])

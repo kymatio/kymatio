@@ -1,14 +1,14 @@
-__all__ = ['Scattering2D_torch']
+__all__ = ['Scattering2DTorch']
 
 import torch
 
 from kymatio.scattering2d.core.scattering2d import scattering2d
 from ..filter_bank import filter_bank
 from ..utils import compute_padding
-from ...frontend.torch_frontend import Scattering_torch
+from ...frontend.torch_frontend import ScatteringTorch
 
 
-class Scattering2D_torch(Scattering_torch):
+class Scattering2DTorch(ScatteringTorch):
     """ Main module implementing the scattering transform in 2D.
         The scattering transform computes two wavelet transform followed
         by modulus non-linearity.
@@ -88,7 +88,7 @@ class Scattering2D_torch(Scattering_torch):
 
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None):
-        super(Scattering2D_torch, self).__init__(J, shape, max_order=max_order)
+        super(Scattering2DTorch, self).__init__(J, shape, max_order=max_order)
         self.pre_pad, self.L, self.backend = pre_pad, L, backend
         self.build()
 

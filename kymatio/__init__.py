@@ -9,14 +9,15 @@ warnings.filterwarnings('always', category=DeprecationWarning,
 
 __all__ = [
             'Scattering1D',
-            'Scattering2D_torch',
+            'Scattering2DTorch',
+            'Scattering2DNumpy',
             'HarmonicScattering3D'
             ]
 
 from .scattering1d.scattering1d import Scattering1D
 
-from .scattering2d.frontend import Scattering2D_torch
-from .scattering2d.frontend import Scattering2D_numpy
+from .scattering2d.frontend import Scattering2DTorch
+from .scattering2d.frontend import Scattering2DNumpy
 
 from .scattering3d.scattering3d import HarmonicScattering3D
 

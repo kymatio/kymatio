@@ -4,7 +4,7 @@ import os
 import numpy as np
 import torch
 import pytest
-from kymatio.scattering2d import Scattering2D_torch as Scattering2D
+from kymatio.scattering2d import Scattering2DTorch as Scattering2D
 
 
 

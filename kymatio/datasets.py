@@ -1,6 +1,7 @@
 import os
 import subprocess
 import numpy as np
+from scipy.io import loadmat
 from .caching import get_cache_dir
 try:
     from urllib.request import urlopen

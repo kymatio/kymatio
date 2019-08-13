@@ -1,8 +1,8 @@
 import torch.nn as nn
 
-class Scattering_torch(nn.Module):
+class ScatteringTorch(nn.Module):
    def __init__(self, J, shape, max_order = None):
-       super(Scattering_torch, self).__init__()
+       super(ScatteringTorch, self).__init__()
        self.J = J
        self.shape = shape
        self.max_order = max_order

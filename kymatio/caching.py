@@ -4,6 +4,7 @@ import os
 def find_cache_base_dir(cache_base_dir=None):
     """
     Finds the base cache directory for caching operations
+
     Arguments
     ---------
     cache_base_dir: string, optional
@@ -11,6 +12,7 @@ def find_cache_base_dir(cache_base_dir=None):
         environement variable 'KYMATIO_CACHE'. If the latter does not
         exist (so returns None), then the default base cache directory is:
         "~/kymatio_cache"
+
     Returns
     -------
     cache_base_dir: string
@@ -30,6 +32,7 @@ def get_cache_dir(name="", cache_base_dir=None, create=True):
     """
     Get the path to a cache directory of given name, possibly created if
     not existing before.
+
     Arguments
     ---------
     name: string, optional
@@ -40,6 +43,7 @@ def get_cache_dir(name="", cache_base_dir=None, create=True):
         Defaults to None.
     create: boolean, optional
         Provides the authorization to create non-existing directories
+
     Returns
     -------
     path: string

@@ -1,11 +1,11 @@
-__all__ = ['Scattering2D_numpy']
+__all__ = ['Scattering2DNumpy']
 
-from ...frontend.numpy_frontend import Scattering_numpy
+from ...frontend.numpy_frontend import ScatteringNumpy
 from kymatio.scattering2d.core.scattering2d import scattering2d
 from ..utils import compute_padding
 from ..filter_bank import filter_bank
 
-class Scattering2D_numpy(Scattering_numpy):
+class Scattering2DNumpy(ScatteringNumpy):
     """ Main module implementing the scattering transform in 2D.
         The scattering transform computes two wavelet transform followed
         by modulus non-linearity.
@@ -85,7 +85,7 @@ class Scattering2D_numpy(Scattering_numpy):
 
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None):
-        super(Scattering2D_numpy, self).__init__(J, shape, max_order=max_order)
+        super(Scattering2DNumpy, self).__init__(J, shape, max_order=max_order)
         self.pre_pad, self.L, self.backend = pre_pad, L, backend
         self.build()
 

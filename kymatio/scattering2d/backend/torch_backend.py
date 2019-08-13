@@ -6,12 +6,12 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-def iscomplex(input):
-    return input.size(-1) == 2
+def iscomplex(x):
+    return x.size(-1) == 2
 
 
-def isreal(input):
-    return input.size(-1) == 1
+def isreal(x):
+    return x.size(-1) == 1
 
 
 class Pad(object):
@@ -98,13 +98,13 @@ class SubsampleFourier(object):
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
-    def __call__(self, input, k):
-        out = input.new(input.size(0), input.size(1), input.size(2) // k, input.size(3) // k, 2)
+    def __call__(self, x, k):
+        out = x.new(x.size(0), x.size(1), x.size(2) // k, x.size(3) // k, 2)
 
 
-        y = input.view(input.size(0), input.size(1),
-                       input.size(2)//out.size(2), out.size(2),
-                       input.size(3)//out.size(3), out.size(3),
+        y = x.view(x.size(0), x.size(1),
+                       x.size(2)//out.size(2), out.size(2),
+                       x.size(3)//out.size(3), out.size(3),
                        2)
 
         out = y.mean(4, keepdim=False).mean(2, keepdim=False)
@@ -139,7 +139,7 @@ class Modulus(object):
 
 
 
-def fft(input, direction='C2C', inverse=False):
+def fft(x, direction='C2C', inverse=False):
     """
         Interface with torch FFT routines for 2D signals.
 
@@ -150,7 +150,7 @@ def fft(input, direction='C2C', inverse=False):
 
         Parameters
         ----------
-        input : tensor
+        x : tensor
             complex input for the FFT
         direction : string
             'C2R' for complex to real, 'C2C' for complex to complex
@@ -163,19 +163,19 @@ def fft(input, direction='C2C', inverse=False):
         if not inverse:
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
-    if not iscomplex(input):
+    if not iscomplex(x):
         raise TypeError('The input should be complex. (e.g. last dimension is 2)')
 
-    if not input.is_contiguous():
+    if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous!')
 
     if direction == 'C2R':
-        output = torch.irfft(input, 2, normalized=False, onesided=False) * input.size(-2) * input.size(-3)
+        output = torch.irfft(x, 2, normalized=False, onesided=False) * x.size(-2) * x.size(-3)
     elif direction == 'C2C':
         if inverse:
-            output = torch.ifft(input, 2, normalized=False) * input.size(-2) * input.size(-3)
+            output = torch.ifft(x, 2, normalized=False) * x.size(-2) * x.size(-3)
         else:
-            output = torch.fft(input, 2, normalized=False)
+            output = torch.fft(x, 2, normalized=False)
 
     return output
 
@@ -247,6 +247,9 @@ def cdgmm(A, B, inplace=False):
         return C if not inplace else A.copy_(C)
 
 def new(x, O, M, N):
+    """
+        Create a new tensor with appropriate dimension.
+    """
     shape = x.shape[:-2] + (O,) + (M,) + (N,)
     return x.new(shape)
 

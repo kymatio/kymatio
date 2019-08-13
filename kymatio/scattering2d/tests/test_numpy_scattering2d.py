@@ -1,10 +1,10 @@
 import os
 import io
 import numpy as np
-from kymatio.scattering2d import Scattering2D_numpy
+from kymatio.scattering2d import Scattering2DNumpy
 import torch
 
-class TestScattering2D_Numpy:
+class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2 from interleaved
         order0, order1, order2 = [], [], []
@@ -48,7 +48,7 @@ class TestScattering2D_Numpy:
         N = x.shape[3]
 
         # Then, let's check when using pure pytorch code
-        scattering = Scattering2D_numpy(J, shape=(M, N), pre_pad=pre_pad)
+        scattering = Scattering2DNumpy(J, shape=(M, N), pre_pad=pre_pad)
 
         x = x
         S = S
