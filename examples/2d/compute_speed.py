@@ -25,13 +25,39 @@ import time
 # Certain backends are also GPU-only, we we want to detect that before running
 # the benchmark.
 
-import kymatio.scattering2d.backend as backend
+backends = []
+
+try:
+    if torch.cuda.is_available():
+        from skcuda import cublas
+        import cupy
+        from kymatio.scattering2d.backend import torch_skcuda_backend
+        backends.append(torch_skcuda_backend)
+except:
+    pass
+
+try:
+    from kymatio.scattering2d.backend import torch_backend
+    backends.append(torch_backend)
+except:
+    pass
+
 
 ###############################################################################
-# Finally, we import the `Scattering2D` class that computes the scattering
+# Determine which devices (CPU or GPU) that are supported by the current
+# backend.
+
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
+
+
+###############################################################################
+# Finally, we import the `Scattering2DTorch` class that computes the scattering
 # transform.
 
-from kymatio import Scattering2D
+from kymatio import Scattering2DTorch as Scattering2D
 
 ###############################################################################
 # Benchmark setup
@@ -60,21 +86,12 @@ batch_size = 128
 times = 10
 
 ###############################################################################
-# Determine which devices (CPU or GPU) that are supported by the current
-# backend.
-
-if backend.NAME == 'torch':
-    devices = ['cpu', 'gpu']
-elif backend.NAME == 'skcuda':
-    devices = ['gpu']
-
-###############################################################################
 # Create the `Scattering2D` object using the given parameters and generate
 # some compatible test data with the specified batch size. The number of
 # channels in the test data here is set to `3`, corresponding to the three
 # colors channels in an RGB image.
 
-scattering = Scattering2D(J, shape=(M, N), L=L)
+
 
 x = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
 
@@ -90,40 +107,45 @@ x = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
 # and after the benchmark to make sure that all CUDA kernels have finished
 # executing.
 
-for device in devices:
-    fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
-    print(fmt_str.format(backend.NAME, device.upper()))
+for backend in backends:
+    for device in devices:
+        scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend)
 
-    if device == 'gpu':
-        scattering.cuda()
-        x = x.cuda()
-    else:
-        scattering.cpu()
-        x = x.cpu()
+        fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
+        print(fmt_str.format(backend.name, device.upper()))
 
-    scattering.forward(x)
+        if device == 'gpu':
+            scattering.cuda()
+            x = x.cuda()
+        elif backend.name == 'torch_skcuda':
+            pass
+        else:
+            scattering.cpu()
+            x = x.cpu()
 
-    if device == 'gpu':
-        torch.cuda.synchronize()
-
-    t_start = time.time()
-    for _ in range(times):
         scattering.forward(x)
 
-    if device == 'gpu':
-        torch.cuda.synchronize()
+        if device == 'gpu':
+            torch.cuda.synchronize()
 
-    t_elapsed = time.time() - t_start
+        t_start = time.time()
+        for _ in range(times):
+            scattering.forward(x)
 
-    fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
-    print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+        if device == 'gpu':
+            torch.cuda.synchronize()
 
-###############################################################################
-# The resulting output should be something like
-#
-# .. code-block:: text
-#
-#   ==> Testing Float32 with torch backend, on CPU, forward
-#   Elapsed time: 624.910853 [s / 10 evals], avg: 62.49 (s/batch)
-#   ==> Testing Float32 with torch backend, on GPU, forward
-#   Elapsed time: 130.580992 [s / 10 evals], avg: 13.06 (s/batch)
+        t_elapsed = time.time() - t_start
+
+        fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
+        print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+
+    ###############################################################################
+    # The resulting output should be something like
+    #
+    # .. code-block:: text
+    #
+    #   ==> Testing Float32 with torch backend, on CPU, forward
+    #   Elapsed time: 624.910853 [s / 10 evals], avg: 62.49 (s/batch)
+    #   ==> Testing Float32 with torch backend, on GPU, forward
+    #   Elapsed time: 130.580992 [s / 10 evals], avg: 13.06 (s/batch)

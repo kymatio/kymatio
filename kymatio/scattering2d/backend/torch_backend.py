@@ -103,9 +103,6 @@ class SubsampleFourier(object):
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
     def __call__(self, x, k):
-        print('bug')
-        print(x.size())
-        print(k)
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
         x = x.view((-1,) + signal_shape)
@@ -116,7 +113,6 @@ class SubsampleFourier(object):
 
         out = y.mean(3, keepdim=False).mean(1, keepdim=False)
         out = out.reshape(batch_shape + out.shape[-3:])
-        print(out.size())
         return out
 
 
@@ -224,8 +220,6 @@ def cdgmm(A, B, inplace=False):
                         'last dimension of size 2 or 1, respectively')
 
     if A.size()[-3:-1] != B.size()[-3:-1]:
-        print(A.size())
-        print(B.size())
         raise RuntimeError('The filters are not compatible for multiplication!')
 
     if A.dtype is not B.dtype:

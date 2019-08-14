@@ -9,7 +9,7 @@ from torch.nn import ReflectionPad2d
 
 
 
-BACKEND_NAME = 'skcuda'
+BACKEND_NAME = 'torch_skcuda'
 
 @cupy.util.memoize(for_each_device=True)
 def load_kernel(kernel_name, code, **kwargs):

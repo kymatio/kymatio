@@ -31,9 +31,7 @@ class Pad(object):
             return x
         else:
             paddings = [[0, 0]]*len(x.shape[:-2].as_list())
-            #print(paddings)
-            paddings+=[[16,16],[16,16]]
-            #[[0,0], [16, 16], [16, 16]]
+            paddings += [[self.pad_size[0],self.pad_size[1]],[self.pad_size[2],self.pad_size[3]]]
             return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
 
 def unpad(in_):
