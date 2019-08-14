@@ -6,6 +6,8 @@ class ScatteringTorch(nn.Module):
        self.J = J
        self.shape = shape
        self.max_order = max_order
+       self.build()
+       raise NotImplementedError
 
    def build(self):
        self.filters = self.create_and_register_filters()
