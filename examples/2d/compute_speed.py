@@ -116,7 +116,7 @@ for backend in backends:
         if not(device == 'cpu' and backend.name == 'torch_skcuda'):
             x, scattering = x.to(device), scattering.to(device)
         else:
-            pass
+            continue
 
 
         scattering.forward(x)
