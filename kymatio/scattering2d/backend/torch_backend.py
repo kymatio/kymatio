@@ -255,9 +255,9 @@ def cdgmm(A, B, inplace=False):
 def finalize(s0, s1, s2):
     """ Concatenate scattering of different orders"""
     if len(s2)>0:
-        return torch.cat([torch.cat(s0, axis=-3), torch.cat(s1, axis=-3), torch.cat(s2, axis=-3)], axis=-3)
+        return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3), torch.cat(s2, -3)], -3)
     else:
-        return torch.cat([torch.cat(s0, axis=-3), torch.cat(s1, axis=-3)], axis=-3)
+        return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3)], -3)
 
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
