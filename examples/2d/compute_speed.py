@@ -108,31 +108,27 @@ x = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
 # executing.
 
 for backend in backends:
+    scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend)
     for device in devices:
-        scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend)
-
         fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
         print(fmt_str.format(backend.name, device.upper()))
 
-        if device == 'gpu':
-            scattering.cuda()
-            x = x.cuda()
-        elif backend.name == 'torch_skcuda':
-            pass
+        if not(device == 'cpu' and backend.name == 'torch_skcuda'):
+            x, scattering = x.to(device), scattering.to(device)
         else:
-            scattering.cpu()
-            x = x.cpu()
+            pass
+
 
         scattering.forward(x)
 
-        if device == 'gpu':
+        if device == 'cuda':
             torch.cuda.synchronize()
 
         t_start = time.time()
         for _ in range(times):
             scattering.forward(x)
 
-        if device == 'gpu':
+        if device == 'cuda':
             torch.cuda.synchronize()
 
         t_elapsed = time.time() - t_start

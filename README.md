@@ -1,4 +1,4 @@
-Kymatio: Wavelet scattering in PyTorch
+Kymatio: Wavelet scattering in Python
 ======================================
 
 Kymatio is an implementation of the wavelet scattering transform in the Python programming language, suitable for large-scale numerical experiments in signal processing and machine learning.
