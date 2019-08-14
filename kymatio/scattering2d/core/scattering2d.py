@@ -4,14 +4,9 @@
 
 __all__ = ['scattering2d']
 
-def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded, N_padded):
-    subsample_fourier, modulus, fft, cdgmm, new = backend.subsample_fourier, backend.modulus,\
-                                                         backend.fft, backend.cdgmm, backend.new
-    batch_shape = input.shape[:-2]
-    signal_shape = input.shape[-2:]
-
-    input = input.reshape((-1, 1) + signal_shape)
-
+def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
+    subsample_fourier, modulus, fft, cdgmm, finalize = backend.subsample_fourier, backend.modulus,\
+                                                         backend.fft, backend.cdgmm, backend.finalize
     order0_size = 1
     order1_size = L * J
     order2_size = L ** 2 * J * (J - 1) // 2
@@ -20,8 +15,8 @@ def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded
     if max_order == 2:
         output_size += order2_size
 
-    S = new(input, output_size, M_padded//(2**J)-2, N_padded//(2**J)-2)
-    U_r = pad(input)
+    out_S_0, out_S_1, out_S_2 = [], [], []
+    U_r = pad(x)
     U_0_c = fft(U_r, 'C2C')
 
     # First low pass filter
@@ -29,7 +24,7 @@ def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded
 
     S_0 = fft(U_1_c, 'C2R', inverse=True)
 
-    S[..., 0, :, :] = unpad(S_0)
+    out_S_0.append(unpad(S_0))
     n_order1 = 1
     n_order2 = 1 + order1_size
 
@@ -44,7 +39,7 @@ def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded
         # Second low pass filter
         S_1_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
         S_1_r = fft(S_1_c, 'C2R', inverse=True)
-        S[..., n_order1, :, :] = unpad(S_1_r)
+        out_S_1.append(unpad(S_1_r))
         n_order1 += 1
 
         if max_order == 2:
@@ -54,15 +49,12 @@ def scattering2d(input, pad, unpad, backend, J, L, phi, psi, max_order, M_padded
                     U_2_c = subsample_fourier(cdgmm(U_1_c, psi[n2][j1]), k=2 ** (j2-j1))
                     U_2_c = fft(U_2_c, 'C2C', inverse=True)
                     U_2_c = fft(modulus(U_2_c), 'C2C')
-
                     # Third low pass filter
                     S_2_c = subsample_fourier(cdgmm(U_2_c, phi[j2]), k=2 ** (J-j2))
                     S_2_r = fft(S_2_c, 'C2R', inverse=True)
 
-                    S[..., n_order2, :, :] = unpad(S_2_r)
+                    out_S_2.append(unpad(S_2_r))
                     n_order2 += 1
 
-    scattering_shape = S.shape[-3:]
-    S = S.reshape(batch_shape + scattering_shape)
-
-    return S
+    out_S = finalize(out_S_0, out_S_1, out_S_2)
+    return out_S

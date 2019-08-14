@@ -20,4 +20,5 @@ RUN pip3 install \
       configparser \
       torchvision \
       scikit-cuda \
-      cupy
+      cupy \
+      tensorflow

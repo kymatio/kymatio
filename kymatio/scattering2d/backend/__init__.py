@@ -17,3 +17,9 @@ try:
     __all__.append('numpy_backend')
 except:
     pass
+
+try:
+    from .tensorflow_backend import backend as tensorflow_backend
+    __all__.append('tensorflow_backend')
+except:
+    pass

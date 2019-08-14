@@ -1,9 +1,9 @@
 # Authors: Edouard Oyallon, Sergey Zagoruyko
 
-import numpy as np
+import tensorflow as tf
 from collections import namedtuple
 
-BACKEND_NAME = 'numpy'
+BACKEND_NAME = 'tensorflow'
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -30,7 +30,11 @@ class Pad(object):
         if self.pre_pad:
             return x
         else:
-            return np.pad(x, ((0,0), (0,0), self.np_pad[0], self.np_pad[1]), mode='reflect')
+            paddings = [[0, 0]]*len(x.shape[:-2].as_list())
+            #print(paddings)
+            paddings+=[[16,16],[16,16]]
+            #[[0,0], [16, 16], [16, 16]]
+            return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
 
 def unpad(in_):
     """
@@ -43,7 +47,7 @@ def unpad(in_):
         -------
         in_[..., 1:-1, 1:-1]
     """
-    return np.expand_dims(in_[..., 1:-1, 1:-1],-3)
+    return tf.expand_dims(in_[..., 1:-1, 1:-1],-3)
 
 class SubsampleFourier(object):
     """
@@ -66,13 +70,11 @@ class SubsampleFourier(object):
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
     """
     def __call__(self, x, k):
-        out = np.zeros((x.shape[0], x.shape[1], x.shape[2] // k, x.shape[3] // k), dtype=x.dtype)
+        y = tf.reshape(x,(-1,x.shape[1],
+                       x.shape[2]//(x.shape[2] // k), x.shape[2] // k,
+                       x.shape[3]//(x.shape[3] // k), x.shape[3] // k))
 
-        y = x.reshape((x.shape[0], x.shape[1],
-                       x.shape[2]//out.shape[2], out.shape[2],
-                       x.shape[3]//out.shape[3], out.shape[3]))
-
-        out = y.mean(axis=(2, 4))
+        out = tf.reduce_mean(y, axis=(2, 4))
         return out
 
 
@@ -92,10 +94,8 @@ class Modulus(object):
         the modulus of x.
     """
     def __call__(self, x):
-        norm = np.abs(x)
-        return norm
-
-
+        norm = tf.abs(x)
+        return tf.cast(norm, tf.complex64)
 
 
 def fft(x, direction='C2C', inverse=False):
@@ -121,16 +121,14 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifft2(x, norm=None))*x.shape[-1]*x.shape[-2]
+        output = tf.real(tf.signal.ifft2d(x, name='irfft2d'))*tf.cast(x.shape[-1]*x.shape[-2],tf.float32)
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifft2(x, norm=None)*x.shape[-1]*x.shape[-2]
+            output = tf.signal.ifft2d(x, name='ifft2d')*tf.cast(x.shape[-1]*x.shape[-2], tf.complex64)
         else:
-            output = np.fft.fft2(x, norm=None)
+            output = tf.signal.fft2d(x, name='fft2d')
 
     return output
-
-
 
 
 def cdgmm(A, B, inplace=False):
@@ -150,20 +148,13 @@ def cdgmm(A, B, inplace=False):
             output tensor of size (B, C, M, N, 2) such that:
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-
     if B.ndim != 2:
         raise RuntimeError('The dimension of the second input must be 2.')
-
-    if inplace:
-        return np.multiply(A, B, out=A)
-    else:
-        return A * B
-
+    return A * B
 
 def finalize(s0, s1, s2):
     """ Concatenate scattering of different orders"""
-    return np.concatenate([np.concatenate(s0, axis=-3), np.concatenate(s1, axis=-3), np.concatenate(s2, axis=-3)], axis=-3)
-
+    return tf.concat([tf.concat(s0, axis=-3), tf.concat(s1, axis=-3), tf.concat(s2, axis=-3)], axis=-3)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
 backend.name = 'numpy'

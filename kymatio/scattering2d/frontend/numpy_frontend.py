@@ -109,7 +109,7 @@ class Scattering2DNumpy(ScatteringNumpy):
         self.phi, self.psi = filters['phi'], filters['psi']
 
     def scattering(self, input):
-        return scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order, self.M_padded, self.N_padded)
+        return scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order)
 
     def __call__(self, x):
         return self.scattering(x)

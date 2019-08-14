@@ -32,68 +32,6 @@ def iscomplex(x):
 def isreal(x):
     return x.size(-1) == 1
 
-class Pad(object):
-    def __init__(self, pad_size, input_size, pre_pad=False):
-        """
-            Padding which allows to simultaneously pad in a reflection fashion
-            and map to complex.
-
-            Parameters
-            ----------
-            pad_size : list of 4 integers
-                size of padding to apply [top, bottom, left, right].
-            input_size : list of 2 integers
-                size of the original signal [height, width].
-            pre_pad : boolean
-                if set to true, then there is no padding, one simply adds the imaginary part.
-        """
-        self.pre_pad = pre_pad
-        self.pad_size = pad_size
-        self.input_size = input_size
-
-        self.build()
-
-    def build(self):
-        pad_size_tmp = list(self.pad_size)
-
-        # This allow to handle the case where the padding is equal to the image size
-        if pad_size_tmp[0] == self.input_size[0]:
-            pad_size_tmp[0] -= 1
-            pad_size_tmp[1] -= 1
-        if pad_size_tmp[2] == self.input_size[1]:
-            pad_size_tmp[2] -= 1
-            pad_size_tmp[3] -= 1
-        # Pytorch expects its padding as [left, right, top, bottom]
-        self.padding_module = ReflectionPad2d([pad_size_tmp[2], pad_size_tmp[3],
-                                               pad_size_tmp[0], pad_size_tmp[1]])
-
-    def __call__(self, x):
-        if not self.pre_pad:
-            x = self.padding_module(x)
-            if self.pad_size[0] == self.input_size[0]:
-                x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.size(2) - 2, :].unsqueeze(2)], 2)
-            if self.pad_size[2] == self.input_size[1]:
-                x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.size(3) - 2].unsqueeze(3)], 3)
-
-        output = x.new_zeros(x.shape + (2,))
-        output[...,0] = x
-        return output
-
-def unpad(in_):
-    """
-        Slices the input tensor at indices between 1::-1
-
-        Parameters
-        ----------
-        in_ : tensor_like
-            input tensor
-
-        Returns
-        -------
-        in_[..., 1:-1, 1:-1]
-    """
-    return in_[..., 1:-1, 1:-1]
-
 class SubsampleFourier(object):
     """
         Subsampling of a 2D image performed in the Fourier domain
@@ -224,51 +162,6 @@ class Modulus(object):
         return out
 
 
-
-
-def fft(x, direction='C2C', inverse=False):
-    """
-        Interface with torch FFT routines for 2D signals.
-
-        Example
-        -------
-        x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x, inverse=True)
-
-        Parameters
-        ----------
-        x : tensor
-            complex input for the FFT
-        direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : if direction is equal to 'C2R', then the transform
-            is automatically inverse.
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
-
-    if not iscomplex(x):
-        raise TypeError('The input should be complex (e.g. last dimension is 2)')
-
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous!')
-
-    if direction == 'C2R':
-        output = torch.irfft(x, 2, normalized=False, onesided=False) * x.size(-2) * x.size(-3)
-    elif direction == 'C2C':
-        if inverse:
-            output = torch.ifft(x, 2, normalized=False) * x.size(-2) * x.size(-3)
-        else:
-            output = torch.fft(x, 2, normalized=False)
-
-    return output
-
-
-
-
 def cdgmm(A, B, inplace=False):
     """
         Complex pointwise multiplication between (batched) tensor A and tensor B.
@@ -332,14 +225,12 @@ def cdgmm(A, B, inplace=False):
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
         return C
 
-def new(x, O, M, N):
-    """
-        Create a new tensor with appropriate dimension.
-    """
-    shape = x.shape[:-2] + (O, M, N)
-    return x.new(shape)
+from torch_backend import unpad
+from torch_backend import Pad
+from torch_backend import fft
+from torch_backend import finalize
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'new'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
 backend.name = 'torch_skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -347,4 +238,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.new = new
+backend.finalize = finalize

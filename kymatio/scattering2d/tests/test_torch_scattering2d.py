@@ -173,7 +173,7 @@ class TestFFT:
         assert ('must be contiguous' in record.value.args[0])
 
 
-class TestScattering2D_Torch:
+class TestScattering2DTorch:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2 from interleaved
         order0, order1, order2 = [], [], []
