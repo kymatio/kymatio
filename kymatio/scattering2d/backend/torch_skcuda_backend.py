@@ -225,10 +225,10 @@ def cdgmm(A, B, inplace=False):
         cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
         return C
 
-from torch_backend import unpad
-from torch_backend import Pad
-from torch_backend import fft
-from torch_backend import finalize
+from .torch_backend import unpad
+from .torch_backend import Pad
+from .torch_backend import fft
+from .torch_backend import finalize
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
 backend.name = 'torch_skcuda'
