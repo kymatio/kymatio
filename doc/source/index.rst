@@ -5,8 +5,6 @@
 
 .. |picDL| image:: https://pepy.tech/badge/kymatio
 
-.. |piccodecov| image:: https://codecov.io/gh/kymatio/kymatio/branch/master/graph/badge.svg
-
 .. |pic3| image:: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
           :width: 30px
           :target: https://github.com/kymatio/kymatio
@@ -33,7 +31,7 @@
 Kymatio
 *******
 
-|pic2|  |pic1| |picDL| |piccodecov|
+|pic2|  |pic1| |picDL|
 
 |pic3|  |pic4|
 

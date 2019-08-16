@@ -15,13 +15,11 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from kymatio import Scattering2D
 from PIL import Image
 
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 img_name = "images/digit.png"
 
 ####################################################################
@@ -45,16 +43,12 @@ print("img shape: ", src_img.shape)
 L = 6
 J = 3
 scattering = Scattering2D(J=J, shape=src_img.shape, L=L, max_order=1)
-if device == "cuda":
-    scattering = scattering.cuda()
 
 ####################################################################
 # We now compute the scattering coefficients:
 src_img = src_img.astype(np.float32) / 255.
-src_img_tensor = torch.from_numpy(src_img).to(device)
-scattering_coefficients = scattering(src_img_tensor)
+scattering_coefficients = scattering(src_img)
 print("coeffs shape: ", scattering_coefficients.size())
-scattering_coefficients = scattering_coefficients.cpu().numpy()
 # Invert colors
 scattering_coefficients = -scattering_coefficients
 

@@ -1,6 +1,6 @@
 """
-Regularized inverse of a scattering transform on MNIST
-======================================================
+Regularized inverse of a scattering transform on MNIST (PyTorch)
+================================================================
 
 Description:
 This example trains a convolutional network to invert the scattering transform at scale 2 of MNIST digits.
@@ -94,7 +94,7 @@ def main():
     fixed_batch = next(iter(fixed_dataloader))
     fixed_batch = fixed_batch[0].float().cuda()
 
-    scattering = Scattering(J=2, shape=(28, 28))
+    scattering = Scattering(J=2, shape=(28, 28), frontend='Torch')
     scattering.cuda()
 
     scattering_fixed_batch = scattering(fixed_batch).squeeze(1)

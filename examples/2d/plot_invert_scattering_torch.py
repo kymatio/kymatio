@@ -1,6 +1,6 @@
 """
-Inverting scattering via mse
-============================
+Inverting scattering via mse (PyTorch)
+======================================
 This script aims to quantify the information loss for natural images by
 performing a reconstruction of an image from its scattering coefficients via a
 L2-norm minimization.
@@ -42,7 +42,7 @@ for order in [1]:
     for J in [2, 4]:
 
         # Compute scattering coefficients
-        scattering = Scattering2D(J=J, shape=(height, width), max_order=order)
+        scattering = Scattering2D(J=J, shape=(height, width), max_order=order, frontend='torch')
         if device == "cuda":
             scattering = scattering.cuda()
             max_iter = 500

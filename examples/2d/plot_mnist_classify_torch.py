@@ -1,6 +1,6 @@
 """
-Classification of Few Sample MNIST with Scattering
-=====================================================================
+Classification of Few Sample MNIST with Scattering (PyTorch)
+============================================================
 Here we demonstrate a simple application of scattering on the MNIST dataset.
 We use 5000 MNIST samples to train a linear classifier. Features are normalized by batch normalization.
 Please also see more extensive classification examples/2d/cifar.py
@@ -107,7 +107,7 @@ import math
 
 
 # Evaluate linear model on top of scattering
-scattering = Scattering2D(shape = (28, 28), J=2)
+scattering = Scattering2D(shape = (28, 28), J=2, frontend='torch')
 K = 81 #Number of output coefficients for each spatial postiion
 
 if use_cuda:

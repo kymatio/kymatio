@@ -1,6 +1,6 @@
 """
-2D scattering transform benchmark
-=================================
+2D scattering transform benchmark (PyTorch)
+===========================================
 We compute scattering transforms for images of size `256`-by-`256` with
 averaging scale `2**3 = 8` and `L = 8` angular directions. The images are
 stacked into batches of size `batch_size = 128` and the transforms are

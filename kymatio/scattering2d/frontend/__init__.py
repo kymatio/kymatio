@@ -4,11 +4,11 @@ __all__ = ['Scattering2D']
 
 class Scattering2D(object):
     def __init__(self, *args, **kwargs):
-        if kwargs['frontend'] is None:
+        if 'frontend' not in kwargs:
             frontend='numpy'
         else:
             frontend=kwargs['frontend']
-        kwargs.pop('frontend')
+            kwargs.pop('frontend')
 
         if frontend == 'numpy':
             try:

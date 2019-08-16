@@ -49,7 +49,7 @@ plt.rc('text', usetex=True)
 plt.rc('font', family='serif')
 i = 0
 for filter in filters_set['psi']:
-    f = filter[0][..., 0]
+    f = filter[0]
     filter_c = fft2(f)
     filter_c = np.fft.fftshift(filter_c)
     axs[i // L, i % L].imshow(colorize(filter_c))
@@ -73,7 +73,7 @@ plt.rc('font', family='serif')
 plt.axis('off')
 plt.set_cmap('gray_r')
 
-f = filters_set['phi'][0][..., 0]
+f = filters_set['phi'][0]
 
 filter_c = fft2(f)
 filter_c = np.fft.fftshift(filter_c)
