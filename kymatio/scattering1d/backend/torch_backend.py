@@ -1,11 +1,12 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
 
-NAME = 'torch'
+from collections import namedtuple
+
+BACKEND_NAME = 'torch'
 
 def is_complex(input):
     return input.size(-1) == 2
@@ -305,3 +306,12 @@ def ifft1d_c2c(x):
         Fourier transform of x_f.
     """
     return torch.ifft(x, signal_ndim=1)
+
+backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c', 'ifft1d_c2c'])
+backend.name = 'torch'
+backend.modulus = modulus
+backend.subsample_fourier = subsample_fourier
+backend.real = real
+backend.unpad = unpad
+backend.fft1d_c2c = fft1d_c2c
+backend.ifft1d_c2c = ifft1d_c2c

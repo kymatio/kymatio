@@ -13,7 +13,7 @@ from kymatio.scattering1d.core.scattering1d import scattering1d
 
 from kymatio.scattering1d.filter_bank import (calibrate_scattering_filters,
                                               scattering_filter_factory)
-from kymatio.scattering1d.utils import compute_border_indices, compute_padding
+from kymatio.scattering1d.utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad
 
 __all__ = ['Scattering1DTorch']
 
@@ -382,7 +382,7 @@ class Scattering1DTorch(ScatteringTorch):
                     psi_f[sub_k] = buffer_dict['tensor' + str(n)]
                     n += 1
 
-        S = scattering1d(x, pad, unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+        S = scattering1d(x, self.backend.pad_1d, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
@@ -548,110 +548,3 @@ class Scattering1DTorch(ScatteringTorch):
                 return size_order0 + size_order1 + size_order2
             else:
                 return size_order0 + size_order1
-
-    def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
-                                       normalize='l1', r_psi=math.sqrt(0.5),
-                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
-        """
-        Computes the support to pad given the input size and the parameters of the
-        scattering transform.
-
-        Parameters
-        ----------
-        T : int
-            temporal size of the input signal
-        J : int
-            scale of the scattering
-        Q : int
-            number of wavelets per octave
-        normalize : string, optional
-            normalization type for the wavelets.
-            Only `'l2'` or `'l1'` normalizations are supported.
-            Defaults to `'l1'`
-        criterion_amplitude: float `>0` and `<1`, optional
-            Represents the numerical error which is allowed to be lost after
-            convolution and padding.
-            The larger criterion_amplitude, the smaller the padding size is.
-            Defaults to `1e-3`
-        r_psi : float, optional
-            Should be `>0` and `<1`. Controls the redundancy of the filters
-            (the larger r_psi, the larger the overlap between adjacent
-            wavelets).
-            Defaults to `sqrt(0.5)`.
-        sigma0 : float, optional
-            parameter controlling the frequential width of the
-            low-pass filter at J_scattering=0; at a an absolute J_scattering,
-            it is equal to :math:`\\frac{\\sigma_0}{2^J}`.
-            Defaults to `1e-1`.
-        alpha : float, optional
-            tolerance factor for the aliasing after subsampling.
-            The larger the alpha, the more conservative the value of maximal
-            subsampling is.
-            Defaults to `5`.
-        P_max : int, optional
-            maximal number of periods to use to make sure that the Fourier
-            transform of the filters is periodic.
-            `P_max = 5` is more than enough for double precision.
-            Defaults to `5`.
-        eps : float, optional
-            required machine precision for the periodization (single
-            floating point is enough for deep learning applications).
-            Defaults to `1e-7`.
-
-        Returns
-        -------
-        min_to_pad: int
-            minimal value to pad the signal on one size to avoid any
-            boundary error.
-        """
-        J_tentative = int(np.ceil(np.log2(T)))
-        _, _, _, t_max_phi = scattering_filter_factory(
-            J_tentative, J, Q, normalize=normalize, to_torch=False,
-            max_subsampling=0, criterion_amplitude=criterion_amplitude,
-            r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
-        min_to_pad = 3 * t_max_phi
-        return min_to_pad
-
-
-
-def _apply_psi(Psi, fn):
-    """
-    Casts the filters contained in Psi to the required type, by following
-    the dictionary structure.
-
-    Parameters
-    ----------
-    Psi : dictionary
-        dictionary of dictionary of filters, should be psi1_f or psi2_f
-    _type : torch type
-        required type to cast the filters to. Should be a torch.FloatTensor
-
-    Returns
-    -------
-    Nothing - function modifies the input
-    """
-    for filt in Psi:
-        for k in filt.keys():
-            if torch.is_tensor(filt[k]):
-                filt[k] = fn(filt[k])
-
-
-def _apply_phi(Phi, fn):
-    """
-    Casts the filters contained in Phi to the required type, by following
-    the dictionary structure.
-
-    Parameters
-    ----------
-    Psi : dictionary
-        dictionary of filters, should be phi_f
-    _type : torch type
-        required type to cast the filters to. Should be a torch.FloatTensor
-
-    Returns
-    -------
-    Nothing - function modifies the input
-    """
-    for k in Phi.keys():
-        if torch.is_tensor(Phi[k]):
-            Phi[k] = fn(Phi[k])
