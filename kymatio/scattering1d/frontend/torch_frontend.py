@@ -7,13 +7,17 @@ import numbers
 import torch
 import numpy as np
 
+from ...frontend.torch_frontend import ScatteringTorch
+
+from kymatio.scattering1d.core.scattering1d import scattering1d
+
 from kymatio.scattering1d.filter_bank import (calibrate_scattering_filters,
                                               scattering_filter_factory)
-from kymatio.scattering1d.utils import _apply_phi, _apply_psi, compute_border_indices, compute_padding
+from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 
-__all__ = ['Scattering1D']
+__all__ = ['Scattering1DTorch']
 
-class Scattering1D(object):
+class Scattering1DTorch(ScatteringTorch):
     """The 1D scattering transform
 
     The scattering transform computes a cascade of wavelet transforms
@@ -157,8 +161,8 @@ class Scattering1D(object):
         documentation for `forward()`.
     """
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-                 oversampling=0, vectorize=True, backend='torch'):
-        super(Scattering1D, self).__init__()
+                 oversampling=0, vectorize=True, backend=None):
+        super(Scattering1DTorch, self).__init__()
         # Store the parameters
         self.J = J
         self.shape = shape
@@ -185,6 +189,12 @@ class Scattering1D(object):
 
         # Set these default values for now. In the future, we'll want some
         # flexibility for these, but for now, let's keep them fixed.
+        if not self.backend:
+            from ..backend import torch_backend as backend
+            self.backend = backend
+        elif self.backend.name[0:5] != 'torch':
+            raise RuntimeError('This backend is not supported.')
+
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
@@ -220,73 +230,49 @@ class Scattering1D(object):
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
             self.J, self.pad_left, self.pad_left + self.T)
-        # Finally, precompute the filters
+        self.create_and_register_filters()
+
+    def create_and_register_filters(self):
+        """ This function run the filterbank function that
+            will create the filters as numpy array, and then, it
+            saves those arrays as module's buffers."""
+
+        # Create the filters
         phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(
             self.J_pad, self.J, self.Q, normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
 
+        n = 0
         # prepare for pytorch
         for k in phi_f.keys():
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 phi_f[k] = torch.from_numpy(
                     phi_f[k]).view(-1, 1).repeat(1, 2)
+                self.register_buffer('tensor' + str(n), phi_f[k])
+                n += 1
         for psi_f in psi1_f:
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
+                    n += 1
         for psi_f in psi2_f:
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
+                    n += 1
 
         self.psi1_f = psi1_f
         self.psi2_f = psi2_f
         self.phi_f = phi_f
-        self.to(torch.float32)
-
-    def _apply(self, fn):
-        """
-            Mimics the behavior of the function _apply() of a nn.Module()
-        """
-        _apply_psi(self.psi1_f, fn)
-        _apply_psi(self.psi2_f, fn)
-        _apply_phi(self.phi_f, fn)
-        return self
-
-    def cuda(self, device=None):
-        """
-            Mimics the behavior of the function cuda() of a nn.Module()
-        """
-        return self._apply(lambda t: t.cuda(device))
-
-    def to(self, *args, **kwargs):
-        """
-            Mimics the behavior of the function to() of a nn.Module()
-        """
-        device, dtype, non_blocking = torch._C._nn._parse_to(*args, **kwargs)
-
-        if dtype is not None:
-            if not dtype.is_floating_point:
-                raise TypeError('nn.Module.to only accepts floating point '
-                                'dtypes, but got desired dtype={}'.format(dtype))
-
-        def convert(t):
-            return t.to(device, dtype if t.is_floating_point() else None, non_blocking)
-
-        return self._apply(convert)
-
-    def cpu(self):
-        """
-            Mimics the behavior of the function cpu() of a nn.Module()
-        """
-        return self._apply(lambda t: t.cpu())
 
     def meta(self):
         """Get meta information on the transform
@@ -299,7 +285,7 @@ class Scattering1D(object):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return Scattering1D.compute_meta_scattering(
+        return Scattering1DTorch.compute_meta_scattering(
             self.J, self.Q, max_order=self.max_order)
 
     def output_size(self, detail=False):
@@ -320,7 +306,7 @@ class Scattering1D(object):
             See the documentation for `precompute_size_scattering()`.
         """
 
-        return Scattering1D.precompute_size_scattering(
+        return Scattering1DTorch.precompute_size_scattering(
             self.J, self.Q, max_order=self.max_order, detail=detail)
 
     def forward(self, x):
@@ -375,8 +361,29 @@ class Scattering1D(object):
                 self.J, self.Q, max_order=self.max_order, detail=True)
         else:
             size_scattering = 0
-        S = scattering(x, self.psi1_f, self.psi2_f, self.phi_f,
-                       self.J, max_order=self.max_order, average=self.average,
+
+        n = 0
+        buffer_dict = dict(self.named_buffers())
+        for k in self.phi_f.keys():
+            if type(k) != str:
+                # view(-1, 1).repeat(1, 2) because real numbers!
+                self.phi_f[k] = buffer_dict['tensor' + str(n)]
+                n += 1
+        for psi_f in self.psi1_f:
+            for sub_k in psi_f.keys():
+                if type(sub_k) != str:
+                    # view(-1, 1).repeat(1, 2) because real numbers!
+                    self.psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    n += 1
+        for psi_f in self.psi2_f:
+            for sub_k in psi_f.keys():
+                if type(sub_k) != str:
+                    # view(-1, 1).repeat(1, 2) because real numbers!
+                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    n += 1
+
+        S = scattering1d(x, pad, unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+                         max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
                        oversampling=self.oversampling,
@@ -605,5 +612,46 @@ class Scattering1D(object):
         min_to_pad = 3 * t_max_phi
         return min_to_pad
 
-    def __call__(self, x):
-        return self.forward(x)
+
+
+def _apply_psi(Psi, fn):
+    """
+    Casts the filters contained in Psi to the required type, by following
+    the dictionary structure.
+
+    Parameters
+    ----------
+    Psi : dictionary
+        dictionary of dictionary of filters, should be psi1_f or psi2_f
+    _type : torch type
+        required type to cast the filters to. Should be a torch.FloatTensor
+
+    Returns
+    -------
+    Nothing - function modifies the input
+    """
+    for filt in Psi:
+        for k in filt.keys():
+            if torch.is_tensor(filt[k]):
+                filt[k] = fn(filt[k])
+
+
+def _apply_phi(Phi, fn):
+    """
+    Casts the filters contained in Phi to the required type, by following
+    the dictionary structure.
+
+    Parameters
+    ----------
+    Psi : dictionary
+        dictionary of filters, should be phi_f
+    _type : torch type
+        required type to cast the filters to. Should be a torch.FloatTensor
+
+    Returns
+    -------
+    Nothing - function modifies the input
+    """
+    for k in Phi.keys():
+        if torch.is_tensor(Phi[k]):
+            Phi[k] = fn(Phi[k])

@@ -1,7 +1,3 @@
-import numpy as np
-import torch
-
-
 def compute_border_indices(J, i0, i1):
     """
     Computes border indices at all scales which correspond to the original
@@ -33,50 +29,6 @@ def compute_border_indices(J, i0, i1):
         ind_start[j] = (ind_start[j - 1] // 2) + (ind_start[j - 1] % 2)
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
-
-
-def _apply_psi(Psi, fn):
-    """
-    Casts the filters contained in Psi to the required type, by following
-    the dictionary structure.
-
-    Parameters
-    ----------
-    Psi : dictionary
-        dictionary of dictionary of filters, should be psi1_f or psi2_f
-    _type : torch type
-        required type to cast the filters to. Should be a torch.FloatTensor
-
-    Returns
-    -------
-    Nothing - function modifies the input
-    """
-    for filt in Psi:
-        for k in filt.keys():
-            if torch.is_tensor(filt[k]):
-                filt[k] = fn(filt[k])
-
-
-def _apply_phi(Phi, fn):
-    """
-    Casts the filters contained in Phi to the required type, by following
-    the dictionary structure.
-
-    Parameters
-    ----------
-    Psi : dictionary
-        dictionary of filters, should be phi_f
-    _type : torch type
-        required type to cast the filters to. Should be a torch.FloatTensor
-
-    Returns
-    -------
-    Nothing - function modifies the input
-    """
-    for k in Phi.keys():
-        if torch.is_tensor(Phi[k]):
-            Phi[k] = fn(Phi[k])
-
 
 def compute_padding(J_pad, T):
     """

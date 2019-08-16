@@ -13,8 +13,7 @@ __all__ = [
             'HarmonicScattering3D'
             ]
 
-from kymatio.scattering1d.core.scattering1d import Scattering1D
-
+from .scattering1d import Scattering1D
 from .scattering2d import Scattering2D
 
 from .scattering3d.scattering3d import HarmonicScattering3D
