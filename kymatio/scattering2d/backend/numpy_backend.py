@@ -21,16 +21,13 @@ class Pad(object):
         """
         self.pre_pad = pre_pad
         self.pad_size = pad_size
-        self.build()
-
-    def build(self):
-        self.np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
 
     def __call__(self, x):
         if self.pre_pad:
             return x
         else:
-            return np.pad(x, ((0,0), (0,0), self.np_pad[0], self.np_pad[1]), mode='reflect')
+            np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
+            return np.pad(x, ((0,0), (0,0), np_pad[0], np_pad[1]), mode='reflect')
 
 def unpad(in_):
     """
@@ -88,8 +85,7 @@ class Modulus(object):
         x: input complex tensor.
         Returns
         -------
-        output: a tensor with imaginary part set to 0, real part set equal to
-        the modulus of x.
+        output: a real tensor equal to the modulus of x.
     """
     def __call__(self, x):
         norm = np.abs(x)
@@ -121,12 +117,12 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifft2(x, norm=None))*x.shape[-1]*x.shape[-2]
+        output = np.real(np.fft.ifft2(x))*x.shape[-1]*x.shape[-2]
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifft2(x, norm=None)*x.shape[-1]*x.shape[-2]
+            output = np.fft.ifft2(x)*x.shape[-1]*x.shape[-2]
         else:
-            output = np.fft.fft2(x, norm=None)
+            output = np.fft.fft2(x)
 
     return output
 

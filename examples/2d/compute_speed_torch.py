@@ -57,7 +57,7 @@ else:
 # Finally, we import the `Scattering2DTorch` class that computes the scattering
 # transform.
 
-from kymatio import Scattering2DTorch as Scattering2D
+from kymatio import Scattering2D
 
 ###############################################################################
 # Benchmark setup
@@ -108,7 +108,7 @@ x = torch.randn(batch_size, 3, M, N, dtype=torch.float32)
 # executing.
 
 for backend in backends:
-    scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend)
+    scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend, frontend='torch')
     for device in devices:
         fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
         print(fmt_str.format(backend.name, device.upper()))

@@ -1,7 +1,7 @@
 import os
 import io
 import tensorflow as tf
-from kymatio.scattering2d import Scattering2DTensorflow
+from kymatio.scattering2d import Scattering2D
 import torch
 import numpy as np
 class TestScattering2DTensorflow:
@@ -47,7 +47,7 @@ class TestScattering2DTensorflow:
 
         # Create graph
         x_tf = tf.placeholder(tf.float32, shape=[2, 3] + list(x.shape[2:]))
-        scattering = Scattering2DTensorflow(J, shape=(M, N), pre_pad=pre_pad)
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='tensorflow')
         S_tf = scattering(x_tf)
 
         # Create session

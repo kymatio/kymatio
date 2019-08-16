@@ -1,7 +1,7 @@
 import os
 import io
 import numpy as np
-from kymatio.scattering2d import Scattering2DNumpy
+from kymatio.scattering2d import Scattering2D
 import torch
 
 class TestScattering2DNumpy:
@@ -48,7 +48,7 @@ class TestScattering2DNumpy:
         N = x.shape[3]
 
         # Then, let's check when using pure pytorch code
-        scattering = Scattering2DNumpy(J, shape=(M, N), pre_pad=pre_pad)
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='numpy')
 
         x = x
         S = S

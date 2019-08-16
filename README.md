@@ -52,7 +52,6 @@ Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zar
 Kymatio requires:
 
 * Python (>= 3.5)
-* PyTorch (>= 1.1)
 * SciPy (>= 0.13)
 
 
@@ -74,7 +73,7 @@ Linux and macOS are the two officially supported operating systems.
 
 ### GPU acceleration
 
-#### Pytorch
+#### PyTorch
 
 To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your object to GPU. For extra speed, install the CUDA library and install the `scikit-cuda` dependency by running the following pip command:
 
@@ -89,9 +88,9 @@ pip install scikit-cuda cupy
 Kymatio is designed to operate on a variety of backends for tensor operations.
 The user may control the choice of backend at runtime by setting the environment variable `KYMATIO_BACKEND`, or by editing the Kymatio configuration file (`~/.config/kymatio/kymatio.cfg` on Linux).
 
-The available backends are PyTorch (`torch`), PyTorch+scikit-cuda (`skcuda`), TensorFlow (`tensorflow`) and Numpy (`numpy`).
+The available backends are PyTorch (`torch`), PyTorch+scikit-cuda (`skcuda`), TensorFlow (`tensorflow`), and NumPy (`numpy`).
 
-Numpy is the default backend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), however, we recommend the scikit-cuda backend, which is substantially faster than PyTorch.
+Numpy is the default backend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), however, we recommend the scikit-cuda backend, which is substantially faster than NumPy.
 
 ### Installation from source
 

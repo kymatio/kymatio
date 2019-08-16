@@ -1,6 +1,11 @@
-class ScatteringTensorflow(object):
-   def __init__(self, J, shape, max_order = None):
-       super(ScatteringTensorflow, self).__init__()
-       self.J = J
-       self.shape = shape
-       self.max_order = max_order
+import tensorflow as tf
+from abc import ABCMeta, abstractmethod
+
+class ScatteringTensorflow(tf.Module, metaclass=ABCMeta):
+    def __init__(self, name):
+        super(ScatteringTensorflow, self).__init__(name=name)
+
+    @abstractmethod
+    def scattering(self, x):
+        """ This function should call the functional scattering."""
+        raise NotImplementedError

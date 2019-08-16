@@ -1,6 +1,17 @@
-class ScatteringNumpy(object):
-   def __init__(self, J, shape, max_order = None):
+from abc import ABCMeta, abstractmethod
+
+class ScatteringNumpy(object, metaclass=ABCMeta):
+   def __init__(self):
        super(ScatteringNumpy, self).__init__()
-       self.J = J
-       self.shape = shape
-       self.max_order = max_order
+
+   @abstractmethod
+   def build(self):
+       raise NotImplementedError
+
+   @abstractmethod
+   def scattering(self, x):
+       """ This function should call the functional scattering."""
+       raise NotImplementedError
+
+   def __call__(self, x):
+       return self.scattering(x)

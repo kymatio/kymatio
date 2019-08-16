@@ -135,7 +135,7 @@ class Modulus(object):
 
     def __call__(self, x):
         if not x.is_cuda:
-            raise RuntimeError('Use the torch backend for cpu tensors!')
+            raise RuntimeError('Use the torch backend (without skcuda) for cpu tensors!')
 
         out = x.new(x.size())
         x = x.contiguous()

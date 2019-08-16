@@ -85,8 +85,9 @@ class Scattering2DNumpy(ScatteringNumpy):
 
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None):
-        super(Scattering2DNumpy, self).__init__(J, shape, max_order=max_order)
-        self.pre_pad, self.L, self.backend = pre_pad, L, backend
+        super(Scattering2DNumpy, self).__init__()
+        self.pre_pad, self.L, self.backend, self.J, self.shape, self.max_order = pre_pad, L, backend, J, shape,\
+                                                                                 max_order
         self.build()
 
     def build(self):
@@ -110,6 +111,3 @@ class Scattering2DNumpy(ScatteringNumpy):
 
     def scattering(self, input):
         return scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order)
-
-    def __call__(self, x):
-        return self.scattering(x)

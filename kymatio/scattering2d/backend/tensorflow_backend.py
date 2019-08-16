@@ -21,10 +21,6 @@ class Pad(object):
         """
         self.pre_pad = pre_pad
         self.pad_size = pad_size
-        self.build()
-
-    def build(self):
-        self.np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
 
     def __call__(self, x):
         if self.pre_pad:
@@ -88,8 +84,7 @@ class Modulus(object):
         x: input complex tensor.
         Returns
         -------
-        output: a tensor with imaginary part set to 0, real part set equal to
-        the modulus of x.
+        output: a real tensor equal to the modulus of x.
     """
     def __call__(self, x):
         norm = tf.abs(x)

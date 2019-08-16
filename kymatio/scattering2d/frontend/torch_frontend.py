@@ -1,6 +1,7 @@
 __all__ = ['Scattering2DTorch']
 
 import torch
+import torch.nn as nn
 
 from kymatio.scattering2d.core.scattering2d import scattering2d
 from ..filter_bank import filter_bank
@@ -88,7 +89,7 @@ class Scattering2DTorch(ScatteringTorch):
 
         """
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None):
-        super(Scattering2DTorch, self).__init__(J, shape, max_order=max_order)
+        super(Scattering2DTorch, self).__init__()
         self.pre_pad, self.L, self.backend, self.J, self.shape, self.max_order = pre_pad, L, backend, J, shape,\
                                                                                  max_order
         self.build()
