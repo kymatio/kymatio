@@ -250,7 +250,7 @@ class Scattering1DTorch(ScatteringTorch):
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 phi_f[k] = torch.from_numpy(
-                    phi_f[k]).view(-1, 1).repeat(1, 2)
+                    phi_f[k]).float().view(-1, 1).repeat(1, 2)
                 self.register_buffer('tensor' + str(n), phi_f[k])
                 n += 1
         for psi_f in psi1_f:
@@ -258,7 +258,7 @@ class Scattering1DTorch(ScatteringTorch):
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+                        psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
         for psi_f in psi2_f:
@@ -266,7 +266,7 @@ class Scattering1DTorch(ScatteringTorch):
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).view(-1, 1).repeat(1, 2)
+                        psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
 
@@ -309,7 +309,7 @@ class Scattering1DTorch(ScatteringTorch):
         return Scattering1DTorch.precompute_size_scattering(
             self.J, self.Q, max_order=self.max_order, detail=detail)
 
-    def forward(self, x):
+    def scattering(self, x):
         """Apply the scattering transform
 
         Given an input Tensor of size `(B, T0)`, where `B` is the batch
@@ -373,7 +373,7 @@ class Scattering1DTorch(ScatteringTorch):
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    self.psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
                     n += 1
         for psi_f in self.psi2_f:
             for sub_k in psi_f.keys():
@@ -382,7 +382,7 @@ class Scattering1DTorch(ScatteringTorch):
                     psi_f[sub_k] = buffer_dict['tensor' + str(n)]
                     n += 1
 
-        S = scattering1d(x, self.backend.pad_1d, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,

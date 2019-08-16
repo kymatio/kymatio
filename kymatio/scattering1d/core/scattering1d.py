@@ -57,9 +57,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         whether to return a dictionary or a tensor. Defaults to False.
 
     """
-    subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c, cdgmm, finalize, real = backend.subsample_fourier,\
-                                                                                       backend.modulus_complex, \
-                                                                                       backend.fft1d_c2c, backend.ifft1d_c2c, backend.cdgmm, backend.finalize, backend.real
+    subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c, real = backend.subsample_fourier,\
+                                                               backend.modulus_complex, backend.fft1d_c2c,\
+                                                                      backend.ifft1d_c2c,  backend.real
 
     # S is simply a dictionary if we do not perform the averaging...
     if vectorize:

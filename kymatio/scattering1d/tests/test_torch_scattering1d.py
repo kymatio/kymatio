@@ -1,10 +1,10 @@
 import pytest
 import torch
 from kymatio import Scattering1D
+from kymatio.scattering1d.frontend.torch_frontend import Scattering1DTorch
 import math
 import os
 import numpy as np
-import warnings
 
 
 backends = []
@@ -41,7 +41,7 @@ def test_simple_scatterings(device, backend, random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, backend=backend).to(device)
+    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').to(device)
 
     # zero signal
     x0 = torch.zeros(128, T).to(device)
@@ -90,7 +90,7 @@ def test_sample_scattering(device, backend):
     # Convert from old (B, 1, T) format.
     x = x.squeeze(1).to(device)
 
-    scattering = Scattering1D(J, T, Q, backend=backend).to(device)
+    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').to(device)
 
     # Reorder reference scattering from interleaved to concatenated orders.
     meta = scattering.meta()
@@ -135,7 +135,7 @@ def test_computation_Ux(backend, device, random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(J, T, Q, average=False,
-                              max_order=1, vectorize=False).to(device)
+                              max_order=1, vectorize=False, frontend='torch', backend=backend).to(device)
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float().to(device)
 
@@ -183,7 +183,7 @@ def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
     and CPU
     """
     if device=='cpu':
-        return
+        pytest.skip("Only for GPU use...")
 
     torch.manual_seed(random_state)
 
@@ -193,7 +193,7 @@ def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
 
 
     # build the scattering
-    scattering = Scattering1D(J, T, Q, backend=backend)
+    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch')
 
     x = torch.randn(128, T)
     s_cpu = scattering.forward(x)
@@ -215,7 +215,7 @@ def test_coordinates(device, backend, random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, max_order=2, backend=backend)
+    scattering = Scattering1D(J, T, Q, max_order=2, backend=backend, frontend='torch')
     x = torch.randn(128, T)
 
 
@@ -295,15 +295,14 @@ def test_differentiability_scattering(device, backend, random_state=42):
     """
 
     if backend.name == "torch_skcuda":
-        warnings.warn(("The skcuda backend does not pass differentiability"
-            "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
-        return
+        pytest.skip("The skcuda backend does not pass differentiability"
+            "tests, but that's ok (for now).")
 
     torch.manual_seed(random_state)
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, frontend='torch', backend='backend').to(device)
+    scattering = Scattering1D(J, T, Q, frontend='torch', backend=backend).to(device)
     x = torch.randn(128, T, requires_grad=True).to(device)
 
     s = scattering.forward(x)
@@ -318,13 +317,13 @@ def test_scattering_shape_input(backend):
     J, Q = 6, 8
     with pytest.raises(ValueError) as ve:
         shape = 5, 6
-        s = Scattering1D(J, shape, Q, backend=backend)
+        s = Scattering1DTorch(J, shape, Q, backend=backend)
     assert "exactly one element" in ve.value.args[0]
 
 
     with pytest.raises(ValueError) as ve:
         shape = 1.5
-        s = Scattering1D(J, shape, Q, backend=backend)
+        s = Scattering1DTorch(J, shape, Q, backend=backend)
         # should invoke the else branch
     assert "1-tuple" in ve.value.args[0]
     assert "integer" in ve.value.args[0]
@@ -443,21 +442,20 @@ def test_modulus(device, backend, random_state=42):
 
     # If we are using a GPU-only backend, make sure it raises the proper
     # errors for CPU tensors.
-
-    with pytest.raises(RuntimeError) as re:
-        x_bad = torch.randn((4, 2)).to(device)
-        backend.modulus_complex(x_bad)
-    assert "for cpu tensors" in re.value.args[0].lower()
+    if backend.name == 'torch_skcuda':
+        with pytest.raises(RuntimeError) as re:
+            x_bad = torch.randn((4, 2)).cpu()
+            backend.modulus_complex(x_bad)
+        assert "for cpu tensors" in re.value.args[0].lower()
 
     with pytest.raises(TypeError) as te:
         x_bad = torch.randn(4).to(device)
         backend.modulus_complex(x_bad)
     assert "should be complex" in te.value.args[0]
 
-    if backend.NAME == "skcuda":
-        warnings.warn(("The skcuda backend does not pass differentiability"
-            "tests, but that's ok (for now)."), RuntimeWarning, stacklevel=2)
-        return
+    if backend.name == "torch_skcuda":
+        pytest.skip("The skcuda backend does not pass differentiability"
+            "tests, but that's ok (for now).")
 
     # check the gradient
     loss = torch.sum(x_abs)
@@ -487,7 +485,8 @@ def test_modulus(device, backend, random_state=42):
     assert torch.max(torch.abs(x0.grad)) <= 1e-7
 
 @pytest.mark.parametrize("backend", backends)
-def test_subsample_fourier(backend, random_state=42):
+@pytest.mark.parametrize("device", devices)
+def test_subsample_fourier(backend, device, random_state=42):
     """
     Tests whether the periodization in Fourier performs a good subsampling
     in time
@@ -508,15 +507,16 @@ def test_subsample_fourier(backend, random_state=42):
 
     # If we are using a GPU-only backend, make sure it raises the proper
     # errors for CPU tensors.
+    if backend.name == 'torch_skcuda':
+        with pytest.raises(RuntimeError) as re:
+            x_bad = torch.randn((4, 2)).cpu()
+            backend.subsample_fourier(x_bad, 1)
+        assert "for cpu tensors" in re.value.args[0].lower()
 
-    with pytest.raises(RuntimeError) as re:
-        x_bad = torch.randn((4, 2)).cpu()
-        backend.subsample_fourier(x_bad, 1)
-    assert "for cpu tensors" in re.value.args[0].lower()
-
-    with pytest.raises(TypeError) as te:
-        x_bad = torch.randn(4).cuda()
-        backend.subsample_fourier(x_bad, 1)
-    assert "should be complex" in te.value.args[0]
+    if device=='cuda':
+        with pytest.raises(TypeError) as te:
+            x_bad = torch.randn(4).cuda()
+            backend.subsample_fourier(x_bad, 1)
+        assert "should be complex" in te.value.args[0]
 
 

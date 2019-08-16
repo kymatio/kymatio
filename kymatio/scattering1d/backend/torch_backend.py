@@ -307,11 +307,14 @@ def ifft1d_c2c(x):
     """
     return torch.ifft(x, signal_ndim=1)
 
-backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c', 'ifft1d_c2c'])
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c', 'ifft1d_c2c'])
 backend.name = 'torch'
-backend.modulus = modulus
+backend.modulus_complex = modulus_complex
+backend.ModulusStable = ModulusStable
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad
+backend.pad = pad
+backend.pad_1d = pad_1d
 backend.fft1d_c2c = fft1d_c2c
 backend.ifft1d_c2c = ifft1d_c2c
