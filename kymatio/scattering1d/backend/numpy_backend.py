@@ -1,110 +1,10 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
-import torch
-import torch.nn.functional as F
-from torch.autograd import Function
+import numpy as np
 
 from collections import namedtuple
 
-BACKEND_NAME = 'torch'
-
-def is_complex(input):
-    return input.size(-1) == 2
-
-class ModulusStable(Function):
-    """Stable complex modulus
-
-    This class implements a modulus transform for complex numbers which is
-    stable with respect to very small inputs (z close to 0), avoiding
-    returning nans in all cases.
-
-    Usage
-    -----
-    modulus = ModulusStable.apply  # apply inherited from Function
-    x_mod = modulus(x)
-
-    Parameters
-    ---------
-    x : tensor
-        The complex tensor (i.e., whose last dimension is two) whose modulus
-        we want to compute.
-
-    Returns
-    -------
-    output : tensor
-        A tensor of same size as the input tensor, except for the last
-        dimension, which is removed. This tensor is differentiable with respect
-        to the input in a stable fashion (so gradent of the modulus at zero is
-        zero).
-    """
-
-    @staticmethod
-    def forward(ctx, x):
-        """Forward pass of the modulus.
-
-        This is a static method which does not require an instantiation of the
-        class.
-
-        Arguments
-        ---------
-        ctx : context object
-            Collected during the forward pass. These are automatically added
-            by PyTorch and should not be touched. They are then used for the
-            backward pass.
-        x : tensor
-            The complex tensor whose modulus is to be computed.
-
-        Returns
-        -------
-        output : tensor
-            This contains the modulus computed along the last axis, with that
-            axis removed.
-        """
-        ctx.p = 2
-        ctx.dim = -1
-        ctx.keepdim = False
-
-        output = (x[...,0]*x[...,0] + x[...,1]*x[...,1]).sqrt()
-
-        ctx.save_for_backward(x, output)
-        return output
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        """Backward pass of the modulus
-
-        This is a static method which does not require an instantiation of the
-        class.
-
-        Arguments
-        ---------
-        ctx : context object
-            Collected during the forward pass. These are automatically added
-            by PyTorch and should not be touched. They are then used for the
-            backward pass.
-        grad_output : tensor
-            The gradient with respect to the output tensor computed at the
-            forward pass.
-
-        Returns
-        -------
-        grad_input : tensor
-            The gradient with respect to the input.
-        """
-        x, output = ctx.saved_tensors
-        if ctx.dim is not None and ctx.keepdim is False and x.dim() != 1:
-            grad_output = grad_output.unsqueeze(ctx.dim)
-            output = output.unsqueeze(ctx.dim)
-
-        grad_input = x.mul(grad_output).div(output)
-
-        # Special case at 0 where we return a subgradient containing 0
-        grad_input.masked_fill_(output == 0, 0)
-
-        return grad_input
-
-# shortcut for ModulusStable.apply
-modulus = ModulusStable.apply
+BACKEND_NAME = 'numpy'
 
 def modulus_complex(x):
     """Compute the complex modulus
@@ -124,15 +24,10 @@ def modulus_complex(x):
         A tensor with the same dimensions as x, such that res[..., 0] contains
         the complex modulus of x, while res[..., 1] = 0.
     """
-    if not is_complex(x):
-        raise TypeError('The input should be complex.')
 
-    norm = modulus(x)
+    norm = np.abs(x)
 
-    res = torch.zeros_like(x)
-    res[...,0] = norm
-
-    return res
+    return norm
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -157,11 +52,9 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    if not is_complex(x):
-        raise TypeError('The input should be complex.')
 
-    N = x.shape[-2]
-    res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+    N = x.shape[-1]
+    res = x.reshape(x.shape[:-2] + (k, N // k)).mean(axis=-2, keepdims=True)
     return res
 
 def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
@@ -195,10 +88,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
-    res = F.pad(x.unsqueeze(2),
-                (pad_left, pad_right, 0, 0),
-                mode=mode, value=value).squeeze(2)
-    return res
+    return np.pad(x, ((0,0), (0,0), (pad_left, pad_right)), mode='reflect')
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
     """Pad real 1D tensors and map to complex
@@ -229,8 +119,6 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
         corresponds to the real and imaginary parts).
     """
     output = pad_1d(x, pad_left, pad_right, mode='reflect')
-    if to_complex:
-        output = torch.stack((output, torch.zeros_like(output)), dim=-1)
     return output
 
 def unpad(x, i0, i1):
@@ -270,7 +158,7 @@ def real(x):
     x_real : tensor
         The tensor x[..., 0] which is interpreted as the real part of x.
     """
-    return x[..., 0]
+    return np.real(x)
 
 def fft1d_c2c(x):
     """Compute the 1D FFT of a complex signal
@@ -287,7 +175,7 @@ def fft1d_c2c(x):
         A tensor of the same size as x containing its Fourier transform in the
         standard PyTorch FFT ordering.
     """
-    return torch.fft(x, signal_ndim=1)
+    return np.fft.fft(x)
 
 def ifft1d_c2c(x):
     """Compute the normalized 1D inverse FFT of a complex signal
@@ -305,20 +193,16 @@ def ifft1d_c2c(x):
         A tensor of the same size of x_f containing the normalized inverse
         Fourier transform of x_f.
     """
-    return torch.ifft(x, signal_ndim=1)
+    return np.fft.ifft(x)
 
 def finalize(s0, s1, s2):
     """ Concatenate scattering of different orders"""
-    if len(s2)>0:
-        return torch.cat([torch.cat(s0, -2), torch.cat(s1, -2), torch.cat(s2, -2)], -2)
-    else:
-        return torch.cat([torch.cat(s0, -2), torch.cat(s1, -2)], -2)
+    return np.concatenate([np.concatenate(s0, axis=-2), np.concatenate(s1, axis=-2), np.concatenate(s2, axis=-2)], axis=-2)
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
-                                 'ifft1d_c2c', 'finalize'])
+
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c', 'ifft1d_c2c'])
 backend.name = 'torch'
 backend.modulus_complex = modulus_complex
-backend.ModulusStable = ModulusStable
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad
