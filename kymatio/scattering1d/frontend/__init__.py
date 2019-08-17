@@ -16,7 +16,7 @@ class Scattering1D(object):
                 self.__class__ = Scattering1DNumpy
                 self.__init__(*args, **kwargs)
             except:
-                raise RuntimeError('Make sure NumPy is correctly installed.')
+                raise
             logging.info('NumPy frontend is used.')
         elif frontend == 'torch':
             try:
@@ -24,7 +24,7 @@ class Scattering1D(object):
                 self.__class__ = Scattering1DTorch
                 self.__init__(*args, **kwargs)
             except:
-                raise RuntimeError('Make sure PyTorch is correctly installed.')
+                raise
             logging.info('PyTorch frontend is used.')
         elif frontend == 'tensorflow':
             try:
@@ -32,7 +32,7 @@ class Scattering1D(object):
                 self.__class__ = Scattering1DTensorflow
                 self.__init__(*args, **kwargs)
             except:
-                raise RuntimeError('Make sure TensorFlow is correctly installed.')
+                raise
             logging.info('TensorFlow frontend is used.')
         else:
             raise RuntimeError('This frontend is not available.')

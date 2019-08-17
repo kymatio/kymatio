@@ -1,7 +1,6 @@
 import pytest
 import torch
 from kymatio import Scattering1D
-from kymatio.scattering1d.frontend.torch_frontend import Scattering1DTorch
 import math
 import os
 import numpy as np
@@ -317,13 +316,13 @@ def test_scattering_shape_input(backend):
     J, Q = 6, 8
     with pytest.raises(ValueError) as ve:
         shape = 5, 6
-        s = Scattering1DTorch(J, shape, Q, backend=backend)
+        s = Scattering1D(J, shape, Q, backend=backend, frontend='torch')
     assert "exactly one element" in ve.value.args[0]
 
 
     with pytest.raises(ValueError) as ve:
         shape = 1.5
-        s = Scattering1DTorch(J, shape, Q, backend=backend)
+        s = Scattering1D(J, shape, Q, backend=backend, frontend='torch')
         # should invoke the else branch
     assert "1-tuple" in ve.value.args[0]
     assert "integer" in ve.value.args[0]

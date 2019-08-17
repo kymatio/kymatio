@@ -4,10 +4,10 @@
 import math
 import numbers
 
-import torch
+import tensorflow as tf
 import numpy as np
 
-from ...frontend.torch_frontend import ScatteringTorch
+from ...frontend.tensorflow_frontend import ScatteringTensorflow
 
 from kymatio.scattering1d.core.scattering1d import scattering1d
 
@@ -15,9 +15,9 @@ from kymatio.scattering1d.filter_bank import scattering_filter_factory
 from kymatio.scattering1d.utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad,\
 compute_meta_scattering, precompute_size_scattering
 
-__all__ = ['Scattering1DTorch']
+__all__ = ['Scattering1DTensorflow']
 
-class Scattering1DTorch(ScatteringTorch):
+class Scattering1DTensorflow(ScatteringTensorflow):
     """The 1D scattering transform
 
     The scattering transform computes a cascade of wavelet transforms
@@ -161,8 +161,8 @@ class Scattering1DTorch(ScatteringTorch):
         documentation for `forward()`.
     """
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-                 oversampling=0, vectorize=True, backend=None):
-        super(Scattering1DTorch, self).__init__()
+                 oversampling=0, vectorize=True, backend=None, name='Scattering1D'):
+        super(Scattering1DTensorflow, self).__init__(name=name)
         # Store the parameters
         self.J = J
         self.shape = shape
@@ -190,9 +190,9 @@ class Scattering1DTorch(ScatteringTorch):
         # Set these default values for now. In the future, we'll want some
         # flexibility for these, but for now, let's keep them fixed.
         if not self.backend:
-            from ..backend import torch_backend as backend
+            from ..backend import tensorflow_backend as backend
             self.backend = backend
-        elif self.backend.name[0:5] != 'torch':
+        elif self.backend.name[0:5] != 'tensorflow':
             raise RuntimeError('This backend is not supported.')
 
         self.r_psi = math.sqrt(0.5)
@@ -230,46 +230,11 @@ class Scattering1DTorch(ScatteringTorch):
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
             self.J, self.pad_left, self.pad_left + self.T)
-        self.create_and_register_filters()
-
-    def create_and_register_filters(self):
-        """ This function run the filterbank function that
-            will create the filters as numpy array, and then, it
-            saves those arrays as module's buffers."""
-
-        # Create the filters
         phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(
             self.J_pad, self.J, self.Q, normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
-
-        n = 0
-        # prepare for pytorch
-        for k in phi_f.keys():
-            if type(k) != str:
-                # view(-1, 1).repeat(1, 2) because real numbers!
-                phi_f[k] = torch.from_numpy(
-                    phi_f[k]).float().view(-1, 1).repeat(1, 2)
-                self.register_buffer('tensor' + str(n), phi_f[k])
-                n += 1
-        for psi_f in psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
-                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
-                    n += 1
-        for psi_f in psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
-                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
-                    n += 1
-
         self.psi1_f = psi1_f
         self.psi2_f = psi2_f
         self.phi_f = phi_f
@@ -347,8 +312,8 @@ class Scattering1DTorch(ScatteringTorch):
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
+        x = tf.reshape(x, [-1, 1] + signal_shape.as_list())
 
-        x = x.reshape((-1, 1) + signal_shape)
 
         # get the arguments before calling the scattering
         # treat the arguments
@@ -362,25 +327,6 @@ class Scattering1DTorch(ScatteringTorch):
         else:
             size_scattering = 0
 
-        n = 0
-        buffer_dict = dict(self.named_buffers())
-        for k in self.phi_f.keys():
-            if type(k) != str:
-                # view(-1, 1).repeat(1, 2) because real numbers!
-                self.phi_f[k] = buffer_dict['tensor' + str(n)]
-                n += 1
-        for psi_f in self.psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
-        for psi_f in self.psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
 
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
@@ -392,10 +338,14 @@ class Scattering1DTorch(ScatteringTorch):
 
         if self.vectorize:
             scattering_shape = S.shape[-2:]
-            S = S.reshape(batch_shape + scattering_shape)
+            S = tf.reshape(S, batch_shape.as_list() + scattering_shape.as_list())
         else:
             for k, v in S.items():
                 scattering_shape = v.shape[-2:]
                 S[k] = v.reshape(batch_shape + scattering_shape)
 
         return S
+
+    @tf.Module.with_name_scope
+    def __call__(self, x):
+        return self.scattering(x)

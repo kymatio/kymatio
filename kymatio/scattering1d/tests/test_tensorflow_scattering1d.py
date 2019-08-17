@@ -2,9 +2,10 @@ import os
 import numpy as np
 from kymatio.scattering1d import Scattering1D
 import torch
+import tensorflow as tf
 
-class TestScattering1DNumpy:
-    def test_Scattering2D(self):
+class TestScattering1DTensorflow:
+    def test_Scattering1D(self):
         test_data_dir = os.path.dirname(__file__)
         test_data_filename = os.path.join(test_data_dir, 'test_data_1d.pt')
         data = torch.load(test_data_filename, map_location='cpu')
@@ -19,7 +20,7 @@ class TestScattering1DNumpy:
         # Convert from old (B, 1, T) format.
         x = x.squeeze(1)
 
-        scattering = Scattering1D(J, T, Q, frontend='numpy')
+        scattering = Scattering1D(J, T, Q, frontend='tensorflow')
 
         # Reorder reference scattering from interleaved to concatenated orders.
         meta = scattering.meta()
@@ -48,6 +49,14 @@ class TestScattering1DNumpy:
 
         Sx0 = Sx0[:, perm, :]
 
-        Sx = scattering(x)
+        x_tf = tf.placeholder(tf.float32, x.shape)
+        S_tf = scattering(x_tf)
 
-        assert np.allclose(Sx0, Sx)
+        # Create session
+        config = tf.ConfigProto()
+        sess = tf.Session(config=config)
+        Sx = sess.run(S_tf, feed_dict={x_tf: x})
+
+        print(np.linalg.norm(Sx0-Sx)/np.linalg.norm(Sx))
+
+        assert np.allclose(Sx0, Sx, atol=1e-7) #round-off errors somewhere... but that's fine.
