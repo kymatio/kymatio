@@ -161,8 +161,7 @@ def fft(x, direction='C2C', inverse=False):
             'C2R' for complex to real, 'C2C' for complex to complex
         inverse : bool
             True for computing the inverse FFT.
-            NB : if direction is equal to 'C2R', then the transform
-            is automatically inverse.
+            NB : if direction is equal to 'C2R', then an error is raised.
     """
     if direction == 'C2R':
         if not inverse:
