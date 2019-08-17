@@ -1,4 +1,3 @@
 __all__ = ['Scattering1D']
 
-
-from .scattering1d import Scattering1D
+from .frontend import Scattering1D
