@@ -17,6 +17,7 @@ pipeline {
       }
       steps {
 	sh 'python3 -c "import torch; torch.cuda.current_device()"'
+	sh 'python3 -c "import tensorflow as tf; tf.test.is_gpu_available()"'
 	sh 'python3 -m venv --system-site-packages --without-pip $HOME'
 	sh '''#!/bin/bash -ex
 	  source $HOME/bin/activate
