@@ -219,7 +219,7 @@ def cdgmm(A, B, inplace=False):
                         'last dimension of size 2 or 1, respectively.')
 
     if A.size()[-3:-1] != B.size()[-3:-1]:
-        raise TypeError('The filters are not compatible for multiplication!')
+        raise RuntimeError('The filters are not compatible for multiplication!')
 
     if A.dtype is not B.dtype:
         raise TypeError('A and B must be of the same dtype.')
@@ -229,7 +229,7 @@ def cdgmm(A, B, inplace=False):
 
     if A.device.type == 'cuda':
         if A.device.index != B.device.index:
-            raise RuntimeError('A and B must be on the same GPU!')
+            raise TypeError('A and B must be on the same GPU!')
 
     if isreal(B):
         if inplace:

@@ -40,7 +40,7 @@ class TestModulus:
         modulus = backend.modulus
         x = torch.rand(100, 10, 4, 2).to(device)
 
-        if device == 'cuda' and backend.name == 'torch_skcuda':
+        if device == 'cpu' and backend.name == 'torch_skcuda':
             with pytest.raises(TypeError) as exc:
                 y = modulus(x)
             assert "Use the torch backend" in exc.value.args[0]
@@ -60,7 +60,7 @@ class TestSubsampleFourier:
     def test_SubsampleFourier(self, device, backend):
         x = torch.rand(100, 1, 128, 128, 2).to(device)
         subsample_fourier = backend.subsample_fourier
-        if device == 'cuda' and backend.name == 'torch_skcuda':
+        if device == 'cpu' and backend.name == 'torch_skcuda':
             with pytest.raises(TypeError) as exc:
                 z = subsample_fourier(x, k=16)
             assert "Use the torch backend" in exc.value.args[0]
@@ -129,7 +129,7 @@ class TestCDGMM:
         with pytest.raises(RuntimeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(3, 4, 5, 2))
         assert "filter must be a 3-tensor" in exc.value.args[0]
-        with pytest.raises(RuntimeError) as exc:
+        with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
         assert "must be of the same dtype" in exc.value.args[0]
         if 'cuda' in devices:
