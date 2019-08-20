@@ -209,7 +209,7 @@ class TestScattering2DTorch:
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 Sg = scattering(x)
-            assert "cpu" in ve.value.args[0]
+            assert "cuda" in ve.value.args[0]
         else:
             Sg = scattering(x)
             assert torch.allclose(Sg, S)
