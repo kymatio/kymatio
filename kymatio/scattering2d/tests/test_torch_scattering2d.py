@@ -200,23 +200,19 @@ class TestScattering2DTorch:
         M = x.shape[2]
         N = x.shape[3]
 
-        if backend.name == 'torch_skcuda':
-            # First, let's check the Jit
-            scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend, frontend='torch')
-            scattering.cuda()
-            x = x.cuda()
-            S = S.cuda()
-            y = scattering(x)
-            assert torch.allclose(S, y)
-        elif backend.name == 'torch':
-            # Then, let's check when using pure pytorch code
-            scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend, frontend='torch')
-            Sg = []
-            x = x.to(device)
-            scattering.to(device)
-            S = S.to(device)
+        # Then, let's check when using pure pytorch code
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend, frontend='torch')
+        Sg = []
+        x = x.to(device)
+        scattering.to(device)
+        S = S.to(device)
+        if backend.name == 'torch_skcuda' and device == 'cpu':
+            with pytest.raises(RuntimeError) as ve:
+                Sg = scattering(x)
+            assert "cpu" in ve.value.args[0]
+        else:
             Sg = scattering(x)
-            assert torch.allclose(Sg, S)
+        assert torch.allclose(Sg, S)
 
         # check also the default backend
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='torch')

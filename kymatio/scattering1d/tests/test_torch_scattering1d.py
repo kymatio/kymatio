@@ -121,7 +121,12 @@ def test_sample_scattering(device, backend):
 
     Sx0 = Sx0[:,perm,:]
 
-    Sx = scattering(x)
+    if backend.name == 'torch_skcuda' and device == 'cpu':
+        with pytest.raises(RuntimeError) as ve:
+            Sx = scattering(x)
+        assert "cpu" in ve.value.args[0]
+    else:
+        Sx = scattering(x)
 
     assert torch.allclose(Sx, Sx0)
 
@@ -420,56 +425,58 @@ def test_modulus(device, backend, random_state=42):
     torch.manual_seed(random_state)
     # Test with a random vector
     x = torch.randn(100, 4, 128, 2, requires_grad=True, device=device)
-    x_abs = backend.modulus_complex(x)
 
-    assert len(x_abs.shape) == len(x.shape)
-    # check the value
-    x_abs2 = x_abs.clone()
-    x2 = x.clone()
-    assert torch.allclose(x_abs2[..., 0], torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
-
-    # If we are using a GPU-only backend, make sure it raises the proper
-    # errors for CPU tensors.
-    if backend.name == 'torch_skcuda':
+    if backend.name == 'torch_skcuda' and device == 'cpu':
+        # If we are using a GPU-only backend, make sure it raises the proper
+        # errors for CPU tensors.
         with pytest.raises(RuntimeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.modulus_complex(x_bad)
         assert "for cpu tensors" in re.value.args[0].lower()
 
-    with pytest.raises(TypeError) as te:
-        x_bad = torch.randn(4).to(device)
-        backend.modulus_complex(x_bad)
-    assert "should be complex" in te.value.args[0]
+    else:
+        x_abs = backend.modulus_complex(x)
 
-    if backend.name == "torch_skcuda":
-        pytest.skip("The skcuda backend does not pass differentiability"
-            "tests, but that's ok (for now).")
+        assert len(x_abs.shape) == len(x.shape)
+        # check the value
+        x_abs2 = x_abs.clone()
+        x2 = x.clone()
+        assert torch.allclose(x_abs2[..., 0], torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
 
-    # check the gradient
-    loss = torch.sum(x_abs)
-    loss.backward()
-    x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
-    assert torch.allclose(x.grad, x_grad)
+        with pytest.raises(TypeError) as te:
+            x_bad = torch.randn(4).to(device)
+            backend.modulus_complex(x_bad)
+        assert "should be complex" in te.value.args[0]
 
-    # Manually check `forward`/`backward` using fake context object. This
-    # ensures that `backward` is included in code coverage since going through
-    # the PyTorch C extension seems to not play well with `coverage.py`.
-    class FakeContext:
-        def save_for_backward(self, *args):
-            self.saved_tensors = args
+        if backend.name == "torch_skcuda":
+            pytest.skip("The skcuda backend does not pass differentiability"
+                "tests, but that's ok (for now).")
 
-    ctx = FakeContext()
-    y = backend.ModulusStable.forward(ctx, x)
-    y_grad = torch.ones_like(y)
-    x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
-    assert torch.allclose(x_grad_manual, x_grad)
+        # check the gradient
+        loss = torch.sum(x_abs)
+        loss.backward()
+        x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
+        assert torch.allclose(x.grad, x_grad)
 
-    # Test the differentiation with a vector made of zeros
-    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
-    x_abs0 = backend.modulus_complex(x0)
-    loss0 = torch.sum(x_abs0)
-    loss0.backward()
-    assert torch.max(torch.abs(x0.grad)) <= 1e-7
+        # Manually check `forward`/`backward` using fake context object. This
+        # ensures that `backward` is included in code coverage since going through
+        # the PyTorch C extension seems to not play well with `coverage.py`.
+        class FakeContext:
+            def save_for_backward(self, *args):
+                self.saved_tensors = args
+
+        ctx = FakeContext()
+        y = backend.ModulusStable.forward(ctx, x)
+        y_grad = torch.ones_like(y)
+        x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
+        assert torch.allclose(x_grad_manual, x_grad)
+
+        # Test the differentiation with a vector made of zeros
+        x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
+        x_abs0 = backend.modulus_complex(x0)
+        loss0 = torch.sum(x_abs0)
+        loss0.backward()
+        assert torch.max(torch.abs(x0.grad)) <= 1e-7
 
 @pytest.mark.parametrize("backend", backends)
 @pytest.mark.parametrize("device", devices)
@@ -478,32 +485,32 @@ def test_subsample_fourier(backend, device, random_state=42):
     Tests whether the periodization in Fourier performs a good subsampling
     in time
     """
-    rng = np.random.RandomState(random_state)
-    J = 10
-    x = rng.randn(100, 4, 2**J) + 1j * rng.randn(100, 4, 2**J)
-    x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
-    x_f.dtype = 'float64'  # make it a vector
-    x_f_th = torch.from_numpy(x_f)
-
-    for j in range(J + 1):
-        x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
-        x_f_sub = x_f_sub_th.numpy()
-        x_f_sub.dtype = 'complex128'
-        x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
-        assert np.allclose(x[:, :, ::2**j], x_sub)
-
-    # If we are using a GPU-only backend, make sure it raises the proper
-    # errors for CPU tensors.
-    if backend.name == 'torch_skcuda':
+    if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(RuntimeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
         assert "for cpu tensors" in re.value.args[0].lower()
+    else:
+        rng = np.random.RandomState(random_state)
+        J = 10
+        x = rng.randn(100, 4, 2**J) + 1j * rng.randn(100, 4, 2**J)
+        x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
+        x_f.dtype = 'float64'  # make it a vector
+        x_f_th = torch.from_numpy(x_f).to(device)
 
-    if device=='cuda':
-        with pytest.raises(TypeError) as te:
-            x_bad = torch.randn(4).cuda()
-            backend.subsample_fourier(x_bad, 1)
-        assert "should be complex" in te.value.args[0]
+        for j in range(J + 1):
+            x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
+            x_f_sub = x_f_sub_th.numpy()
+            x_f_sub.dtype = 'complex128'
+            x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
+            assert np.allclose(x[:, :, ::2**j], x_sub)
+
+        # If we are using a GPU-only backend, make sure it raises the proper
+        # errors for CPU tensors.
+        if device=='cuda':
+            with pytest.raises(TypeError) as te:
+                x_bad = torch.randn(4).cuda()
+                backend.subsample_fourier(x_bad, 1)
+            assert "should be complex" in te.value.args[0]
 
 

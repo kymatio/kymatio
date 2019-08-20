@@ -5,7 +5,7 @@ import cupy
 from collections import namedtuple
 from string import Template
 
-NAME = 'torch_skcuda'
+BACKEND_NAME = 'torch_skcuda'
 
 @cupy.util.memoize(for_each_device=True)
 def load_kernel(kernel_name, code, **kwargs):
@@ -58,15 +58,17 @@ class Modulus(object):
     def get_blocks(self, N):
         return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
 
-    def __call__(self, input):
+    def __call__(self, x):
 
-        if not input.is_cuda and self.backend=='skcuda':
-            raise RuntimeError('Use the torch backend for CPU tensors!')
+        if not x.is_cuda and self.backend=='skcuda':
+            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
 
-        out = input.new(input.size())
-        input = input.contiguous()
+        out = x.new(x.size())
 
-        if not is_complex(input):
+        if not x.is_contiguous():
+            raise RuntimeError('Input should be contiguous.')
+
+        if not is_complex(x):
             raise TypeError('The input and outputs should be complex.')
 
         kernel = """
@@ -80,10 +82,10 @@ class Modulus(object):
 
         }
         """
-        fabs = load_kernel('abs_complex_value', kernel, dtype=get_dtype(input))
+        fabs = load_kernel('abs_complex_value', kernel, dtype=get_dtype(x))
         fabs(grid=(self.get_blocks(int(out.nelement())//2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[input.data_ptr(), out.data_ptr(), out.numel() // 2],
+             args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
@@ -144,16 +146,17 @@ class SubsampleFourier(object):
     def get_blocks(self, N, threads):
         return (N + threads - 1) // threads
 
-    def __call__(self, input, k):
-        if not input.is_cuda and self.backend == 'skcuda':
-            raise RuntimeError('Use the torch backend for cpu tensors!')
+    def __call__(self, x, k):
+        if not x.is_cuda and self.backend == 'skcuda':
+            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
 
-        if not is_complex(input):
-            raise (TypeError('The input and outputs should be complex'))
+        if not is_complex(x):
+            raise TypeError('The input and outputs should be complex')
 
-        out = input.new(input.size(0), input.size(1), input.size(2) // k, 2)
+        if not x.is_contiguous():
+            raise RuntimeError('Input should be contiguous.')
 
-        input = input.contiguous()
+        out = x.new(x.size(0), x.size(1), x.size(2) // k, 2)
 
         kernel = '''
         #define NT ${T} / ${k}
@@ -179,13 +182,13 @@ class SubsampleFourier(object):
           output[ty * NT + tx] = res;
         }
         '''
-        B = input.size(0) * input.size(1)
-        T = input.size(2)
-        periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, dtype=get_dtype(input))
+        B = x.size(0) * x.size(1)
+        T = x.size(2)
+        periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, dtype=get_dtype(x))
         grid = (self.get_blocks(out.size(-2), self.block[0]),
                 self.get_blocks(out.nelement() // (2*out.size(-2)), self.block[1]),
                 1)
-        periodize(grid=grid, block=self.block, args=[input.data_ptr(), out.data_ptr()],
+        periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
@@ -217,7 +220,7 @@ def subsample_fourier(x, k):
     return subsamplefourier(x,k)
 
 
-from torch_backend import ifft1d_c2c, fft1d_c2c, real, unpad, pad, pad_1d, finalize, ModulusStable
+from .torch_backend import ifft1d_c2c, fft1d_c2c, real, unpad, pad, pad_1d, finalize, ModulusStable
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
                                  'ifft1d_c2c', 'finalize'])
