@@ -120,7 +120,7 @@ def test_sample_scattering(device, backend):
 
     Sx = scattering(x)
 
-    assert torch.allclose(Sx, Sx0)
+    assert torch.allclose(Sx.cpu(), Sx0.cpu())
 
 
 @pytest.mark.parametrize("device", devices)
