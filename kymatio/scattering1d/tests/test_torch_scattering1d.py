@@ -205,7 +205,7 @@ def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
     x_gpu = x.clone().cuda()
     s_gpu = scattering(x_gpu).cpu()
     # compute the distance
-    assert torch.allclose(s_cpu, s_gpu)
+    assert torch.allclose(s_cpu, s_gpu, rtol=1e-6)
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -305,7 +305,7 @@ def test_differentiability_scattering(device, backend, random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(J, T, Q, frontend='torch', backend=backend).to(device)
-    x = torch.randn(128, T, requires_grad=True).to(device)
+    x = torch.randn(128, T, requires_grad=True, device=device)
 
     s = scattering.forward(x)
     loss = torch.sum(torch.abs(s))
