@@ -224,7 +224,6 @@ def test_coordinates(device, backend, random_state=42):
     scattering = Scattering1D(J, T, Q, max_order=2, backend=backend, frontend='torch')
     x = torch.randn(128, T)
 
-
     scattering.to(device)
     x = x.to(device)
 
@@ -232,22 +231,34 @@ def test_coordinates(device, backend, random_state=42):
         scattering.max_order = max_order
 
         scattering.vectorize = False
-        s_dico = scattering.forward(x)
-        s_dico = {k: s_dico[k].data for k in s_dico.keys()}
+
+        if backend.name == 'torch_skcuda' and device == 'cpu':
+            with pytest.raises(TypeError) as ve:
+                s_dico = scattering(x)
+            assert "cpu" in ve.value.args[0]
+        else:
+            s_dico = scattering(x)
+            s_dico = {k: s_dico[k].data for k in s_dico.keys()}
         scattering.vectorize = True
-        s_vec = scattering.forward(x)
 
-
-        s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
-        s_vec = s_vec.cpu()
+        if backend.name == 'torch_skcuda' and device == 'cpu':
+            with pytest.raises(TypeError) as ve:
+                s_vec = scattering(x)
+            assert "cpu" in ve.value.args[0]
+        else:
+            s_vec = scattering(x)
+            s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
+            s_vec = s_vec.cpu()
 
         meta = scattering.meta()
 
-        assert len(s_dico) == s_vec.shape[1]
+        if backend.name != 'torch_skcuda' or device != 'cpu':
+            assert len(s_dico) == s_vec.shape[1]
 
         for cc in range(s_vec.shape[1]):
             k = meta['key'][cc]
-            assert torch.allclose(s_vec[:, cc], torch.squeeze(s_dico[k]))
+            if backend.name != 'torch_skcuda' or device != 'cpu':
+                assert torch.allclose(s_vec[:, cc], torch.squeeze(s_dico[k]))
 
 
 @pytest.mark.parametrize("device", devices)
@@ -433,7 +444,7 @@ def test_modulus(device, backend, random_state=42):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         # If we are using a GPU-only backend, make sure it raises the proper
         # errors for CPU tensors.
-        with pytest.raises(RuntimeError) as re:
+        with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.modulus_complex(x_bad)
         assert "for cpu tensors" in re.value.args[0].lower()
