@@ -133,9 +133,14 @@ class TestCDGMM:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
         assert "must be of the same dtype" in exc.value.args[0]
         if 'cuda' in devices:
-            with pytest.raises(TypeError) as exc:
-                backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-            assert "cuda" in exc.value.args[0]
+            if backend.name=='torch_skcuda':
+                with pytest.raises(TypeError) as exc:
+                    backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
+                assert "cuda" in exc.value.args[0].lower()
+            elif backend.name=='torch':
+                with pytest.raises(TypeError) as exc:
+                    backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
+                assert "both" in exc.value.args[0].lower()
 
 class TestFFT:
     @pytest.mark.parametrize("backend", backends)
