@@ -189,7 +189,7 @@ def test_scattering_GPU_CPU(backend, random_state=42):
     This function tests whether the CPU computations are equivalent to
     the GPU ones
     """
-    if torch.cuda.is_available():
+    if torch.cuda.is_available() and backend.name == 'torch_skcuda':
         torch.manual_seed(random_state)
 
         J = 6
@@ -255,9 +255,8 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name != 'torch_skcuda' or device != 'cpu':
             assert len(s_dico) == s_vec.shape[1]
 
-        for cc in range(s_vec.shape[1]):
-            k = meta['key'][cc]
-            if backend.name != 'torch_skcuda' or device != 'cpu':
+            for cc in range(s_vec.shape[1]):
+                k = meta['key'][cc]
                 assert torch.allclose(s_vec[:, cc], torch.squeeze(s_dico[k]))
 
 
