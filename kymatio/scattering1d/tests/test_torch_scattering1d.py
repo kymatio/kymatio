@@ -131,8 +131,7 @@ def test_sample_scattering(device, backend):
         assert "cpu" in ve.value.args[0]
     else:
         Sx = scattering(x)
-
-    assert torch.allclose(Sx, Sx0)
+        assert torch.allclose(Sx, Sx0)
 
 
 @pytest.mark.parametrize("device", devices)
