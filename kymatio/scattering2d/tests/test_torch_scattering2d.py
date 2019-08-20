@@ -133,7 +133,7 @@ class TestCDGMM:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
         assert "must be of the same dtype" in exc.value.args[0]
         if 'cuda' in devices:
-            with pytest.raises(RuntimeError) as exc:
+            with pytest.raises(TypeError) as exc:
                 backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
             assert "type" in exc.value.args[0]
 

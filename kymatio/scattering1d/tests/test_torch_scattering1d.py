@@ -175,33 +175,31 @@ def test_computation_Ux(backend, device, random_state=42):
 
 # Technical tests
 @pytest.mark.parametrize("backend", backends)
-def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
+def test_scattering_GPU_CPU(backend, random_state=42):
     """
     This function tests whether the CPU computations are equivalent to
     the GPU ones
     """
-    device = 'cuda'
+    if torch.cuda.is_available():
+        torch.manual_seed(random_state)
 
-    torch.manual_seed(random_state)
+        J = 6
+        Q = 8
+        T = 2**12
+    
+        # build the scattering
+        scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').cpu()
 
-    J = 6
-    Q = 8
-    T = 2**12
+        x = torch.randn(128, T)
+        s_cpu = scattering(x)
 
+        scattering = scattering.cuda()
+        x_gpu = x.clone().cuda()
+        s_gpu = scattering(x_gpu).cpu()
+        # compute the distance
 
-    # build the scattering
-    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').cpu()
-
-    x = torch.randn(128, T)
-    s_cpu = scattering(x)
-
-    scattering = scattering.cuda()
-    x_gpu = x.clone().cuda()
-    s_gpu = scattering(x_gpu).cpu()
-    # compute the distance
-
-    Warning('Tolerance has been slightly lowered here...')
-    assert torch.allclose(s_cpu, s_gpu, atol=1e-7)
+        Warning('Tolerance has been slightly lowered here...')
+        assert torch.allclose(s_cpu, s_gpu, atol=1e-7)
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
