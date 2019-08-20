@@ -201,7 +201,6 @@ class TestScattering2DTorch:
         N = x.shape[3]
 
         if backend.name == 'torch_skcuda':
-            print('skcuda backend tested!')
             # First, let's check the Jit
             scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, backend=backend, frontend='torch')
             scattering.cuda()
