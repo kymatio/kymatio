@@ -102,7 +102,7 @@ class SubsampleFourier(object):
         B = x.nelement() // (2*x.size(0))
         W = x.size(-2)
         H = x.size(-3)
-        k = x.size(-2) // out.size(-2)
+
         periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(x))
         grid = (self.GET_BLOCKS(out.size(-3), self.block[0]),
                 self.GET_BLOCKS(out.size(-2), self.block[1]),
