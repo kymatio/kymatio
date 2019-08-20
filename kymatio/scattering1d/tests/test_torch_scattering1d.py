@@ -278,29 +278,29 @@ def test_precompute_size_scattering(device, backend, random_state=42):
 
     scattering.to(device)
     x = x.to(device)
-
-    for max_order in [1, 2]:
-        scattering.max_order = max_order
-        s_dico = scattering.forward(x)
-        for detail in [True, False]:
-            # get the size of scattering
-            size = scattering.output_size(detail=detail)
-            if detail:
-                num_orders = {0: 0, 1: 0, 2: 0}
-                for k in s_dico.keys():
-                    if k is ():
-                        num_orders[0] += 1
-                    else:
-                        if len(k) == 1:  # order1
-                            num_orders[1] += 1
-                        elif len(k) == 2:
-                            num_orders[2] += 1
-                todo = 2 if max_order == 2 else 1
-                for i in range(todo):
-                    assert num_orders[i] == size[i]
-                    # check that the orders are completely equal
-            else:
-                assert len(s_dico) == size
+    if backend.name != 'torch_skcuda' or device != 'cpu':
+        for max_order in [1, 2]:
+            scattering.max_order = max_order
+            s_dico = scattering(x)
+            for detail in [True, False]:
+                # get the size of scattering
+                size = scattering.output_size(detail=detail)
+                if detail:
+                    num_orders = {0: 0, 1: 0, 2: 0}
+                    for k in s_dico.keys():
+                        if k is ():
+                            num_orders[0] += 1
+                        else:
+                            if len(k) == 1:  # order1
+                                num_orders[1] += 1
+                            elif len(k) == 2:
+                                num_orders[2] += 1
+                    todo = 2 if max_order == 2 else 1
+                    for i in range(todo):
+                        assert num_orders[i] == size[i]
+                        # check that the orders are completely equal
+                else:
+                    assert len(s_dico) == size
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -361,34 +361,39 @@ def test_batch_shape_agnostic(device, backend):
 
     x = torch.zeros(shape).to(device)
 
-    Sx = S(x)
-
-    assert Sx.dim() == 2
-    assert Sx.shape[-1] == length_ds
-
-    n_coeffs = Sx.shape[-2]
-
-    test_shapes = ((1,) + shape, (2,) + shape, (2,2) + shape, (2,2,2) + shape)
-
-    for test_shape in test_shapes:
-        x = torch.zeros(test_shape).to(device)
-
-        S.vectorize = True
+    if backend.name == 'torch_skcuda' and device == 'cpu':
+        with pytest.raises(TypeError) as ve:
+            Sx = S(x)
+        assert "cpu" in ve.value.args[0]
+    else:
         Sx = S(x)
 
-        assert Sx.dim() == len(test_shape)+1
+        assert Sx.dim() == 2
         assert Sx.shape[-1] == length_ds
-        assert Sx.shape[-2] == n_coeffs
-        assert Sx.shape[:-2] == test_shape[:-1]
 
-        S.vectorize = False
-        Sx = S(x)
+        n_coeffs = Sx.shape[-2]
 
-        assert len(Sx) == n_coeffs
-        for k, v in Sx.items():
-            assert v.shape[-1] == length_ds
-            assert v.shape[-2] == 1
-            assert v.shape[:-2] == test_shape[:-1]
+        test_shapes = ((1,) + shape, (2,) + shape, (2,2) + shape, (2,2,2) + shape)
+
+        for test_shape in test_shapes:
+            x = torch.zeros(test_shape).to(device)
+
+            S.vectorize = True
+            Sx = S(x)
+
+            assert Sx.dim() == len(test_shape)+1
+            assert Sx.shape[-1] == length_ds
+            assert Sx.shape[-2] == n_coeffs
+            assert Sx.shape[:-2] == test_shape[:-1]
+
+            S.vectorize = False
+            Sx = S(x)
+
+            assert len(Sx) == n_coeffs
+            for k, v in Sx.items():
+                assert v.shape[-1] == length_ds
+                assert v.shape[-2] == 1
+                assert v.shape[:-2] == test_shape[:-1]
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
