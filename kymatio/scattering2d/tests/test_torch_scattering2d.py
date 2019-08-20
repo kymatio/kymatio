@@ -133,6 +133,7 @@ class TestCDGMM:
         x, filt, y = x.to(device), filt.to(device), y.to(device)
         z = backend.cdgmm(x, filt, inplace=inplace)
         # compare
+        Warning('Tolerance has been slightly lowered here...')
         assert torch.allclose(y, z, atol=1e-7, rtol =1e-6) # There is a very small meaningless difference for skcuda+GPU
 
     @pytest.mark.parametrize("backend", backends)
