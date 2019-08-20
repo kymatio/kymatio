@@ -53,16 +53,16 @@ def test_simple_scatterings(device, backend, random_state=42):
     else:
         s = scattering(x0)
 
-    # check that s is zero!
-    assert torch.max(torch.abs(s)) < 1e-7
+        # check that s is zero!
+        assert torch.max(torch.abs(s)) < 1e-7
 
     # constant signal
     x1 = rng.randn(1)[0] * torch.ones(1, T).to(device)
     if backend.name != 'torch_skcuda' or device != 'cpu':
         s1 = scattering(x1)
 
-    # check that all orders above 1 are 0
-    assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
+        # check that all orders above 1 are 0
+        assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
 
     # sinusoid scattering
     meta = scattering.meta()
@@ -73,7 +73,7 @@ def test_simple_scatterings(device, backend, random_state=42):
         if backend.name != 'torch_skcuda' or device != 'cpu':
             s2 = scattering(x2)
 
-        assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
+            assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -150,36 +150,37 @@ def test_computation_Ux(backend, device, random_state=42):
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float().to(device)
 
-    s = scattering(x)
+    if backend.name != 'torch_skcuda' or device != 'cpu':
+        s = scattering(x)
 
-    # check that the keys in s correspond to the order 0 and second order
-    for k in range(len(scattering.psi1_f)):
-        assert (k,) in s.keys()
-    for k in s.keys():
-        if k is not ():
-            assert k[0] < len(scattering.psi1_f)
-        else:
-            assert True
+        # check that the keys in s correspond to the order 0 and second order
+        for k in range(len(scattering.psi1_f)):
+            assert (k,) in s.keys()
+        for k in s.keys():
+            if k is not ():
+                assert k[0] < len(scattering.psi1_f)
+            else:
+                assert True
 
-    scattering.max_order = 2
+        scattering.max_order = 2
 
-    s = scattering(x)
+        s = scattering(x)
 
-    count = 1
-    for k1, filt1 in enumerate(scattering.psi1_f):
-        assert (k1,) in s.keys()
-        count += 1
-        for k2, filt2 in enumerate(scattering.psi2_f):
-            if filt2['j'] > filt1['j']:
-                assert (k1, k2) in s.keys()
-                count += 1
+        count = 1
+        for k1, filt1 in enumerate(scattering.psi1_f):
+            assert (k1,) in s.keys()
+            count += 1
+            for k2, filt2 in enumerate(scattering.psi2_f):
+                if filt2['j'] > filt1['j']:
+                    assert (k1, k2) in s.keys()
+                    count += 1
 
-    assert count == len(s)
+        assert count == len(s)
 
-    with pytest.raises(ValueError) as ve:
-        scattering.vectorize = True
-        scattering.forward(x)
-    assert "mutually incompatible" in ve.value.args[0]
+        with pytest.raises(ValueError) as ve:
+            scattering.vectorize = True
+            scattering(x)
+        assert "mutually incompatible" in ve.value.args[0]
 
 
 # Technical tests
@@ -189,7 +190,7 @@ def test_scattering_GPU_CPU(backend, random_state=42):
     This function tests whether the CPU computations are equivalent to
     the GPU ones
     """
-    if torch.cuda.is_available() and backend.name == 'torch_skcuda':
+    if torch.cuda.is_available() and backend.name != 'torch_skcuda':
         torch.manual_seed(random_state)
 
         J = 6
