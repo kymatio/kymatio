@@ -205,7 +205,7 @@ def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
     x_gpu = x.clone().cuda()
     s_gpu = scattering(x_gpu).cpu()
     # compute the distance
-    assert torch.allclose(s_cpu, s_gpu, rtol=1e-6)
+    assert torch.allclose(s_cpu, s_gpu, atol=1e-7)
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
