@@ -36,6 +36,10 @@ def test_simple_scatterings(device, backend, random_state=42):
     Checks the behaviour of the scattering on simple signals
     (zero, constant, pure cosine)
     """
+
+    if backend.name == "torch_skcuda" and device=='cpu':
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+
     rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
@@ -79,15 +83,15 @@ def test_sample_scattering(device, backend):
     test_data_filename = os.path.join(test_data_dir, 'test_data_1d.pt')
     data = torch.load(test_data_filename, map_location='cpu')
 
-    x = data['x']
+    x = data['x'].to(device)
     J = data['J']
     Q = data['Q']
-    Sx0 = data['Sx']
+    Sx0 = data['Sx'].to(device)
 
     T = x.shape[2]
 
     # Convert from old (B, 1, T) format.
-    x = x.squeeze(1).to(device)
+    x = x.squeeze(1)
 
     scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').to(device)
 
@@ -120,7 +124,7 @@ def test_sample_scattering(device, backend):
 
     Sx = scattering(x)
 
-    assert torch.allclose(Sx.cpu(), Sx0.cpu())
+    assert torch.allclose(Sx, Sx0)
 
 
 @pytest.mark.parametrize("device", devices)
