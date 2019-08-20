@@ -56,6 +56,7 @@ class TestScattering1DTensorflow:
         config = tf.ConfigProto()
         sess = tf.Session(config=config)
         Sx = sess.run(S_tf, feed_dict={x_tf: x})
+        sess.close()
 
         print(np.linalg.norm(Sx0-Sx)/np.linalg.norm(Sx))
 

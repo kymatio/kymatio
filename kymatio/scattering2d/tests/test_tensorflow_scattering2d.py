@@ -54,5 +54,6 @@ class TestScattering2DTensorflow:
         config = tf.ConfigProto()
         sess = tf.Session(config=config)
         Sg = sess.run(S_tf, feed_dict={x_tf: x})
+        sess.close()
 
         assert np.allclose(Sg, S)
