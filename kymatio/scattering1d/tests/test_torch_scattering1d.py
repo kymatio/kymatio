@@ -386,21 +386,17 @@ def test_pad_1d(device, backend, random_state=42):
     N = 128
     for pad_left in range(0, N, 16):
         for pad_right in range(0, N, 16):
-            x = torch.randn(100, 4, N, requires_grad=True).to(device)
+            x = torch.randn(100, 4, N, requires_grad=True, device=device)
             x_pad = backend.pad_1d(x, pad_left, pad_right, mode='reflect')
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
             for t in range(1, pad_left + 1):
-                diff = x_pad2[..., pad_left - t] - x2[..., t]
-                assert torch.max(torch.abs(diff)) <= 1e-7
+                assert torch.allclose(x_pad2[..., pad_left - t],x2[..., t])
             for t in range(x2.shape[-1]):
-                diff = x_pad2[..., pad_left + t] - x2[..., t]
-                assert torch.max(torch.abs(diff)) <= 1e-7
+                assert torch.allclose(x_pad2[..., pad_left + t], x2[..., t])
             for t in range(1, pad_right + 1):
-                diff = x_pad2[..., x_pad.shape[-1] - 1 - pad_right + t]
-                diff -= x2[..., x.shape[-1] - 1 - t]
-                assert torch.max(torch.abs(diff)) <= 1e-7
+                assert torch.allclose(x_pad2[..., x_pad.shape[-1] - 1 - pad_right + t], x2[..., x.shape[-1] - 1 - t]) 
             # check the differentiability
             loss = 0.5 * torch.sum(x_pad**2)
             loss.backward()
@@ -429,10 +425,9 @@ def test_modulus(device, backend, random_state=42):
     """
     torch.manual_seed(random_state)
     # Test with a random vector
-    x = torch.randn(100, 4, 128, 2, requires_grad=True).to(device)
+    x = torch.randn(100, 4, 128, 2, requires_grad=True, device=device)
     x_abs = backend.modulus_complex(x)
 
-    x_abs = x_abs.to(device)
     assert len(x_abs.shape) == len(x.shape)
     # check the value
     x_abs2 = x_abs.clone()
@@ -476,7 +471,7 @@ def test_modulus(device, backend, random_state=42):
     assert torch.allclose(x_grad_manual, x_grad)
 
     # Test the differentiation with a vector made of zeros
-    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True).to(device)
+    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
     x_abs0 = backend.modulus_complex(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
