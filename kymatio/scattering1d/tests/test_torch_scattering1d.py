@@ -120,7 +120,7 @@ def test_sample_scattering(device, backend):
 
     Sx = scattering(x)
 
-    assert (Sx - Sx0).abs().max() < 1e-6
+    assert torch.allclose(Sx, Sx0)
 
 
 @pytest.mark.parametrize("device", devices)
