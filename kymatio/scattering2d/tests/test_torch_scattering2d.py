@@ -37,20 +37,14 @@ class TestModulus:
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("backend", backends)
     def test_Modulus(self, device, backend):
-        if device == 'cuda':
-            modulus = backend.modulus
-            x = torch.rand(100, 10, 4, 2).cuda().float()
-            y = modulus(x)
-            u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-            v = y.narrow(3, 0, 1)
-            u = u.squeeze()
-            v = v.squeeze()
-            assert torch.allclose(u, v)
-        elif device == 'cpu':
-            if backend.name == 'torch_skcuda':
-                pytest.skip("skcuda backend can only run on gpu")
-            modulus = backend.modulus
-            x = torch.rand(100, 10, 4, 2).float()
+        modulus = backend.modulus
+        x = torch.rand(100, 10, 4, 2).to(device)
+
+        if device == 'cuda' and backend.name == 'torch_skcuda':
+            with pytest.raises(TypeError) as exc:
+                y = modulus(x)
+            assert "Use the torch backend" in exc.value.args[0]
+        else:
             y = modulus(x)
             u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
             v = y.narrow(3, 0, 1)
@@ -64,9 +58,15 @@ class TestSubsampleFourier:
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("backend", backends)
     def test_SubsampleFourier(self, device, backend):
-        if device == 'cuda':
-            x = torch.rand(100, 1, 128, 128, 2).cuda().double()
-            y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
+        x = torch.rand(100, 1, 128, 128, 2).to(device)
+        subsample_fourier = backend.subsample_fourier
+        if device == 'cuda' and backend.name == 'torch_skcuda':
+            with pytest.raises(TypeError) as exc:
+                z = subsample_fourier(x, k=16)
+            assert "Use the torch backend" in exc.value.args[0]
+
+        else:
+            y = torch.zeros(100, 1, 8, 8, 2).to(device)
 
             for i in range(8):
                 for j in range(8):
@@ -75,36 +75,12 @@ class TestSubsampleFourier:
                             y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
 
             y = y / (16*16)
-
-            subsample_fourier = backend.subsample_fourier
 
             z = subsample_fourier(x, k=16)
             assert torch.allclose(y, z)
             if backend.name == 'torch':
                 z = subsample_fourier(x, k=16)
                 assert torch.allclose(y, z)
-        elif device == 'cpu':
-            if backend.name == 'torch_skcuda':
-                pytest.skip("skcuda backend can only run on gpu")
-            x = torch.rand(100, 1, 128, 128, 2).cpu().double()
-            y = torch.zeros(100, 1, 8, 8, 2).cpu().double()
-
-            for i in range(8):
-                for j in range(8):
-                    for m in range(16):
-                        for n in range(16):
-                            y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
-
-            y = y / (16*16)
-
-            subsample_fourier = backend.subsample_fourier
-
-            z = subsample_fourier(x, k=16)
-            assert torch.allclose(y, z)
-            if backend.name == 'torch':
-                z = subsample_fourier(x.cpu(), k=16)
-                assert torch.allclose(y, z)
-
 
 # Check the CUBLAS routines
 class TestCDGMM:
@@ -126,15 +102,18 @@ class TestCDGMM:
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("inplace", (False, True))
     def test_cdgmm_forward(self, data, backend, device, inplace):
-        if device == 'cpu' and backend.name == 'torch_skcuda':
-            pytest.skip("skcuda backend can only run on gpu")
         x, filt, y = data
         # move to device
         x, filt, y = x.to(device), filt.to(device), y.to(device)
-        z = backend.cdgmm(x, filt, inplace=inplace)
-        # compare
-        Warning('Tolerance has been slightly lowered here...')
-        assert torch.allclose(y, z, atol=1e-7, rtol =1e-6) # There is a very small meaningless difference for skcuda+GPU
+        if device == 'cpu' and backend.name == 'torch_skcuda':
+            with pytest.raises(TypeError) as exc:
+                z = backend.cdgmm(x, filt, inplace=inplace)
+            assert "must be cuda" in exc.value.args[0]
+        else:
+            z = backend.cdgmm(x, filt, inplace=inplace)
+            # compare
+            Warning('Tolerance has been slightly lowered here...')
+            assert torch.allclose(y, z, atol=1e-7, rtol =1e-6) # There is a very small meaningless difference for skcuda+GPU
 
     @pytest.mark.parametrize("backend", backends)
     def test_cdgmm_exceptions(self, backend):

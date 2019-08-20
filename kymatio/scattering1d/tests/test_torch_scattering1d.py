@@ -174,18 +174,13 @@ def test_computation_Ux(backend, device, random_state=42):
 
 
 # Technical tests
-@pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
     """
     This function tests whether the CPU computations are equivalent to
     the GPU ones
-
-    Note that we can only achieve 1e-4 absolute l_infty error between GPU
-    and CPU
     """
-    if device=='cpu':
-        pytest.skip("Only for GPU use...")
+    device = 'cuda'
 
     torch.manual_seed(random_state)
 

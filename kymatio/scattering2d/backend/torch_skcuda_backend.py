@@ -62,7 +62,7 @@ class SubsampleFourier(object):
 
     def __call__(self, x, k):
         if not x.is_cuda:
-            raise RuntimeError('Use the torch backend for cpu tensors!')
+            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
 
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
@@ -141,7 +141,7 @@ class Modulus(object):
 
     def __call__(self, x):
         if not x.is_cuda:
-            raise RuntimeError('Use the torch backend (without skcuda) for cpu tensors!')
+            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
 
         out = x.new(x.size())
 
@@ -206,14 +206,13 @@ def cdgmm(A, B, inplace=False):
         raise RuntimeError('The filters are not compatible for multiplication!')
 
     if A.dtype is not B.dtype:
-        raise RuntimeError('A and B must be of the same dtype')
+        raise TypeError('A and B must be of the same dtype.')
 
-    if A.device.type != B.device.type:
-        raise RuntimeError('A and B must be of the same device type')
+    if not A.is_cuda or not B.is_cuda:
+        raise TypeError('A and B must be cuda tensors.')
 
-    if A.device.type == 'cuda':
-        if A.device.index != B.device.index:
-            raise RuntimeError('A and B must be on the same GPU!')
+    if A.device.index != B.device.index:
+        raise TypeError('A and B must be on the same GPU!')
 
     if isreal(B):
         if inplace:
