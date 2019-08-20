@@ -67,12 +67,14 @@ class SubsampleFourier(object):
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
         x = x.view((-1,) + signal_shape)
-        out = x.new([x.size(0), x.size(2) // k, x.size(3) // k, 2])
+
+        out = x.new(size=[x.size(0), x.size(1) // k, x.size(2) // k, 2])
 
         if not iscomplex(x):
-            raise (TypeError('The x and outputs should be complex'))
+            raise TypeError('The x and outputs should be complex.')
 
-        x = x.contiguous()
+        if not x.is_contiguous():
+            raise RuntimeError('Input should be contiguous.')
 
         kernel = '''
         #define NW ${W} / ${k}
@@ -99,14 +101,14 @@ class SubsampleFourier(object):
           output[tz * NH * NW + ty * NW + tx] = res;
         }
         '''
-        B = x.nelement() // (2*x.size(0))
-        W = x.size(-2)
-        H = x.size(-3)
+        B = x.size(0)
+        W = x.size(2)
+        H = x.size(1)
 
         periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(x))
-        grid = (self.GET_BLOCKS(out.size(-3), self.block[0]),
-                self.GET_BLOCKS(out.size(-2), self.block[1]),
-                self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
+        grid = (self.GET_BLOCKS(out.size(1), self.block[0]),
+                self.GET_BLOCKS(out.size(2), self.block[1]),
+                self.GET_BLOCKS(out.size(0), self.block[2]))
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         out = out.reshape(batch_shape + out.shape[-3:])
@@ -142,10 +144,12 @@ class Modulus(object):
             raise RuntimeError('Use the torch backend (without skcuda) for cpu tensors!')
 
         out = x.new(x.size())
-        x = x.contiguous()
 
         if not iscomplex(x):
             raise TypeError('The input and outputs should be complex')
+
+        if not x.is_contiguous():
+            raise RuntimeError('Input should be contiguous.')
 
         kernel = """
         extern "C"
@@ -217,7 +221,9 @@ def cdgmm(A, B, inplace=False):
         else:
             return A * B
     else:
-        A, B = A.contiguous(), B.contiguous()
+        if not A.is_contiguous() or not B.is_contiguous():
+            raise RuntimeError('A and B should be contiguous.')
+
         C = A.new(A.size()) if not inplace else A
         m, n = B.nelement() // 2, A.nelement() // B.nelement()
         lda = m
