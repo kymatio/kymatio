@@ -37,9 +37,6 @@ def test_simple_scatterings(device, backend, random_state=42):
     (zero, constant, pure cosine)
     """
 
-    if backend.name == "torch_skcuda" and device=='cpu':
-        pytest.skip("The skcuda backend does not support CPU tensors.")
-
     rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
@@ -49,14 +46,20 @@ def test_simple_scatterings(device, backend, random_state=42):
     # zero signal
     x0 = torch.zeros(128, T).to(device)
 
-    s = scattering(x0)
+    if backend.name == 'torch_skcuda' and device == 'cpu':
+        with pytest.raises(TypeError) as ve:
+            s = scattering(x0)
+        assert "cpu" in ve.value.args[0]
+    else:
+        s = scattering(x0)
 
     # check that s is zero!
     assert torch.max(torch.abs(s)) < 1e-7
 
     # constant signal
     x1 = rng.randn(1)[0] * torch.ones(1, T).to(device)
-    s1 = scattering(x1)
+    if backend.name != 'torch_skcuda' or device != 'cpu':
+        s1 = scattering(x1)
 
     # check that all orders above 1 are 0
     assert torch.max(torch.abs(s1[:, 1:])) < 1e-7
@@ -67,7 +70,8 @@ def test_simple_scatterings(device, backend, random_state=42):
         k = rng.randint(1, T // 2, 1)[0]
         x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
         x2 = x2.unsqueeze(0).to(device)
-        s2 = scattering(x2)
+        if backend.name != 'torch_skcuda' or device != 'cpu':
+            s2 = scattering(x2)
 
         assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
 
@@ -122,7 +126,7 @@ def test_sample_scattering(device, backend):
     Sx0 = Sx0[:,perm,:]
 
     if backend.name == 'torch_skcuda' and device == 'cpu':
-        with pytest.raises(RuntimeError) as ve:
+        with pytest.raises(TypeError) as ve:
             Sx = scattering(x)
         assert "cpu" in ve.value.args[0]
     else:
@@ -486,7 +490,7 @@ def test_subsample_fourier(backend, device, random_state=42):
     in time
     """
     if backend.name == 'torch_skcuda' and device == 'cpu':
-        with pytest.raises(RuntimeError) as re:
+        with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
         assert "for cpu tensors" in re.value.args[0].lower()
