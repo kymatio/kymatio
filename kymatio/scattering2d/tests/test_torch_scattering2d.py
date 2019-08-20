@@ -135,7 +135,7 @@ class TestCDGMM:
         if 'cuda' in devices:
             with pytest.raises(TypeError) as exc:
                 backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-            assert "GPU" in exc.value.args[0]
+            assert "cuda" in exc.value.args[0]
 
 class TestFFT:
     @pytest.mark.parametrize("backend", backends)
