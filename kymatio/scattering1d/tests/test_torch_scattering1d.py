@@ -196,16 +196,16 @@ def test_scattering_GPU_CPU(device, backend, random_state=42, test_cuda=None):
 
 
     # build the scattering
-    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch')
+    scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').cpu()
 
     x = torch.randn(128, T)
-    s_cpu = scattering.forward(x)
+    s_cpu = scattering(x)
 
     scattering = scattering.cuda()
     x_gpu = x.clone().cuda()
-    s_gpu = scattering.forward(x_gpu).cpu()
+    s_gpu = scattering(x_gpu).cpu()
     # compute the distance
-    assert torch.max(torch.abs(s_cpu - s_gpu)) < 1e-4
+    assert torch.allclose(s_cpu, s_gpu)
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -244,8 +244,7 @@ def test_coordinates(device, backend, random_state=42):
 
         for cc in range(s_vec.shape[1]):
             k = meta['key'][cc]
-            diff = s_vec[:, cc] - torch.squeeze(s_dico[k])
-            assert torch.max(torch.abs(diff)) < 1e-7
+            assert torch.allclose(s_vec[:, cc], torch.squeeze(s_dico[k]))
 
 
 @pytest.mark.parametrize("device", devices)
@@ -415,8 +414,7 @@ def test_pad_1d(device, backend, random_state=42):
                 t0 = x.shape[-1] - 1 - t
                 x_grad[..., t0] += x_grad_original[..., t0]
             # get the difference
-            diff = x.grad - x_grad
-            assert torch.max(torch.abs(diff)) <= 1e-7
+            assert torch.allclose(x.grad, x_grad)
     # Check that the padding shows an error if we try to pad
     with pytest.raises(ValueError):
         backend.pad_1d(x, x.shape[-1], 0, mode='reflect')
@@ -439,9 +437,7 @@ def test_modulus(device, backend, random_state=42):
     # check the value
     x_abs2 = x_abs.clone()
     x2 = x.clone()
-
-    diff = x_abs2[..., 0] - torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2)
-    assert torch.max(torch.abs(diff)) <= 1e-6
+    assert torch.allclose(x_abs2[..., 0], torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
 
     # If we are using a GPU-only backend, make sure it raises the proper
     # errors for CPU tensors.
@@ -464,8 +460,7 @@ def test_modulus(device, backend, random_state=42):
     loss = torch.sum(x_abs)
     loss.backward()
     x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
-    diff = x.grad - x_grad
-    assert torch.max(torch.abs(diff)) <= 1e-7
+    assert torch.allclose(x.grad, x_grad)
 
     # Manually check `forward`/`backward` using fake context object. This
     # ensures that `backward` is included in code coverage since going through
@@ -478,7 +473,7 @@ def test_modulus(device, backend, random_state=42):
     y = backend.ModulusStable.forward(ctx, x)
     y_grad = torch.ones_like(y)
     x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
-    assert (x_grad_manual - x_grad).abs().max() < 1e-7
+    assert torch.allclose(x_grad_manual, x_grad)
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True).to(device)
@@ -506,7 +501,7 @@ def test_subsample_fourier(backend, device, random_state=42):
         x_f_sub = x_f_sub_th.numpy()
         x_f_sub.dtype = 'complex128'
         x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
-        assert np.max(np.abs(x[:, :, ::2**j] - x_sub)) < 1e-7
+        assert np.allclose(x[:, :, ::2**j], x_sub)
 
     # If we are using a GPU-only backend, make sure it raises the proper
     # errors for CPU tensors.
