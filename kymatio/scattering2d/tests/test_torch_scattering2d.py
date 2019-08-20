@@ -207,12 +207,12 @@ class TestScattering2DTorch:
         scattering.to(device)
         S = S.to(device)
         if backend.name == 'torch_skcuda' and device == 'cpu':
-            with pytest.raises(RuntimeError) as ve:
+            with pytest.raises(TypeError) as ve:
                 Sg = scattering(x)
             assert "cpu" in ve.value.args[0]
         else:
             Sg = scattering(x)
-        assert torch.allclose(Sg, S)
+            assert torch.allclose(Sg, S)
 
         # check also the default backend
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='torch')
