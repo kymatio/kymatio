@@ -186,7 +186,7 @@ def test_scattering_GPU_CPU(backend, random_state=42):
         J = 6
         Q = 8
         T = 2**12
-    
+
         # build the scattering
         scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').cpu()
 
