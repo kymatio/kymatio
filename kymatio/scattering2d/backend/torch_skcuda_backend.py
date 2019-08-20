@@ -64,7 +64,10 @@ class SubsampleFourier(object):
         if not x.is_cuda:
             raise RuntimeError('Use the torch backend for cpu tensors!')
 
-        out = x.new(x.size(0), x.size(1), x.size(2) // k, x.size(3) // k, 2)
+        batch_shape = x.shape[:-3]
+        signal_shape = x.shape[-3:]
+        x = x.view((-1,) + signal_shape)
+        out = x.new([x.size(0), x.size(2) // k, x.size(3) // k, 2])
 
         if not iscomplex(x):
             raise (TypeError('The x and outputs should be complex'))
@@ -96,7 +99,7 @@ class SubsampleFourier(object):
           output[tz * NH * NW + ty * NW + tx] = res;
         }
         '''
-        B = x.nelement() // (2*x.size(-2) * x.size(-3))
+        B = x.nelement() // (2*x.size(0))
         W = x.size(-2)
         H = x.size(-3)
         k = x.size(-2) // out.size(-2)
@@ -106,6 +109,7 @@ class SubsampleFourier(object):
                 self.GET_BLOCKS(out.nelement() // (2*out.size(-2) * out.size(-3)), self.block[2]))
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
+        out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
 
