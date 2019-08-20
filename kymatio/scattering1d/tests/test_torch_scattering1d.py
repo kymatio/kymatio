@@ -66,7 +66,7 @@ def test_simple_scatterings(device, backend, random_state=42):
         x2.to(device)
         s2 = scattering(x2)
 
-        assert(s2[:,meta['order'] != 1,:].abs().max() < 1e-2)
+        assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
