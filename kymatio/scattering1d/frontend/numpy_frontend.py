@@ -189,7 +189,7 @@ class Scattering1DNumpy(ScatteringNumpy):
         # Set these default values for now. In the future, we'll want some
         # flexibility for these, but for now, let's keep them fixed.
         if not self.backend:
-            from ..backend import numpy_backend as backend
+            from ..backend.numpy_backend import backend
             self.backend = backend
         elif self.backend.name[0:5] != 'numpy':
             raise RuntimeError('This backend is not supported.')
