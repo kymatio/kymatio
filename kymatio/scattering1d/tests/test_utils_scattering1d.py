@@ -1,6 +1,8 @@
 from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 import numpy as np
 import pytest
+from kymatio import Scattering1D
+from kymatio.scattering1d.frontend.numpy_frontend import Scattering1DNumpy
 
 def test_compute_padding():
     """
@@ -49,3 +51,13 @@ def test_border_indices(random_state=42):
         if ind_end[j] < x_sub.shape[-1]:
             assert np.min(x_sub[ind_end[j]:]) > 0.
 
+
+# Check that the default frontend is numpy and that errors are correctly launched.
+def test_scattering1d_frontend():
+    scattering = Scattering1D(2, shape=(10, ))
+    assert isinstance(scattering, Scattering1DNumpy), 'NumPy frontend is not selected by default'
+
+    with pytest.raises(ImportError) as ve:
+        scattering = Scattering1D(2, shape=(10,), frontend='doesnotexist')
+    assert hasattr(ve, '__cause__') and isinstance(ve.__cause__, RuntimeError) and "correctly imported" in \
+                                                                                       ve.__cause__.value.args[0]

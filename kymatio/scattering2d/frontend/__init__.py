@@ -15,7 +15,6 @@ class Scattering2D(object):
             self.__class__ = getattr(module, self.__class__.__name__ + frontend.capitalize())
             self.__init__(*args, **kwargs)
         except Exception as e:
-            print('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
-            raise (e)
+            raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
 
         logging.info(self.loginfo())

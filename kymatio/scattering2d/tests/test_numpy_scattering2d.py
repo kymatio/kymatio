@@ -3,6 +3,8 @@ import io
 import numpy as np
 from kymatio.scattering2d import Scattering2D
 import torch
+from kymatio.backend.fake_backend import backend as fake_backend
+import pytest
 
 class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
@@ -54,3 +56,13 @@ class TestScattering2DNumpy:
         S = S
         Sg = scattering(x)
         assert np.allclose(Sg, S)
+
+    def test_inputs(self):
+        with pytest.raises(RuntimeError) as ve:
+            scattering = Scattering2D(2, shape=(10, 10), frontend='numpy', backend=fake_backend)
+        assert 'not supported' in ve.value.args[0]
+
+        with pytest.raises(RuntimeError) as ve:
+            scattering = Scattering2D(10, shape=(10, 10), frontend='numpy')
+        assert 'smallest dimension' in ve.value.args[0]
+
