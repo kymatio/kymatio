@@ -59,5 +59,4 @@ def test_scattering1d_frontend():
 
     with pytest.raises(ImportError) as ve:
         scattering = Scattering1D(2, shape=(10,), frontend='doesnotexist')
-    assert hasattr(ve, '__cause__') and isinstance(ve.__cause__, RuntimeError) and "correctly imported" in \
-                                                                                       ve.__cause__.value.args[0]
+    assert "module named" in ve.value.args[0]

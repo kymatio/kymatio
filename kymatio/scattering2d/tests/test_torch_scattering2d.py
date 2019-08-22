@@ -5,7 +5,7 @@ import numpy as np
 import torch
 import pytest
 from kymatio.scattering2d import Scattering2D
-
+from kymatio.backend.fake_backend import backend as fake_backend
 
 
 backends = []
@@ -358,3 +358,12 @@ class TestScattering2DTorch:
 
         S = scattering(x)
         assert (S.shape[-2:] == (1, 1))
+
+    def test_inputs(self):
+        with pytest.raises(RuntimeError) as ve:
+            scattering = Scattering2D(2, shape=(10, 10), frontend='torch', backend=fake_backend)
+        assert 'not supported' in ve.value.args[0]
+
+        with pytest.raises(RuntimeError) as ve:
+            scattering = Scattering2D(10, shape=(10, 10), frontend='torch')
+        assert 'smallest dimension' in ve.value.args[0]
