@@ -189,3 +189,6 @@ class Scattering2DTorch(ScatteringTorch):
             raise RuntimeError('Padded tensor must be of spatial size (%i,%i)!' % (self.M_padded, self.N_padded))
 
         return self.scattering(input)
+
+    def loginfo(self):
+        return 'Torch frontend is used.'

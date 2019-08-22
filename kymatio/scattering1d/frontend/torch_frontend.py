@@ -399,3 +399,6 @@ class Scattering1DTorch(ScatteringTorch):
                 S[k] = v.reshape(batch_shape + scattering_shape)
 
         return S
+
+    def loginfo(self):
+        return 'Torch frontend is used.'

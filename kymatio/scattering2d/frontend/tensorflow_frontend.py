@@ -117,3 +117,6 @@ class Scattering2DTensorflow(ScatteringTensorflow):
     @tf.Module.with_name_scope
     def __call__(self, x):
         return self.scattering(x)
+
+    def loginfo(self):
+        return 'TensorFlow frontend is used.'

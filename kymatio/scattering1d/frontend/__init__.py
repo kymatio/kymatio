@@ -1,6 +1,6 @@
-import logging
-
 __all__ = ['Scattering1D']
+
+import logging
 
 class Scattering1D(object):
     def __init__(self, *args, **kwargs):
@@ -10,29 +10,12 @@ class Scattering1D(object):
             frontend=kwargs['frontend']
             kwargs.pop('frontend')
 
-        if frontend == 'numpy':
-            try:
-                from .numpy_frontend import Scattering1DNumpy
-                self.__class__ = Scattering1DNumpy
-                self.__init__(*args, **kwargs)
-            except:
-                raise
-            logging.info('NumPy frontend is used.')
-        elif frontend == 'torch':
-            try:
-                from .torch_frontend import Scattering1DTorch
-                self.__class__ = Scattering1DTorch
-                self.__init__(*args, **kwargs)
-            except:
-                raise
-            logging.info('PyTorch frontend is used.')
-        elif frontend == 'tensorflow':
-            try:
-                from .tensorflow_frontend import Scattering1DTensorflow
-                self.__class__ = Scattering1DTensorflow
-                self.__init__(*args, **kwargs)
-            except:
-                raise
-            logging.info('TensorFlow frontend is used.')
-        else:
-            raise RuntimeError('This frontend is not available.')
+        try:
+            module = __import__(frontend + '_frontend', globals(), locals(), [], 1)
+            self.__class__ = getattr(module, self.__class__.__name__ + frontend.capitalize())
+            self.__init__(*args, **kwargs)
+        except Exception as e:
+            print('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
+            raise(e)
+
+        logging.info(self.loginfo())

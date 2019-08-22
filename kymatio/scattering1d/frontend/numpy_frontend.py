@@ -344,3 +344,6 @@ class Scattering1DNumpy(ScatteringNumpy):
                 S[k] = v.reshape(batch_shape + scattering_shape)
 
         return S
+
+    def loginfo(self):
+        return 'NumPy frontend is used.'

@@ -111,3 +111,6 @@ class Scattering2DNumpy(ScatteringNumpy):
 
     def scattering(self, input):
         return scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order)
+
+    def loginfo(self):
+        return 'NumPy frontend is used.'

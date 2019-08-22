@@ -15,3 +15,11 @@ class ScatteringNumpy(object, metaclass=ABCMeta):
 
    def __call__(self, x):
        return self.scattering(x)
+
+   @abstractmethod
+   def loginfo(self):
+       """
+       Returns the logging message when the frontend is deployed.
+       -------
+
+       """
