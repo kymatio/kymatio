@@ -21,7 +21,7 @@ from kymatio.scattering3d.core.scattering3d import scattering3d
 
 
 
-class HarmonicScattering3D(ScatteringTorch):
+class HarmonicScattering3DTorch(ScatteringTorch):
     """3D Solid Harmonic scattering .
 
     This class implements solid harmonic scattering on an input 3D image.
@@ -67,7 +67,7 @@ class HarmonicScattering3D(ScatteringTorch):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
                  rotation_covariant=True, method='standard', points=None,
                  integral_powers=(0.5, 1., 2.), backend=None):
-        super(HarmonicScattering3D, self).__init__()
+        super(HarmonicScattering3DTorch, self).__init__()
         self.J = J
         self.shape = shape
         self.L = L
@@ -94,6 +94,16 @@ class HarmonicScattering3D(ScatteringTorch):
             self.filters[k] = torch.from_numpy(self.filters[k]).type(torch.Tensor)
         self.gaussian_filters = torch.from_numpy(self.gaussian_filters).type(torch.Tensor)
 
+        methods = ['standard', 'local', 'integral']
+        if (not self.method in methods):
+            raise (ValueError('method must be in {}'.format(methods)))
+        if self.method == 'integral':
+            self.average =lambda x,j : compute_integrals(x[..., 0],j,'integral_powers')
+        elif self.method == 'local':
+            self.average = lambda x,j:_compute_local_scattering_coefs(x, self.points, j)
+        elif self.method == 'standard':
+            self.average = lambda x, j: compute_global (x, self.points, j)
+
 
     def forward(self, input_array):
         """
@@ -118,7 +128,7 @@ class HarmonicScattering3D(ScatteringTorch):
                 'The input should be a torch.cuda.FloatTensor, '
                 'a torch.FloatTensor or a torch.DoubleTensor'))
 
-        if (not input_array.is_contiguous()):
+        if not input_array.is_contiguous():
             input_array = input_array.contiguous()
 
         if ((input_array.size(-1) != self.O or input_array.size(-2) != self.N
@@ -131,5 +141,6 @@ class HarmonicScattering3D(ScatteringTorch):
             raise (RuntimeError('Input tensor must be 4D'))
 
         input_array = self.backend.to_complex(input_array)
+
 
         return scattering3d(input_array)

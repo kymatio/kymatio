@@ -1,7 +1,9 @@
 import torch
 import warnings
 
-NAME = 'torch'
+BACKEND_NAME = 'torch'
+from collections import namedtuple
+
 
 def iscomplex(input):
     return input.size(-1) == 2
@@ -82,3 +84,168 @@ def cdgmm3d(A, B):
     C[..., 1] = A[..., 0] * B[..., 1] + A[..., 1] * B[..., 0]
 
     return C
+
+def finalize(s_order_1, s_order_2, max_order):
+    if max_order == 2:
+        return torch.cat([torch.stack(s_order_1, dim=2), torch.stack(s_order_2, dim=2)], 1)
+    else:
+        return torch.stack(s_order_1, dim=2)
+
+
+
+def modulus_rotation(x, module):
+    """
+    Computes the convolution with a set of solid harmonics of scale j and
+    degree l and returns the square root of their squared sum over m
+
+    Parameters
+    ----------
+    input_array : tensor
+        size (batchsize, M, N, O, 2)
+    l : int
+        solid harmonic degree l
+
+    j : int
+        solid harmonic scale j
+
+    Returns
+    -------
+
+    output : torch tensor
+        tensor of the same size as input_array. It holds the output of
+        the operation::
+
+        $\\sqrt{\\sum_m (\\text{input}_\\text{array} \\star \\psi_{j,l,m})^2)}$
+
+        which is covariant to 3D translations and rotations
+
+    """
+    if module == None:
+        module = torch.zeros_like(x)
+    else:
+        module = module **2
+    module[..., 0] += (x**2).sum(-1)
+    return torch.sqrt(module)
+
+
+
+
+def _low_pass_filter(input_array, low_pass):
+    """
+    Computes the convolution of input_array with a lowpass filter phi_j
+
+    Parameters
+    ----------
+    input_array : tensor
+        size (batchsize, M, N, O, 2)
+
+    j: int
+
+    Returns
+    -------
+    output: the result of input_array :math:`\\star phi_J`
+
+    """
+    #low_pass = self.gaussian_filters[j]
+    return _fft_convolve(input_array, low_pass)
+
+
+def _compute_standard_scattering_coefs(input_array, low_pass, J, subsample):
+    """
+    Computes the convolution of input_array with a lowpass filter phi_J
+    and downsamples by a factor J.
+
+    Parameters
+    ----------
+    input_array: torch tensor of size (batchsize, M, N, O, 2)
+
+    Returns
+    -------
+    output: the result of input_array \\star phi_J downsampled by a factor J
+
+    """
+    convolved_input = _low_pass_filter(input_array, low_pass)
+    return subsample(convolved_input, J)
+
+
+
+def _compute_local_scattering_coefs(input_array, low_pass, points):
+    """
+    Computes the convolution of input_array with a lowpass filter phi_j and
+    and returns the value of the output at particular points
+
+    Parameters
+    ----------
+    input_array: torch tensor
+        size (batchsize, M, N, O, 2)
+    points: torch tensor
+        size (batchsize, number of points, 3)
+    j: int
+        the lowpass scale j of phi_j
+
+    Returns
+    -------
+    output: torch tensor of size (batchsize, number of points, 1) with
+            the values of the lowpass filtered moduli at the points given.
+
+    """
+    local_coefs = torch.zeros(input_array.size(0), points.size(1), 1)
+    convolved_input = _low_pass_filter(input_array, low_pass)#j + 1)
+    for i in range(input_array.size(0)):
+        for j in range(points[i].size(0)):
+            x, y, z = points[i, j, 0], points[i, j, 1], points[i, j, 2]
+            local_coefs[i, j, 0] = convolved_input[
+                i, int(x), int(y), int(z), 0]
+    return local_coefs
+
+
+
+
+def averaging(input_array, method, args, filter, compute_integrals):
+    """
+    Computes the scattering coefficients out with any of the three methods
+    'standard', 'local', 'integral'
+
+    Parameters
+    ----------
+    input_array : torch tensor
+        size (batchsize, M, N, O, 2)
+    method : string
+        method name with three possible values ("standard", "local", "integral")
+    args : dict
+        method specific arguments. It methods is equal to "standard", then one
+        expects the array args['integral_powers'] to be a list that holds
+        the exponents the moduli. It should be raised to before calculating
+        the integrals. If method is equal to "local", args['points'] must contain
+        a torch tensor of size (batchsize, number of points, 3) the points in
+        coordinate space at which you want the moduli sampled
+    j : int
+        lowpass scale j of :math:`\\phi_j`
+
+    Returns
+    -------
+    output: torch tensor
+        The scattering coefficients as given by different methods.
+
+    """
+    methods = ['standard', 'local', 'integral']
+    if (not method in methods):
+        raise (ValueError('method must be in {}'.format(methods)))
+    if method == 'integral':
+        return compute_integrals(input_array[..., 0],
+                                 args['integral_powers'])
+    elif method == 'local':
+        return _compute_local_scattering_coefs(input_array, args['points'], filter)
+    elif method == 'standard':
+        return _compute_standard_scattering_coefs(input_array)
+
+
+
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'Pad', 'finalize', 'modulus', 'modulus_rotation'])
+
+backend.name = 'torch'
+backend.cdgmm3d = cdgmm3d
+backend.fft = fft
+backend.finalize = finalize
+backend.modulus = complex_modulus
+backend.modulus_rotation = modulus_rotation()
