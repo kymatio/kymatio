@@ -93,7 +93,7 @@ class Scattering2DNumpy(ScatteringNumpy):
     def build(self):
         self.M, self.N = self.shape
         if not self.backend:
-            from ..backend import numpy_backend as backend # is imported like a module and not a class?
+            from ..backend.numpy_backend import backend # is imported like a module and not a class?
             self.backend = backend
         elif self.backend.name[0:5] != 'numpy':
             raise RuntimeError('This backend is not supported.')
@@ -111,3 +111,6 @@ class Scattering2DNumpy(ScatteringNumpy):
 
     def scattering(self, input):
         return scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order)
+
+    def loginfo(self):
+        return 'NumPy frontend is used.'

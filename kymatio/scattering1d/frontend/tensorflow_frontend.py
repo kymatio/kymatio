@@ -190,7 +190,7 @@ class Scattering1DTensorflow(ScatteringTensorflow):
         # Set these default values for now. In the future, we'll want some
         # flexibility for these, but for now, let's keep them fixed.
         if not self.backend:
-            from ..backend import tensorflow_backend as backend
+            from ..backend.tensorflow_backend import backend
             self.backend = backend
         elif self.backend.name[0:5] != 'tensorflow':
             raise RuntimeError('This backend is not supported.')
@@ -349,3 +349,6 @@ class Scattering1DTensorflow(ScatteringTensorflow):
     @tf.Module.with_name_scope
     def __call__(self, x):
         return self.scattering(x)
+
+    def loginfo(self):
+        return 'TensorFlow frontend is used.'

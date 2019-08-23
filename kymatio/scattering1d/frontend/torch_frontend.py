@@ -190,7 +190,7 @@ class Scattering1DTorch(ScatteringTorch):
         # Set these default values for now. In the future, we'll want some
         # flexibility for these, but for now, let's keep them fixed.
         if not self.backend:
-            from ..backend import torch_backend as backend
+            from ..backend.torch_backend import backend
             self.backend = backend
         elif self.backend.name[0:5] != 'torch':
             raise RuntimeError('This backend is not supported.')
@@ -399,3 +399,6 @@ class Scattering1DTorch(ScatteringTorch):
                 S[k] = v.reshape(batch_shape + scattering_shape)
 
         return S
+
+    def loginfo(self):
+        return 'Torch frontend is used.'

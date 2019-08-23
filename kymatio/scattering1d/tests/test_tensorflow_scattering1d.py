@@ -56,7 +56,7 @@ class TestScattering1DTensorflow:
         config = tf.ConfigProto()
         sess = tf.Session(config=config)
         Sx = sess.run(S_tf, feed_dict={x_tf: x})
+        sess.close()
 
-        print(np.linalg.norm(Sx0-Sx)/np.linalg.norm(Sx))
-
+        Warning('Tolerance has been slightly lowered here...')
         assert np.allclose(Sx0, Sx, atol=1e-7) #round-off errors somewhere... but that's fine.

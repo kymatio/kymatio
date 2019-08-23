@@ -4,6 +4,9 @@ import tensorflow as tf
 from kymatio.scattering2d import Scattering2D
 import torch
 import numpy as np
+import pytest
+from kymatio.backend.fake_backend import backend as fake_backend
+
 class TestScattering2DTensorflow:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2 from interleaved
@@ -54,5 +57,15 @@ class TestScattering2DTensorflow:
         config = tf.ConfigProto()
         sess = tf.Session(config=config)
         Sg = sess.run(S_tf, feed_dict={x_tf: x})
+        sess.close()
 
         assert np.allclose(Sg, S)
+
+    def test_inputs(self):
+        with pytest.raises(RuntimeError) as ve:
+            scattering = Scattering2D(2, shape=(10, 10), frontend='tensorflow', backend=fake_backend)
+        assert 'not supported' in ve.value.args[0]
+
+        with pytest.raises(RuntimeError) as ve:
+            scattering = Scattering2D(10, shape=(10, 10), frontend='tensorflow')
+        assert 'smallest dimension' in ve.value.args[0]

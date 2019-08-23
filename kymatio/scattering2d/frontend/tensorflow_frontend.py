@@ -94,7 +94,7 @@ class Scattering2DTensorflow(ScatteringTensorflow):
     def build(self):
         self.M, self.N = self.shape
         if not self.backend:
-            from ..backend import tensorflow_backend as backend # is imported like a module and not a class?
+            from ..backend.tensorflow_backend import backend # is imported like a module and not a class?
             self.backend = backend
         elif self.backend.name[0:10] != 'tensorflow':
             raise RuntimeError('This backend is not supported.')
@@ -117,3 +117,6 @@ class Scattering2DTensorflow(ScatteringTensorflow):
     @tf.Module.with_name_scope
     def __call__(self, x):
         return self.scattering(x)
+
+    def loginfo(self):
+        return 'TensorFlow frontend is used.'

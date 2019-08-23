@@ -98,7 +98,7 @@ class Scattering2DTorch(ScatteringTorch):
         self.M, self.N = self.shape
         # use the default backend if no backend is provided
         if not self.backend:
-            from ..backend import torch_backend as backend
+            from ..backend.torch_backend import backend
             self.backend = backend
         elif self.backend.name[0:5] != 'torch':
             raise RuntimeError('This backend is not supported.')
@@ -189,3 +189,6 @@ class Scattering2DTorch(ScatteringTorch):
             raise RuntimeError('Padded tensor must be of spatial size (%i,%i)!' % (self.M_padded, self.N_padded))
 
         return self.scattering(input)
+
+    def loginfo(self):
+        return 'Torch frontend is used.'
