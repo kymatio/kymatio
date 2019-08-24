@@ -14,7 +14,7 @@ from ...frontend.torch_frontend import ScatteringTorch
 
 
 import torch
-from .filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
+from kymatio.scattering3d.filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
 
 from kymatio.scattering3d.core.scattering3d import scattering3d
 

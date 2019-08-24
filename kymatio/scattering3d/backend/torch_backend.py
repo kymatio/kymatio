@@ -240,8 +240,42 @@ def averaging(input_array, method, args, filter, compute_integrals):
         return _compute_standard_scattering_coefs(input_array)
 
 
+def subsample(input_array, j):
+    return input_array[..., ::2 ** j, ::2 ** j, ::2 ** j, :].contiguous()
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'Pad', 'finalize', 'modulus', 'modulus_rotation'])
+
+
+def compute_integrals(input_array, integral_powers):
+    """
+        Computes integrals of the input_array to the given powers.
+
+        Parameters
+        ----------
+        input_array: torch tensor
+            size (B, M, N, O), B batch_size, M, N, O spatial dims
+
+        integral_powers: list
+            list of P positive floats containing the p values used to
+            compute the integrals of the input_array to the power p (l_p norms)
+
+        Returns
+        -------
+        integrals: torch tensor
+            tensor of size (B, P) containing the integrals of the input_array
+            to the powers p (l_p norms)
+
+    """
+    integrals = torch.zeros(input_array.size(0), len(integral_powers), 1)
+    for i_q, q in enumerate(integral_powers):
+        integrals[:, i_q, 0] = (input_array ** q).view(
+                                        input_array.size(0), -1).sum(1).cpu()
+    return integrals
+
+
+
+
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'Pad', 'finalize',
+    'modulus', 'modulus_rotation', 'subsample', 'compute_integrals'])
 
 backend.name = 'torch'
 backend.cdgmm3d = cdgmm3d
@@ -249,3 +283,5 @@ backend.fft = fft
 backend.finalize = finalize
 backend.modulus = complex_modulus
 backend.modulus_rotation = modulus_rotation()
+backend.subsample = subsample
+backend.compute_integrals = compute_integrals

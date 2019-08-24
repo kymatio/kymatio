@@ -2,10 +2,10 @@
 import torch
 import os
 import numpy as np
-
+import pytest
 from kymatio import HarmonicScattering3D
 from kymatio.scattering3d import backend
-from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians, compute_integrals
+from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 
 
 backends = []
@@ -14,13 +14,13 @@ try:
     if torch.cuda.is_available():
         from skcuda import cublas
         import cupy
-        from kymatio.scattering1d.backend.torch_skcuda_backend import backend
+        from kymatio.scattering3d.backend.torch_skcuda_backend import backend
         backends.append(backend)
 except:
     pass
 
 try:
-    from kymatio.scattering1d.backend.torch_backend import backend
+    from kymatio.scattering3d.backend.torch_backend import backend
     backends.append(backend)
 except:
     pass
@@ -51,7 +51,7 @@ def test_FFT3d_central_freq_batch(device, backend):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_fft3d_error():
+def test_fft3d_error(backend, device):
     x = torch.zeros(8, 1)
     with pytest.raises(TypeError) as record:
         backend.fft(x)
@@ -182,7 +182,7 @@ def test_against_standard_computations(device, backend):
 
 
 
-    order_0 = compute_integrals(x, integral_powers)
+    order_0 = backend.compute_integrals(x, integral_powers)
     scattering.max_order = 2
     scattering.method = 'integral'
     scattering.integral_powers = integral_powers
@@ -269,7 +269,7 @@ def test_larger_scales(device, backend):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_scattering_methods():
+def test_scattering_methods(device, backend):
     shape = (32, 32, 32)
     J = 4
     L = 3
