@@ -1,53 +1,47 @@
 """Author: Louis Thiry, All rights reserved, 2018."""
-import torch
 import numpy as np
 import warnings
 
 
-def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
-                                       cuda=False):
+def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma):
     """
         Computes sum of 3D Gaussians centered at given positions and weighted
         with the given weights.
 
         Parameters
         ----------
-        grid : torch tensor
+        grid : numpy array
             numerical grid, size (3, M, N, O)
-        positions: torch tensor
+        positions: numpy array
             positions of the Gaussians, size (B, N_gaussians, 3)
             B batch_size, N_gaussians number or gaussians
-        positions: torch tensor
+        weights: numpy array
             weights of the Gaussians, size (B, N_gaussians)
             zero weights are assumed to be at the end since if a weight is zero
             all weights after are ignored
         sigma : float
             width parameter of the Gaussian
-        cuda: boolean, optional
-            if True, computations are done on CUDA GPU
 
         Returns
         -------
-        signals : torch tensor
+        signals : numpy array
             numpy array of size (B, M, N, O)
             B is the batch_size, M, N, O are the size of the signal
     """
-    _, M, N, O = grid.size()
-    signals = torch.zeros(positions.size(0), M, N, O)
-    if cuda:
-        signals = signals.cuda()
+    _, M, N, O = grid.shape
+    signals = np.zeros((positions.shape[0], M, N, O))
 
-    for i_signal in range(positions.size(0)):
-        n_points = positions[i_signal].size(0)
+    for i_signal in range(positions.shape[0]):
+        n_points = positions[i_signal].shape[0]
         for i_point in range(n_points):
             if weights[i_signal, i_point] == 0:
                 break
             weight = weights[i_signal, i_point]
             center = positions[i_signal, i_point]
-            signals[i_signal] += weight * torch.exp(
+            signals[i_signal] = np.add(signals[i_signal] , weight * np.exp(
                 -0.5 * ((grid[0] - center[0]) ** 2 +
                         (grid[1] - center[1]) ** 2 +
-                        (grid[2] - center[2]) ** 2) / sigma**2)
+                        (grid[2] - center[2]) ** 2) / sigma**2))
     return signals / ((2 * np.pi) ** 1.5 * sigma ** 3)
 
 def get_3d_angles(cartesian_grid):
