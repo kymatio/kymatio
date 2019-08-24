@@ -50,39 +50,6 @@ def generate_weighted_sum_of_gaussians(grid, positions, weights, sigma,
                         (grid[2] - center[2]) ** 2) / sigma**2)
     return signals / ((2 * np.pi) ** 1.5 * sigma ** 3)
 
-
-def subsample(input_array, j):
-    return input_array[..., ::2 ** j, ::2 ** j, ::2 ** j, :].contiguous()
-
-
-
-def compute_integrals(input_array, integral_powers):
-    """
-        Computes integrals of the input_array to the given powers.
-
-        Parameters
-        ----------
-        input_array: torch tensor
-            size (B, M, N, O), B batch_size, M, N, O spatial dims
-
-        integral_powers: list
-            list of P positive floats containing the p values used to
-            compute the integrals of the input_array to the power p (l_p norms)
-
-        Returns
-        -------
-        integrals: torch tensor
-            tensor of size (B, P) containing the integrals of the input_array
-            to the powers p (l_p norms)
-
-    """
-    integrals = torch.zeros(input_array.size(0), len(integral_powers), 1)
-    for i_q, q in enumerate(integral_powers):
-        integrals[:, i_q, 0] = (input_array ** q).view(
-                                        input_array.size(0), -1).sum(1).cpu()
-    return integrals
-
-
 def get_3d_angles(cartesian_grid):
     """
         Given a cartesian grid, computes the spherical coord angles (theta, phi).
