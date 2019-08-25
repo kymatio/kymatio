@@ -17,11 +17,10 @@ try:
 except:
     pass
 
-try:
-    from kymatio.scattering1d.backend.torch_backend import backend
-    backends.append(backend)
-except:
-    pass
+
+from kymatio.scattering1d.backend.torch_backend import backend
+backends.append(backend)
+
 
 
 if torch.cuda.is_available():
