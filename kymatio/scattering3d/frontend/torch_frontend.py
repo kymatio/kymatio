@@ -104,6 +104,14 @@ class HarmonicScattering3DTorch(ScatteringTorch):
         elif self.method == 'standard':
             self.average = lambda x, j: compute_global (x, self.points, j)
 
+    def scattering(self, input):
+        # TODO: Fill in needed code
+        #
+        return scattering3d(input_array, filters=self.filters,
+                gaussian_filters=self.gaussian_filters, rotation_covariant=self.rotation_covariant, points=self.points, 
+                integral_powers=self.integral_powers, L=self.L, J=self.J, method=self.method, max_order=self.max_order, 
+                backend=self.backend, averaging=self.averaging)
+
 
     def forward(self, input_array):
         """
@@ -142,5 +150,7 @@ class HarmonicScattering3DTorch(ScatteringTorch):
 
         input_array = self.backend.to_complex(input_array)
 
+        return self.scattering(input_array)
 
-        return scattering3d(input_array)
+    def loginfo(self):
+        return 'Torch front end is used.'

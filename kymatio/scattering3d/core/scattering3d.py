@@ -33,7 +33,7 @@ def scattering3d(_input, filters, gaussian_filters, rotation_covariant, points, 
             U_1_m = None
 
             if rotation_covariant:
-                for m in range(filters_l_j.size(0)):
+                for m in range(len(filters[l][j_1])):
                     U_1_c = cdgmm3d(U_1_c, filters[l][j_1][m])
                     U_1_c = fft(U_1_c, inverse=True)
                     U_1_m = modulus_rotation(U_1_c, U_1_m)
@@ -51,9 +51,9 @@ def scattering3d(_input, filters, gaussian_filters, rotation_covariant, points, 
                     U_2_m = None
 
                     if rotation_covariant:
-                        for m in range(filters_l_j.size(0)):
+                        for m in range(len(filters[l][j_1])):
                             U_2_c = cdgmm3d(U_2_c, filters[l][j_1][m])
-                            U_2_c = fft(U_1_c, inverse=True)
+                            U_2_c = fft(U_2_c, inverse=True)
                             U_2_m = modulus_rotation(U_2_c, U_2_m)
                     else:
                         U_2_c = cdgmm3d(U_2_c, filters[l][j_1][0])
