@@ -273,16 +273,14 @@ def compute_integrals(input_array, integral_powers):
 
 
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize',
-     'to_complex', 'modulus', 'modulus_rotation', 'averaging', 'subsample', 'compute_integrals'])
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',\
+                                 'compute_integrals'])
 
 backend.name = 'torch'
 backend.cdgmm3d = cdgmm3d
 backend.fft = fft
 backend.finalize = finalize
-backend.to_complex = to_complex
 backend.modulus = complex_modulus
 backend.modulus_rotation = modulus_rotation
-backend.averaging = averaging
 backend.subsample = subsample
 backend.compute_integrals = compute_integrals
