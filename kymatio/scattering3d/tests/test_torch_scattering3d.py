@@ -57,74 +57,75 @@ def test_fft3d_error(backend, device):
 @pytest.mark.parametrize("backend", backends)
 @pytest.mark.parametrize("inplace", [False, True])
 def test_cdgmm3d(device, backend, inplace):
-    # Not all backends currently implement the inplace variant
-    x = torch.zeros(2, 3, 4, 2).to(device)
-    x[...,0] = 2
-    x[...,1] = 3
+    if backend.name == 'torch' or device != 'cpu':
+        # Not all backends currently implement the inplace variant
+        x = torch.zeros(2, 3, 4, 2).to(device)
+        x[...,0] = 2
+        x[...,1] = 3
 
-    y = torch.zeros_like(x)
-    y[...,0] = 4
-    y[...,1] = 5
+        y = torch.zeros_like(x)
+        y[...,0] = 4
+        y[...,1] = 5
 
-    prod = torch.zeros_like(x)
-    prod[...,0] = x[...,0]*y[...,0] - x[...,1]*y[...,1]
-    prod[...,1] = x[...,0]*y[...,1] + x[...,1]*y[...,0]
+        prod = torch.zeros_like(x)
+        prod[...,0] = x[...,0]*y[...,0] - x[...,1]*y[...,1]
+        prod[...,1] = x[...,0]*y[...,1] + x[...,1]*y[...,0]
 
-    z = backend.cdgmm3d(x, y, inplace=inplace)
+        z = backend.cdgmm3d(x, y, inplace=inplace)
 
-    assert (z-prod).norm().cpu().item() < 1e-7
+        assert (z-prod).norm().cpu().item() < 1e-7
 
-    if inplace:
-        assert (x-z).norm().cpu().item() < 1e-7
+        if inplace:
+            assert (x-z).norm().cpu().item() < 1e-7
 
-    with pytest.warns(UserWarning) as record:
-        x = torch.randn((3, 4, 3, 2), device=device)
-        x = x[:,0:3,...]
+        with pytest.warns(UserWarning) as record:
+            x = torch.randn((3, 4, 3, 2), device=device)
+            x = x[:,0:3,...]
+            y = torch.randn((3, 3, 3, 2), device=device)
+            backend.cdgmm3d(x, y)
+        assert "A is converted" in record[0].message.args[0]
+
+        with pytest.warns(UserWarning) as record:
+            x = torch.randn((3, 3, 3, 2), device=device)
+            y = torch.randn((3, 4, 3, 2), device=device)
+            y = y[:,0:3,...]
+            backend.cdgmm3d(x, y)
+        assert "B is converted" in record[0].message.args[0]
+
+        with pytest.raises(RuntimeError) as record:
+            x = torch.randn((3, 3, 3, 2), device=device)
+            y = torch.randn((4, 4, 4, 2), device=device)
+            backend.cdgmm3d(x, y)
+        assert "not compatible" in record.value.args[0]
+
+        x = torch.randn((2, 3, 3, 3, 2), device=device)
         y = torch.randn((3, 3, 3, 2), device=device)
         backend.cdgmm3d(x, y)
-    assert "A is converted" in record[0].message.args[0]
 
-    with pytest.warns(UserWarning) as record:
-        x = torch.randn((3, 3, 3, 2), device=device)
-        y = torch.randn((3, 4, 3, 2), device=device)
-        y = y[:,0:3,...]
-        backend.cdgmm3d(x, y)
-    assert "B is converted" in record[0].message.args[0]
+        with pytest.raises(TypeError) as record:
+            x = torch.randn((3, 3, 3, 1), device=device)
+            y = torch.randn((3, 3, 3, 1), device=device)
+            backend.cdgmm3d(x, y)
+        assert "should be complex" in record.value.args[0]
 
-    with pytest.raises(RuntimeError) as record:
-        x = torch.randn((3, 3, 3, 2), device=device)
-        y = torch.randn((4, 4, 4, 2), device=device)
-        backend.cdgmm3d(x, y)
-    assert "not compatible" in record.value.args[0]
+        # This one is a little tricky. We can't have the number of dimensions be
+        # greater than 4 since that triggers the "not compatible" error.
+        with pytest.raises(RuntimeError) as record:
+            x = torch.randn((3, 3, 2), device=device)
+            y = torch.randn((3, 3, 2), device=device)
+            backend.cdgmm3d(x, y)
+        assert "must be simply a complex" in record.value.args[0]
 
-    x = torch.randn((2, 3, 3, 3, 2), device=device)
-    y = torch.randn((3, 3, 3, 2), device=device)
-    backend.cdgmm3d(x, y)
+        # Create a tensor that behaves like `torch.Tensor` but is technically a
+        # different type.
+        class FakeTensor(torch.Tensor):
+            pass
 
-    with pytest.raises(TypeError) as record:
-        x = torch.randn((3, 3, 3, 1), device=device)
-        y = torch.randn((3, 3, 3, 1), device=device)
-        backend.cdgmm3d(x, y)
-    assert "should be complex" in record.value.args[0]
-
-    # This one is a little tricky. We can't have the number of dimensions be
-    # greater than 4 since that triggers the "not compatible" error.
-    with pytest.raises(RuntimeError) as record:
-        x = torch.randn((3, 3, 2), device=device)
-        y = torch.randn((3, 3, 2), device=device)
-        backend.cdgmm3d(x, y)
-    assert "must be simply a complex" in record.value.args[0]
-
-    # Create a tensor that behaves like `torch.Tensor` but is technically a
-    # different type.
-    class FakeTensor(torch.Tensor):
-        pass
-
-    with pytest.raises(RuntimeError) as record:
-        x = FakeTensor(3, 3, 3, 2)
-        y = torch.randn(3, 3, 3, 2)
-        backend.cdgmm3d(x, y)
-    assert "should be same type" in record.value.args[0]
+        with pytest.raises(RuntimeError) as record:
+            x = FakeTensor(3, 3, 3, 2)
+            y = torch.randn(3, 3, 3, 2)
+            backend.cdgmm3d(x, y)
+        assert "should be same type" in record.value.args[0]
 
     if backend.name == 'torch_skcuda':
         x = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
@@ -154,6 +155,9 @@ def test_complex_modulus(backend, device):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_against_standard_computations(device, backend):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+
     file_path = os.path.abspath(os.path.dirname(__file__))
     data = torch.load(os.path.join(file_path, 'test_data_3d.pt'))
     x = data['x'].to(device)
