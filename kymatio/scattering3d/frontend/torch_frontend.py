@@ -6,19 +6,13 @@ import numbers
 
 __all__ = ['HarmonicScattering3D']
 
-import torch
-import numpy as np
-
 from ...frontend.torch_frontend import ScatteringTorch
 
 
 
 import torch
 from kymatio.scattering3d.filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
-
 from kymatio.scattering3d.core.scattering3d import scattering3d
-from kymatio.scattering3d.utils import _apply_filters
-
 
 
 
@@ -66,8 +60,7 @@ class HarmonicScattering3DTorch(ScatteringTorch):
         integration. Used with method == 'standard', method == 'integral'
 
     """
-    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
-                 rotation_covariant=True, method='standard', points=None,
+    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='standard', points=None,
                  integral_powers=(0.5, 1., 2.), backend=None):
         super(HarmonicScattering3DTorch, self).__init__()
         self.J = J
@@ -119,10 +112,8 @@ class HarmonicScattering3DTorch(ScatteringTorch):
             self.filters[k] = buffer_dict['tensor' + str(k)]
         self.gaussian_filters = buffer_dict['tensor_gaussian_filter']
 
-        return scattering3d(input_array, filters=self.filters,
-                gaussian_filters=self.gaussian_filters, rotation_covariant=self.rotation_covariant, points=self.points, 
-                integral_powers=self.integral_powers, L=self.L, J=self.J, method=self.method, max_order=self.max_order, 
-                backend=self.backend, averaging=self.averaging)
+        return scattering3d(input_array, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
+                            J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
 
 
     def forward(self, input_array):

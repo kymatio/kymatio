@@ -225,13 +225,17 @@ def compute_integrals(input_array, integral_powers):
     return integrals
 
 
+def aggregate(x):
+    return torch.stack([arr[..., 0] for arr in x], 1)
+
 backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',\
-                                 'compute_integrals', 'to_complex'])
+                                 'compute_integrals', 'to_complex', 'aggregate'])
 
 backend.name = 'torch'
 backend.cdgmm3d = cdgmm3d
 backend.fft = fft
 backend.to_complex = to_complex
+backend.aggregate = aggregate
 backend.finalize = finalize
 backend.modulus = complex_modulus
 backend.modulus_rotation = modulus_rotation

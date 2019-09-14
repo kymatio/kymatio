@@ -2,8 +2,9 @@ import torch
 import warnings
 from skcuda import cublas
 
-NAME = 'skcuda'
+BACKEND_NAME = 'torch_skcuda'
 
+from collections import namedtuple
 
 def iscomplex(input):
     return input.size(-1) == 2
@@ -87,3 +88,30 @@ def cdgmm3d(A, B, inplace=False):
     cublas.cublasSetStream(handle, stream)
     cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
     return C
+
+
+from .torch_backend import finalize
+from .torch_backend import modulus_rotation
+from .torch_backend import subsample
+from .torch_backend import compute_integrals
+from .torch_backend import _compute_local_scattering_coefs
+from .torch_backend import _compute_standard_scattering_coefs
+from .torch_backend import aggregate
+
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample', \
+                                     'compute_integrals', 'to_complex', 'aggregate'])
+
+
+backend.name = 'skcuda'
+backend.aggregate = aggregate
+backend.cdgmm3d = cdgmm3d
+backend.fft = fft
+backend.to_complex = to_complex
+backend.finalize = finalize
+backend.modulus = complex_modulus
+backend.modulus_rotation = modulus_rotation
+backend.subsample = subsample
+backend.compute_integrals = compute_integrals
+backend._compute_standard_scattering_coefs = _compute_standard_scattering_coefs
+backend._compute_local_scattering_coefs = _compute_local_scattering_coefs
+

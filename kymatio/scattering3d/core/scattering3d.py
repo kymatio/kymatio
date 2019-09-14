@@ -1,8 +1,6 @@
 # Authors: Louis Thiry, Georgios Exarchakis
 # Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
-import torch
-def scattering3d(_input, filters, gaussian_filters, rotation_covariant, points, integral_powers, L, J, method,\
-                 max_order, backend, averaging):
+def scattering3d(_input, filters, rotation_covariant, L, J, max_order, backend, averaging):
     """
     The forward pass of 3D solid harmonic scattering
 
@@ -20,7 +18,7 @@ def scattering3d(_input, filters, gaussian_filters, rotation_covariant, points, 
         first and second order scattering coefficients,
         concatenated along the feature axis
     """
-    finalize, fft, cdgmm3d, modulus, modulus_rotation = backend.finalize, backend.fft, backend.cdgmm3d, backend.modulus\
+    aggregate, finalize, fft, cdgmm3d, modulus, modulus_rotation = backend.aggregate, backend.finalize, backend.fft, backend.cdgmm3d, backend.modulus\
     , backend.modulus_rotation
 
     U_0_c = fft(_input)
@@ -59,10 +57,9 @@ def scattering3d(_input, filters, gaussian_filters, rotation_covariant, points, 
                     U_2_c = fft(U_2_m)
                     S_2_l = averaging(U_2_c, j_2)
                     s_order_2_l.append(S_2_l)
-        s_order_1.append(torch.stack([arr[..., 0] for arr in s_order_1_l], 1))
+        s_order_1.append(aggregate(s_order_1_l))
         if max_order == 2:
-            s_order_2.append(torch.stack([arr[..., 0] for arr in s_order_2_l], 1))
-
+            s_order_2.append(aggregate(s_order_2_l))
 
     return finalize(s_order_1, s_order_2, max_order)
 
