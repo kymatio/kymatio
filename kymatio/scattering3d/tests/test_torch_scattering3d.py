@@ -226,6 +226,9 @@ def test_against_standard_computations(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_solid_harmonic_scattering(device, backend):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+        
     # Compare value to analytical formula in the case of a single Gaussian
     centers = np.zeros((1, 1, 3))
     weights = np.ones((1, 1))
@@ -256,6 +259,9 @@ def test_solid_harmonic_scattering(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_larger_scales(device, backend):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+
     shape = (32, 32, 32)
     L = 3
     sigma_0 = 1
@@ -270,6 +276,9 @@ def test_larger_scales(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_scattering_methods(device, backend):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+
     shape = (32, 32, 32)
     J = 4
     L = 3
