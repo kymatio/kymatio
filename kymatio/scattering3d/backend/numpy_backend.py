@@ -1,20 +1,15 @@
-import torch
+import numpy as np
 import warnings
 
-BACKEND_NAME = 'torch'
+BACKEND_NAME = 'numpy'
 from collections import namedtuple
 
-def iscomplex(input):
-    return input.size(-1) == 2
-
 def complex_modulus(input_array):
-    modulus = torch.zeros_like(input_array)
-    modulus[..., 0] += torch.sqrt((input_array ** 2).sum(-1))
-    return modulus
+    return np.abs(input_array)
 
 
 
-def fft(input, inverse=False):
+def fft(x, direction='C2C', inverse=False):
     """
         fft of a 3d signal
 
@@ -31,69 +26,51 @@ def fft(input, inverse=False):
             True for computing the inverse FFT.
 .
     """
-    if not iscomplex(input):
-        raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
-    if inverse:
-        return torch.ifft(input, 3)
-    return torch.fft(input, 3)
+    if direction == 'C2R':
+        if not inverse:
+            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
+
+    if direction == 'C2R':
+        output = np.real(np.fft.ifftn(x, axes=(-3,-2,-1)))*x.shape[-1]*x.shape[-2]
+    elif direction == 'C2C':
+        if inverse:
+            output = np.fft.ifftn(x, axes=(-3,-2,-1))*x.shape[-1]*x.shape[-2]
+        else:
+            output = np.fft.fftn(x, axes=(-3,-2,-1))
+    return output
 
 
 def cdgmm3d(A, B, inplace=False):
     """
-    Pointwise multiplication of complex tensors.
-
-    ----------
-    A: complex torch tensor
-    B: complex torch tensor of the same size as A
-    inplace : boolean, optional
-        if set True, all the operations are performed inplace
-    Returns
-    -------
-    output : torch tensor of the same size as A containing the result of the 
-             elementwise complex multiplication of A with B 
+        Complex pointwise multiplication between (batched) tensor A and tensor B.
+        Parameters
+        ----------
+        A : tensor
+            A is a complex tensor of size (B, C, M, N, 2)
+        B : tensor
+            B is a complex tensor of size (M, N) or real tensor of (M, N)
+        inplace : boolean, optional
+            if set to True, all the operations are performed inplace
+        Returns
+        -------
+        C : tensor
+            output tensor of size (B, C, M, N, 2) such that:
+            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
-    if not A.is_contiguous():
-        warnings.warn("cdgmm3d: tensor A is converted to a contiguous array")
-        A = A.contiguous()
-    if not B.is_contiguous():
-        warnings.warn("cdgmm3d: tensor B is converted to a contiguous array")
-        B = B.contiguous()
 
-    if A.size()[-4:] != B.size():
-        raise RuntimeError(
-            'The tensors are not compatible for multiplication!')
+    if B.ndim != 3:
+        raise RuntimeError('The dimension of the second input must be 3.')
 
-    if not iscomplex(A) or not iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
-
-    if B.ndimension() != 4:
-        raise RuntimeError('The second tensor must be simply a complex array!')
-
-    if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
-    
-    if A.device.type != B.device.type:
-        raise TypeError('A and B must be both on GPU or both on CPU.')
-
-    if A.device.type == 'cuda':
-        if A.device.index != B.device.index:
-            raise TypeError('A and B must be on the same GPU!')
-
-
-
-
-    C = A.new(A.size())
-
-    C[..., 0] = A[..., 0] * B[..., 0] - A[..., 1] * B[..., 1]
-    C[..., 1] = A[..., 0] * B[..., 1] + A[..., 1] * B[..., 0]
-
-    return C if not inplace else A.copy_(C)
+    if inplace:
+        return np.multiply(A, B, out=A)
+    else:
+        return A * B
 
 def finalize(s_order_1, s_order_2, max_order):
-    s_order_1 = torch.stack(s_order_1, 2)
+    s_order_1 =   np.concatenate(s_order_1, axis=1)
     if max_order == 2:
-        s_order_2 = torch.stack(s_order_2, 2)
-        return torch.cat([s_order_1, s_order_2], dim=1)
+        s_order_2 = np.concatenate(s_order_2, axis=1)
+        return np.concatenate([s_order_1, s_order_2], axis=1)
     else:
         return s_order_1
 
@@ -127,11 +104,11 @@ def modulus_rotation(x, module):
 
     """
     if module is None:
-        module = torch.zeros_like(x)
+        module = np.zeros_like(x)
     else:
         module = module **2
-    module[..., 0] += (x**2).sum(-1)
-    return torch.sqrt(module)
+    module += np.abs(x)**2
+    return np.sqrt(module)
 
 
 
@@ -175,11 +152,11 @@ def _compute_local_scattering_coefs(input_array, low_pass, points):
             the values of the lowpass filtered moduli at the points given.
 
     """
-    local_coefs = torch.zeros(input_array.size(0), points.size(1), 1)
+    local_coefs = np.zeros((input_array.shape[0], points.shape[1]), dtype=np.complex64)
     convolved_input = cdgmm3d(input_array, low_pass)
     convolved_input = fft(convolved_input, inverse=True)
-    for i in range(input_array.size(0)):
-        for j in range(points[i].size(0)):
+    for i in range(input_array.shape[0]):
+        for j in range(points[i].shape[0]):
             x, y, z = points[i, j, 0], points[i, j, 1], points[i, j, 2]
             local_coefs[i, j, 0] = convolved_input[
                 i, int(x), int(y), int(z), 0]
@@ -212,20 +189,20 @@ def compute_integrals(input_array, integral_powers):
             to the powers p (l_p norms)
 
     """
-    integrals = torch.zeros(input_array.size(0), len(integral_powers), 1)
+    integrals = np.zeros((input_array.shape[0], len(integral_powers)),dtype=np.complex64)
     for i_q, q in enumerate(integral_powers):
-        integrals[:, i_q, 0] = (input_array ** q).view(
-                                        input_array.size(0), -1).sum(1).cpu()
+        integrals[:, i_q] = (input_array ** q).reshape((
+                                        input_array.shape[0], -1)).sum(axis=1)
     return integrals
 
 
 def aggregate(x):
-    return torch.stack([arr[..., 0] for arr in x], 1)
+    return np.concatenate([arr for arr in x], axis=1)
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',\
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',
                                  'compute_integrals', 'aggregate'])
 
-backend.name = 'torch'
+backend.name = 'numpy'
 backend.cdgmm3d = cdgmm3d
 backend.fft = fft
 backend.aggregate = aggregate

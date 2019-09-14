@@ -134,15 +134,6 @@ def test_cdgmm3d(device, backend, inplace):
             backend.cdgmm3d(x, y)
         assert "for cpu tensors" in record.value.args[0]
 
-
-@pytest.mark.parametrize("device", devices)
-@pytest.mark.parametrize("backend", backends)
-def test_to_complex(backend, device):
-    x = torch.randn(4, 3).to(device)
-    xc = backend.to_complex(x)
-    assert (xc[...,0] == x).all()
-    assert (xc[...,1] == 0).all()
-
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_complex_modulus(backend, device):
