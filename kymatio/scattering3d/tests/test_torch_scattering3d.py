@@ -4,7 +4,6 @@ import os
 import numpy as np
 import pytest
 from kymatio import HarmonicScattering3D
-from kymatio.scattering3d import backend
 from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 
 
@@ -28,7 +27,6 @@ if torch.cuda.is_available():
     devices = ['cuda', 'cpu']
 else:
     devices = ['cpu']
-
 
 
 def relative_difference(a, b):
@@ -135,11 +133,6 @@ def test_cdgmm3d(device, backend, inplace):
             backend.cdgmm3d(x, y)
         assert "for cpu tensors" in record.value.args[0]
 
-@pytest.mark.parametrize("device", devices)
-@pytest.mark.parametrize("backend", backends)
-def test_iscomplex(backend, device):
-    assert backend.iscomplex(torch.zeros(4, 2).to(device))
-    assert not backend.iscomplex(torch.zeros(4, 1).to(device))
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -154,7 +147,7 @@ def test_to_complex(backend, device):
 def test_complex_modulus(backend, device):
     x = torch.randn(4, 3, 2).to(device)
     xm = torch.sqrt(x[...,0] ** 2 + x[...,1] ** 2)
-    y = backend.complex_modulus(x)
+    y = backend.modulus(x)
     assert (y[...,0] - xm).norm() < 1e-7
     assert (y[...,1]).norm() < 1e-7
 
@@ -176,7 +169,9 @@ def test_against_standard_computations(device, backend):
     N, O = M, M
     sigma = 1
 
-    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma, backend=backend, frontend='torch').to(device)
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,
+            sigma_0=sigma, method='integral',
+            integral_powers=integral_powers, max_order=2, backend=backend, frontend='torch').to(device)
 
 
 
@@ -201,6 +196,7 @@ def test_against_standard_computations(device, backend):
     order_1 = order_1.permute(0, 3, 1, 2)
     order_2 = order_2.permute(0, 3, 1, 2)
 
+
     order_1 = order_1.reshape((batch_size, -1))
     order_2 = order_2.reshape((batch_size, -1))
 
@@ -209,12 +205,12 @@ def test_against_standard_computations(device, backend):
     order_0 = order_0.cpu().numpy().reshape((batch_size, -1))
     start = 0
     end = order_0.shape[1]
-    order_0_ref = scattering_ref[:,start:end].numpy()
+    order_0_ref = scattering_ref[:,start:end].cpu().numpy()
 
     orders_1_and_2 = orders_1_and_2.cpu().numpy().reshape((batch_size, -1))
     start = end
     end += orders_1_and_2.shape[1]
-    orders_1_and_2_ref = scattering_ref[:, start:end].numpy()
+    orders_1_and_2_ref = scattering_ref[:, start:end].cpu().numpy()
 
     order_0_diff_cpu = relative_difference(order_0_ref, order_0)
     orders_1_and_2_diff_cpu = relative_difference(
@@ -234,8 +230,10 @@ def test_solid_harmonic_scattering(device, backend):
     M, N, O, J, L = 128, 128, 128, 1, 3
     grid = np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1,2,3))
     x = torch.from_numpy(generate_weighted_sum_of_gaussians(grid, centers,
-        weights, sigma_gaussian)).to(device)
-    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma_0_wavelet).to(device)
+        weights, sigma_gaussian)).to(device).float()
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,
+            sigma_0=sigma_0_wavelet,max_order=1, method='integral',
+            integral_powers=[1], frontend='torch',backend=backend).to(device)
 
     scattering.max_order = 1
     scattering.method = 'integral'
@@ -274,7 +272,8 @@ def test_scattering_methods(device, backend):
     sigma_0 = 1
     x = torch.randn((1,) + shape).to(device)
 
-    scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0).to(device)
+    scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0,
+            frontend='torch',backend=backend).to(device)
 
     scattering.method = 'standard'
     Sx = scattering(x)

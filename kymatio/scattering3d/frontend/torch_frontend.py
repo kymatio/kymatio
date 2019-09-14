@@ -17,6 +17,8 @@ import torch
 from kymatio.scattering3d.filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
 
 from kymatio.scattering3d.core.scattering3d import scattering3d
+from kymatio.scattering3d.utils import _apply_filters
+
 
 
 
@@ -92,21 +94,31 @@ class HarmonicScattering3DTorch(ScatteringTorch):
         # transfer the filters from numpy to torch
         for k in range(len(self.filters)):
             self.filters[k] = torch.from_numpy(self.filters[k]).type(torch.Tensor)
+            self.register_buffer('tensor' + str(k), self.filters[k])
         self.gaussian_filters = torch.from_numpy(self.gaussian_filters).type(torch.Tensor)
-
+        self.register_buffer('tensor_gaussian_filter', self.gaussian_filters)
         methods = ['standard', 'local', 'integral']
         if (not self.method in methods):
             raise (ValueError('method must be in {}'.format(methods)))
-        if self.method == 'integral':
-            self.average =lambda x,j : compute_integrals(x[..., 0],j,'integral_powers')
+        if self.method == 'integral':\
+            self.averaging =lambda x,j: self.backend.compute_integrals(self.backend.fft(x, inverse=True)[...,0],self.integral_powers)
         elif self.method == 'local':
-            self.average = lambda x,j:_compute_local_scattering_coefs(x, self.points, j)
+            self.averaging = lambda x,j:\
+                self.backend._compute_local_scattering_coefs(x,
+                        self.guassian_filters[j+1], self.points)
         elif self.method == 'standard':
-            self.average = lambda x, j: compute_global (x, self.points, j)
+            self.averaging = lambda x, j:\
+                self.backend._compute_standard_scattering_coefs(x,
+                        self.gaussian_filters[j], self.J, self.backend.subsample)
 
-    def scattering(self, input):
-        # TODO: Fill in needed code
-        #
+
+
+    def scattering(self, input_array):
+        buffer_dict = dict(self.named_buffers())
+        for k in range(len(self.filters)):
+            self.filters[k] = buffer_dict['tensor' + str(k)]
+        self.gaussian_filters = buffer_dict['tensor_gaussian_filter']
+
         return scattering3d(input_array, filters=self.filters,
                 gaussian_filters=self.gaussian_filters, rotation_covariant=self.rotation_covariant, points=self.points, 
                 integral_powers=self.integral_powers, L=self.L, J=self.J, method=self.method, max_order=self.max_order, 
