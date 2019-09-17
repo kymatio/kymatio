@@ -31,10 +31,10 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifftn(x, axes=(-3,-2,-1)))*x.shape[-1]*x.shape[-2]
+        output = np.real(np.fft.ifftn(x, axes=(-3,-2,-1)))
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifftn(x, axes=(-3,-2,-1))*x.shape[-1]*x.shape[-2]
+            output = np.fft.ifftn(x, axes=(-3,-2,-1))
         else:
             output = np.fft.fftn(x, axes=(-3,-2,-1))
     return output
@@ -67,9 +67,11 @@ def cdgmm3d(A, B, inplace=False):
         return A * B
 
 def finalize(s_order_1, s_order_2, max_order):
-    s_order_1 =   np.concatenate(s_order_1, axis=1)
+    s_order_1 = np.concatenate([np.expand_dims(arr, 2) for arr in s_order_1], axis=2)
+
+
     if max_order == 2:
-        s_order_2 = np.concatenate(s_order_2, axis=1)
+        s_order_2 = np.concatenate([np.expand_dims(arr, 2) for arr in s_order_2], axis=2)
         return np.concatenate([s_order_1, s_order_2], axis=1)
     else:
         return s_order_1
@@ -112,7 +114,7 @@ def modulus_rotation(x, module):
 
 
 
-def _compute_standard_scattering_coefs(input_array, low_pass, J, subsample):
+def _compute_standard_scattering_coefs(input_array, filter, J, subsample):
     """
     Computes the convolution of input_array with a lowpass filter phi_J
     and downsamples by a factor J.
@@ -120,19 +122,23 @@ def _compute_standard_scattering_coefs(input_array, low_pass, J, subsample):
     Parameters
     ----------
     input_array: torch tensor of size (batchsize, M, N, O, 2)
+    filter: torch tensor
+        size (M, N, O, 2)
+
 
     Returns
     -------
     output: the result of input_array \\star phi_J downsampled by a factor J
 
     """
+    low_pass = filter[J]
     convolved_input = cdgmm3d(input_array, low_pass)
     convolved_input = fft(convolved_input, inverse=True)
     return subsample(convolved_input, J)
 
 
 
-def _compute_local_scattering_coefs(input_array, low_pass, points):
+def _compute_local_scattering_coefs(input_array, filter, j, points):
     """
     Computes the convolution of input_array with a lowpass filter phi_j and
     and returns the value of the output at particular points
@@ -141,10 +147,12 @@ def _compute_local_scattering_coefs(input_array, low_pass, points):
     ----------
     input_array: torch tensor
         size (batchsize, M, N, O, 2)
-    points: torch tensor
-        size (batchsize, number of points, 3)
+    filter: torch tensor
+        size (M, N, O, 2)
     j: int
         the lowpass scale j of phi_j
+    points: torch tensor
+        size (batchsize, number of points, 3)
 
     Returns
     -------
@@ -153,6 +161,7 @@ def _compute_local_scattering_coefs(input_array, low_pass, points):
 
     """
     local_coefs = np.zeros((input_array.shape[0], points.shape[1]), dtype=np.complex64)
+    low_pass = filter[j+1]
     convolved_input = cdgmm3d(input_array, low_pass)
     convolved_input = fft(convolved_input, inverse=True)
     for i in range(input_array.shape[0]):
@@ -197,7 +206,7 @@ def compute_integrals(input_array, integral_powers):
 
 
 def aggregate(x):
-    return np.concatenate([arr for arr in x], axis=1)
+    return np.concatenate([np.expand_dims(arr, 1) for arr in x], axis=1)
 
 backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',
                                  'compute_integrals', 'aggregate'])

@@ -106,11 +106,11 @@ class HarmonicScattering3DTorch(ScatteringTorch):
         elif self.method == 'local':
             self.averaging = lambda x,j:\
                 self.backend._compute_local_scattering_coefs(x,
-                        self.tensor_gaussian_filter[j+1], self.points)
+                        self.tensor_gaussian_filter, j, self.points)
         elif self.method == 'standard':
             self.averaging = lambda x, j:\
                 self.backend._compute_standard_scattering_coefs(x,
-                        self.tensor_gaussian_filter[j], self.J, self.backend.subsample)
+                        self.tensor_gaussian_filter, self.J, self.backend.subsample)
 
 
 

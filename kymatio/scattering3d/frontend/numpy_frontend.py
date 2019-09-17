@@ -89,16 +89,15 @@ class HarmonicScattering3DNumpy(ScatteringNumpy):
         if (not self.method in methods):
             raise (ValueError('method must be in {}'.format(methods)))
         if self.method == 'integral':\
-            self.averaging =lambda x,j: self.backend.compute_integrals(self.backend.fft(x, inverse=True)[...,0],
-                                                                       self.integral_powers)
+            self.averaging =lambda x,j: self.backend.compute_integrals(self.backend.fft(x, inverse=True), self.integral_powers)
         elif self.method == 'local':
             self.averaging = lambda x,j:\
                 self.backend._compute_local_scattering_coefs(x,
-                        self.gaussian_filters[j+1], self.points)
+                        self.gaussian_filters, j, self.points)
         elif self.method == 'standard':
             self.averaging = lambda x, j:\
                 self.backend._compute_standard_scattering_coefs(x,
-                        self.gaussian_filters[j], self.J, self.backend.subsample)
+                        self.gaussian_filters, self.J, self.backend.subsample)
 
 
     def scattering(self, input_array):
