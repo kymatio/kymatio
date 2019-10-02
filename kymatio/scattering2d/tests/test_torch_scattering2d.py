@@ -6,6 +6,7 @@ import torch
 import pytest
 from kymatio.scattering2d import Scattering2D
 from kymatio.backend.fake_backend import backend as fake_backend
+from torch.autograd import gradcheck
 
 
 backends = []
@@ -366,3 +367,13 @@ class TestScattering2DTorch:
         with pytest.raises(RuntimeError) as ve:
             scattering = Scattering2D(10, shape=(10, 10), frontend='torch')
         assert 'smallest dimension' in ve.value.args[0]
+
+    @pytest.mark.parametrize("backend", backends)
+    @pytest.mark.parametrize("device", devices)
+    def test_gradients(self, backend, device):
+        if backend.name == 'torch_skcuda':
+            pytest.skip("The gradients are currently not implemented with the skcuda backend.")
+        else:
+            scattering = Scattering2D(2, shape=(8, 8), backend=backend, frontend='torch').double()
+            x = torch.rand(2, 1, 8, 8).double().to(device).requires_grad_()
+            gradcheck(scattering, x)
