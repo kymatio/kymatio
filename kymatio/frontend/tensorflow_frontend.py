@@ -1,6 +1,7 @@
 import tensorflow as tf
+from packaging import version
 
-assert(int(tf.__version__[0])>=2, 'Please upgrade TensorFlow.')
+assert version.parse(tf.__version__)>=version.parse("2.0"), 'Please upgrade TensorFlow.'
 
 from abc import ABCMeta, abstractmethod
 
