@@ -14,7 +14,7 @@ Scattering transforms are translation-invariant signal representations implement
 Use Kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets,
 * integrates wavelet scattering in a deep learning architecture, and
-* runs seamlessly on CPU and GPU hardware.
+* runs seamlessly on CPU and GPU hardware, with many deep learning API.
 
 
 ### Flexibility
@@ -27,7 +27,7 @@ The resort to PyTorch tensors as inputs to Kymatio allows the programmer to back
 
 Each of these algorithms is written in a high-level imperative paradigm, making it portable to any Python library for array operations as long as it enables complex-valued linear algebra and a fast Fourier transform (FFT).
 
-Currently, there are four available backends, PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU only), TensorFlow (CPU and GPU) and NumPy (CPU).
+Currently, there are four available frontend-backends, PyTorch (CPU and GPU), PyTorch+SciKit-cuda (GPU only), TensorFlow (CPU and GPU) and NumPy (CPU).
 
 ### Scalability
 
@@ -56,13 +56,9 @@ Kymatio requires:
 
 
 ### Standard installation (on CPU hardware)
-We strongly recommend running Kymatio in an Anaconda environment, because this simplifies the installation of [PyTorch](https://pytorch.org). This is most easily achieved by running
-
-```
-conda install pytorch torchvision -c pytorch
-```
-
-Once PyTorch is installed, you may install the latest version of Kymatio using the package manager `pip`, which will automatically download Kymatio from the Python Package Index (PyPI):
+We strongly recommend running Kymatio in an Anaconda environment, because this simplifies the installation of other
+APIs. You may install the latest version of Kymatio using the package manager `pip`, which will automatically download
+Kymatio from the Python Package Index (PyPI):
 
 ```
 pip install kymatio
@@ -83,14 +79,24 @@ pip install scikit-cuda cupy
 
 #### TensorFlow
 
-#### Available backends: PyTorch and scikit-cuda
+#### A particular backend: PyTorch and scikit-cuda
 
 Kymatio is designed to operate on a variety of backends for tensor operations.
-The user may control the choice of backend at runtime by setting the environment variable `KYMATIO_BACKEND`, or by editing the Kymatio configuration file (`~/.config/kymatio/kymatio.cfg` on Linux).
+The user may control the choice of backend at runtime via for instance:
 
-The available backends are PyTorch (`torch`), PyTorch+scikit-cuda (`skcuda`), TensorFlow (`tensorflow`), and NumPy (`numpy`).
+```
+import torch
+from kymatio import Scattering2D
+from kymatio.scattering2d.backend.torch_skcuda_backend import backend
+scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend, frontend='torch')
+```
 
-NumPy is the default backend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), however, we recommend the scikit-cuda backend, which is substantially faster than NumPy.
+The available backends are PyTorch (`torch`), PyTorch+SciKit-cuda (`skcuda`), TensorFlow (`tensorflow`), and NumPy
+(`numpy`).
+
+NumPy is the default frontend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large
+images (e.g. ImageNet, of size 224x224), however, we recommend the `skcuda` backend, which is substantially faster
+than NumPy.
 
 ### Installation from source
 
@@ -101,6 +107,12 @@ pip install -r requirements.txt
 python setup.py install
 ```
 
+Developers can also install Kymatio via:
+
+```
+pip install -r requirements.txt
+python setup.py develop
+```
 
 ## Documentation
 
