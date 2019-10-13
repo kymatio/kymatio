@@ -1,6 +1,6 @@
 """
-3D scattering transform benchmark
-=================================
+3D scattering transform benchmark (PyTorch)
+===========================================
 We compute scattering transforms for volume maps of size `128`-by-`128`-by-
 `128`, with averaging scale `2**2 = 4` and maximum spherical harmonic
 order `L = 2`. The volumes are stacked into batches of size `batch_size = 8`

@@ -1,6 +1,6 @@
 """
-1D scattering transform benchmark
-=================================
+1D scattering transform benchmark (PyTorch)
+===========================================
 We compute scattering transforms for signals of length `T = 2**16`, with scale
 `J = 10` and `Q = 8` wavelets per octave. The signals are stacked into batches
 of size `batch_size = 64` and the transform is computed `10` times to get an
