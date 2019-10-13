@@ -158,7 +158,7 @@ class SubsampleFourier(object):
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
         
-        out = x.new(x.shape[0], x.shape[1], x..shape[2] // k, 2)
+        out = x.new(x.shape[0], x.shape[1], x.shape[2] // k, 2)
 
         kernel = '''
         #define NT ${T} / ${k}
