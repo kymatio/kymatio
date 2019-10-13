@@ -31,14 +31,14 @@ try:
     if torch.cuda.is_available():
         from skcuda import cublas
         import cupy
-        from kymatio.scattering1d.backend import torch_skcuda_backend
-        backends.append(torch_skcuda_backend)
+        from kymatio.scattering1d.backend.torch_skcuda_backend import backend
+        backends.append(backend)
 except:
     pass
 
 try:
-    from kymatio.scattering1d.backend import torch_backend
-    backends.append(torch_backend)
+    from kymatio.scattering1d.backend.torch_backend import backend
+    backends.append(backend)
 except:
     pass
 
@@ -103,10 +103,10 @@ x = torch.randn(batch_size, T, dtype=torch.float32)
 # executing.
 
 for backend in backends:
-    scattering = Scattering1D(J, shape=(T, ), Q, backend=backend, frontend='torch')
+    scattering = Scattering1D(J, shape=(T, ), Q=Q, backend=backend, frontend='torch')
     for device in devices:
         fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
-        print(fmt_str.format(backend.NAME, device.upper()))
+        print(fmt_str.format(backend.name, device.upper()))
 
         if not (device == 'cpu' and backend.name == 'torch_skcuda'):
             x, scattering = x.to(device), scattering.to(device)

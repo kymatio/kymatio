@@ -31,14 +31,14 @@ try:
     if torch.cuda.is_available():
         from skcuda import cublas
         import cupy
-        from kymatio.scattering2d.backend import torch_skcuda_backend
-        backends.append(torch_skcuda_backend)
+        from kymatio.scattering2d.backend.torch_skcuda_backend import backend
+        backends.append(backend)
 except:
     pass
 
 try:
-    from kymatio.scattering2d.backend import torch_backend
-    backends.append(torch_backend)
+    from kymatio.scattering2d.backend.torch_backend import backend
+    backends.append(backend)
 except:
     pass
 
