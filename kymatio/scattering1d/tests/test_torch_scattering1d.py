@@ -48,7 +48,7 @@ def test_simple_scatterings(device, backend, random_state=42):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             s = scattering(x0)
-        assert "cpu" in ve.value.args[0]
+        assert "cpu" in ve.value.args[0].lower()
     else:
         s = scattering(x0)
 
@@ -127,7 +127,7 @@ def test_sample_scattering(device, backend):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = scattering(x)
-        assert "cpu" in ve.value.args[0]
+        assert "cpu" in ve.value.args[0].lower()
     else:
         Sx = scattering(x)
         assert torch.allclose(Sx, Sx0)
@@ -178,7 +178,7 @@ def test_computation_Ux(backend, device, random_state=42):
         with pytest.raises(ValueError) as ve:
             scattering.vectorize = True
             scattering(x)
-        assert "mutually incompatible" in ve.value.args[0]
+        assert "mutually incompatible" in ve.value.args[0].lower()
 
 
 # Technical tests
@@ -234,7 +234,7 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_dico = scattering(x)
-            assert "cpu" in ve.value.args[0]
+            assert "cpu" in ve.value.args[0].lower()
         else:
             s_dico = scattering(x)
             s_dico = {k: s_dico[k].data for k in s_dico.keys()}
@@ -243,7 +243,7 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_vec = scattering(x)
-            assert "cpu" in ve.value.args[0]
+            assert "cpu" in ve.value.args[0].lower()
         else:
             s_vec = scattering(x)
             s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
@@ -332,15 +332,15 @@ def test_scattering_shape_input(backend):
     with pytest.raises(ValueError) as ve:
         shape = 5, 6
         s = Scattering1D(J, shape, Q, backend=backend, frontend='torch')
-    assert "exactly one element" in ve.value.args[0]
+    assert "exactly one element" in ve.value.args[0].lower()
 
 
     with pytest.raises(ValueError) as ve:
         shape = 1.5
         s = Scattering1D(J, shape, Q, backend=backend, frontend='torch')
         # should invoke the else branch
-    assert "1-tuple" in ve.value.args[0]
-    assert "integer" in ve.value.args[0]
+    assert "1-tuple" in ve.value.args[0].lower()
+    assert "integer" in ve.value.args[0].lower()
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -355,14 +355,14 @@ def test_batch_shape_agnostic(device, backend):
 
     with pytest.raises(ValueError) as ve:
         S(torch.zeros(()).to(device))
-    assert "at least one axis" in ve.value.args[0]
+    assert "at least one axis" in ve.value.args[0].lower()
 
     x = torch.zeros(shape).to(device)
 
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = S(x)
-        assert "cpu" in ve.value.args[0]
+        assert "cpu" in ve.value.args[0].lower()
     else:
         Sx = S(x)
 
