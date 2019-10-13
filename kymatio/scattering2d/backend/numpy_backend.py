@@ -224,7 +224,10 @@ def finalize(s0, s1, s2):
         Final output. Scattering transform.
 
     """
-    return np.concatenate([np.concatenate(s0, axis=-3), np.concatenate(s1, axis=-3), np.concatenate(s2, axis=-3)], axis=-3)
+    if len(s2) > 0:
+        return np.concatenate([np.concatenate(s0, axis=-3), np.concatenate(s1, axis=-3), np.concatenate(s2, axis=-3)], axis=-3)
+    else:
+        return np.concatenate([np.concatenate(s0, axis=-3), np.concatenate(s1, axis=-3)], axis=-3)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
 backend.name = 'numpy'

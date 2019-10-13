@@ -9,10 +9,7 @@ displays the zeroth-, first-, and second-order scattering coefficients.
 ###############################################################################
 # Preliminaries
 # -------------
-#
-# Since kymatio handles PyTorch arrays, we first import `torch`.
-
-import torch
+import numpy as np
 
 ###############################################################################
 # To handle audio file I/O, we import `os` and `scipy.io.wavfile`.
@@ -45,6 +42,7 @@ info_dataset = fetch_fsdd(verbose=True)
 file_path = os.path.join(info_dataset['path_dataset'],
                         sorted(info_dataset['files'])[0])
 _, x = scipy.io.wavfile.read(file_path)
+x = np.float32(np.copy(x))
 
 ###############################################################################
 # Once the recording is in memory, we convert it to a PyTorch Tensor, normalize
@@ -52,11 +50,11 @@ _, x = scipy.io.wavfile.read(file_path)
 # is the number of channels, and `T` is the number of samples in the recording.
 # In our case, we have only one signal in our batch, so `B = 1`. We also have
 # a single channel, so `C = 1`. Note that `C` is almost always `1`, for input
-# Tensors as this axis indexes the different scattering coefficients.
+# as this axis indexes the different scattering coefficients.
 
-x = torch.from_numpy(x).float()
-x /= x.abs().max()
-x = x.view(1, -1)
+m = np.amax(np.abs(x))
+x /= m
+x = x.reshape(1, -1)
 
 ###############################################################################
 # We are now ready to set up the parameters for the scattering transform.
@@ -94,7 +92,7 @@ Sx = scattering(x)
 # to each order (zeroth, first, or second). We do this by extracting the `meta`
 # information from the scattering object and constructing masks for each order.
 
-meta = Scattering1D.compute_meta_scattering(J, Q)
+meta = scattering.meta()
 order0 = (meta['order'] == 0)
 order1 = (meta['order'] == 1)
 order2 = (meta['order'] == 2)
@@ -106,7 +104,7 @@ order2 = (meta['order'] == 2)
 # numpy array using the `numpy()` method.
 
 plt.figure(figsize=(8, 2))
-plt.plot(x[0,:].numpy())
+plt.plot(x[0,:])
 plt.title('Original signal')
 
 ###############################################################################
@@ -114,7 +112,7 @@ plt.title('Original signal')
 # average of the original signal at the scale `2**J`.
 
 plt.figure(figsize=(8, 2))
-plt.plot(Sx[0,order0,:].numpy().ravel())
+plt.plot(Sx[0,order0,:].ravel())
 plt.title('Scattering Order 0')
 
 ###############################################################################
@@ -122,7 +120,7 @@ plt.title('Scattering Order 0')
 # and log-frequency.
 
 plt.figure(figsize=(8, 2))
-plt.imshow(Sx[0,order1,:].numpy(), aspect='auto')
+plt.imshow(Sx[0,order1,:], aspect='auto')
 plt.title('Scattering Order 1')
 
 ###############################################################################
@@ -132,7 +130,7 @@ plt.title('Scattering Order 1')
 # the vertical axis.
 
 plt.figure(figsize=(8, 2))
-plt.imshow(Sx[0,order2,:].numpy(), aspect='auto')
+plt.imshow(Sx[0,order2,:], aspect='auto')
 plt.title('Scattering Order 2')
 
 ###############################################################################
