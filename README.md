@@ -67,21 +67,57 @@ pip install kymatio
 Linux and macOS are the two officially supported operating systems.
 
 
-### GPU acceleration
+### Frontend
+
+#### NumPy
+
+To explicitely call the `numpy` frontend, simply do for instance:
+
+```
+import numpy as np
+from kymatio import Scattering2D
+scattering = Scattering2D(J=2, shape=(32, 32), frontend='numpy')
+```
 
 #### PyTorch
 
-To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your object to GPU. For extra speed, install the CUDA library and install the `scikit-cuda` dependency by running the following pip command:
+After installing the latest version of `torch`, you can call Scattering2d as a `nn.Module` via for instance:
+
+```
+import torch
+from kymatio import Scattering2D
+scattering = Scattering2D(J, shape=(M, N), L=L, frontend='torch')
+```
+
+#### TensorFlow
+
+After installing the latest version of `tensorflow`, you can call Scattering2d as a `tf.Module` via for instance:
+
+```
+import tensorflow as tf
+from kymatio import Scattering2D
+scattering = Scattering2D(J, shape=(M, N), L=L, frontend='tensorflow')
+```
+
+### GPU acceleration
+
+The available backends are PyTorch (`torch`), PyTorch+SciKit-cuda (`skcuda`), TensorFlow (`tensorflow`), and NumPy
+(`numpy`).
+
+NumPy is the default frontend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large
+images (e.g. ImageNet, of size 224x224), however, we recommend the `skcuda` backend, which is substantially faster
+than NumPy.
+
+#### PyTorch and scikit-cuda
+
+To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your
+object to GPU. Kymatio is designed to operate on a variety of backends for tensor operations. For extra speed, install
+the CUDA library and install the `skcuda` dependency by running the following pip command:
 
 ```
 pip install scikit-cuda cupy
 ```
 
-#### TensorFlow
-
-#### A particular backend: PyTorch and scikit-cuda
-
-Kymatio is designed to operate on a variety of backends for tensor operations.
 The user may control the choice of backend at runtime via for instance:
 
 ```
@@ -90,13 +126,6 @@ from kymatio import Scattering2D
 from kymatio.scattering2d.backend.torch_skcuda_backend import backend
 scattering = Scattering2D(J, shape=(M, N), L=L, backend=backend, frontend='torch')
 ```
-
-The available backends are PyTorch (`torch`), PyTorch+SciKit-cuda (`skcuda`), TensorFlow (`tensorflow`), and NumPy
-(`numpy`).
-
-NumPy is the default frontend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large
-images (e.g. ImageNet, of size 224x224), however, we recommend the `skcuda` backend, which is substantially faster
-than NumPy.
 
 ### Installation from source
 
