@@ -27,7 +27,8 @@ class Pad(object):
         if self.pre_pad:
             return x
         else:
-            paddings = [[0, 0]]*len(x.shape[:-2].as_list())
+            print(x.shape[:-2])
+            paddings = [[0, 0]]*len(x.shape[:-2])#.as_list())
             paddings += [[self.pad_size[0],self.pad_size[1]],[self.pad_size[2],self.pad_size[3]]]
             return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
 
@@ -139,7 +140,7 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = tf.real(tf.signal.ifft2d(x, name='irfft2d'))*tf.cast(x.shape[-1]*x.shape[-2],tf.float32)
+        output = tf.math.real(tf.signal.ifft2d(x, name='irfft2d'))*tf.cast(x.shape[-1]*x.shape[-2],tf.float32)
     elif direction == 'C2C':
         if inverse:
             output = tf.signal.ifft2d(x, name='ifft2d')*tf.cast(x.shape[-1]*x.shape[-2], tf.complex64)

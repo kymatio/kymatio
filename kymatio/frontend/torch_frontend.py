@@ -1,5 +1,8 @@
 from abc import ABCMeta, abstractmethod
+import torch
 import torch.nn as nn
+
+assert(int(torch.__version__[0])>=1, 'Please upgrade Torch.')
 
 class ScatteringTorch(nn.Module, metaclass=ABCMeta):
    def __init__(self):

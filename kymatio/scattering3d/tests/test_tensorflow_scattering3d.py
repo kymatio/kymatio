@@ -21,7 +21,6 @@ def test_against_standard_computations():
     M = x.shape[1]
 
     batch_size = x.shape[0]
-    x_tf = tf.compat.v1.placeholder(tf.complex64, shape=x.shape)
 
 
     N, O = M, M
@@ -29,13 +28,8 @@ def test_against_standard_computations():
     from kymatio.scattering3d.backend import tensorflow_backend
 
     scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma, method='integral', integral_powers=integral_powers, max_order=2, frontend='tensorflow')
-    S_tf  = scattering(x_tf)
-    
-    # Create session
-    config = tf.ConfigProto()
-    sess = tf.Session(config=config)
-    orders_1_and_2  = sess.run(S_tf, feed_dict={x_tf: x})
-    sess.close()
+    orders_1_and_2  = scattering(x).numpy()
+
     
     #order_0 = numpy_backend.compute_integrals(x, integral_powers)   
     # Extract orders and make order axis the slowest in accordance with
@@ -69,4 +63,4 @@ def test_against_standard_computations():
     orders_1_and_2_ref = scattering_ref[:,start: end]
 
     orders_1_and_2_diff_cpu = relative_difference(orders_1_and_2_ref, orders_1_and_2)
-    assert orders_1_and_2_diff_cpu < 1e-6, "Tensorflow : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
+    assert orders_1_and_2_diff_cpu < 5e-7, "Tensorflow : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)

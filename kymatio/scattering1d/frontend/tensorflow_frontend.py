@@ -312,7 +312,7 @@ class Scattering1DTensorflow(ScatteringTensorflow):
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
-        x = tf.reshape(x, [-1, 1] + signal_shape.as_list())
+        x = tf.reshape(x, (-1, 1,) + signal_shape)
 
         # get the arguments before calling the scattering
         # treat the arguments
@@ -336,7 +336,7 @@ class Scattering1DTensorflow(ScatteringTensorflow):
 
         if self.vectorize:
             scattering_shape = S.shape[-2:]
-            S = tf.reshape(S, batch_shape.as_list() + scattering_shape.as_list())
+            S = tf.reshape(S, batch_shape + scattering_shape)
         else:
             for k, v in S.items():
                 scattering_shape = v.shape[-2:]

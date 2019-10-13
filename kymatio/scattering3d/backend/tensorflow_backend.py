@@ -208,7 +208,7 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT')
 
     if direction == 'C2R':
-        output = tf.real(tf.signal.ifft3d(x, name='irfft3d'))
+        output = tf.math.real(tf.signal.ifft3d(x, name='irfft3d'))
     elif direction == 'C2C':
         if inverse:
             output = tf.signal.ifft3d(x, name='ifft3d')
@@ -243,8 +243,8 @@ def cdgmm3d(A, B, inplace=False):
 
     #C = A * B
     import numpy as np
-    Cr = tf.cast(tf.real(A)*np.real(B)-tf.imag(A)*np.imag(B),tf.complex64)
-    Ci = tf.cast(tf.real(A)*np.imag(B)+tf.imag(A)*np.real(B),tf.complex64)
+    Cr = tf.cast(tf.math.real(A)*np.real(B)-tf.math.imag(A)*np.imag(B),tf.complex64)
+    Ci = tf.cast(tf.math.real(A)*np.imag(B)+tf.math.imag(A)*np.real(B),tf.complex64)
 
     return Cr+1.0j*Ci
    

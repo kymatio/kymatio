@@ -91,7 +91,7 @@ class HarmonicScattering3DTensorflow(ScatteringTensorflow):
             raise (ValueError('method must be in {}'.format(methods)))
         if self.method == 'integral':
             self.averaging =lambda x,j:\
-                self.backend.compute_integrals(tf.real(self.backend.fft(x,
+                self.backend.compute_integrals(tf.math.real(self.backend.fft(x,
                     inverse=True)), self.integral_powers)
         elif self.method == 'local':
             self.averaging = lambda x,j:\

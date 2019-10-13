@@ -1,4 +1,7 @@
 import tensorflow as tf
+
+assert(int(tf.__version__[0])>=2, 'Please upgrade TensorFlow.')
+
 from abc import ABCMeta, abstractmethod
 
 class ScatteringTensorflow(tf.Module, metaclass=ABCMeta):

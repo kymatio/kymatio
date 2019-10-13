@@ -48,15 +48,7 @@ class TestScattering1DTensorflow:
         perm = np.concatenate(orders)
 
         Sx0 = Sx0[:, perm, :]
-
-        x_tf = tf.placeholder(tf.float32, x.shape)
-        S_tf = scattering(x_tf)
-
-        # Create session
-        config = tf.ConfigProto()
-        sess = tf.Session(config=config)
-        Sx = sess.run(S_tf, feed_dict={x_tf: x})
-        sess.close()
+        Sx = scattering(x)
 
         Warning('Tolerance has been slightly lowered here...')
         assert np.allclose(Sx0, Sx, atol=1e-7) #round-off errors somewhere... but that's fine.

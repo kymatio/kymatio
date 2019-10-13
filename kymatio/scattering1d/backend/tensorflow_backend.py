@@ -90,7 +90,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
-    paddings = [[0, 0]] * len(x.shape[:-1].as_list())
+    paddings = [[0, 0]] * len(x.shape[:-1])
     paddings += [[pad_left, pad_right]]
     return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
 
@@ -160,10 +160,10 @@ def real(x):
     Returns
     -------
     x_real : tensor
-        The tensor tf.real(x) which is interpreted as the real part of x.
+        The tensor tf.math.real(x) which is interpreted as the real part of x.
 
     """
-    return tf.real(x)
+    return tf.math.real(x)
 
 def fft1d_c2c(x):
     """Compute the 1D FFT of a complex signal.

@@ -22,4 +22,4 @@ RUN pip3 install \
       torchvision \
       scikit-cuda \
       cupy \
-      'tensorflow-gpu==1.14.*'
+      'tensorflow-gpu>=2.*'

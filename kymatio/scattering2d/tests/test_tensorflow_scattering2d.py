@@ -48,16 +48,9 @@ class TestScattering2DTensorflow:
         pre_pad = data['pre_pad']
         M, N = x.shape[2:]
 
-        # Create graph
-        x_tf = tf.placeholder(tf.float32, shape=[2, 3] + list(x.shape[2:]))
+        # Tf
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='tensorflow')
-        S_tf = scattering(x_tf)
-
-        # Create session
-        config = tf.ConfigProto()
-        sess = tf.Session(config=config)
-        Sg = sess.run(S_tf, feed_dict={x_tf: x})
-        sess.close()
+        Sg = scattering(x)
 
         assert np.allclose(Sg, S)
 
