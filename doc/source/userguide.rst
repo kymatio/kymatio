@@ -117,8 +117,20 @@ size:
 Frontends
 =========
 
+You can chose a frontend via the `frontend=` arguments available in all the Scattering constructors. By default, `numpy`
+frontend is used.
+
 NumPy
 -----
+
+To call this frontend, simply do::
+
+    import numpy as np
+    from kymatio import Scattering2D
+
+    scattering = Scattering2D(J=2, shape=(32, 32), frontend='numpy')
+
+This simply employs NumPy routines.
 
 Torch
 -----
@@ -161,6 +173,15 @@ scattering transform object back to the CPU by calling::
 TensorFlow
 ----------
 
+To call this frontend, simply do::
+
+    import tensorflow as tf
+    from kymatio import Scattering2D
+
+    scattering = Scattering2D(J=2, shape=(32, 32), frontend='tensorflow')
+
+This is a TensorFlow module that one can use directly in eager mode.
+
 Backend
 =======
 
@@ -187,7 +208,7 @@ Currently, two backends exist for ``torch``:
   improvement is currently small in 1D and 3D, but work is underway to further
   optimize this backend.
 
-The backend can be specified via::
+This backend can be specified via::
 
     import torch
     from kymatio import Scattering2D
