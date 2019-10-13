@@ -67,9 +67,7 @@ class Modulus(object):
             raise TypeError('The input and outputs should be complex.')
 
         if not x.is_contiguous():
-            warnings.warn("Modulus: tensor x is converted to a contiguous
-                    array.")
-            x = x.contiguous()
+            raise RuntimeError('Input should be contiguous.')
         
         out = x.new(x.shape)
         
@@ -158,9 +156,7 @@ class SubsampleFourier(object):
             raise TypeError('The input and outputs should be complex')
 
         if not x.is_contiguous():
-            warnings.warn("SubsampleFourier: tensor x is converted to a contiguous
-                    array.")
-            x = x.contiguous()
+            raise RuntimeError('Input should be contiguous.')
         
         out = x.new(x.shape[0], x.shape[1], x..shape[2] // k, 2)
 
