@@ -25,7 +25,22 @@ import time
 # Certain backends are also GPU-only, we we want to detect that before running
 # the benchmark.
 
-import kymatio.scattering1d.backend as backend
+backends = []
+
+try:
+    if torch.cuda.is_available():
+        from skcuda import cublas
+        import cupy
+        from kymatio.scattering1d.backend import torch_skcuda_backend
+        backends.append(torch_skcuda_backend)
+except:
+    pass
+
+try:
+    from kymatio.scattering1d.backend import torch_backend
+    backends.append(torch_backend)
+except:
+    pass
 
 ###############################################################################
 # Finally, we import the `Scattering1D` class that computes the scattering
@@ -64,19 +79,14 @@ times = 10
 # Determine which devices (CPU or GPU) that are supported by the current
 # backend.
 
-devices = []
-if backend.NAME == 'torch':
-    devices.append('cpu')
-if backend.NAME == 'torch' and torch.cuda.is_available():
-    devices.append('gpu')
-if backend.NAME == 'skcuda' and torch.cuda.is_available():
-    devices.append('gpu')
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
 
 ###############################################################################
 # Create the `Scattering1D` object using the given parameters and generate
 # some compatible test data with the specified batch size.
-
-scattering = Scattering1D(J, T, Q)
 
 x = torch.randn(batch_size, T, dtype=torch.float32)
 
@@ -92,33 +102,33 @@ x = torch.randn(batch_size, T, dtype=torch.float32)
 # and after the benchmark to make sure that all CUDA kernels have finished
 # executing.
 
-for device in devices:
-    fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
-    print(fmt_str.format(backend.NAME, device.upper()))
+for backend in backends:
+    scattering = Scattering1D(J, shape=(T, ), Q, backend=backend, frontend='torch')
+    for device in devices:
+        fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
+        print(fmt_str.format(backend.NAME, device.upper()))
 
-    if device == 'gpu':
-        scattering.cuda()
-        x = x.cuda()
-    else:
-        scattering.cpu()
-        x = x.cpu()
+        if not (device == 'cpu' and backend.name == 'torch_skcuda'):
+            x, scattering = x.to(device), scattering.to(device)
+        else:
+            continue
 
-    scattering.forward(x)
+        scattering(x)
 
-    if device == 'gpu':
-        torch.cuda.synchronize()
+        if device == 'gpu':
+            torch.cuda.synchronize()
 
-    t_start = time.time()
-    for _ in range(times):
-        scattering.forward(x)
+        t_start = time.time()
+        for _ in range(times):
+            scattering.forward(x)
 
-    if device == 'gpu':
-        torch.cuda.synchronize()
+        if device == 'gpu':
+            torch.cuda.synchronize()
 
-    t_elapsed = time.time() - t_start
+        t_elapsed = time.time() - t_start
 
-    fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
-    print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+        fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
+        print(fmt_str.format(t_elapsed, times, t_elapsed/times))
 
 ###############################################################################
 # The resulting output should be something like

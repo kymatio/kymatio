@@ -119,7 +119,7 @@ for backend in backends:
             continue
 
 
-        scattering.forward(x)
+        scattering(x)
 
         if device == 'cuda':
             torch.cuda.synchronize()
