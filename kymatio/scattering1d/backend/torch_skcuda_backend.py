@@ -25,7 +25,7 @@ def is_complex(input):
     return input.size(-1) == 2
 
 class Modulus(object):
-    """Stable complex modulus
+    """Stable complex modulus.
 
     This class implements a modulus transform for complex numbers which is
     stable with respect to very small inputs (z close to 0), avoiding
@@ -49,8 +49,8 @@ class Modulus(object):
         dimension, which is removed. This tensor is differentiable with respect
         to the input in a stable fashion (so gradent of the modulus at zero is
         zero).
-    """
 
+    """
     def __init__(self, backend='skcuda'):
         self.CUDA_NUM_THREADS = 1024
         self.backend = backend
@@ -92,7 +92,7 @@ class Modulus(object):
 modulus = Modulus()
 
 def modulus_complex(x):
-    """Compute the complex modulus
+    """Compute the complex modulus.
 
     Computes the modulus of x and stores the result in a complex tensor of the
     same size, with the real part equal to the modulus and the imaginary part
@@ -108,11 +108,12 @@ def modulus_complex(x):
     res : tensor
         A tensor with the same dimensions as x, such that res[..., 0] contains
         the complex modulus of x, while res[..., 1] = 0.
+
     """
     return modulus(x)
 
 class SubsampleFourier(object):
-    """Subsampling in the Fourier domain
+    """Subsampling in the Fourier domain.
 
     Subsampling in the temporal domain amounts to periodization in the Fourier
     domain, so the input is periodized according to the subsampling factor.
@@ -135,9 +136,10 @@ class SubsampleFourier(object):
 
     Returns
     -------
-    res : tensor
+    out : tensor
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
+
     """
     def __init__(self, backend='skcuda'):
         self.block = (1024, 1, 1)
@@ -195,7 +197,7 @@ class SubsampleFourier(object):
 subsamplefourier = SubsampleFourier()
 
 def subsample_fourier(x, k):
-    """Subsampling in the Fourier domain
+    """Subsampling in the Fourier domain.
 
     Subsampling in the temporal domain amounts to periodization in the Fourier
     domain, so the input is periodized according to the subsampling factor.
@@ -216,6 +218,7 @@ def subsample_fourier(x, k):
     res : tensor
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
+
     """
     return subsamplefourier(x,k)
 

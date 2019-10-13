@@ -12,7 +12,7 @@ def is_complex(input):
     return input.size(-1) == 2
 
 class ModulusStable(Function):
-    """Stable complex modulus
+    """Stable complex modulus.
 
     This class implements a modulus transform for complex numbers which is
     stable with respect to very small inputs (z close to 0), avoiding
@@ -36,8 +36,8 @@ class ModulusStable(Function):
         dimension, which is removed. This tensor is differentiable with respect
         to the input in a stable fashion (so gradent of the modulus at zero is
         zero).
-    """
 
+    """
     @staticmethod
     def forward(ctx, x):
         """Forward pass of the modulus.
@@ -59,6 +59,7 @@ class ModulusStable(Function):
         output : tensor
             This contains the modulus computed along the last axis, with that
             axis removed.
+
         """
         ctx.p = 2
         ctx.dim = -1
@@ -71,7 +72,7 @@ class ModulusStable(Function):
 
     @staticmethod
     def backward(ctx, grad_output):
-        """Backward pass of the modulus
+        """Backward pass of the modulus.
 
         This is a static method which does not require an instantiation of the
         class.
@@ -90,6 +91,7 @@ class ModulusStable(Function):
         -------
         grad_input : tensor
             The gradient with respect to the input.
+
         """
         x, output = ctx.saved_tensors
         if ctx.dim is not None and ctx.keepdim is False and x.dim() != 1:
@@ -107,7 +109,7 @@ class ModulusStable(Function):
 modulus = ModulusStable.apply
 
 def modulus_complex(x):
-    """Compute the complex modulus
+    """Compute the complex modulus.
 
     Computes the modulus of x and stores the result in a complex tensor of the
     same size, with the real part equal to the modulus and the imaginary part
@@ -123,6 +125,7 @@ def modulus_complex(x):
     res : tensor
         A tensor with the same dimensions as x, such that res[..., 0] contains
         the complex modulus of x, while res[..., 1] = 0.
+
     """
     if not is_complex(x):
         raise TypeError('The input should be complex.')
@@ -135,7 +138,7 @@ def modulus_complex(x):
     return res
 
 def subsample_fourier(x, k):
-    """Subsampling in the Fourier domain
+    """Subsampling in the Fourier domain.
 
     Subsampling in the temporal domain amounts to periodization in the Fourier
     domain, so the input is periodized according to the subsampling factor.
@@ -156,6 +159,7 @@ def subsample_fourier(x, k):
     res : tensor
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
+
     """
     if not is_complex(x):
         raise TypeError('The input should be complex.')
@@ -165,7 +169,7 @@ def subsample_fourier(x, k):
     return res
 
 def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
-    """Pad real 1D tensors
+    """Pad real 1D tensors.
 
     1D implementation of the padding function for real PyTorch tensors.
 
@@ -178,7 +182,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
         Amount to add on the left of the tensor (at the beginning of the
         temporal axis).
     pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
+        Amount to add on the right of the tensor (at the end of the temporal
         axis).
     mode : string, optional
         Padding mode. Options include 'constant' and 'reflect'. See the
@@ -191,6 +195,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     -------
     res : tensor
         The tensor passed along the third dimension.
+
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
@@ -201,7 +206,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     return res
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
-    """Pad real 1D tensors and map to complex
+    """Pad real 1D tensors and map to complex.
 
     Padding which allows to simultaneously pad in a reflection fashion and map
     to complex if necessary.
@@ -215,7 +220,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
         Amount to add on the left of the tensor (at the beginning of the
         temporal axis).
     pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
+        Amount to add on the right of the tensor (at the end of the temporal
         axis).
     to_complex : boolean, optional
         Whether to map the resulting padded tensor to a complex type (seen
@@ -227,6 +232,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
         A padded signal, possibly transformed into a four-dimensional tensor
         with the last axis of size 2 if to_complex is True (this axis
         corresponds to the real and imaginary parts).
+
     """
     output = pad_1d(x, pad_left, pad_right, mode='reflect')
     if to_complex:
@@ -234,7 +240,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
     return output
 
 def unpad(x, i0, i1):
-    """Unpad real 1D tensor
+    """Unpad real 1D tensor.
 
     Slices the input tensor at indices between i0 and i1 along the last axis.
 
@@ -251,11 +257,12 @@ def unpad(x, i0, i1):
     -------
     x_unpadded : tensor
         The tensor x[..., i0:i1].
+
     """
     return x[..., i0:i1]
 
 def real(x):
-    """Real part of complex tensor
+    """Real part of complex tensor.
 
     Takes the real part of a complex tensor, where the last axis corresponds
     to the real and imaginary parts.
@@ -269,11 +276,12 @@ def real(x):
     -------
     x_real : tensor
         The tensor x[..., 0] which is interpreted as the real part of x.
+
     """
     return x[..., 0]
 
 def fft1d_c2c(x):
-    """Compute the 1D FFT of a complex signal
+    """Compute the 1D FFT of a complex signal.
 
     Input
     -----
@@ -286,17 +294,18 @@ def fft1d_c2c(x):
     x_f : tensor
         A tensor of the same size as x containing its Fourier transform in the
         standard PyTorch FFT ordering.
+
     """
     return torch.fft(x, signal_ndim=1)
 
 def ifft1d_c2c(x):
-    """Compute the normalized 1D inverse FFT of a complex signal
+    """Compute the normalized 1D inverse FFT of a complex signal.
 
     Input
     -----
     x_f : tensor
         A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
-        x[..., 1] is the imaginary part. The frequencies are assumed to be in
+        x_f[..., 1] is the imaginary part. The frequencies are assumed to be in
         the standard PyTorch FFT ordering.
 
     Returns
@@ -304,11 +313,28 @@ def ifft1d_c2c(x):
     x : tensor
         A tensor of the same size of x_f containing the normalized inverse
         Fourier transform of x_f.
+
     """
     return torch.ifft(x, signal_ndim=1)
 
 def finalize(s0, s1, s2):
-    """ Concatenate scattering of different orders"""
+    """Concatenate scattering of different orders.
+
+    Parameters
+    ----------
+    s0 : tensor
+        Tensor which contains the zeroth order scattering coefficents.
+    s1 : tensor
+        Tensor which contains the first order scattering coefficents.
+    s2 : tensor
+        Tensor which contains the second order scattering coefficents.
+    
+    Returns
+    -------
+    s : tensor
+        Final output. Scattering transform.
+
+    """
     if len(s2)>0:
         return torch.cat([torch.cat(s0, -2), torch.cat(s1, -2), torch.cat(s2, -2)], -2)
     else:

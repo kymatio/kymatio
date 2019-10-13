@@ -4,27 +4,198 @@ import warnings
 BACKEND_NAME = 'numpy'
 from collections import namedtuple
 
-def complex_modulus(input_array):
-    return np.abs(input_array)
+def complex_modulus(x):
+    """Compute the complex modulus.
 
-
-
-def fft(x, direction='C2C', inverse=False):
-    """
-        fft of a 3d signal
-
-        Example
+        Computes the modulus of x and stores the result in a real numpy array.
+        
+        Parameters
+        ----------
+        x : numpy array
+            A complex numpy array.
+    
+        Returns
         -------
-        x = torch.randn(128, 32, 32, 32, 2)
-        x_fft = fft(x, inverse=True)
+        norm : numpy array
+            A real numpy array with the same dimensions as x. Real part
+            contains complex modulus of x.
+    
+    """
+    return np.abs(x)
+
+
+
+def modulus_rotation(x, module):
+    """Used for computing rotation invariant scattering transform coefficents.
+ 
+        Parameters
+        ----------
+        x : tensor
+            Size (batchsize, M, N, O).
+        module : tensor
+            Tensor that holds the overall sum.
+   
+        Returns
+        -------
+        output : numpy array
+            Numpy array of the same size as input_array. It holds the output of
+            the operation::
+    
+            $\\sqrt{\\sum_m (\\text{input}_\\text{array} \\star \\psi_{j,l,m})^2)}$
+    
+            which is covariant to 3D translations and rotations.
+    
+   """
+    if module is None:
+        module = np.zeros_like(x)
+    else:
+        module = module **2
+    module += np.abs(x)**2
+    return np.sqrt(module)
+
+
+
+def _compute_standard_scattering_coefs(input_array, filter, J, subsample):
+    """Computes convolution and downsamples.
+    
+        Computes the convolution of input_array with a lowpass filter phi_J
+        and downsamples by a factor J.
+    
+        Parameters
+        ----------
+        input_array : numpy array 
+            Size (batchsize, M, N, O).
+        filter : numpy array
+            Size (M, N, O).
+        J : int
+            Low pass scale of phi_J.
+        subsample : function
+            Subsampling function.
+    
+        Returns
+        -------
+        output : numpy array 
+            The result of input_array \\star phi_J downsampled by a factor J.
+    
+    """
+    low_pass = filter[J]
+    convolved_input = cdgmm3d(input_array, low_pass)
+    convolved_input = fft(convolved_input, inverse=True)
+    return subsample(convolved_input, J)
+
+
+def _compute_local_scattering_coefs(input_array, filter, j, points):
+    """Compute convolution and returns particular points.
+
+        Computes the convolution of input_array with a lowpass filter phi_j and
+        and returns the value of the output at particular points.
 
         Parameters
         ----------
-        input : tensor
-            complex input for the FFT
+        input_array : numpy array
+            Size (batchsize, M, N, O, 2).
+        filter : numpy array
+            Size (M, N, O, 2)
+        j : int
+            The lowpass scale j of phi_j
+        points : numpy array
+            Size (batchsize, number of points, 3)
+
+        Returns
+        -------
+        output : numpy array
+            Numpy array of size (batchsize, number of points, 1) with the values
+            of the lowpass filtered moduli at the points given.
+            
+    """
+    local_coefs = np.zeros((input_array.shape[0], points.shape[1]), dtype=np.complex64)
+    low_pass = filter[j+1]
+    convolved_input = cdgmm3d(input_array, low_pass)
+    convolved_input = fft(convolved_input, inverse=True)
+    for i in range(input_array.shape[0]):
+        for j in range(points[i].shape[0]):
+            x, y, z = points[i, j, 0], points[i, j, 1], points[i, j, 2]
+            local_coefs[i, j, 0] = convolved_input[
+                i, int(x), int(y), int(z), 0]
+    return local_coefs
+
+
+
+def subsample(input_array, j):
+    """Downsamples.
+
+        Parameters
+        ----------
+        input_array : numpy array
+            Input numpy array.
+        j : int
+            Downsampling factor.
+
+        Returns
+        -------
+        out : numpy array
+            Downsampled numpy array. 
+        
+    """
+    return np.ascontiguousarray(input_array[..., ::2 ** j, ::2 ** j, ::2 ** j])
+
+
+def compute_integrals(input_array, integral_powers):
+    """Computes integrals.
+
+        Computes integrals of the input_array to the given powers.
+
+        Parameters
+        ----------
+        input_array: numpy array
+            Size (B, M, N, O), B is batch_size, M, N, O are spatial dims.
+
+        integral_powers: list
+            List of P positive floats containing the p values used to
+            compute the integrals of the input_array to the power p (l_p
+            norms).
+
+        Returns
+        -------
+        integrals: numpy array
+            Numpy array of size (B, P) containing the integrals of the input_array
+            to the powers p (l_p norms).
+
+    """
+    integrals = np.zeros((input_array.shape[0], len(integral_powers)),dtype=np.complex64)
+    for i_q, q in enumerate(integral_powers):
+        integrals[:, i_q] = (input_array ** q).reshape((
+                                        input_array.shape[0], -1)).sum(axis=1)
+    return integrals
+
+
+def fft(x, direction='C2C', inverse=False):
+    """FFT of a 3d signal.
+
+        Example
+        -------
+        x = numpy.random.randn(128, 32, 32, 32, 2).view(numpy.complex64)
+        x_fft = fft(x)
+        x_ifft = fft(x, inverse=True)
+
+        Parameters
+        ----------
+        input : numpy array
+            Complex input for the FFT.
         inverse : bool
             True for computing the inverse FFT.
-.
+
+        Raises
+        ------
+        RuntimeError
+            Raised in event we attempt to map from complex to real without
+            inverse FFT.
+
+        Returns
+        -------
+        output : numpy array
+            Result of FFT or IFFT.
+
     """
     if direction == 'C2R':
         if not inverse:
@@ -41,23 +212,32 @@ def fft(x, direction='C2C', inverse=False):
 
 
 def cdgmm3d(A, B, inplace=False):
-    """
-        Complex pointwise multiplication between (batched) tensor A and tensor B.
+    """Complex pointwise multiplication.
+
+        Complex pointwise multiplication between (batched) numpy array A and
+        numpy array B.
+
         Parameters
         ----------
-        A : tensor
-            A is a complex tensor of size (B, C, M, N, 2)
-        B : tensor
-            B is a complex tensor of size (M, N) or real tensor of (M, N)
+        A : numpy array
+            A is a complex numpy array of size (B, C, M, N).
+        B : numpy array
+            B is a complex or real numpy array of size (M, N).
         inplace : boolean, optional
-            if set to True, all the operations are performed inplace
+            If set to True, all the operations are performed inplace.
+
+        Raises
+        ------
+        RuntimeError
+            Raised in event B is not three dimensional.
+        
         Returns
         -------
-        C : tensor
-            output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
-    """
+        C : numpy array
+            Output numpy array of size (B, C, M, N) such that:
+            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
+    """
     if B.ndim != 3:
         raise RuntimeError('The dimension of the second input must be 3.')
 
@@ -66,10 +246,26 @@ def cdgmm3d(A, B, inplace=False):
     else:
         return A * B
 
+
 def finalize(s_order_1, s_order_2, max_order):
+    """Concatenate scattering of different orders.
+    
+        Parameters
+        ----------
+        s0 : numpy array
+            numpy array which contains the zeroth order scattering coefficents.
+        s1 : numpy array
+            numpy array which contains the first order scattering coefficents.
+        s2 : numpy array
+            numpy array which contains the second order scattering coefficents.
+        
+        Returns
+        -------
+        s : numpy array
+            Final output. Scattering transform.
+    
+        """
     s_order_1 = np.concatenate([np.expand_dims(arr, 2) for arr in s_order_1], axis=2)
-
-
     if max_order == 2:
         s_order_2 = np.concatenate([np.expand_dims(arr, 2) for arr in s_order_2], axis=2)
         return np.concatenate([s_order_1, s_order_2], axis=1)
@@ -77,135 +273,20 @@ def finalize(s_order_1, s_order_2, max_order):
         return s_order_1
 
 
-
-def modulus_rotation(x, module):
-    """
-    Computes the convolution with a set of solid harmonics of scale j and
-    degree l and returns the square root of their squared sum over m
-
-    Parameters
-    ----------
-    input_array : tensor
-        size (batchsize, M, N, O, 2)
-    l : int
-        solid harmonic degree l
-
-    j : int
-        solid harmonic scale j
-
-    Returns
-    -------
-
-    output : torch tensor
-        tensor of the same size as input_array. It holds the output of
-        the operation::
-
-        $\\sqrt{\\sum_m (\\text{input}_\\text{array} \\star \\psi_{j,l,m})^2)}$
-
-        which is covariant to 3D translations and rotations
-
-    """
-    if module is None:
-        module = np.zeros_like(x)
-    else:
-        module = module **2
-    module += np.abs(x)**2
-    return np.sqrt(module)
-
-
-
-def _compute_standard_scattering_coefs(input_array, filter, J, subsample):
-    """
-    Computes the convolution of input_array with a lowpass filter phi_J
-    and downsamples by a factor J.
-
-    Parameters
-    ----------
-    input_array: torch tensor of size (batchsize, M, N, O, 2)
-    filter: torch tensor
-        size (M, N, O, 2)
-
-
-    Returns
-    -------
-    output: the result of input_array \\star phi_J downsampled by a factor J
-
-    """
-    low_pass = filter[J]
-    convolved_input = cdgmm3d(input_array, low_pass)
-    convolved_input = fft(convolved_input, inverse=True)
-    return subsample(convolved_input, J)
-
-
-
-def _compute_local_scattering_coefs(input_array, filter, j, points):
-    """
-    Computes the convolution of input_array with a lowpass filter phi_j and
-    and returns the value of the output at particular points
-
-    Parameters
-    ----------
-    input_array: torch tensor
-        size (batchsize, M, N, O, 2)
-    filter: torch tensor
-        size (M, N, O, 2)
-    j: int
-        the lowpass scale j of phi_j
-    points: torch tensor
-        size (batchsize, number of points, 3)
-
-    Returns
-    -------
-    output: torch tensor of size (batchsize, number of points, 1) with
-            the values of the lowpass filtered moduli at the points given.
-
-    """
-    local_coefs = np.zeros((input_array.shape[0], points.shape[1]), dtype=np.complex64)
-    low_pass = filter[j+1]
-    convolved_input = cdgmm3d(input_array, low_pass)
-    convolved_input = fft(convolved_input, inverse=True)
-    for i in range(input_array.shape[0]):
-        for j in range(points[i].shape[0]):
-            x, y, z = points[i, j, 0], points[i, j, 1], points[i, j, 2]
-            local_coefs[i, j, 0] = convolved_input[
-                i, int(x), int(y), int(z), 0]
-    return local_coefs
-
-
-
-def subsample(input_array, j):
-    return input_array[..., ::2 ** j, ::2 ** j, ::2 ** j].contiguous()
-
-
-
-def compute_integrals(input_array, integral_powers):
-    """
-        Computes integrals of the input_array to the given powers.
+def aggregate(x):
+    """Aggregation of scattering coefficents.
 
         Parameters
         ----------
-        input_array: torch tensor
-            size (B, M, N, O), B batch_size, M, N, O spatial dims
-
-        integral_powers: list
-            list of P positive floats containing the p values used to
-            compute the integrals of the input_array to the power p (l_p norms)
+        x : list 
+            List of numpy arrays. 
 
         Returns
         -------
-        integrals: torch tensor
-            tensor of size (B, P) containing the integrals of the input_array
-            to the powers p (l_p norms)
+        out : numpy array
+            Stacked scattering coefficents.
 
     """
-    integrals = np.zeros((input_array.shape[0], len(integral_powers)),dtype=np.complex64)
-    for i_q, q in enumerate(integral_powers):
-        integrals[:, i_q] = (input_array ** q).reshape((
-                                        input_array.shape[0], -1)).sum(axis=1)
-    return integrals
-
-
-def aggregate(x):
     return np.concatenate([np.expand_dims(arr, 1) for arr in x], axis=1)
 
 backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',

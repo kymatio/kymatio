@@ -16,18 +16,27 @@ def isreal(x):
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
-        """
-            Padding which allows to simultaneously pad in a reflection fashion
+        """Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
 
             Parameters
             ----------
             pad_size : list of 4 integers
-                size of padding to apply [top, bottom, left, right].
+                Size of padding to apply [top, bottom, left, right].
             input_size : list of 2 integers
                 size of the original signal [height, width].
+            pre_pad : boolean, optional
+                If set to true, then there is no padding, one simply adds the imaginary part.
+
+            Attributes
+            ----------
+            pad_size : list of 4 integers 
+                Size of padding to apply [top, bottom, left, right].
+            input_size : list of 2 integers
+                Size of the original signal [height, width].
             pre_pad : boolean
-                if set to true, then there is no padding, one simply adds the imaginary part.
+                If set to true, then there is no padding, one simply adds the imaginary part.
+                
         """
         self.pre_pad = pre_pad
         self.pad_size = pad_size
@@ -36,6 +45,15 @@ class Pad(object):
         self.build()
 
     def build(self):
+        """Builds the padding module.
+
+            Attributes
+            ----------
+            padding_module : ReflectionPad2d
+                Pads the input tensor using the reflection of the input
+                boundary. 
+
+        """
         pad_size_tmp = list(self.pad_size)
 
         # This allow to handle the case where the padding is equal to the image size
@@ -50,6 +68,19 @@ class Pad(object):
                                                pad_size_tmp[0], pad_size_tmp[1]])
 
     def __call__(self, x):
+        """Applies padding and maps to complex.
+            
+            Parameters
+            ----------
+            x : tensor
+                Real tensor input to be padded and sent to complex domain.
+
+            Returns
+            -------
+            output : tensor
+                Complex torch tensor that has been padded.
+
+        """
         batch_shape = x.shape[:-2]
         signal_shape = x.shape[-2:]
         x = x.reshape((-1, 1) + signal_shape)
@@ -66,41 +97,45 @@ class Pad(object):
         return output
 
 def unpad(in_):
-    """
-        Slices the input tensor at indices between 1::-1
+    """Unpads input.
+        
+        Slices the input tensor at indices between 1::-1.
 
         Parameters
         ----------
         in_ : tensor_like
-            input tensor
+            Input tensor.
 
         Returns
         -------
-        in_[..., 1:-1, 1:-1]
+        in_[..., 1:-1, 1:-1] : tensor_like
+            Output tensor.  Unpadded input.
+
     """
     return torch.unsqueeze(in_[..., 1:-1, 1:-1], -3)
 
 class SubsampleFourier(object):
-    """
-        Subsampling of a 2D image performed in the Fourier domain
+    """Subsampling of a 2D image performed in the Fourier domain
+        
         Subsampling in the spatial domain amounts to periodization
         in the Fourier domain, hence the formula.
 
         Parameters
         ----------
         x : tensor_like
-            input tensor with at least 5 dimensions, the last being the real
-             and imaginary parts.
-            Ideally, the last dimension should be a power of 2 to avoid errors.
+            Input tensor with at least 5 dimensions, the last being the real
+            and imaginary parts. Ideally, the last dimension should be a power
+            of 2 to avoid errors.
         k : int
-            integer such that x is subsampled by 2**k along the spatial variables.
+            Integer such that x is subsampled by 2**k along the spatial variables.
 
         Returns
         -------
-        res : tensor_like
-            tensor such that its fourier transform is the Fourier
+        out : tensor_like
+            Tensor such that its fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
-            FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
+            FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)].
+
     """
     def __call__(self, x, k):
         batch_shape = x.shape[:-3]
@@ -117,8 +152,7 @@ class SubsampleFourier(object):
 
 
 class Modulus(object):
-    """
-        This class implements a modulus transform for complex numbers.
+    """This class implements a modulus transform for complex numbers.
 
         Usage
         -----
@@ -127,15 +161,17 @@ class Modulus(object):
 
         Parameters
         ---------
-        x: input tensor, with last dimension = 2 for complex numbers
+        x : input tensor
+            Complex torch tensor.
 
         Returns
         -------
-        output: a tensor with imaginary part set to 0, real part set equal to
-        the modulus of x.
+        output : output tensor 
+            A tensor with the same dimensions as x, such that output[..., 0]
+            contains the complex modulus of x, while output[..., 1] = 0.
+
     """
     def __call__(self, x):
-
         norm = torch.zeros_like(x)
         norm[...,0] = (x[...,0]*x[...,0] +
                        x[...,1]*x[...,1]).sqrt()
@@ -145,23 +181,38 @@ class Modulus(object):
 
 
 def fft(x, direction='C2C', inverse=False):
-    """
-        Interface with torch FFT routines for 2D signals.
+    """Interface with torch FFT routines for 2D signals.
 
         Example
         -------
         x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x, inverse=True)
+        x_fft = fft(x)
+        x_ifft = fft(x, inverse=True)
 
         Parameters
         ----------
         x : tensor
-            complex input for the FFT
+            Complex input for the FFT.
         direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex
+            'C2R' for complex to real, 'C2C' for complex to complex.
         inverse : bool
             True for computing the inverse FFT.
-            NB : if direction is equal to 'C2R', then an error is raised.
+            NB : If direction is equal to 'C2R', then an error is raised.
+        
+        Raises
+        ------
+        RuntimeError
+            In the event that we are going from complex to real and not doing
+            the inverse fft or in the event x is not contiguous.
+        TypeError
+            In the event that x does not have a final dimension 2 i.e. not
+            complex. 
+        
+        Returns
+        -------
+        output : tensor
+            Result of FFT or IFFT.
+            
     """
     if direction == 'C2R':
         if not inverse:
@@ -184,26 +235,26 @@ def fft(x, direction='C2C', inverse=False):
     return output
 
 
-
-
 def cdgmm(A, B, inplace=False):
-    """
+    """Complex pointwise multiplication.
+    
         Complex pointwise multiplication between (batched) tensor A and tensor B.
 
         Parameters
         ----------
         A : tensor
-            A is a complex tensor of size (B, C, M, N, 2)
+            A is a complex tensor of size (B, C, M, N, 2).
         B : tensor
-            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1)
+            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1).
         inplace : boolean, optional
-            if set to True, all the operations are performed inplace
+            If set to True, all the operations are performed inplace.
 
         Returns
         -------
         C : tensor
-            output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
+            Output tensor of size (B, C, M, N, 2) such that:
+            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
+
     """
     if not iscomplex(A):
         raise TypeError('The input must be complex, indicated by a last '
@@ -252,7 +303,23 @@ def cdgmm(A, B, inplace=False):
 
 
 def finalize(s0, s1, s2):
-    """ Concatenate scattering of different orders"""
+    """Concatenate scattering of different orders.
+
+    Parameters
+    ----------
+    s0 : tensor
+        Tensor which contains the zeroth order scattering coefficents.
+    s1 : tensor
+        Tensor which contains the first order scattering coefficents.
+    s2 : tensor
+        Tensor which contains the second order scattering coefficents.
+    
+    Returns
+    -------
+    s : tensor
+        Final output. Scattering transform.
+
+    """
     if len(s2)>0:
         return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3), torch.cat(s2, -3)], -3)
     else:

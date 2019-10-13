@@ -7,22 +7,21 @@ from collections import namedtuple
 BACKEND_NAME = 'numpy'
 
 def modulus_complex(x):
-    """Compute the complex modulus
+    """Compute the complex modulus.
 
-    Computes the modulus of x and stores the result in a complex tensor of the
-    same size, with the real part equal to the modulus and the imaginary part
-    equal to zero.
+    Computes the modulus of x and stores the result in a real numpy array.
 
     Parameters
     ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
+    x : numpy array
+        A complex numpy array.
 
     Returns
     -------
-    res : tensor
-        A tensor with the same dimensions as x, such that res[..., 0] contains
-        the complex modulus of x, while res[..., 1] = 0.
+    norm : numpy array
+        A real numpy array with the same dimensions as x and is the complex
+        modulus of x.
+
     """
 
     norm = np.abs(x)
@@ -30,27 +29,24 @@ def modulus_complex(x):
     return norm
 
 def subsample_fourier(x, k):
-    """Subsampling in the Fourier domain
+    """Subsampling in the Fourier domain.
 
     Subsampling in the temporal domain amounts to periodization in the Fourier
     domain, so the input is periodized according to the subsampling factor.
 
     Parameters
     ----------
-    x : tensor
-        Input tensor with at least 3 dimensions, where the next to last
-        corresponds to the frequency index in the standard PyTorch FFT
-        ordering. The length of this dimension should be a power of 2 to
-        avoid errors. The last dimension should represent the real and
-        imaginary parts of the Fourier transform.
+    x : numpy array
+        Input numpy array with at least 3 dimensions.
     k : int
         The subsampling factor.
 
     Returns
     -------
-    res : tensor
-        The input tensor periodized along the next to last axis to yield a
-        tensor of size x.shape[-2] // k along that dimension.
+    res : numpy array
+        The input numpy array periodized along the next to last axis to yield a
+        numpy array of size x.shape[-2] // k along that dimension.
+
     """
 
     N = x.shape[-1]
@@ -58,78 +54,76 @@ def subsample_fourier(x, k):
     return res
 
 def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
-    """Pad real 1D tensors
+    """Pad real 1D numpy arrays.
 
-    1D implementation of the padding function for real PyTorch tensors.
+    1D implementation of the padding function for real numpy arrays.
 
     Parameters
     ----------
-    x : tensor
-        Three-dimensional input tensor with the third axis being the one to
+    x : numpy array
+        Three-dimensional input numpy array with the third axis being the one to
         be padded.
     pad_left : int
-        Amount to add on the left of the tensor (at the beginning of the
+        Amount to add on the left of the array (at the beginning of the
         temporal axis).
     pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
+        Amount to add on the right of the array (at the end of the temporal
         axis).
     mode : string, optional
-        Padding mode. Options include 'constant' and 'reflect'. See the
-        PyTorch API for other options.  Defaults to 'constant'.
+        Padding mode. Options for numpy backend only includes 'reflect'.
     value : float, optional
-        If mode == 'constant', value to input within the padding. Defaults to
-        0.
+        Does nothing on numpy backend.
 
     Returns
     -------
-    res : tensor
-        The tensor passed along the third dimension.
+    res : numpy array
+        The numpy array passed along the third dimension.
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
-            raise ValueError('Indefinite padding size (larger than tensor).')
+            raise ValueError('Indefinite padding size (larger than numpy array).')
     return np.pad(x, ((0,0), (0,0), (pad_left, pad_right)), mode='reflect')
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
-    """Pad real 1D tensors and map to complex
+    """Pad 1D numpy arrays.
 
     Padding which allows to simultaneously pad in a reflection fashion and map
     to complex if necessary.
 
     Parameters
     ----------
-    x : tensor
-        Three-dimensional input tensor with the third axis being the one to
+    x : numpy array
+        Three-dimensional input numpy array with the third axis being the one to
         be padded.
     pad_left : int
-        Amount to add on the left of the tensor (at the beginning of the
+        Amount to add on the left of the numpy array (at the beginning of the
         temporal axis).
     pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
+        Amount to add on the right of the numpy array (at the end of the temporal
         axis).
     to_complex : boolean, optional
-        Whether to map the resulting padded tensor to a complex type (seen
-        as a real number). Defaults to True.
+        Whether to map the resulting padded numpy array to a complex type (seen
+        as a real number). Defaults to True. Does nothing on numpy backend.
 
     Returns
     -------
-    output : tensor
-        A padded signal, possibly transformed into a four-dimensional tensor
-        with the last axis of size 2 if to_complex is True (this axis
-        corresponds to the real and imaginary parts).
+    output : numpy array
+        A padded signal, possibly transformed into a four-dimensional numpy
+        array.
+
     """
     output = pad_1d(x, pad_left, pad_right, mode='reflect')
     return output
 
 def unpad(x, i0, i1):
-    """Unpad real 1D tensor
+    """Unpad real 1D numpy array.
 
-    Slices the input tensor at indices between i0 and i1 along the last axis.
+    Slices the input numpy array at indices between i0 and i1 along the last axis.
 
     Parameters
     ----------
-    x : tensor
-        Input tensor with least one axis.
+    x : numpy array
+        Input numpy array with least one axis.
     i0 : int
         Start of original signal before padding.
     i1 : int
@@ -137,66 +131,83 @@ def unpad(x, i0, i1):
 
     Returns
     -------
-    x_unpadded : tensor
-        The tensor x[..., i0:i1].
+    x_unpadded : numpy array
+        The numpy array x[..., i0:i1].
+
     """
     return x[..., i0:i1]
 
 def real(x):
-    """Real part of complex tensor
+    """Real part of complex numpy array.
 
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
+    Takes the real part of a complex numpy array.
 
     Parameters
     ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
+    x : numpy array
+        A complex numpy array.
 
     Returns
     -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
+    x_real : numpy array
+        The numpy array np.real(x) which is interpreted as the real part of x.
+
     """
     return np.real(x)
 
 def fft1d_c2c(x):
-    """Compute the 1D FFT of a complex signal
+    """Compute the 1D FFT of a complex signal.
 
     Input
     -----
-    x : tensor
-        A tensor of size (..., T, 2), where x[..., 0] is the real part and
-        x[..., 1] is the imaginary part.
+    x : numpy array
+        A numpy array of size (..., T).
 
     Returns
     -------
-    x_f : tensor
-        A tensor of the same size as x containing its Fourier transform in the
-        standard PyTorch FFT ordering.
+    x_f : numpy array
+        A numpy array of the same size as x containing its Fourier transform in the
+        standard numpy FFT ordering.
+
     """
     return np.fft.fft(x)
 
 def ifft1d_c2c(x):
-    """Compute the normalized 1D inverse FFT of a complex signal
+    """Compute the normalized 1D inverse FFT of a complex signal.
 
     Input
     -----
-    x_f : tensor
-        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
-        x[..., 1] is the imaginary part. The frequencies are assumed to be in
-        the standard PyTorch FFT ordering.
+    x_f : numpy array
+        A numpy array of size (..., T). The frequencies are assumed to be in
+        the standard Numpy FFT ordering.
 
     Returns
     -------
-    x : tensor
-        A tensor of the same size of x_f containing the normalized inverse
+    x : numpy array
+        A numpy array of the same size of x_f containing the normalized inverse
         Fourier transform of x_f.
+
     """
     return np.fft.ifft(x)
 
 def finalize(s0, s1, s2):
-    """ Concatenate scattering of different orders"""
+    """Concatenate scattering of different orders.
+
+    Parameters
+    ----------
+    s0 : numpy array
+        Numpy array which contains the zeroth order scattering coefficents.
+    s1 : numpy array
+        Numpy array which contains the first order scattering coefficents.
+    s2 : numpy array
+        Numpy array which contains the second order scattering coefficents.
+    
+    Returns
+    -------
+    s : numpy array
+        Final output. Scattering transform.
+
+    """
     return np.concatenate([np.concatenate(s0, axis=-2), np.concatenate(s1, axis=-2), np.concatenate(s2, axis=-2)], axis=-2)
 
 

@@ -23,18 +23,34 @@ def complex_modulus(input_array):
 
 
 def fft(input, inverse=False):
-    """
+    """Interface with torch FFT routines for 3D signals.
         fft of a 3d signal
 
         Example
         -------
+        x = torch.randn(128, 32, 32, 32, 2)
+        
+        x_fft = fft(x)
+        x_ifft = fft(x, inverse=True)
 
         Parameters
         ----------
-        input : tensor
-            complex input for the FFT
+        x : tensor
+            Complex input for the FFT.
         inverse : bool
             True for computing the inverse FFT.
+        
+        Raises
+        ------
+        TypeError
+            In the event that x does not have a final dimension 2 i.e. not
+            complex. 
+        
+        Returns
+        -------
+        output : tensor
+            Result of FFT or IFFT.
+
     """
     if not iscomplex(input):
         raise(TypeError('The input should be complex (e.g. last dimension is 2)'))
@@ -44,17 +60,36 @@ def fft(input, inverse=False):
 
 
 def cdgmm3d(A, B, inplace=False):
-    """
-    Pointwise multiplication of complex tensors.
-
-    ----------
-    A: complex tensor
-    B: complex tensor of the same size as A
-
-    Returns
-    -------
-    output : tensor of the same size as A containing the result of the
-             elementwise complex multiplication of  A with B
+    """Complex pointwise multiplication.
+    
+        Complex pointwise multiplication between (batched) tensor A and tensor B.
+    
+        Parameters
+        ----------
+        A : torch tensor
+            Complex torch tensor.
+        B : torch tensor
+            Complex of the same size as A.
+        inplace : boolean, optional
+            If set True, all the operations are performed inplace.
+        
+        Raises
+        ------
+        RuntimeError
+            In the event that the tensors are not compatibile for multiplication
+            (i.e. the final four dimensions of A do not match with the dimensions
+            of B), or in the event that B is not complex, or in the event that the
+            type of A and B are not the same.
+        TypeError
+            In the event that x is not complex i.e. does not have a final dimension
+            of 2, or in the event that both tensors are not on the same device.
+    
+        Returns
+        -------
+        output : torch tensor
+            Torch tensor of the same size as A containing the result of the
+            elementwise complex multiplication of A with B.
+    
     """
     if not A.is_contiguous():
         warnings.warn("cdgmm3d: tensor A is converted to a contiguous array")
