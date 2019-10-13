@@ -106,7 +106,7 @@ x = torch.randn(batch_size, M, N, O, dtype=torch.float32)
 # make sure that all CUDA kernels have finished executing.
 
 for backend in backends:
-    scattering = HarmonicScattering3D(J, shape=(M, N, O), L=L, sigma_0=sigma_0)
+    scattering = HarmonicScattering3D(J, shape=(M, N, O), L=L, sigma_0=sigma_0, backend=backend, frontend='torch')
     for device in devices:
         fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
         print(fmt_str.format(backend.name, device.upper()))
