@@ -9,10 +9,8 @@ BACKEND_NAME = 'torch'
 def iscomplex(x):
     return x.size(-1) == 2
 
-
 def isreal(x):
     return x.size(-1) == 1
-
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -132,7 +130,7 @@ class SubsampleFourier(object):
         Returns
         -------
         out : tensor_like
-            Tensor such that its fourier transform is the Fourier
+            Tensor such that its Fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)].
 
@@ -149,7 +147,6 @@ class SubsampleFourier(object):
         out = y.mean(3, keepdim=False).mean(1, keepdim=False)
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
-
 
 class Modulus(object):
     """This class implements a modulus transform for complex numbers.
@@ -176,9 +173,6 @@ class Modulus(object):
         norm[...,0] = (x[...,0]*x[...,0] +
                        x[...,1]*x[...,1]).sqrt()
         return norm
-
-
-
 
 def fft(x, direction='C2C', inverse=False):
     """Interface with torch FFT routines for 2D signals.
@@ -219,7 +213,7 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if not iscomplex(x):
-        raise TypeError('The input should be complex. (e.g. last dimension is 2)')
+        raise TypeError('The input should be complex (e.g. last dimension is 2).')
 
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous!')
@@ -233,7 +227,6 @@ def fft(x, direction='C2C', inverse=False):
             output = torch.fft(x, 2, normalized=False)
 
     return output
-
 
 def cdgmm(A, B, inplace=False):
     """Complex pointwise multiplication.
@@ -301,7 +294,6 @@ def cdgmm(A, B, inplace=False):
 
         return C if not inplace else A.copy_(C)
 
-
 def finalize(s0, s1, s2):
     """Concatenate scattering of different orders.
 
@@ -324,7 +316,6 @@ def finalize(s0, s1, s2):
         return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3), torch.cat(s2, -3)], -3)
     else:
         return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3)], -3)
-
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
 backend.name = 'torch'

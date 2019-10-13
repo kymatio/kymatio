@@ -47,7 +47,7 @@ class Scattering2DNumpy(ScatteringNumpy):
             `1` or `2`. Defaults to `2`.
         pre_pad : boolean, optional
             Controls the padding: if set to False, a symmetric padding is applied
-            on the signal. If set to true, the software will assume the signal was
+            on the signal. If set to True, the software will assume the signal was
             padded externally. Defaults to `False`.
         backend : object, optional
             Controls the backend which is combined with the frontend.
@@ -65,7 +65,7 @@ class Scattering2DNumpy(ScatteringNumpy):
             Must be either equal to `1` or `2`.
         pre_pad : boolean
             Controls the padding: if set to False, a symmetric padding is applied
-            on the signal. If set to true, the software will assume the signal was
+            on the signal. If set to True, the software will assume the signal was
             padded externally.
         Psi : dictionary
             Contains the wavelets filters at all resolutions. See
@@ -95,7 +95,7 @@ class Scattering2DNumpy(ScatteringNumpy):
         if not self.backend:
             from ..backend.numpy_backend import backend # is imported like a module and not a class?
             self.backend = backend
-        elif self.backend.name[0:5] != 'numpy':
+        elif not self.backend.name.startswith('numpy'):
             raise RuntimeError('This backend is not supported.')
 
         if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
@@ -114,3 +114,4 @@ class Scattering2DNumpy(ScatteringNumpy):
 
     def loginfo(self):
         return 'NumPy frontend is used.'
+

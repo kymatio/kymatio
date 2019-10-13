@@ -46,9 +46,7 @@ class Scattering1DNumpy(ScatteringNumpy):
     $S_J^{(1)} x$, and $S_J^{(2)} x$ or just $S_J^{(0)} x$
     and $S_J^{(1)} x$.
 
-    The scattering transform may be computed on the CPU (the default) or a
-    GPU, if available. A `Scattering1D` object may be transferred from one
-    to the other using the `cuda()` and `cpu()` methods.
+    The scattering transform is computed on the CPU. 
 
     Given an input Tensor `x` of size `(B, T)`, where `B` is the number of
     signals to transform (the batch size) and `T` is the length of the signal,
@@ -65,7 +63,7 @@ class Scattering1DNumpy(ScatteringNumpy):
         Q = 8
 
         # Generate a sample signal.
-        x = torch.randn(1, 1, T)
+        x = np.random.randn(1, 1, T).view(np.complex128)
 
         # Define a Scattering1D object.
         S = Scattering1D(J, T, Q)
@@ -143,7 +141,6 @@ class Scattering1DNumpy(ScatteringNumpy):
         represented as a dictionary containing that filter at all
         resolutions. See `filter_bank.scattering_filter_factory` for an exact
         description.
-        description
     max_order : int
         The maximum scattering order of the transform.
     average : boolean
@@ -191,7 +188,7 @@ class Scattering1DNumpy(ScatteringNumpy):
         if not self.backend:
             from ..backend.numpy_backend import backend
             self.backend = backend
-        elif self.backend.name[0:5] != 'numpy':
+        elif not self.backend.name.startswith('numpy'):
             raise RuntimeError('This backend is not supported.')
 
         self.r_psi = math.sqrt(0.5)
@@ -326,8 +323,7 @@ class Scattering1DNumpy(ScatteringNumpy):
         else:
             size_scattering = 0
 
-
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+        S = scattering1d(x, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
@@ -347,3 +343,4 @@ class Scattering1DNumpy(ScatteringNumpy):
 
     def loginfo(self):
         return 'NumPy frontend is used.'
+

@@ -19,7 +19,6 @@ def load_kernel(kernel_name, code, **kwargs):
 
 Stream = namedtuple('Stream', ['ptr'])
 
-
 def getDtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
@@ -63,7 +62,7 @@ class SubsampleFourier(object):
 
     def __call__(self, x, k):
         if not x.is_cuda:
-            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
+            raise TypeError('Use the torch backend (without skcuda) for CPU tensors!')
 
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
@@ -115,7 +114,6 @@ class SubsampleFourier(object):
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
-
 class Modulus(object):
     """This class implements a modulus transform for complex numbers.
 
@@ -144,7 +142,7 @@ class Modulus(object):
 
     def __call__(self, x):
         if not x.is_cuda:
-            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
+            raise TypeError('Use the torch backend (without skcuda) for CPU tensors!')
 
         out = x.new(x.size())
 
@@ -171,7 +169,6 @@ class Modulus(object):
              args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
-
 
 def cdgmm(A, B, inplace=False):
     """Complex pointwise multiplication. 
@@ -255,3 +252,4 @@ backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.finalize = finalize
+

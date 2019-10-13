@@ -4,7 +4,7 @@ from kymatio.scattering1d import Scattering1D
 import torch
 
 class TestScattering1DNumpy:
-    def test_Scattering2D(self):
+    def test_Scattering1D(self):
         test_data_dir = os.path.dirname(__file__)
         test_data_filename = os.path.join(test_data_dir, 'test_data_1d.pt')
         data = torch.load(test_data_filename, map_location='cpu')

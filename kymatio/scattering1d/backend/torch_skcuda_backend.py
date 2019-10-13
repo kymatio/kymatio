@@ -22,7 +22,7 @@ def get_dtype(t):
         return 'double'
 
 def is_complex(input):
-    return input.size(-1) == 2
+    return input.shape[-1] == 2
 
 class Modulus(object):
     """Stable complex modulus.
@@ -33,7 +33,7 @@ class Modulus(object):
 
     Usage
     -----
-    modulus = ModulusStable.apply  # apply inherited from Function
+    modulus = Modulus()      
     x_mod = modulus(x)
 
     Parameters
@@ -60,17 +60,19 @@ class Modulus(object):
 
     def __call__(self, x):
 
-        if not x.is_cuda and self.backend=='skcuda':
-            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
-
-        out = x.new(x.size())
-
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
-
+        if not x.is_cuda and self.backend =='skcuda':
+            raise TypeError('Use the torch backend (without skcuda) for CPU tensors!')
+        
         if not is_complex(x):
             raise TypeError('The input and outputs should be complex.')
 
+        if not x.is_contiguous():
+            warnings.warn("Modulus: tensor x is converted to a contiguous
+                    array.")
+            x = x.contiguous()
+        
+        out = x.new(x.shape)
+        
         kernel = """
         extern "C"
         __global__ void abs_complex_value(const ${dtype} * x, ${dtype}2 * z, int n)
@@ -150,15 +152,17 @@ class SubsampleFourier(object):
 
     def __call__(self, x, k):
         if not x.is_cuda and self.backend == 'skcuda':
-            raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
+            raise TypeError('Use the torch backend (without skcuda) for CPU tensors!')
 
         if not is_complex(x):
             raise TypeError('The input and outputs should be complex')
 
         if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
-
-        out = x.new(x.size(0), x.size(1), x.size(2) // k, 2)
+            warnings.warn("SubsampleFourier: tensor x is converted to a contiguous
+                    array.")
+            x = x.contiguous()
+        
+        out = x.new(x.shape[0], x.shape[1], x..shape[2] // k, 2)
 
         kernel = '''
         #define NT ${T} / ${k}
@@ -184,11 +188,11 @@ class SubsampleFourier(object):
           output[ty * NT + tx] = res;
         }
         '''
-        B = x.size(0) * x.size(1)
-        T = x.size(2)
+        B = x.shape[0] * x.shape[1]
+        T = x.shape[2]
         periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, dtype=get_dtype(x))
-        grid = (self.get_blocks(out.size(-2), self.block[0]),
-                self.get_blocks(out.nelement() // (2*out.size(-2)), self.block[1]),
+        grid = (self.get_blocks(out.shape[-2], self.block[0]),
+                self.get_blocks(out.nelement() // (2*out.shape[-2]), self.block[1]),
                 1)
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
@@ -223,14 +227,13 @@ def subsample_fourier(x, k):
     return subsamplefourier(x,k)
 
 
-from .torch_backend import ifft1d_c2c, fft1d_c2c, real, unpad, pad, pad_1d, finalize, ModulusStable
+from .torch_backend import ifft1d_c2c, fft1d_c2c, real, unpad, pad, pad_1d, finalize
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
                                  'ifft1d_c2c', 'finalize'])
 
 backend.name = 'torch_skcuda'
 backend.modulus_complex = modulus_complex
-backend.ModulusStable = ModulusStable
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad

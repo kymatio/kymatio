@@ -64,7 +64,7 @@ class SubsampleFourier(object):
         Returns
         -------
         out : tensor_like
-            Tensor such that its fourier transform is the Fourier
+            Tensor such that its Fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)].
 
@@ -76,7 +76,6 @@ class SubsampleFourier(object):
 
         out = tf.reduce_mean(y, axis=(2, 4))
         return out
-
 
 class Modulus(object):
     """This class implements a modulus transform for complex numbers.
@@ -102,7 +101,6 @@ class Modulus(object):
     def __call__(self, x):
         norm = tf.abs(x)
         return tf.cast(norm, tf.complex64)
-
 
 def fft(x, direction='C2C', inverse=False):
     """Interface with tensorflow FFT routines for 2D signals.
@@ -149,7 +147,6 @@ def fft(x, direction='C2C', inverse=False):
             output = tf.signal.fft2d(x, name='fft2d')
 
     return output
-
 
 def cdgmm(A, B, inplace=False):
     """Complex pointwise multiplication. 

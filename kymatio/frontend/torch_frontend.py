@@ -23,3 +23,4 @@ class ScatteringTorch(nn.Module, metaclass=ABCMeta):
 
    def forward(self, x):
       return self.scattering(x)
+

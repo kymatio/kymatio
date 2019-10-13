@@ -25,8 +25,6 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
     S_0 = fft(U_1_c, 'C2R', inverse=True)
 
     out_S_0.append(unpad(S_0))
-    n_order1 = 1
-    n_order2 = 1 + order1_size
 
     for n1 in range(len(psi)):
         j1 = psi[n1]['j']
@@ -40,7 +38,6 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
         S_1_c = subsample_fourier(cdgmm(U_1_c, phi[j1]), k=2**(J-j1))
         S_1_r = fft(S_1_c, 'C2R', inverse=True)
         out_S_1.append(unpad(S_1_r))
-        n_order1 += 1
 
         if max_order == 2:
             for n2 in range(len(psi)):
@@ -54,7 +51,6 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
                     S_2_r = fft(S_2_c, 'C2R', inverse=True)
 
                     out_S_2.append(unpad(S_2_r))
-                    n_order2 += 1
 
     out_S = finalize(out_S_0, out_S_1, out_S_2)
     return out_S

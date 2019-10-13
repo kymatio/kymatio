@@ -9,7 +9,7 @@ from collections import namedtuple
 BACKEND_NAME = 'torch'
 
 def is_complex(input):
-    return input.size(-1) == 2
+    return input.shape[-1] == 2
 
 class ModulusStable(Function):
     """Stable complex modulus.
@@ -344,7 +344,6 @@ backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier',
                                  'ifft1d_c2c', 'finalize'])
 backend.name = 'torch'
 backend.modulus_complex = modulus_complex
-backend.ModulusStable = ModulusStable
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad

@@ -483,10 +483,17 @@ def test_modulus(device, backend, random_state=42):
             def save_for_backward(self, *args):
                 self.saved_tensors = args
 
+        if backend.name == "torch_skcuda":
+            from kymatio.scattering1d.backend.torch_skcuda_backend import Modulus as ModulusStable
+        else:
+            from kymatio.scattering1d.backend.torch_backend import ModulusStable
+
+
+
         ctx = FakeContext()
-        y = backend.ModulusStable.forward(ctx, x)
+        y = ModulusStable.forward(ctx, x)
         y_grad = torch.ones_like(y)
-        x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
+        x_grad_manual = ModulusStable.backward(ctx, y_grad)
         assert torch.allclose(x_grad_manual, x_grad)
 
         # Test the differentiation with a vector made of zeros

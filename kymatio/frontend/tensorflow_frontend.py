@@ -12,3 +12,4 @@ class ScatteringTensorflow(tf.Module, metaclass=ABCMeta):
     @abstractmethod
     def scattering(self, x):
         """ This function should call the functional scattering."""
+

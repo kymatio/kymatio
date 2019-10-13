@@ -86,7 +86,7 @@ class SubsampleFourier(object):
         Returns
         -------
         out : numpy array_like
-            Numpy array such that its fourier transform is the Fourier
+            Numpy array such that its Fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
             FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)].
 
@@ -100,7 +100,6 @@ class SubsampleFourier(object):
 
         out = y.mean(axis=(2, 4))
         return out
-
 
 class Modulus(object):
     """This class implements a modulus transform for complex numbers.
@@ -124,7 +123,6 @@ class Modulus(object):
     def __call__(self, x):
         norm = np.abs(x)
         return norm
-
 
 def fft(x, direction='C2C', inverse=False):
     """Interface with numpy FFT routines for 2D signals.
@@ -172,7 +170,6 @@ def fft(x, direction='C2C', inverse=False):
 
     return output
 
-
 def cdgmm(A, B, inplace=False):
     """Complex pointwise multiplication.
 
@@ -209,7 +206,6 @@ def cdgmm(A, B, inplace=False):
     else:
         return A * B
 
-
 def finalize(s0, s1, s2):
     """Concatenate scattering of different orders.
 
@@ -229,7 +225,6 @@ def finalize(s0, s1, s2):
 
     """
     return np.concatenate([np.concatenate(s0, axis=-3), np.concatenate(s1, axis=-3), np.concatenate(s2, axis=-3)], axis=-3)
-
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
 backend.name = 'numpy'

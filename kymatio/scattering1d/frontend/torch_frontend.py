@@ -18,7 +18,7 @@ compute_meta_scattering, precompute_size_scattering
 __all__ = ['Scattering1DTorch']
 
 class Scattering1DTorch(ScatteringTorch):
-    """The 1D scattering transform
+    """The 1D scattering transform.
 
     The scattering transform computes a cascade of wavelet transforms
     alternated with a complex modulus non-linearity. The scattering transform
@@ -51,7 +51,7 @@ class Scattering1DTorch(ScatteringTorch):
     GPU, if available. A `Scattering1D` object may be transferred from one
     to the other using the `cuda()` and `cpu()` methods.
 
-    Given an input Tensor `x` of size `(B, T)`, where `B` is the number of
+    Given an input tensor `x` of size `(B, T)`, where `B` is the number of
     signals to transform (the batch size) and `T` is the length of the signal,
     we compute its scattering transform by passing it to the `forward()`
     method.
@@ -86,7 +86,7 @@ class Scattering1DTorch(ScatteringTorch):
     J : int
         The maximum log-scale of the scattering transform. In other words,
         the maximum scale is given by `2**J`.
-    T : int
+    shape : numbers.Integral or tuple
         The length of the input signals.
     Q : int >= 1
         The number of first-order wavelets per octave (second-order wavelets
@@ -114,6 +114,9 @@ class Scattering1DTorch(ScatteringTorch):
         is, a large array containing the output) or a dictionary (where each
         entry corresponds to a separate scattering coefficient). This parameter
         may be modified after object creation. Defaults to True.
+    backend : named tuple
+        Named tuple which holds all functions needed for the scattering
+        transform.
 
     Attributes
     ----------
@@ -121,6 +124,8 @@ class Scattering1DTorch(ScatteringTorch):
         The maximum log-scale of the scattering transform. In other words,
         the maximum scale is given by `2**J`.
     shape : int
+        The length of the input signals.
+    T : int
         The length of the input signals.
     Q : int
         The number of first-order wavelets per octave (second-order wavelets
@@ -159,6 +164,17 @@ class Scattering1DTorch(ScatteringTorch):
         Controls whether the output should be vectorized into a single Tensor
         or collected into a dictionary. For more details, see the
         documentation for `forward()`.
+    backend : named tuple
+        Named tuple which holds all functions needed for the scattering
+        transform.
+
+    Raises
+    ------
+    RuntimeError 
+        Raised in the event we can a backend that does not start with 'torch'.
+    ValueError
+        Raised in the event that shape is not a one tuple or an integer.
+        
     """
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
                  oversampling=0, vectorize=True, backend=None):
@@ -167,7 +183,6 @@ class Scattering1DTorch(ScatteringTorch):
         self.J = J
         self.shape = shape
         self.Q = Q
-
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
@@ -178,13 +193,14 @@ class Scattering1DTorch(ScatteringTorch):
         self.build()
 
     def build(self):
-        """Set up padding and filters
+        """Set up padding and filters.
 
         Certain internal data, such as the amount of padding and the wavelet
         filters to be used in the scattering transform, need to be computed
         from the parameters given during construction. This function is called
         automatically during object creation and no subsequent calls are
         therefore needed.
+
         """
 
         # Set these default values for now. In the future, we'll want some
@@ -192,7 +208,7 @@ class Scattering1DTorch(ScatteringTorch):
         if not self.backend:
             from ..backend.torch_backend import backend
             self.backend = backend
-        elif self.backend.name[0:5] != 'torch':
+        elif not self.backend.name.startswith('torch'):
             raise RuntimeError('This backend is not supported.')
 
         self.r_psi = math.sqrt(0.5)
@@ -233,7 +249,7 @@ class Scattering1DTorch(ScatteringTorch):
         self.create_and_register_filters()
 
     def create_and_register_filters(self):
-        """ This function run the filterbank function that
+        """This function runs the filterbank function that
             will create the filters as numpy array, and then, it
             saves those arrays as module's buffers."""
 
@@ -275,21 +291,22 @@ class Scattering1DTorch(ScatteringTorch):
         self.phi_f = phi_f
 
     def meta(self):
-        """Get meta information on the transform
+        """Get meta information on the transform.
 
-        Calls the static method `compute_meta_scattering()` with the
+        Calls the method `compute_meta_scattering()` with the
         parameters of the transform object.
 
         Returns
         ------
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
+
         """
         return compute_meta_scattering(
             self.J, self.Q, max_order=self.max_order)
 
     def output_size(self, detail=False):
-        """Get size of the scattering transform
+        """Get size of the scattering transform.
 
         Calls the static method `precompute_size_scattering()` with the
         parameters of the transform object.
@@ -304,13 +321,13 @@ class Scattering1DTorch(ScatteringTorch):
         ------
         size : int or tuple
             See the documentation for `precompute_size_scattering()`.
-        """
 
+        """
         return precompute_size_scattering(
             self.J, self.Q, max_order=self.max_order, detail=detail)
 
     def scattering(self, x):
-        """Apply the scattering transform
+        """Apply the scattering transform.
 
         Given an input Tensor of size `(B, T0)`, where `B` is the batch
         size and `T0` is the length of the individual signals, this function
@@ -338,6 +355,7 @@ class Scattering1DTorch(ScatteringTorch):
             If the `vectorize` flag is `True`, the output is a Tensor
             containing the scattering coefficients, while if `vectorize`
             is `False`, it is a dictionary indexed by tuples of filter indices.
+
         """
         # basic checking, should be improved
         if len(x.shape) < 1:
@@ -382,7 +400,7 @@ class Scattering1DTorch(ScatteringTorch):
                     psi_f[sub_k] = buffer_dict['tensor' + str(n)]
                     n += 1
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+        S = scattering1d(x, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
@@ -402,3 +420,4 @@ class Scattering1DTorch(ScatteringTorch):
 
     def loginfo(self):
         return 'Torch frontend is used.'
+

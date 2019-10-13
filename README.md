@@ -27,7 +27,7 @@ The resort to PyTorch tensors as inputs to Kymatio allows the programmer to back
 
 Each of these algorithms is written in a high-level imperative paradigm, making it portable to any Python library for array operations as long as it enables complex-valued linear algebra and a fast Fourier transform (FFT).
 
-Currently, there are four available backends, PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU only), TensorFlow (CPU and GPU) and Numpy (CPU).
+Currently, there are four available backends, PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU only), TensorFlow (CPU and GPU) and NumPy (CPU).
 
 ### Scalability
 
@@ -81,7 +81,7 @@ To run Kymatio on a graphics processing unit (GPU), you can either use the PyTor
 pip install scikit-cuda cupy
 ```
 
-#### Tensorflow
+#### TensorFlow
 
 #### Available backends: PyTorch and scikit-cuda
 
@@ -90,7 +90,7 @@ The user may control the choice of backend at runtime by setting the environment
 
 The available backends are PyTorch (`torch`), PyTorch+scikit-cuda (`skcuda`), TensorFlow (`tensorflow`), and NumPy (`numpy`).
 
-Numpy is the default backend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), however, we recommend the scikit-cuda backend, which is substantially faster than NumPy.
+NumPy is the default backend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224x224), however, we recommend the scikit-cuda backend, which is substantially faster than NumPy.
 
 ### Installation from source
 

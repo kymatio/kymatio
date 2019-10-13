@@ -51,7 +51,7 @@ class Scattering2DTorch(ScatteringTorch):
             `1` or `2`. Defaults to `2`.
         pre_pad : boolean, optional
             Controls the padding: if set to False, a symmetric padding is applied
-            on the signal. If set to true, the software will assume the signal was
+            on the signal. If set to True, the software will assume the signal was
             padded externally. Defaults to `False`.
         backend : object, optional
             Controls the backend which is combined with the frontend.
@@ -69,7 +69,7 @@ class Scattering2DTorch(ScatteringTorch):
             Must be either equal to `1` or `2`.
         pre_pad : boolean
             Controls the padding: if set to False, a symmetric padding is applied
-            on the signal. If set to true, the software will assume the signal was
+            on the signal. If set to True, the software will assume the signal was
             padded externally.
         Psi : dictionary
             Contains the wavelets filters at all resolutions. See
@@ -100,7 +100,7 @@ class Scattering2DTorch(ScatteringTorch):
         if not self.backend:
             from ..backend.torch_backend import backend
             self.backend = backend
-        elif self.backend.name[0:5] != 'torch':
+        elif not self.backend.name.startswith('torch'):
             raise RuntimeError('This backend is not supported.')
 
         if 2 ** self.J > self.shape[0] or 2 ** self.J > self.shape[1]:
@@ -192,3 +192,4 @@ class Scattering2DTorch(ScatteringTorch):
 
     def loginfo(self):
         return 'Torch frontend is used.'
+

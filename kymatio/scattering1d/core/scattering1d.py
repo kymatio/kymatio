@@ -3,7 +3,7 @@
 
 __all__ = ['scattering1d']
 
-def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_right=0,
+def scattering1d(x, backend, J, psi1, psi2, phi, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
                max_order=2, average=True, size_scattering=(0, 0, 0), vectorize=False):
     """
@@ -11,10 +11,13 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
     Parameters
     ----------
-    x : Tensor
-        a torch Tensor of size `(B, 1, T)` where `T` is the temporal size
+    x : Tensor | Numpy array
+        A tensor/numpy array of size `(B, 1, T)` where `T` is the temporal size.
+    backend : named tuple
+        Named tuple which holds all functions needed for the scattering
+        transform.
     psi1 : dictionary
-        a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
+        A dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
         `j` corresponds to the downsampling factor for
         :math:`x \\ast psi1[(j, q)]``, and `q` corresponds to a pitch class
         (chroma).
@@ -25,49 +28,47 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         * psi1[(j, n)] only has real values;
         the tensors are complex so that broadcasting applies
     psi2 : dictionary
-        a dictionary of filters, with keys (j2, n2). Same remarks as for psi1
+        A dictionary of filters, with keys (j2, n2). Same remarks as for psi1
     phi : dictionary
-        a dictionary of filters of scale :math:`2^J` with keys (`j`)
+        A dictionary of filters of scale :math:`2^J` with keys (`j`)
         where :math:`2^j` is the downsampling factor.
         The array `phi[j]` is a real-valued filter.
     J : int
-        scale of the scattering
+        Scale of the scattering.
     pad_left : int, optional
-        how much to pad the signal on the left. Defaults to `0`
+        How much to pad the signal on the left. Defaults to `0`.
     pad_right : int, optional
-        how much to pad the signal on the right. Defaults to `0`
+        How much to pad the signal on the right. Defaults to `0`.
     ind_start : dictionary of ints, optional
-        indices to truncate the signal to recover only the
+        Indices to truncate the signal to recover only the
         parts which correspond to the actual signal after padding and
-        downsampling. Defaults to None
+        downsampling. Defaults to None.
     ind_end : dictionary of ints, optional
-        See description of ind_start
+        See description of ind_start.
     oversampling : int, optional
-        how much to oversample the scattering (with respect to :math:`2^J`):
+        How much to oversample the scattering (with respect to :math:`2^J`):
         the higher, the larger the resulting scattering
-        tensor along time. Defaults to `0`
+        tensor along time. Defaults to `0`.
     order2 : boolean, optional
         Whether to compute the 2nd order or not. Defaults to `False`.
     average_U1 : boolean, optional
-        whether to average the first order vector. Defaults to `True`
+        Whether to average the first order vector. Defaults to `True`.
     size_scattering : tuple
         Contains the number of channels of the scattering, precomputed for
         speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
-        whether to return a dictionary or a tensor. Defaults to False.
+        Whether to return a dictionary or a tensor. Defaults to False.
 
     """
-    subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c, real, finalize = backend.subsample_fourier,\
-                                                               backend.modulus_complex, backend.fft1d_c2c,\
-                                                                      backend.ifft1d_c2c,  backend.real,\
-    backend.finalize
+    subsample_fourier, modulus_complex, fft1d_c2c, ifft1d_c2c, real, pad,\
+    unpad, finalize = backend.subsample_fourier, backend.modulus_complex, backend.fft1d_c2c,\
+    backend.ifft1d_c2c,  backend.real, backend.pad, backend.unpad, backend.finalize
 
     # S is simply a dictionary if we do not perform the averaging...
     if vectorize:
         batch_size = x.shape[0]
         kJ = max(J - oversampling, 0)
         temporal_size = ind_end[kJ] - ind_start[kJ]
-        #S = x.new(batch_size, sum(size_scattering), temporal_size).fill_(0.)
         out_S_0, out_S_1, out_S_2 = [], [], []
     else:
         S = {}
@@ -91,7 +92,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     else:
         S0_J = x
     if vectorize:
-        #S[:, cc[0], :] = S0_J.squeeze(dim=1)
         out_S_0.append(S0_J)
         cc[0] += 1
     else:
@@ -117,7 +117,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
             # just take the real value and unpad
             S1_J = unpad(real(U1), ind_start[k1], ind_end[k1])
         if vectorize:
-            #S[:, cc[1], :] = S1_J.squeeze(dim=1)
             out_S_1.append(S1_J)
             cc[1] += 1
         else:
@@ -148,7 +147,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                         S2_J = unpad(
                             real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
                     if vectorize:
-                        #S[:, cc[2], :] = S2_J.squeeze(dim=1)
                         out_S_2.append(S2_J)
                         cc[2] += 1
                     else:
@@ -157,3 +155,4 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     if vectorize:
         S = finalize(out_S_0, out_S_1, out_S_2)
     return S
+

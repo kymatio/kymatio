@@ -24,6 +24,7 @@ def modulus_complex(x):
         A complex tensor with the same dimensions as x. The real part contains
         the complex modulus.
         of x.
+
     """
 
     norm = tf.abs(x)
@@ -38,8 +39,8 @@ def subsample_fourier(x, k):
     Parameters
     ----------
     x : tensor
-        Input tensor with at least 3 dimensions, where the next to last
-        corresponds to the frequency index in the standard PyTorch FFT
+        Input tensor with at least 3 dimensions, where the last
+        corresponds to the frequency index in the standard TensorFlow FFT
         ordering. The length of this dimension should be a power of 2 to
         avoid errors. The last dimension should represent the real and
         imaginary parts of the Fourier transform.
@@ -49,13 +50,13 @@ def subsample_fourier(x, k):
     Returns
     -------
     res : tensor
-        The input tensor periodized along the next to last axis to yield a
-        tensor of size x.shape[-2] // k along that dimension.
-    """
+        The input tensor periodized along the last axis to yield a
+        tensor of size x.shape[-1] // k along that dimension.
 
+    """
     N = x.shape[-1]
-    y = tf.reshape(x, (-1, x.shape[1],k,N // k))
-    res = tf.reduce_mean(y, axis=(-2))
+    y = tf.reshape(x, (-1, x.shape[1], k, N // k))
+    res = tf.reduce_mean(y, axis=-2)
     return res
 
 def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
@@ -119,6 +120,7 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
     -------
     output : tensor
         A padded signal, possibly transformed into a four-dimensional tensor. 
+
     """
     output = pad_1d(x, pad_left, pad_right, mode='reflect')
     return output

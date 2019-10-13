@@ -12,7 +12,6 @@ class ScatteringNumpy(object, metaclass=ABCMeta):
    def scattering(self, x):
        """ This function should call the functional scattering."""
 
-
    def __call__(self, x):
        return self.scattering(x)
 
@@ -23,3 +22,4 @@ class ScatteringNumpy(object, metaclass=ABCMeta):
        -------
 
        """
+       
