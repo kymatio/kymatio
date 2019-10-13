@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath('../../kymatio'))
 # -- Project information -----------------------------------------------------
 
 project = 'kymatio'
-copyright = '2018, The Kymatio Developers'
+copyright = '2018-now, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version

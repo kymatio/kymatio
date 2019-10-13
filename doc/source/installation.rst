@@ -1,7 +1,8 @@
 Installation
 ************
 
-There are two ways to install kymatio: via the `pip` package management system, or directly from source.
+There are two ways to install kymatio: via the `pip` package management system, or directly from source. By default,
+only the NumPy frontend is available.
 
 
 Recommended
@@ -15,11 +16,7 @@ In a shell, please run::
 From source
 ===========
 
-To install from source, first install `PyTorch <https://pytorch.org/>`_. This is most easily achieved inside the Anaconda enviroment by running::
-
-    conda install pytorch torchvision -c pytorch
-
-We then obtain the latest version of Kymatio::
+To install from source, install the latest version of Kymatio::
 
     git clone https://github.com/kymatio/kymatio
 
@@ -33,9 +30,10 @@ Finally, the package is installed by running::
 Optimizing GPU acceleration
 ===========================
 
-To improve performance with an optimized CUDA implementation, you may install optional CUDA packages by running::
+To improve performance on PyTorch with an optimized CUDA implementation, you may install optional CUDA packages by
+running::
 
-    pip install -r requirements_optional_cuda.txt
+    pip install scikit-cuda cupy
 
 To enable this implementation, see the :ref:`backend-story` section.
 
