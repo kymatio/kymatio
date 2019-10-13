@@ -13,7 +13,7 @@ if [[ $CONDA == "1" ]]; then
     conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy pytest pytest-cov
     source activate test-environment
     conda install pytorch torchvision cpuonly -c pytorch
-    pip install "tensorflow>=2.0"
+    pip install tensorflow
 else
     pip install --upgrade pytest
     pip install pytest-cov
@@ -24,7 +24,7 @@ else
     elif [[ "$TRAVIS_PYTHON_VERSION" == "3.7" ]]; then
         pip install torch==1.3.0+cpu torchvision==0.4.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
     fi
-    pip install "tensorflow>=2.0"
+    pip3 install tensorflow
 fi
 
 pip install -r requirements.txt
