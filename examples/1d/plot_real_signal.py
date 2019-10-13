@@ -87,7 +87,7 @@ scattering = Scattering1D(J, T, Q)
 # of input samples since the scattering transform performs an average in time
 # and subsamples the result to save memory.
 
-Sx = scattering.forward(x)
+Sx = scattering(x)
 
 ###############################################################################
 # To display the scattering coefficients, we must first identify which belong

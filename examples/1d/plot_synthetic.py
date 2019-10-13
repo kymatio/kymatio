@@ -80,12 +80,12 @@ Q = 16
 scattering = Scattering1D(J, T, Q)
 
 # get the metadata on the coordinates of the scattering
-meta = Scattering1D.compute_meta_scattering(J, Q)
+meta = scattering.meta()
 order0 = (meta['order'] == 0)
 order1 = (meta['order'] == 1)
 order2 = (meta['order'] == 2)
 
-s = scattering.forward(x)[0]
+s = scattering(x)[0]
 plt.figure(figsize=(10, 10), dpi=300)
 plt.subplot(3, 1, 1)
 plt.plot(s[order0].numpy())

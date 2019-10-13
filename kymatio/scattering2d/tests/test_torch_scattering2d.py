@@ -374,6 +374,6 @@ class TestScattering2DTorch:
         if backend.name == 'torch_skcuda':
             pytest.skip("The gradients are currently not implemented with the skcuda backend.")
         else:
-            scattering = Scattering2D(2, shape=(8, 8), backend=backend, frontend='torch').double()
+            scattering = Scattering2D(2, shape=(8, 8), backend=backend, frontend='torch').double().to(device)
             x = torch.rand(2, 1, 8, 8).double().to(device).requires_grad_()
             gradcheck(scattering, x)
