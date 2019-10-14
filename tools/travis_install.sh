@@ -24,7 +24,7 @@ else
     elif [[ "$TRAVIS_PYTHON_VERSION" == "3.7" ]]; then
         pip install torch==1.3.0+cpu torchvision==0.4.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
     fi
-    pip install 'tensorflow>=2.0.0'
+    pip install 'tensorflow>=2.0.0a0'
 fi
 
 pip install -r requirements.txt
