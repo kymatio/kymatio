@@ -312,7 +312,7 @@ class Scattering1DTensorflow(ScatteringTensorflow):
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
-        x = tf.reshape(x, tf.TensorShape([np.prod(batch_shape.as_list()), 1]) + signal_shape)
+        x = tf.reshape(x, tf.TensorShape([np.prod(batch_shape.as_list()), 1]).concatenate(signal_shape))
 
         # get the arguments before calling the scattering
         # treat the arguments
