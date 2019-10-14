@@ -20,6 +20,8 @@ class TestScattering1DTensorflow:
         # Convert from old (B, 1, T) format.
         x = x.squeeze(1)
 
+        x = tf.convert_to_tensor(x, np.float32)
+
         scattering = Scattering1D(J, T, Q, frontend='tensorflow')
 
         # Reorder reference scattering from interleaved to concatenated orders.
