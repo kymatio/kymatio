@@ -13,7 +13,7 @@ if [[ $CONDA == "1" ]]; then
     conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION numpy scipy pytest pytest-cov
     source activate test-environment
     conda install pytorch torchvision cpuonly -c pytorch
-    pip install 'tensorflow>=2.0.0'
+    pip install 'tensorflow>=2.0.0a0'
 else
     pip install --upgrade pytest
     pip install pytest-cov
