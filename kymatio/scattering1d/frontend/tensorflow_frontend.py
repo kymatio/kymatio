@@ -336,11 +336,11 @@ class Scattering1DTensorflow(ScatteringTensorflow):
 
         if self.vectorize:
             scattering_shape = S.shape[-2:]
-            S = tf.reshape(S, batch_shape + scattering_shape)
+            S = tf.reshape(S, batch_shape.concatenate(scattering_shape))
         else:
             for k, v in S.items():
                 scattering_shape = v.shape[-2:]
-                S[k] = v.reshape(batch_shape + scattering_shape)
+                S[k] = v.reshape(batch_shape.concatenate(scattering_shape))
 
         return S
 
