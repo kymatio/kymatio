@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.abspath('../../kymatio'))
 # -- Project information -----------------------------------------------------
 
 project = 'kymatio'
-copyright = '2018, The Kymatio Developers'
+copyright = '2018-now, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
@@ -116,7 +116,7 @@ html_theme = 'alabaster'
 #
 html_theme_options = {
     'logo': 'kymatio.jpg',
-     'touch_icon': 'kymatio.jpg',
+    'touch_icon': 'kymatio.jpg',
     'logo_name':'Kymatio',
     'description': 'Wavelet Scattering in PyTorch',
     'github_button': True,
@@ -124,10 +124,10 @@ html_theme_options = {
     'travis_button': True,
     'github_user': 'kymatio',
     'github_repo': 'kymatio',
+    'codecov_button': True,
     'github_banner': True,
     'analytics_id': 'UA-130785726-1',
     'font_family': '"Avenir Next", Avenir, "Helvetica Neue",Helvetica,Arial,sans-serif'
-
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -198,13 +198,13 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'kymatio', 'kymatio Documentation',
-     author, 'kymatio', 'Wavelet Scattering in PyTorch',
+     author, 'kymatio', 'Wavelet Scattering in Python',
      'Miscellaneous'),
 ]
 
 
 # -- Extension configuration -------------------------------------------------
 
-autodoc_default_flags = ['members', 'inherited-members']
+autodoc_default_option = ['members', 'inherited-members']
 
 
