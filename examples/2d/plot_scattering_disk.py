@@ -15,13 +15,11 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from kymatio import Scattering2D
 from PIL import Image
 
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 img_name = "images/digit.png"
 
 ####################################################################
@@ -29,7 +27,7 @@ img_name = "images/digit.png"
 #-------------------------------------------------------------------
 # First, we read the input digit:
 src_img = Image.open(img_name).convert('L').resize((32,32))
-src_img = np.array(src_img)
+src_img = np.array(src_img).reshape((1,1,32,32))
 print("img shape: ", src_img.shape)
 
 ####################################################################
@@ -44,24 +42,20 @@ print("img shape: ", src_img.shape)
 
 L = 6
 J = 3
-scattering = Scattering2D(J=J, shape=src_img.shape, L=L, max_order=1)
-if device == "cuda":
-    scattering = scattering.cuda()
+scattering = Scattering2D(J=J, shape=(src_img.shape[2],src_img.shape[3],), L=L, max_order=1)
 
 ####################################################################
 # We now compute the scattering coefficients:
 src_img = src_img.astype(np.float32) / 255.
-src_img_tensor = torch.from_numpy(src_img).to(device)
-scattering_coefficients = scattering(src_img_tensor)
-print("coeffs shape: ", scattering_coefficients.size())
-scattering_coefficients = scattering_coefficients.cpu().numpy()
+scattering_coefficients = scattering(src_img)
+print("coeffs shape: ", scattering_coefficients.shape)
 # Invert colors
 scattering_coefficients = -scattering_coefficients
 
 ####################################################################
 # We skip the low pass filter...
-scattering_coefficients = scattering_coefficients[1:, :, :]
-norm = mpl.colors.Normalize(scattering_coefficients.min(), scattering_coefficients.max(), clip=True)
+scattering_coefficients = scattering_coefficients[0,0, 1:, :, :]
+norm = mpl.colors.Normalize(np.min(scattering_coefficients), np.max(scattering_coefficients), clip=True)
 mapper = cm.ScalarMappable(norm=norm, cmap="gray")
 nb_coeffs, window_rows, window_columns = scattering_coefficients.shape
 
@@ -79,7 +73,7 @@ nb_coeffs, window_rows, window_columns = scattering_coefficients.shape
 
 fig,ax=plt.subplots()
 
-plt.imshow(1-src_img,cmap='gray',interpolation='nearest', aspect='auto')  # , extent=[mini, maxi, mini, maxi])
+plt.imshow(1-src_img[0,0,:,:],cmap='gray',interpolation='nearest', aspect='auto')  # , extent=[mini, maxi, mini, maxi])
 ax.axis('off')
 offset = 0.1
 for row in range(window_rows):
