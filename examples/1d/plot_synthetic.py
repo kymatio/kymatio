@@ -10,7 +10,6 @@ and analyze it with the 1D scattering transform.
 ###############################################################################
 # Import the necessary packages
 # -----------------------------
-import torch
 from kymatio import Scattering1D
 import matplotlib.pyplot as plt
 import numpy as np
@@ -51,7 +50,7 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
                      np.cos(u * (k + 1) * base_freq[i] + phase[i]))
         x[ind_start:ind_start + support] += note * window
     # Transform x into a torch Tensor
-    x = torch.from_numpy(x[np.newaxis])
+    x = x[np.newaxis]
     return x
 
 ###############################################################################
@@ -60,7 +59,7 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
 T = 2 ** 13
 x = generate_harmonic_signal(T)
 plt.figure(figsize=(10, 1), dpi=300)
-plt.plot(x.numpy().ravel())
+plt.plot(x.ravel())
 plt.title("Original signal")
 
 ###############################################################################
@@ -68,7 +67,7 @@ plt.title("Original signal")
 # -----------
 # Let's take a look at the signal spectrogram
 plt.figure(figsize=(10, 10))
-plt.specgram(x.numpy().ravel(), Fs=1024)
+plt.specgram(x.ravel(), Fs=1024)
 plt.title("Time-Frequency spectrogram of signal")
 
 ###############################################################################
@@ -80,21 +79,21 @@ Q = 16
 scattering = Scattering1D(J, T, Q)
 
 # get the metadata on the coordinates of the scattering
-meta = Scattering1D.compute_meta_scattering(J, Q)
+meta = scattering.meta()
 order0 = (meta['order'] == 0)
 order1 = (meta['order'] == 1)
 order2 = (meta['order'] == 2)
 
-s = scattering.forward(x)[0]
+s = scattering(x)[0]
 plt.figure(figsize=(10, 10), dpi=300)
 plt.subplot(3, 1, 1)
-plt.plot(s[order0].numpy())
+plt.plot(s[order0])
 plt.title("Scattering order 0")
 plt.subplot(3, 1, 2)
-plt.imshow(s[order1].numpy(), aspect='auto')
+plt.imshow(s[order1], aspect='auto')
 plt.title("Scattering order 1")
 plt.subplot(3, 1, 3)
-plt.imshow(s[order2].numpy(), aspect='auto')
+plt.imshow(s[order2], aspect='auto')
 plt.title("Scattering order 2")
 
 plt.show()

@@ -151,7 +151,7 @@ for k, f in enumerate(files):
 # ------------------------
 # We now create the `Scattering1D` object that will be used to calculate the
 # scattering coefficients.
-scattering = Scattering1D(J, T, Q)
+scattering = Scattering1D(J, T, Q, frontend='torch')
 
 ###############################################################################
 # If we are using CUDA, the scattering transform object must be transferred to
@@ -163,7 +163,7 @@ if use_cuda:
 
 ###############################################################################
 # Compute the scattering transform for all signals in the dataset.
-Sx_all = scattering.forward(x_all)
+Sx_all = scattering(x_all)
 
 ###############################################################################
 # Since it does not carry useful information, we remove the zeroth-order
