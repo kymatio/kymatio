@@ -1,6 +1,6 @@
 """
-3D scattering transform benchmark
-=================================
+3D scattering transform benchmark (PyTorch)
+===========================================
 We compute scattering transforms for volume maps of size `128`-by-`128`-by-
 `128`, with averaging scale `2**2 = 4` and maximum spherical harmonic
 order `L = 2`. The volumes are stacked into batches of size `batch_size = 8`
@@ -25,7 +25,22 @@ import time
 # Certain backends are also GPU-only, we we want to detect that before running
 # the benchmark.
 
-import kymatio.scattering3d.backend as backend
+backends = []
+
+try:
+    if torch.cuda.is_available():
+        from skcuda import cublas
+        import cupy
+        from kymatio.scattering3d.backend.torch_skcuda_backend import backend
+        backends.append(backend)
+except:
+    pass
+
+try:
+    from kymatio.scattering3d.backend.torch_backend import backend
+    backends.append(backend)
+except:
+    pass
 
 ###############################################################################
 # Finally, we import the `HarmonicScattering3D` class that computes the scattering
@@ -64,10 +79,10 @@ times = 10
 # Determine which devices (CPU or GPU) that are supported by the current
 # backend.
 
-if backend.NAME == 'torch':
-    devices = ['cpu', 'gpu']
-elif backend.NAME == 'skcuda':
-    devices = ['gpu']
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
 
 ###############################################################################
 # Set up the scattering object and the test data
@@ -76,8 +91,6 @@ elif backend.NAME == 'skcuda':
 ###############################################################################
 # Create the `HarmonicScattering3D` object using the given parameters and generate
 # some compatible test data with the specified batch size.
-
-scattering = HarmonicScattering3D(J, shape=(M, N, O), L=L, sigma_0=sigma_0)
 
 x = torch.randn(batch_size, M, N, O, dtype=torch.float32)
 
@@ -92,36 +105,36 @@ x = torch.randn(batch_size, M, N, O, dtype=torch.float32)
 # need to call `torch.cuda.synchronize()` before and after the benchmark to
 # make sure that all CUDA kernels have finished executing.
 
-for device in devices:
-    fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
-    print(fmt_str.format(backend.NAME, device.upper()))
+for backend in backends:
+    scattering = HarmonicScattering3D(J, shape=(M, N, O), L=L, sigma_0=sigma_0, backend=backend, frontend='torch')
+    for device in devices:
+        fmt_str = '==> Testing Float32 with {} backend, on {}, forward'
+        print(fmt_str.format(backend.name, device.upper()))
 
-    if device == 'gpu':
-        scattering.cuda()
-        x = x.cuda()
-    else:
-        scattering.cpu()
-        x = x.cpu()
+        if not(device == 'cpu' and backend.name == 'torch_skcuda'):
+            x, scattering = x.to(device), scattering.to(device)
+        else:
+            continue
 
-    scattering.method = 'integral'
-    scattering.integral_powers = integral_powers
+        scattering.method = 'integral'
+        scattering.integral_powers = integral_powers
 
-    scattering.forward(x)
-
-    if device == 'gpu':
-        torch.cuda.synchronize()
-
-    t_start = time.time()
-    for _ in range(times):
         scattering.forward(x)
 
-    if device == 'gpu':
-        torch.cuda.synchronize()
+        if device == 'gpu':
+            torch.cuda.synchronize()
 
-    t_elapsed = time.time() - t_start
+        t_start = time.time()
+        for _ in range(times):
+            scattering.forward(x)
 
-    fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
-    print(fmt_str.format(t_elapsed, times, t_elapsed/times))
+        if device == 'gpu':
+            torch.cuda.synchronize()
+
+        t_elapsed = time.time() - t_start
+
+        fmt_str = 'Elapsed time: {:2f} [s / {:d} evals], avg: {:.2f} (s/batch)'
+        print(fmt_str.format(t_elapsed, times, t_elapsed/times))
 
 ###############################################################################
 # The resulting output should be something like

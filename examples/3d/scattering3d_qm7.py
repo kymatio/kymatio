@@ -11,7 +11,8 @@ import os
 
 from sklearn import linear_model, model_selection, preprocessing, pipeline
 from kymatio.scattering3d import HarmonicScattering3D
-from kymatio.scattering3d.utils import compute_integrals, generate_weighted_sum_of_gaussians
+from kymatio.scattering3d.backend.torch_backend import backend, compute_integrals
+from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 from kymatio.datasets import fetch_qm7
 from kymatio.caching import get_cache_dir
 from scipy.spatial.distance import pdist
@@ -105,7 +106,7 @@ def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
 
         Returns
         -------
-        positions, charges, valence_charges: torch arrays
+        positions, charges, valence_charges: numpy arrays
             array containing the positions, charges and valence charges
             of the QM7 database molecules
     """
@@ -123,9 +124,7 @@ def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
     delta = sigma * np.sqrt(-8 * np.log(overlapping_precision))
     positions = positions * delta / min_dist
 
-    return (torch.from_numpy(positions),
-            torch.from_numpy(charges),
-            torch.from_numpy(valence_charges))
+    return (positions, charges, valence_charges)
 
 
 def compute_qm7_solid_harmonic_scattering_coefficients(
@@ -160,27 +159,24 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
             array containing first- and second-order scattering coefficients
     """
     cuda = torch.cuda.is_available()
-    grid = torch.from_numpy(
-        np.fft.ifftshift(
+    grid =  np.fft.ifftshift(
             np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'),
-            axes=(1, 2, 3)))
+            axes=(1, 2, 3))
     pos, full_charges, valence_charges = get_qm7_positions_and_charges(sigma)
 
-    n_molecules = pos.size(0)
+    n_molecules = pos.shape[0]
     n_batches = np.ceil(n_molecules / batch_size).astype(int)
 
-    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma)
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,
+            sigma_0=sigma,max_order=1,
+            backend=backend, frontend='torch')
 
-    if cuda:
-        grid = grid.cuda()
-        pos = pos.cuda()
-        full_charges = full_charges.cuda()
-        valence_charges = valence_charges.cuda()
+    if cuda: 
         scattering.cuda()
 
     order_0, orders_1_and_2 = [], []
     print('Computing solid harmonic scattering coefficients of {} molecules '
-        'of QM7 database on {}'.format(pos.size(0), 'GPU' if cuda else 'CPU'))
+        'of QM7 database on {}'.format(pos.shape[0], 'GPU' if cuda else 'CPU'))
     print('sigma: {}, L: {}, J: {}, integral powers: {}'.format(sigma, L, J, integral_powers))
 
     this_time = None
@@ -204,16 +200,16 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
         full_batch = full_charges[start:end]
         val_batch = valence_charges[start:end]
 
-        full_density_batch = generate_weighted_sum_of_gaussians(
-                grid, pos_batch, full_batch, sigma, cuda=cuda)
+        full_density_batch = torch.from_numpy(generate_weighted_sum_of_gaussians(
+                grid, pos_batch, full_batch, sigma)).float().cuda()
         full_order_0 = compute_integrals(full_density_batch, integral_powers)
         scattering.max_order = 2
         scattering.method = 'integral'
         scattering.integral_powers = integral_powers
         full_scattering = scattering(full_density_batch)
 
-        val_density_batch = generate_weighted_sum_of_gaussians(
-                grid, pos_batch, val_batch, sigma, cuda=cuda)
+        val_density_batch = torch.from_numpy(generate_weighted_sum_of_gaussians(
+                grid, pos_batch, val_batch, sigma)).float().cuda()
         val_order_0 = compute_integrals(val_density_batch, integral_powers)
         val_scattering= scattering(val_density_batch)
 
