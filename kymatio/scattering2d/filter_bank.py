@@ -49,8 +49,6 @@ def filter_bank(M, N, J, L=8):
             for res in range(min(j + 1, max(J - 1, 1))):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
-                # add a trailing singleton dimension to mark it as non-complex
-                psi_signal_fourier_res = psi_signal_fourier_res[..., np.newaxis]
                 psi[res] = psi_signal_fourier_res
                 # Normalization to avoid doing it with the FFT.
                 psi[res] /= M*N// 2**(2*j)
@@ -65,8 +63,6 @@ def filter_bank(M, N, J, L=8):
     filters['phi']['j'] = J
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        # add a trailing singleton dimension to mark it as non-complex
-        phi_signal_fourier_res = phi_signal_fourier_res[..., np.newaxis]
         filters['phi'][res] = phi_signal_fourier_res
         # Normalization to avoid doing it with the FFT.
         filters['phi'][res] /= M*N // 2 ** (2 * J)
