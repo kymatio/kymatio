@@ -15,7 +15,7 @@ __all__ = [
 
 from .scattering1d import Scattering1D
 from .scattering2d import Scattering2D
-
 from .scattering3d import HarmonicScattering3D
 
 from .version import version as __version__
+
