@@ -4,9 +4,9 @@ from abc import ABCMeta, abstractmethod
 assert version.parse(tf.__version__)>=version.parse("2.0.0a0"), 'Current TensorFlow version is '+str(tf.__version__)+\
                                                                 ' . Please upgrade TensorFlow to 2.0.0a0 at least.'
 
-class ScatteringTensorflow(tf.Module, metaclass=ABCMeta):
+class ScatteringTensorFlow(tf.Module, metaclass=ABCMeta):
     def __init__(self, name):
-        super(ScatteringTensorflow, self).__init__(name=name)
+        super(ScatteringTensorFlow, self).__init__(name=name)
 
     @abstractmethod
     def build(self):

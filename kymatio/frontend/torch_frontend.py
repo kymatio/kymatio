@@ -18,7 +18,7 @@ class ScatteringTorch(nn.Module, metaclass=ABCMeta):
         self.filters = self.create_and_register_filters() """
     
     @abstractmethod
-    def create_and_register_filters(self):
+    def create_filters(self):
         """ This function should run a filterbank function that
         will create the filters as numpy array, and then, it should
         save those arrays as module's buffers. """
