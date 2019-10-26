@@ -1,8 +1,8 @@
 from abc import ABCMeta, abstractmethod
 
-class ScatteringNumpy(object, metaclass=ABCMeta):
+class ScatteringNumPy(object, metaclass=ABCMeta):
    def __init__(self):
-       super(ScatteringNumpy, self).__init__()
+       super(ScatteringNumPy, self).__init__()
 
    @abstractmethod
    def build(self):

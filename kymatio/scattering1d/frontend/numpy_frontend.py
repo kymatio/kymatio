@@ -6,7 +6,7 @@ import numbers
 
 import numpy as np
 
-from ...frontend.numpy_frontend import ScatteringNumpy
+from ...frontend.numpy_frontend import ScatteringNumPy
 
 from kymatio.scattering1d.core.scattering1d import scattering1d
 
@@ -14,9 +14,9 @@ from kymatio.scattering1d.filter_bank import scattering_filter_factory
 from kymatio.scattering1d.utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad,\
 compute_meta_scattering, precompute_size_scattering
 
-__all__ = ['Scattering1DNumpy']
+__all__ = ['Scattering1DNumPy']
 
-class Scattering1DNumpy(ScatteringNumpy):
+class Scattering1DNumPy(ScatteringNumPy):
     """The 1D scattering transform
 
     The scattering transform computes a cascade of wavelet transforms
@@ -158,7 +158,7 @@ class Scattering1DNumpy(ScatteringNumpy):
     """
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
                  oversampling=0, vectorize=True, backend=None):
-        super(Scattering1DNumpy, self).__init__()
+        super(Scattering1DNumPy, self).__init__()
         # Store the parameters
         self.J = J
         self.shape = shape
