@@ -10,16 +10,13 @@ class ScatteringNumpy(object, metaclass=ABCMeta):
 
    @abstractmethod
    def scattering(self, x):
-       """ This function should call the functional scattering."""
+       """ This function should compute the scattering transform."""
 
    def __call__(self, x):
+       """ This function should call the functional scattering."""
        return self.scattering(x)
 
    @abstractmethod
    def loginfo(self):
-       """
-       Returns the logging message when the frontend is deployed.
-       -------
+       """ Returns the logging message when the frontend is deployed."""
 
-       """
-       
