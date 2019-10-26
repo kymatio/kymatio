@@ -7,7 +7,7 @@ import numbers
 import tensorflow as tf
 import numpy as np
 
-from ...frontend.tensorflow_frontend import ScatteringTensorflow
+from ...frontend.tensorflow_frontend import ScatteringTensorFlow
 
 from kymatio.scattering1d.core.scattering1d import scattering1d
 
@@ -15,9 +15,9 @@ from kymatio.scattering1d.filter_bank import scattering_filter_factory
 from kymatio.scattering1d.utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad,\
 compute_meta_scattering, precompute_size_scattering
 
-__all__ = ['Scattering1DTensorflow']
+__all__ = ['Scattering1DTensorFlow']
 
-class Scattering1DTensorflow(ScatteringTensorflow):
+class Scattering1DTensorFlow(ScatteringTensorFlow):
     """The 1D scattering transform
 
     The scattering transform computes a cascade of wavelet transforms
@@ -162,7 +162,7 @@ class Scattering1DTensorflow(ScatteringTensorflow):
     """
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
                  oversampling=0, vectorize=True, backend=None, name='Scattering1D'):
-        super(Scattering1DTensorflow, self).__init__(name=name)
+        super(Scattering1DTensorFlow, self).__init__(name=name)
         # Store the parameters
         self.J = J
         self.shape = shape
