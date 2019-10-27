@@ -18,7 +18,6 @@ class Scattering1DTorch(ScatteringTorch, Scattering1DGeneral):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
                  oversampling=0, vectorize=True, backend=None):
         ScatteringTorch.__init__(self)
-        
         # Store the parameters
         # Build internal values
         Scattering1DGeneral.__init__(self, J, shape, Q, max_order, average, oversampling, vectorize, backend)
