@@ -1,22 +1,21 @@
 import tensorflow as tf
 from packaging import version
-from abc import ABCMeta, abstractmethod
 assert version.parse(tf.__version__)>=version.parse("2.0.0a0"), 'Current TensorFlow version is '+str(tf.__version__)+\
                                                                 ' . Please upgrade TensorFlow to 2.0.0a0 at least.'
 
-class ScatteringTensorFlow(tf.Module, metaclass=ABCMeta):
+class ScatteringTensorFlow(tf.Module):
     def __init__(self, name):
         super(ScatteringTensorFlow, self).__init__(name=name)
 
-    @abstractmethod
     def build(self):
         """ Defines elementary routines."""
+        raise NotImplementedError
 
-    @abstractmethod
     def scattering(self, x):
         """ This function should call the functional scattering."""
+        raise NotImplementedError
 
-    @abstractmethod
     def loginfo(self):
         """ Returns the logging message when the frontend is deployed."""
-        
+        raise NotImplementedError
+       
