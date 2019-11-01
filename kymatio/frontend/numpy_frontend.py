@@ -1,11 +1,7 @@
 
 class ScatteringNumPy(object):
    def __init__(self):
-       super(ScatteringNumpy, self).__init__()
-
-   def build(self):
-       """ Defines elementary routines."""
-        raise NotImplementedError
+       super(ScatteringNumPy, self).__init__()
 
    def scattering(self, x):
        """ This function should compute the scattering transform."""
