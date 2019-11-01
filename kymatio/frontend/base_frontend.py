@@ -1,7 +1,7 @@
 
-class ScatteringSuper():
+class ScatteringBase():
     def __init__(self):
-        super(ScatteringSuper, self).__init__()
+        super(ScatteringBase, self).__init__()
     
     def build(self):
         """ Defines elementary routines. 
