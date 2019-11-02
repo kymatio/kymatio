@@ -9,13 +9,6 @@ class ScatteringTorch(nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
     
-    def build(self):
-        """ Defines elementary routines. 
-        This function should always call and create the filters via
-        self.create_and_register_filters() defined below. For instance, via:
-        self.filters = self.create_and_register_filters() """
-        raise NotImplementedError
-    
     def create_filters(self):
         """ This function should run a filterbank function that
         will create the filters as numpy array, and then, it should
