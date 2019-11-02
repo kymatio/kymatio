@@ -8,6 +8,10 @@ assert version.parse(torch.__version__)>=version.parse("1.3"), 'Current PyTorch 
 class ScatteringTorch(nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
+
+    def register_backend(self):
+        """ This function should register the backend to be used"""
+        raise NotImplementedError
     
     def create_filters(self):
         """ This function should run a filterbank function that
