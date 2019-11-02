@@ -20,7 +20,7 @@ class Scattering2DTorch(ScatteringTorch, Scattering2DBase):
 
 
     def backend_setup(self):
-       if not self.backend:
+        if not self.backend:
             from ..backend.torch_backend import backend
             self.backend = backend
         elif not self.backend.name.startswith('torch'):
