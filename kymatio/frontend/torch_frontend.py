@@ -13,10 +13,9 @@ class ScatteringTorch(nn.Module):
         """ This function should register the backend to be used"""
         raise NotImplementedError
     
-    def create_filters(self):
-        """ This function should run a filterbank function that
-        will create the filters as numpy array, and then, it should
-        save those arrays as module's buffers. """
+    def register_filters(self):
+        """ This function should be called after filters are generated,
+        saving those arrays as module's buffers. """
         raise NotImplementedError
 
     def scattering(self, x):
