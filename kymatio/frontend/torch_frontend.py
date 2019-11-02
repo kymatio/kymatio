@@ -15,13 +15,14 @@ class ScatteringTorch(nn.Module):
     
     def register_filters(self):
         """ This function should be called after filters are generated,
-        saving those arrays as module's buffers. """
+        saving those arrays as module buffers. """
         raise NotImplementedError
 
     def scattering(self, x):
-        """ This function should call the functional scattering."""
+        """ This function should compute the scattering transform."""
         raise NotImplementedError
 
     def forward(self, x):
+        """ This function should call the functional scattering."""
         return self.scattering(x)
     
