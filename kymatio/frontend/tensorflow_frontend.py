@@ -15,7 +15,3 @@ class ScatteringTensorFlow(tf.Module):
         """ This function should call the functional scattering."""
         raise NotImplementedError
 
-    def loginfo(self):
-        """ Returns the logging message when the frontend is deployed."""
-        raise NotImplementedError
-       

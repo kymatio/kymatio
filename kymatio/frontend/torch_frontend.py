@@ -29,7 +29,3 @@ class ScatteringTorch(nn.Module):
     def forward(self, x):
         return self.scattering(x)
     
-    def loginfo(self):
-        """ Returns the logging message when the frontend is deployed."""
-        raise NotImplementedError
-

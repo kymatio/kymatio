@@ -11,7 +11,3 @@ class ScatteringNumPy(object):
        """ This function should call the functional scattering."""
        return self.scattering(x)
 
-   def loginfo(self):
-       """ Returns the logging message when the frontend is deployed."""
-        raise NotImplementedError
-
