@@ -5,6 +5,7 @@ class ScatteringBase():
     
     def build(self):
         """ Defines elementary routines. 
+
         This function should always call and create the filters via
         self.create_filters() defined below. For instance, via:
         self.filters = self.create_filters() """
@@ -13,7 +14,7 @@ class ScatteringBase():
     def create_filters(self):
         """ This function should run a filterbank function that
         will create the filters as numpy array, and then, it should
-        save those arrays as module's buffers. """
+        save those arrays. """
         raise NotImplementedError
 
     def loginfo(self):
