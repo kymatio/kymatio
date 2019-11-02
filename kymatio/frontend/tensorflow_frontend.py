@@ -11,3 +11,8 @@ class ScatteringTensorFlow(tf.Module):
         """ This function should call the functional scattering."""
         raise NotImplementedError
 
+    @tf.Module.with_name_scope
+    def __call__(self, x):
+        """ This function should call the functional scattering."""
+        return self.scattering(x)
+
