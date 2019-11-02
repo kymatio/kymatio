@@ -8,15 +8,8 @@ assert version.parse(torch.__version__)>=version.parse("1.3"), 'Current PyTorch 
 class ScatteringTorch(nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
-
-    def register_backend(self, string):
-        """ This function should register the backend to be used"""
-        if not self.backend:
-            backend = __import__(string, globals(), locals(), ['backend'], 0)
-            self.backend = backend.backend
-        elif not self.backend.name.startswith('torch'):
-            raise RuntimeError('This backend is not supported.')
-    
+        self.name = 'torch'
+   
     def register_filters(self):
         """ This function should be called after filters are generated,
         saving those arrays as module buffers. """

@@ -6,6 +6,7 @@ assert version.parse(tf.__version__)>=version.parse("2.0.0a0"), 'Current TensorF
 class ScatteringTensorFlow(tf.Module):
     def __init__(self, name):
         super(ScatteringTensorFlow, self).__init__(name=name)
+        self.name = 'tensorflow'
     
     def scattering(self, x):
         """ This function should call the functional scattering."""
