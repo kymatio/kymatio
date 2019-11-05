@@ -1,8 +1,8 @@
-FROM nvidia/cuda:9.2-devel
+FROM nvidia/cuda:10.0-devel-ubuntu18.04
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
-      python3-scipy \
+      libcudnn7 \
       python3-appdirs \
       python3-mako \
       python3-pytest \
@@ -17,7 +17,10 @@ RUN apt-get update && \
     rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
 RUN pip3 install \
+      'numpy>=1.16' \
+      scipy \
       configparser \
       torchvision \
       scikit-cuda \
-      cupy
+      cupy \
+      'tensorflow-gpu>=2.0.0a0'
