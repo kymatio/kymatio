@@ -11,4 +11,3 @@ class ScatteringNumPy(object):
     def __call__(self, x):
         """ This function should call the functional scattering."""
         return self.scattering(x)
-
