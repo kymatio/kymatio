@@ -20,5 +20,7 @@ else
     pip install torchvision
 fi
 
+pip install 'tensorflow>=2.0.0a'
+
 pip install -r requirements.txt
 python setup.py develop
