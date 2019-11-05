@@ -9,7 +9,7 @@ class ScatteringTorch(nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
         self.name = 'torch'
-   
+
     def register_filters(self):
         """ This function should be called after filters are generated,
         saving those arrays as module buffers. """
@@ -22,4 +22,4 @@ class ScatteringTorch(nn.Module):
     def forward(self, x):
         """ This function should call the functional scattering."""
         return self.scattering(x)
-    
+
