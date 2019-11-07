@@ -20,4 +20,3 @@ class ScatteringTorch(nn.Module):
     def forward(self, x):
         """ This function should call the functional scattering."""
         return self.scattering(x)
-
