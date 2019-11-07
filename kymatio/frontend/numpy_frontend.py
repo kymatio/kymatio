@@ -8,5 +8,6 @@ class ScatteringNumPy(object):
         raise NotImplementedError
 
     def __call__(self, x):
-        """ This function should call the functional scattering."""
+        """ This function provides a standard NumPy calling interface to the
+        scattering computation."""
         return self.scattering(x)
