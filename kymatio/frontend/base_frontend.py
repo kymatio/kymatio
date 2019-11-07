@@ -12,7 +12,7 @@ class ScatteringBase():
         self.filters = self.create_filters() """
         raise NotImplementedError
     
-    def set_backend(self, string):
+    def _instantiate_backend(self, string):
         """ This function should set the backend to be used if not already
         specified"""
         if isinstance(self.backend, str):
