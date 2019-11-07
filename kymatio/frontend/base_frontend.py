@@ -11,8 +11,9 @@ class ScatteringBase():
         self.filters = self.create_filters() """
         raise NotImplementedError
     
-    def register_backend(self, string):
-        """ This function should register the backend to be used"""
+    def set_backend(self, string):
+        """ This function should set the backend to be used if not already
+        specified"""
         if not self.backend:
             backend = __import__(string, globals(), locals(), ['backend'], 0)
             self.backend = backend.backend
