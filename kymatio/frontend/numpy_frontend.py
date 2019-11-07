@@ -2,7 +2,7 @@
 class ScatteringNumPy(object):
     def __init__(self):
         super(ScatteringNumPy, self).__init__()
-        self.name = 'numpy'
+        self.backend_name = 'numpy'
         
     def scattering(self, x):
         """ This function should compute the scattering transform."""

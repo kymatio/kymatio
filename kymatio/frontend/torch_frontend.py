@@ -8,7 +8,7 @@ assert version.parse(torch.__version__)>=version.parse("1.3"), 'Current PyTorch 
 class ScatteringTorch(nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
-        self.name = 'torch'
+        self.backend_name = 'torch'
 
     def register_filters(self):
         """ This function should be called after filters are generated,
