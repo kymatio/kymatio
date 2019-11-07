@@ -7,7 +7,7 @@ class ScatteringTensorFlow(tf.Module):
     def __init__(self, name):
         super(ScatteringTensorFlow, self).__init__(name=name)
         self.frontend_name = 'tensorflow'
-    
+
     def scattering(self, x):
         """ This function should call the functional scattering."""
         raise NotImplementedError
