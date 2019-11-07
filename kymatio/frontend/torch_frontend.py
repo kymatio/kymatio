@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from packaging import version
 
 
 class ScatteringTorch(nn.Module):
