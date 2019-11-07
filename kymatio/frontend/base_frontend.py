@@ -1,3 +1,4 @@
+import importlib
 
 class ScatteringBase():
     def __init__(self):
@@ -15,8 +16,7 @@ class ScatteringBase():
         """ This function should set the backend to be used if not already
         specified"""
         if not self.backend:
-            backend = __import__(string, globals(), locals(), ['backend'], 0)
-            self.backend = backend.backend
+            self.backend = importlib.import_module(string, 'backend')
         elif not self.backend.name.startswith(self.name):
             raise RuntimeError('This backend is not supported.')
  
