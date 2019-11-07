@@ -13,7 +13,7 @@ class ScatteringBase():
         raise NotImplementedError
     
     def _instantiate_backend(self, import_string):
-        """ This function should set the backend to be used if not already
+        """ This function should instantiate the backend to be used if not already
         specified"""
         if isinstance(self.backend, str):
             self.backend = importlib.import_module(import_string + self.backend \
