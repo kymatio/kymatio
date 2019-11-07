@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 from packaging import version
 
-assert version.parse(torch.__version__)>=version.parse("1.3"), 'Current PyTorch version is ' + str(torch.__version__) +\
-                                                    ' . Please upgrade PyTorch to 1.3 at least.'
 
 class ScatteringTorch(nn.Module):
     def __init__(self):
