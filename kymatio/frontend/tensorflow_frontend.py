@@ -18,5 +18,6 @@ class ScatteringTensorFlow(tf.Module):
 
     @tf.Module.with_name_scope
     def __call__(self, x):
-        """ This function should call the functional scattering."""
+        """ This function provides the standard TensorFlow calling interface for
+        the scattering computation."""
         return self.scattering(x)
