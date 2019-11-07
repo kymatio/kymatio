@@ -18,8 +18,9 @@ class ScatteringBase():
         if isinstance(self.backend, str):
             self.backend = importlib.import_module(string + self.backend \
                     + "_backend", 'backend')
-        elif not self.backend.name.startswith(self.backend_name):
+        elif not self.backend.name.startswith(self.frontend_name):
             raise RuntimeError('This backend is not supported.')
+
  
 
     def create_filters(self):
