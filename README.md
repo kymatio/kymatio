@@ -1,10 +1,8 @@
-Kymatio: Wavelet scattering in PyTorch (and soon, TensorFlow too)
-=================================================================
+Kymatio: Wavelet scattering in Python
+======================================
 
 Kymatio is an implementation of the wavelet scattering transform in the Python programming language, suitable for large-scale numerical experiments in signal processing and machine learning.
-A scattering transform is a nonlinear signal representation resembling the response of a deep convolutional network, yet requiring no prior training.
-Indeed, in a scattering network, convolutional kernels are defined as wavelets (band-pass filters) instead of being learned from data.
-This property makes Kymatio suitable to many classification and regression tasks, both in supervised and unsupervised settings.
+Scattering transforms are translation-invariant signal representations implemented as convolutional networks whose filters are not learned, but fixed (as wavelet filters).
 
 [![PyPI](https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg)](https://pypi.org/project/kymatio/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
@@ -16,7 +14,8 @@ This property makes Kymatio suitable to many classification and regression tasks
 Use Kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets,
 * integrates wavelet scattering in a deep learning architecture, and
-* runs seamlessly on CPU and GPU hardware.
+* runs seamlessly on CPU and GPU hardware, with major deep learning APIs, such
+  as PyTorch and TensorFlow.
 
 
 ### Flexibility
@@ -29,12 +28,11 @@ The resort to PyTorch tensors as inputs to Kymatio allows the programmer to back
 
 Each of these algorithms is written in a high-level imperative paradigm, making it portable to any Python library for array operations as long as it enables complex-valued linear algebra and a fast Fourier transform (FFT).
 
-As of v0.1, Kymatio fully supports two backends: PyTorch (CPU and GPU) and scikit-cuda (GPU only).
+Each algorithm comes packaged with a frontend and backend. The frontend takes care of
+interfacing with the user. The backend defines functions necessary for
+computation of the scattering transform.
 
-The next version of Kymatio, planned around spring 2020, will also support NumPy (CPU only) and TensorFlow (CPU and GPU) as backends.
-You may already try out these new backends in the alpha release of Kymatio v0.2, whose source code is available on the following branch:
-https://github.com/kymatio/kymatio/tree/0.2.X
-
+Currently, there are four available frontend-backends, PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU only), TensorFlow (CPU and GPU) and NumPy (CPU).
 
 ### Scalability
 
@@ -56,23 +54,16 @@ Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zar
 
 ### Dependencies
 
-Kymatio v0.1 requires the following packages:
+Kymatio requires:
 
 * Python (>= 3.5)
-* PyTorch (>= 0.4)
 * SciPy (>= 0.13)
 
-The next version, v0.2, will offer a pure NumPy backend (CPU only), hence making the the PyTorch dependency optional.
 
-
-### Installation on CPU hardware
-We strongly recommend running Kymatio in an Anaconda environment, because this simplifies the installation of [PyTorch](https://pytorch.org). This is most easily achieved by running
-
-```
-conda install pytorch torchvision -c pytorch
-```
-
-Once PyTorch is installed, you may install the latest version of Kymatio using the package manager `pip`, which will automatically download Kymatio from the Python Package Index (PyPI):
+### Standard installation (on CPU hardware)
+We strongly recommend running Kymatio in an Anaconda environment, because this simplifies the installation of other
+dependencies. You may install the latest version of Kymatio using the package manager `pip`, which will automatically download
+Kymatio from the Python Package Index (PyPI):
 
 ```
 pip install kymatio
@@ -81,49 +72,88 @@ pip install kymatio
 Linux and macOS are the two officially supported operating systems.
 
 
-### Installation on GPU hardware
+### Frontend
 
-To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your object to GPU. For extra speed, install the CUDA library and install the `scikit-cuda` dependency by running the following pip command:
+#### NumPy
+
+To explicitly call the `numpy` frontend, run:
+
+```
+from kymatio.numpy import Scattering2D
+scattering = Scattering2D(J=2, shape=(32, 32))
+```
+
+#### PyTorch
+
+After installing the latest version of `torch`, you can call `Scattering2D` as a `nn.Module` via for instance:
+
+```
+from kymatio.torch import Scattering2D
+scattering = Scattering2D(J=2, shape=(32, 32))
+```
+
+#### TensorFlow
+
+After installing the latest version of `tensorflow`, you can call `Scattering2D` as a `tf.Module` via for instance:
+
+```
+from kymatio.tensorflow import Scattering2D
+scattering = Scattering2D(J=2, shape=(32, 32))
+```
+
+### GPU acceleration
+
+The available backends are PyTorch (`torch`), PyTorch+scikit-cuda (`torch_skcuda`), TensorFlow (`tensorflow`), and NumPy
+(`numpy`).
+
+NumPy is the default frontend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large
+images (e.g. ImageNet, of size 224x224), however, we recommend the `torch_skcuda` backend, which is substantially faster
+than NumPy.
+
+#### PyTorch and scikit-cuda
+
+To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your
+object to GPU. Kymatio is designed to operate on a variety of backends for tensor operations. For extra speed, install
+the CUDA library and the `skcuda` dependency by running the following pip command:
 
 ```
 pip install scikit-cuda cupy
 ```
 
-Then, set the `KYMATIO_BACKEND` to `skcuda`:
+The user may control the choice of backend at runtime via for instance:
 
 ```
-os.environ["KYMATIO_BACKEND"] = "skcuda"
+from kymatio.torch import Scattering2D
+scattering = Scattering2D(J=2, shape=(32, 32)), backend='torch_skcuda')
 ```
-
-
-#### Available backends: PyTorch and scikit-cuda
-
-Kymatio is designed to operate on a variety of backends for tensor operations.
-The user may control the choice of backend at runtime by setting the environment variable `KYMATIO_BACKEND`, or by editing the Kymatio configuration file (`~/.config/kymatio/kymatio.cfg` on Linux).
-
-The two available backends are PyTorch (`torch`) and scikit-cuda (`skcuda`).
-
-PyTorch is the default backend in 1D, 2D, and 3D scattering. However, for applications of the 2D scattering transform to large images (e.g. ImageNet, of size 224×224), we recommend the `skcuda` backend, which is substantially faster than PyTorch.
 
 ### Installation from source
 
-Assuming PyTorch is already installed (see above) and the Kymatio source has been downloaded, you may install it by running
+Assuming the Kymatio source has been downloaded, you may install it by running
 
 ```
 pip install -r requirements.txt
 python setup.py install
 ```
 
+Developers can also install Kymatio via:
+
+```
+pip install -r requirements.txt
+python setup.py develop
+```
 
 ## Documentation
 
 The documentation of Kymatio is officially hosted on the [kymat.io](https://www.kymat.io/) website.
+
 
 ### Online resources
 
 * [GitHub repository](https://github.com/kymatio/kymatio)
 * [GitHub issue tracker](https://github.com/kymatio/kymatio/issues)
 * [BSD-3-Clause license](https://github.com/kymatio/kymatio/blob/master/LICENSE.md)
+* [List of authors](https://github.com/kymatio/kymatio/blob/master/AUTHORS.md)
 * [Code of conduct](https://github.com/kymatio/kymatio/blob/master/CODE_OF_CONDUCT.md)
 
 
@@ -136,16 +166,7 @@ pip install -r requirements_optional.txt
 cd doc; make clean; make html
 ```
 
-## About Us
-
-### Core contributors
-
-We are a team of students and researchers at various academic institutions: Berkeley, CNRS, Cornell, ENPC, ENS, Flatiron Institute, NYU, U of Montreal, and WWU; to name a few.
-
-For more information, please see [the full list of contributors](https://github.com/kymatio/kymatio/graphs/contributors).
-
-
-### Institutional support
+## Support
 
 We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
 
@@ -155,8 +176,7 @@ We would also like to thank École Normale Supérieure for their support.
 
 [![ENS](https://www.ens.fr/sites/default/files/inline-images/logo.jpg)](https://www.ens.fr/)
 
-
-### What Kymatio means
+## Kymatio
 
 Kyma (*κύμα*) means *wave* in Greek. By the same token, Kymatio (*κυμάτιο*) means *wavelet*.
 
