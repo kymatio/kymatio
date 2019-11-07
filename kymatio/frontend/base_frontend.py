@@ -27,7 +27,3 @@ class ScatteringBase():
         save those arrays. """
         raise NotImplementedError
 
-    def loginfo(self):
-        """ Returns the logging message when the frontend is deployed."""
-        raise NotImplementedError
-
