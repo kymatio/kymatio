@@ -3,7 +3,10 @@
 Information for developers
 **************************
 
-Kymatio implements the scattering transform for different architectures (currently ``torch`` and ``scikit-cuda``/``cupy``) through backends. This way, the generic algorithm can be written in an architecture-agnostic manner, since all low-level operations are relegated to the backend.
+Kymatio implements the scattering transform for different frontends (currently ``numpy``, ``torch``, ``tensorflow``), each of
+which have one or more corresponding backends. This way, the generic scattering algorithm can be written in an architecture-agnostic manner,
+since all low-level operations are relegated to the backend, and high-level operations specific to an API are relegated
+to the frontend.
 
 Backend: core of the algorithm
 ==============================
@@ -19,7 +22,8 @@ Common to the 1D, 2D and 3D scattering transform routine are four low-level func
 Unit tests
 ==========
 
-For running all the unit tests and avoiding bugs, please run (in the root directory)::
+For running all the unit tests and avoiding bugs, please first install the latest versions of ``numpy``, ``tensorflow``,
+``torch``, ``cupy``, ``scikit-cuda`` .Then, run (in the root directory)::
 
     pytest
 

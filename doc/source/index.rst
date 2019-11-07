@@ -5,8 +5,6 @@
 
 .. |picDL| image:: https://pepy.tech/badge/kymatio
 
-.. |piccodecov| image:: https://codecov.io/gh/kymatio/kymatio/branch/master/graph/badge.svg
-
 .. |pic3| image:: https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png
           :width: 30px
           :target: https://github.com/kymatio/kymatio
@@ -33,26 +31,32 @@
 Kymatio
 *******
 
-|pic2|  |pic1| |picDL| |piccodecov|
+|pic2|  |pic1| |picDL|
 
 |pic3|  |pic4|
 
 
 Kymatio is a Python module for computing wavelet and scattering transforms.
 
-It is built on top of PyTorch, but also has a fast CUDA backend via cupy and
-skcuda.
+It is built on top of standard Python libraries, such as NumPy, PyTorch, and TensorFlow. Our framework allows the use of
+high-level frontends to directly plug the scattering network to your application. It also incorporates different backends
+which allow for low-level tuning of the code. For instance, the PyTorch API includes a fast CUDA backend via cupy and skcuda.
 
-Use kymatio if you need a library that:
+Use Kymatio if you need a library that:
 
 * integrates wavelet scattering in a deep learning architecture,
-* supports 1-D, 2-D, and 3-D scattering transforms
-* differentiable transforms for applications in generative modeling, reconstruction and more!
-* runs seamlessly on CPU and GPU hardware.
+* supports 1-D, 2-D, and 3-D scattering transforms,
+* differentiable transforms for applications in generative modeling, reconstruction, and more!
+* runs seamlessly on CPU and GPU hardware, with major deep learning APIs
+  (PyTorch and TensorFlow).
 
 A brief intro to wavelet scattering is provided in :ref:`user-guide`. For a
 list of publications see
-`Publications <https://www.di.ens.fr/data/publications>`_.
+`Publications <https://www.di.ens.fr/data/publications>`_. If you use this package, please cite the following paper:
+
+Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J.,
+Belilovsky E., Bruna J., Lostanlen V., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M. (2019). **Kymatio:
+Scattering Transforms in Python.** `arXiv preprint <https://arxiv.org/abs/1812.11214>`_.
 
 We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
 

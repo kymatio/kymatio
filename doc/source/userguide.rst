@@ -114,13 +114,35 @@ size:
 
 ...
 
-Switching from CPU to GPU
-=========================
+Frontends
+=========
+
+You can choose a frontend via the import `from kymatio.frontend import
+Scattering2D`, where `frontend` is either `numpy`, `tensorflow`, or `torch`.
+
+Additionally, you can choose a frontend via the `frontend=` arguments available in all the `Scattering` constructors. By default, `torch`
+frontend is used.
+
+
+
+NumPy
+-----
+
+To call this frontend, simply do::
+
+    from kymatio.numpy import Scattering2D
+    scattering = Scattering2D(J=2, shape=(32, 32))
+
+This will only use standard NumPy routines to calculate the scattering
+transform.
+
+PyTorch
+-------
 
 When initialized, a scattering transform object is stored on the CPU::
 
     import torch
-    from kymatio import Scattering2D
+    from kymatio.torch import Scattering2D
 
     scattering = Scattering2D(J=2, shape=(32, 32))
 
@@ -152,39 +174,36 @@ scattering transform object back to the CPU by calling::
 
 .. _backend-story:
 
+TensorFlow
+----------
+
+To call this frontend, simply do::
+
+    from kymatio.tensorflow import Scattering2D
+    scattering = Scattering2D(J=2, shape=(32, 32))
+
+This is a TensorFlow module that one can use directly in eager mode.
+
 Backend
 =======
 
-The scattering transform implementation in Kymatio is structured around a
-flexible backend framework. These backends encapsulate the most computationally
-intensive part of the scattering transform calculation. As a result, improved
-performance can often achieved by replacing the default backend with a more
-optimized alternative.
+The backends encapsulate the most computationally intensive part of the
+scattering transform calculation. As a result, improved performance can
+often be achieved by replacing the default backend with a more optimized
+alternative.
 
-The default backend in Kymatio, ``torch``, is implemented in PyTorch. This is
-available for 1D, 2D, and 3D. It is also compatible with the PyTorch automatic
-differentiation framework.
+For instance, the default backend of the ``torch`` frontend is the ``torch`` backend,
+implemented exclusively in PyTorch. This is available for 1D, 2D, and 3D. It is also
+compatible with the PyTorch automatic differentiation framework, and runs on
+both CPU and GPU. If one wants additional improved performance on GPU, it is recommended
+to use the ``torch_skcuda`` backend.
 
-A more powerful backend, ``skcuda``, relies on ``scikit-cuda`` and ``cupy`` to
-improve performance through optimized CUDA kernels. This backend is available
-only in 1D and 2D. It is not differentiable and relies on additional
-dependencies to work properly. These may be installed by running::
-
-    pip install -r requirements_optional_cuda.txt
-
-To specify which backend is to be used, you may edit the configuration file
-found in ``~/.config/kymatio/kymatio.cfg``. To temporarily switch a backend, you
-may use the ``KYMATIO_BACKEND`` environment variable, which overrides the
-default setting in the configuration file. Alternatively, the backend may be
-specified on a per-dimension basis through the ``KYMATIO_BACKEND_1D``,
-``KYMATIO_BACKEND_2D``, and ``KYMATIO_BACKEND_3D`` variables.
-
-Currently, two backends exist:
+Currently, two backends exist for ``torch``:
 
 - ``torch``: A PyTorch-only implementation which is differentiable with respect
   to its inputs. However, it relies on general-purpose CUDA kernels for GPU
   computation which reduces performance.
-- ``skcuda``: An implementation using custom CUDA kernels (through ``cupy``) and
+- ``torch_skcuda``: An implementation using custom CUDA kernels (through ``cupy``) and
   ``scikit-cuda``. This implementation only runs on the GPU (that is, you must
   call :meth:`cuda` prior to applying it). Since it uses kernels optimized for
   the various steps of the scattering transform, it achieves better performance
@@ -192,11 +211,21 @@ Currently, two backends exist:
   improvement is currently small in 1D and 3D, but work is underway to further
   optimize this backend.
 
+
+
+This backend can be specified via::
+
+    import torch
+    from kymatio.torch import Scattering2D
+
+    scattering = Scattering2D(J=2, shape=(32, 32), backend='torch_skcuda')
+
+
 Benchmarks
 ==========
 
-1D backend
------------
+1D
+--
 
 We compared our implementation with that of the ScatNet MATLAB package
 :cite:`anden2014scatnet` with similar settings. The following table shows the
@@ -204,23 +233,23 @@ average computation time for a batch of size $64 \times 65536$. This
 corresponds to $64$ signals containing $65536$, or a total of about
 $95$ seconds of audio sampled at $44.1~\mathrm{kHz}$.
 
-==============================================    ==========================
-Name                                              Average time per batch (s)
-==============================================    ==========================
-ScatNet :cite:`anden2014scatnet`                  1.65
-Kymatio (``torch`` backend, CPU)                  2.74
-Kymatio (``torch`` backend, Quadro M4000 GPU)     0.81
-Kymatio (``torch`` backend, V100 GPU)             0.15
-Kymatio (``skcuda`` backend, Quadro M4000 GPU)    0.66
-Kymatio (``skcuda`` backend, V100 GPU)            0.11
-==============================================    ==========================
+================================================================== ==========================
+Name                                                               Average time per batch (s)
+================================================================== ==========================
+ScatNet :cite:`anden2014scatnet`                                   1.65
+Kymatio (``torch`` frontend-backend, CPU)                          2.74
+Kymatio (``torch`` frontend-backend, Quadro M4000 GPU)             0.81
+Kymatio (``torch`` frontend-backend, V100 GPU)             0.15
+Kymatio (``torch`` frontend, ``skcuda`` backend, Quadro M4000 GPU) 0.66
+Kymatio (``torch`` frontend, ``skcuda`` backend, V100 GPU)         0.11
+================================================================== ==========================
 
 The CPU tests were performed on a 24-core machine. Further optimization of both
 the ``torch`` and ``skcuda`` backends is currently underway, so we expect these
 numbers to improve in the near future.
 
-2D backend
------------
+2D
+--
 
 We compared our implementation the ScatNetLight MATLAB package
 :cite:`Oyallon_2015_CVPR` and a previous PyTorch implementation, *PyScatWave*
@@ -228,34 +257,34 @@ We compared our implementation the ScatNetLight MATLAB package
 batch of size $128 \times 3 \times 256 \times 256$. This corresponds to
 $128$ three-channel (e.g., RGB) images of size $256 \times 256$.
 
-==============================================    ==========================
-Name                                              Average time per batch (s)
-==============================================    ==========================
-MATLAB :cite:`Oyallon_2015_CVPR`                  >200
-Kymatio (``torch`` backend, CPU)                  110
-Kymatio (``torch`` backend, 1080Ti GPU)           4.4
-Kymatio (``torch`` backend, V100 GPU)             2.9
-PyScatWave (1080Ti GPU)                           0.5
-Kymatio (``skcuda`` backend, 1080Ti GPU)          0.5
-==============================================    ==========================
+============================================================   ==========================
+Name                                                           Average time per batch (s)
+============================================================   ==========================
+MATLAB :cite:`Oyallon_2015_CVPR`                               >200
+Kymatio (``torch`` frontend-backend, CPU)                      110
+Kymatio (``torch`` frontend-backend, 1080Ti GPU)               4.4
+Kymatio (``torch`` frontend-backend, V100 GPU)                 2.9
+PyScatWave (1080Ti GPU)                                        0.5
+Kymatio (``torch`` frontend, ``skcuda`` backend, 1080Ti GPU)   0.5
+============================================================   ==========================
 
 The CPU tests were performed on a 48-core machine.
 
-3D backend
------------
+3D
+--
 
 We compared our implementation for different backends with a batch size of $8 \times 128 \times 128 \times 128$.
 This means that eight different volumes of size $128 \times 128 \times 128$ were processed at the same time. The resulting timings are:
 
-==============================================    ==========================
-Name                                              Average time per batch (s)
-==============================================    ==========================
-Kymatio (``torch`` backend, CPU)                  45
-Kymatio (``torch`` backend, Quadro M4000 GPU)     7.5
-Kymatio (``torch`` backend, V100 GPU)             0.88
-Kymatio (``skcuda`` backend, Quadro M4000 GPU)    6.4
-Kymatio (``skcuda`` backend, V100 GPU)            0.74
-==============================================    ==========================
+===================================================================   ==========================
+Name                                                                  Average time per batch (s)
+===================================================================   ==========================
+Kymatio (``torch`` frontend-backend, CPU)                             45
+Kymatio (``torch`` frontend-backend, Quadro M4000 GPU)                7.5
+Kymatio (``torch`` frontend-backend, V100 GPU)                        0.88
+Kymatio (``torch`` frontend, ``skcuda`` backend, Quadro M4000 GPU)    6.4
+Kymatio (``torch`` frontend, ``skcuda`` backend, V100 GPU)            0.74
+===================================================================   ==========================
 
 The CPU tests were performed on a 24-core machine. Further optimization of both
 the ``torch`` and ``skcuda`` backends is currently underway, so we expect these
