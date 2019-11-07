@@ -18,7 +18,7 @@ class ScatteringBase():
         specified"""
         if isinstance(self.backend, str):
             self.backend = importlib.import_module(import_string + self.backend \
-                    + "_backend", 'backend')
+                    + "_backend", 'backend').backend
         elif not self.backend.name.startswith(self.frontend_name):
             raise RuntimeError('This backend is not supported.')
 
