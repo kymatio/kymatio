@@ -12,11 +12,11 @@ class ScatteringBase():
         self.filters = self.create_filters() """
         raise NotImplementedError
     
-    def _instantiate_backend(self, string):
+    def _instantiate_backend(self, import_string):
         """ This function should set the backend to be used if not already
         specified"""
         if isinstance(self.backend, str):
-            self.backend = importlib.import_module(string + self.backend \
+            self.backend = importlib.import_module(import_string + self.backend \
                     + "_backend", 'backend')
         elif not self.backend.name.startswith(self.frontend_name):
             raise RuntimeError('This backend is not supported.')
