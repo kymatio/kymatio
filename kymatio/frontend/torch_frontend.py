@@ -18,5 +18,6 @@ class ScatteringTorch(nn.Module):
         raise NotImplementedError
 
     def forward(self, x):
-        """ This function should call the functional scattering."""
+        """ This function provides the standard calling interface for PyTorch
+        modules."""
         return self.scattering(x)
