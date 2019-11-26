@@ -17,7 +17,14 @@ class Scattering2D(object):
 
         try:
             module = importlib.__import__(frontend + '_frontend', globals(), locals(), [], 1)
-            self.__class__ = getattr(module, self.__class__.__name__ + frontend.capitalize())
+
+            # Create frontend-specific class name by inserting frontend name
+            # after `Scattering`.
+            class_name = self.__class__.__name__
+            class_name = (class_name[:-2] + frontend.capitalize()
+                          + class_name[-2:])
+
+            self.__class__ = getattr(module, class_name)
             self.__init__(*args, **kwargs)
         except Exception as e:
             raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')

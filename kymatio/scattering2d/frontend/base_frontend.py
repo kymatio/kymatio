@@ -4,7 +4,7 @@ from ..filter_bank import filter_bank
 from ..utils import compute_padding
 
 
-class Scattering2DBase(ScatteringBase):
+class ScatteringBase2D(ScatteringBase):
     """ Main module implementing the scattering transform in 2D.
         The scattering transform computes two wavelet transform followed
         by modulus non-linearity.
@@ -84,7 +84,7 @@ class Scattering2DBase(ScatteringBase):
         """
 
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None):
-        super(Scattering2DBase, self).__init__()
+        super(ScatteringBase2D, self).__init__()
         self.pre_pad = pre_pad
         self.L = L
         self.backend = backend
