@@ -1,4 +1,4 @@
-# Authors: Edouard Oyallon, Sergey Zagoruyko
+# Authors: Edouard Oyallon, Sergey Zagoruyko, Muawiz Chaudhary
 
 from collections import namedtuple
 import torch
