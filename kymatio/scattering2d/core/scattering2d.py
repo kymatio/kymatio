@@ -8,7 +8,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
     modulus = backend.modulus
     fft = backend.fft
     cdgmm = backend.cdgmm
-    finalize = backend.finalize
+    concatenate = backend.concatenate
 
     order0_size = 1
     order1_size = L * J
@@ -72,5 +72,5 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
 
             out_S_2.append(S_2_r)
 
-    out_S = finalize(out_S_0, out_S_1, out_S_2)
+    out_S = concatenate(out_S_0, out_S_1, out_S_2)
     return out_S

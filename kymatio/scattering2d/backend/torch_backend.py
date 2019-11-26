@@ -302,7 +302,7 @@ def cdgmm(A, B, inplace=False):
 
         return C if not inplace else A.copy_(C)
 
-def finalize(s0, s1, s2):
+def concatenate(s0, s1, s2):
     """Concatenate scattering of different orders.
 
         Parameters
@@ -325,7 +325,7 @@ def finalize(s0, s1, s2):
     else:
         return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3)], -3)
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'finalize'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -333,4 +333,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.finalize = finalize
+backend.concatenate = concatenate
