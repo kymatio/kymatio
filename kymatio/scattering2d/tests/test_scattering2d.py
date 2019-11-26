@@ -8,170 +8,10 @@ from kymatio.scattering2d import Scattering2D
 from kymatio.scattering2d import backend
 
 
-backends = []
-
-try:
-    from kymatio.scattering2d.backend import backend_skcuda
-    backends.append(backend_skcuda)
-except:
-    pass
-
-try:
-    from kymatio.scattering2d.backend import backend_torch
-    backends.append(backend_torch)
-except:
-    pass
-
-
 if torch.cuda.is_available():
     devices = ['cuda', 'cpu']
 else:
     devices = ['cpu']
-
-
-# Checked the modulus
-def test_Modulus():
-    for device in devices:
-        if device == 'cuda':
-            for backend in backends:
-                modulus = backend.Modulus()
-                x = torch.rand(100, 10, 4, 2).cuda().float()
-                y = modulus(x)
-                u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-                v = y.narrow(3, 0, 1)
-                u = u.squeeze()
-                v = v.squeeze()
-                assert (u - v).abs().max() < 1e-6
-        elif device == 'cpu':
-            for backend in backends:
-                if backend.NAME == 'skcuda':
-                    continue
-                modulus = backend.Modulus()
-                x = torch.rand(100, 10, 4, 2).float()
-                y = modulus(x)
-                u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-                v = y.narrow(3, 0, 1)
-                u = u.squeeze()
-                v = v.squeeze()
-                assert (u - v).abs().max() < 1e-6
-
-
-
-# Checked the subsampling
-def test_SubsampleFourier():
-    for device in devices:
-        if device == 'cuda':
-            for backend in backends:
-                x = torch.rand(100, 1, 128, 128, 2).cuda().double()
-                y = torch.zeros(100, 1, 8, 8, 2).cuda().double()
-
-                for i in range(8):
-                    for j in range(8):
-                        for m in range(16):
-                            for n in range(16):
-                                y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
-
-                y = y / (16*16)
-
-                subsample_fourier = backend.SubsampleFourier()
-
-                z = subsample_fourier(x, k=16)
-                assert (y - z).abs().max() < 1e-8
-                if backend.NAME == 'torch':
-                    z = subsample_fourier(x.cpu(), k=16)
-                    assert (y.cpu() - z).abs().max() < 1e-8
-        elif device == 'cpu':
-            for backend in backends:
-                if backend.NAME == 'skcuda':
-                    continue
-                x = torch.rand(100, 1, 128, 128, 2).double()
-                y = torch.zeros(100, 1, 8, 8, 2).double()
-
-                for i in range(8):
-                    for j in range(8):
-                        for m in range(16):
-                            for n in range(16):
-                                y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
-
-                y = y / (16*16)
-
-                subsample_fourier = backend.SubsampleFourier()
-
-                z = subsample_fourier(x, k=16)
-                assert (y - z).abs().max() < 1e-8
-                if backend.NAME == 'torch':
-                    z = subsample_fourier(x.cpu(), k=16)
-                    assert (y.cpu() - z).abs().max() < 1e-8
-
-
-# Check the CUBLAS routines
-class TestCDGMM:
-    @pytest.fixture(params=(False, True))
-    def data(self, request):
-        real_filter = request.param
-        x = torch.rand(100, 128, 128, 2)
-        filt = torch.rand(128, 128, 2)
-        y = torch.ones(100, 128, 128, 2)
-        if real_filter:
-            filt[..., 1] = 0
-        y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
-        y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
-        if real_filter:
-            filt = filt[..., :1]
-        return x, filt, y
-
-    @pytest.mark.parametrize("backend", backends)
-    @pytest.mark.parametrize("device", devices)
-    @pytest.mark.parametrize("inplace", (False, True))
-    def test_cdgmm_forward(self, data, backend, device, inplace):
-        if device == 'cpu' and backend.NAME == 'skcuda':
-            pytest.skip("skcuda backend can only run on gpu")
-        x, filt, y = data
-        # move to device
-        x, filt, y = x.to(device), filt.to(device), y.to(device)
-        # call cdgmm
-        if inplace:
-            x = x.clone()
-        z = backend.cdgmm(x, filt, inplace=inplace)
-        if inplace:
-            z = x
-        # compare
-        assert (y - z).abs().max() < 1e-6
-
-    @pytest.mark.parametrize("backend", backends)
-    def test_cdgmm_exceptions(self, backend):
-        with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 3, 2))
-        assert "not compatible" in exc.value.args[0]
-        with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
-        assert "input must be complex" in exc.value.args[0]
-        with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
-        assert "filter must be complex or real" in exc.value.args[0]
-        with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(3, 4, 5, 2))
-        assert "filter must be a 3-tensor" in exc.value.args[0]
-        with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).double())
-        assert "must be of the same dtype" in exc.value.args[0]
-        if 'cuda' in devices:
-            with pytest.raises(RuntimeError) as exc:
-                backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-            assert "type" in exc.value.args[0]
-
-def test_FFT():
-    x = torch.rand(4, 4, 1)
-    with pytest.raises(TypeError) as record:
-        backend.fft(x)
-    assert ('complex' in record.value.args[0])
-
-    x = torch.randn(4, 4, 2)
-    y = x[::2, ::2]
-
-    with pytest.raises(RuntimeError) as record:
-        backend.fft(y)
-    assert ('must be contiguous' in record.value.args[0])
 
 
 def reorder_coefficients_from_interleaved(J, L):
@@ -217,36 +57,23 @@ def test_Scattering2D():
     M = x.shape[2]
     N = x.shape[3]
 
-    import kymatio.scattering2d.backend as backend
+    scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
+    Sg = []
 
-    if backend.NAME == 'skcuda':
-        print('skcuda backend tested!')
-        # First, let's check the Jit
-        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
-        scattering.cuda()
-        x = x.cuda()
-        S = S.cuda()
-        y = scattering(x)
-        assert ((S - y)).abs().max() < 1e-6
-    elif backend.NAME == 'torch':
-        # Then, let's check when using pure pytorch code
-        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad)
-        Sg = []
-
-        for device in devices:
-            if device == 'cuda':
-                print('torch-gpu backend tested!')
-                x = x.cuda()
-                scattering.cuda()
-                S = S.cuda()
-                Sg = scattering(x)
-            else:
-                print('torch-cpu backend tested!')
-                x = x.cpu()
-                S = S.cpu()
-                scattering.cpu()
-                Sg = scattering(x)
-            assert (Sg - S).abs().max() < 1e-6
+    for device in devices:
+        if device == 'cuda':
+            print('torch-gpu backend tested!')
+            x = x.cuda()
+            scattering.cuda()
+            S = S.cuda()
+            Sg = scattering(x)
+        else:
+            print('torch-cpu backend tested!')
+            x = x.cpu()
+            S = S.cpu()
+            scattering.cpu()
+            Sg = scattering(x)
+        assert (Sg - S).abs().max() < 1e-6
 
 
 def test_batch_shape_agnostic():
@@ -268,10 +95,6 @@ def test_batch_shape_agnostic():
 
     x = torch.zeros(shape)
 
-    if backend.NAME == 'skcuda':
-        x = x.cuda()
-        S.cuda()
-
     Sx = S(x)
 
     assert len(Sx.shape) == 3
@@ -285,9 +108,6 @@ def test_batch_shape_agnostic():
     for test_shape in test_shapes:
         x = torch.zeros(test_shape)
 
-        if backend.NAME == 'skcuda':
-            x = x.cuda()
-
         Sx = S(x)
 
         assert len(Sx.shape) == len(test_shape) + 1
@@ -299,9 +119,6 @@ def test_batch_shape_agnostic():
 # `Scattering2D.forward`.
 def test_scattering2d_errors():
     S = Scattering2D(3, (32, 32))
-
-    if backend.NAME == 'skcuda':
-        S.cuda()
 
     with pytest.raises(TypeError) as record:
         S(None)
@@ -332,9 +149,8 @@ def test_scattering2d_errors():
     for device in devices:
         x = x.to(device)
         S = S.to(device)
-        if not (device == 'cpu' and backend.NAME == 'skcuda'):
-            y = S(x)
-            assert(x.device == y.device)
+        y = S(x)
+        assert(x.device == y.device)
 
 # Check that several input size works
 def test_input_size_agnostic():
@@ -343,17 +159,9 @@ def test_input_size_agnostic():
             scattering = Scattering2D(J, shape=(N, N))
             x = torch.zeros(3, 3, N, N)
 
-            if backend.NAME == 'skcuda':
-                x = x.cuda()
-                scattering.cuda()
-
             S = scattering(x)
             scattering = Scattering2D(J, shape=(N, N), pre_pad=True)
             x = torch.zeros(3,3,scattering.M_padded, scattering.N_padded)
-
-            if backend.NAME == 'skcuda':
-                x = x.cuda()
-                scattering.cuda()
 
             S = scattering(x)
 
@@ -362,10 +170,6 @@ def test_input_size_agnostic():
     scattering = Scattering2D(J, shape=(N, N))
     x = torch.zeros(3, 3, N, N)
 
-    if backend.NAME == 'skcuda':
-        x = x.cuda()
-        scattering.cuda()
-
     S = scattering(x)
     assert(S.shape[-2:] == (1, 1))
 
@@ -373,10 +177,6 @@ def test_input_size_agnostic():
     J = 5
     scattering = Scattering2D(J, shape=(N+5, N))
     x = torch.zeros(3, 3, N+5, N)
-
-    if backend.NAME == 'skcuda':
-        x = x.cuda()
-        scattering.cuda()
 
     S = scattering(x)
     assert (S.shape[-2:] == (1, 1))
