@@ -1,19 +1,19 @@
-__all__ = ['Scattering2DTorch']
+__all__ = ['ScatteringTorch2D']
 
 import torch
 
-from .base_frontend import Scattering2DBase
+from .base_frontend import ScatteringBase2D
 from kymatio.scattering2d.core.scattering2d import scattering2d
 from ...frontend.torch_frontend import ScatteringTorch
 
 
-class Scattering2DTorch(ScatteringTorch, Scattering2DBase):
+class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend='torch'):
         ScatteringTorch.__init__(self)
-        Scattering2DBase.__init__(**locals())
-        Scattering2DBase._instantiate_backend(self, 'kymatio.scattering2d.backend.')
-        Scattering2DBase.build(self)
-        Scattering2DBase.create_filters(self)
+        ScatteringBase2D.__init__(**locals())
+        ScatteringBase2D._instantiate_backend(self, 'kymatio.scattering2d.backend.')
+        ScatteringBase2D.build(self)
+        ScatteringBase2D.create_filters(self)
 
         self.register_filters()
 
