@@ -1,6 +1,5 @@
 import torch.nn as nn
 
-
 class ScatteringTorch(nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
