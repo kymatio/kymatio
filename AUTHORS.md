@@ -5,6 +5,7 @@ Contributors
 * Mathieu Andreux <https://github.com/AndreuxMath>
 * Tomás Angles <https://github.com/tomas-angles>
 * Eugene Belilovsky <https://github.com/eugenium>
+* Muawiz Chaudhary <https://github.com/MuawizChaudhary>
 * Michael Eickenberg <https://github.com/eickenberg>
 * Georgios Exarchakis <https://github.com/gexarcha>
 * Gabriel Huang <https://github.com/gabrielhuang>
