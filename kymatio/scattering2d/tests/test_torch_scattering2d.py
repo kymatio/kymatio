@@ -40,20 +40,20 @@ class TestModulus:
             with pytest.raises(TypeError) as exc:
                 y = modulus(x)
             assert "Use the torch backend" in exc.value.args[0]
-        else:
-            y = modulus(x)
-            u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-            v = y.narrow(3, 0, 1)
-            u = u.squeeze()
-            v = v.squeeze()
-            assert torch.allclose(u, v)
+            return
 
-            y = x[::2, ::2]
-            if backend.name == 'torch_skcuda':
-                with pytest.raises(RuntimeError) as record:
-                    modulus(y)
-                assert ('Input' in record.value.args[0])
+        y = modulus(x)
+        u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
+        v = y.narrow(3, 0, 1)
+        u = u.squeeze()
+        v = v.squeeze()
+        assert torch.allclose(u, v)
 
+        y = x[::2, ::2]
+        if backend.name == 'torch_skcuda':
+            with pytest.raises(RuntimeError) as record:
+                modulus(y)
+            assert 'should be contiguous' in record.value.args[0]
 
 
 # Checked the subsampling
@@ -67,29 +67,28 @@ class TestSubsampleFourier:
             with pytest.raises(TypeError) as exc:
                 z = subsample_fourier(x, k=16)
             assert "Use the torch backend" in exc.value.args[0]
+            return
 
-        else:
-            y = torch.zeros(100, 1, 8, 8, 2).to(device)
+        y = torch.zeros(100, 1, 8, 8, 2).to(device)
 
-            for i in range(8):
-                for j in range(8):
-                    for m in range(16):
-                        for n in range(16):
-                            y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
+        for i in range(8):
+            for j in range(8):
+                for m in range(16):
+                    for n in range(16):
+                        y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
 
-            y = y / (16*16)
+        y = y / (16*16)
 
+        z = subsample_fourier(x, k=16)
+        assert torch.allclose(y, z)
+        if backend.name == 'torch':
             z = subsample_fourier(x, k=16)
             assert torch.allclose(y, z)
-            if backend.name == 'torch':
-                z = subsample_fourier(x, k=16)
-                assert torch.allclose(y, z)
 
-
-            y = x[::2, ::2]
-            with pytest.raises(RuntimeError) as record:
-                subsample_fourier(y, k=16)
-            assert ('Input' in record.value.args[0])
+        y = x[::2, ::2]
+        with pytest.raises(RuntimeError) as record:
+            subsample_fourier(y, k=16)
+        assert 'should be contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("backend", backends)
@@ -100,24 +99,23 @@ class TestSubsampleFourier:
             with pytest.raises(TypeError) as exc:
                 z = subsample_fourier(x, k=16)
             assert "Use the torch backend" in exc.value.args[0]
+            return
 
-        else:
-            y = torch.zeros(100, 1, 8, 8, 8, 2).to(device)
+        y = torch.zeros(100, 1, 8, 8, 8, 2).to(device)
 
-            for i in range(8):
-                for j in range(8):
-                    for m in range(16):
-                        for n in range(16):
-                            y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
+        for i in range(8):
+            for j in range(8):
+                for m in range(16):
+                    for n in range(16):
+                        y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
 
-            y = y / (16*16)
+        y = y / (16*16)
 
+        z = subsample_fourier(x, k=16)
+        assert torch.allclose(y, z)
+        if backend.name == 'torch':
             z = subsample_fourier(x, k=16)
-            print(z.size(), y.size())
             assert torch.allclose(y, z)
-            if backend.name == 'torch':
-                z = subsample_fourier(x, k=16)
-                assert torch.allclose(y, z)
 
 
 # Check the CUBLAS routines
@@ -174,11 +172,11 @@ class TestCDGMM:
             if backend.name=='torch_skcuda':
                 with pytest.raises(TypeError) as exc:
                     backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-                assert "cuda" in exc.value.args[0].lower()
+                assert "must be cuda tensors" in exc.value.args[0].lower()
             elif backend.name=='torch':
                 with pytest.raises(TypeError) as exc:
                     backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-                assert "a must" in exc.value.args[0].lower()
+                assert "a must be on gpu" in exc.value.args[0].lower()
 
 class TestFFT:
     @pytest.mark.parametrize("backend", backends)
@@ -186,14 +184,14 @@ class TestFFT:
         x = torch.rand(4, 4, 1)
         with pytest.raises(TypeError) as record:
             backend.fft(x)
-        assert ('complex' in record.value.args[0])
+        assert 'complex' in record.value.args[0]
 
         x = torch.randn(4, 4, 2)
         y = x[::2, ::2]
 
         with pytest.raises(RuntimeError) as record:
             backend.fft(y)
-        assert ('must be contiguous' in record.value.args[0])
+        assert 'must be contiguous' in record.value.args[0]
 
 
 class TestScattering2DTorch:
@@ -320,36 +318,35 @@ class TestScattering2DTorch:
 
         with pytest.raises(TypeError) as record:
             S(None)
-        assert('input should be' in record.value.args[0])
+        assert 'input should be' in record.value.args[0]
 
         x = torch.randn(4,4)
         y = x[::2,::2]
 
         with pytest.raises(RuntimeError) as record:
             S(y)
-        assert('must be contiguous' in record.value.args[0])
+        assert 'must be contiguous' in record.value.args[0]
 
         x = torch.randn(31, 31)
 
         with pytest.raises(RuntimeError) as record:
             S(x)
-        assert('Tensor must be of spatial size' in record.value.args[0])
+        assert 'Tensor must be of spatial size' in record.value.args[0]
 
         S = Scattering2D(3, (32, 32), pre_pad=True, backend=backend, frontend='torch')
 
         with pytest.raises(RuntimeError) as record:
             S(x)
-        assert('Padded tensor must be of spatial size' in record.value.args[0])
+        assert 'Padded tensor must be of spatial size' in record.value.args[0]
 
         x = torch.randn(8,8)
         S = Scattering2D(2, (8, 8), backend=backend, frontend='torch')
-
 
         x = x.to(device)
         S = S.to(device)
         if not (device == 'cpu' and backend.name == 'torch_skcuda'):
             y = S(x)
-            assert(x.device == y.device)
+            assert x.device == y.device
 
     # Check that several input size works
     @pytest.mark.parametrize("backend", backends)
@@ -383,7 +380,7 @@ class TestScattering2DTorch:
             scattering.cuda()
 
         S = scattering(x)
-        assert(S.shape[-2:] == (1, 1))
+        assert S.shape[-2:] == (1, 1)
 
         N = 32
         J = 5
@@ -395,7 +392,7 @@ class TestScattering2DTorch:
             scattering.cuda()
 
         S = scattering(x)
-        assert (S.shape[-2:] == (1, 1))
+        assert S.shape[-2:] == (1, 1)
 
     def test_inputs(self):
         fake_backend = namedtuple('backend', ['name',])
