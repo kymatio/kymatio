@@ -1,4 +1,4 @@
-# Authors: Edouard Oyallon
+# Authors: Edouard Oyallon, Muawiz Chaudhary
 # Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
 
 __all__ = ['scattering2d']
