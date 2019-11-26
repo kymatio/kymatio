@@ -1,12 +1,12 @@
 import pytest
 
 from kymatio import Scattering2D
-from kymatio.scattering2d.frontend.torch_frontend import Scattering2DTorch
+from kymatio.scattering2d.frontend.torch_frontend import ScatteringTorch2D
 
 # Check that the default frontend is Torch and that errors are correctly launched.
 def test_scattering2d_frontend():
     scattering = Scattering2D(2, shape=(10, 10))
-    assert isinstance(scattering, Scattering2DTorch), 'Torch frontend is not selected by default'
+    assert isinstance(scattering, ScatteringTorch2D), 'Torch frontend is not selected by default'
 
     with pytest.raises(ImportError) as ve:
         scattering = Scattering2D(2, shape=(10, 10), frontend='doesnotexist')
