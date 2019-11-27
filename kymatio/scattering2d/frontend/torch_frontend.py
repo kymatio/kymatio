@@ -101,8 +101,5 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         return scattering2d(input, self.pad, self.unpad, self.backend, self.J,
                             self.L, self.phi, self.psi, self.max_order)
 
-    def loginfo(self):
-        return 'Torch frontend is used.'
-
 
 __all__ = ['ScatteringTorch2D']
