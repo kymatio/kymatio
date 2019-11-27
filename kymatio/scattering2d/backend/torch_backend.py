@@ -304,30 +304,12 @@ def cdgmm(A, B, inplace=False):
 
         return C if not inplace else A.copy_(C)
 
-def concatenate(s0, s1, s2):
-    """Concatenate scattering of different orders.
+def empty_like(x, shape):
+    # Note: This function is not documented, so it might be good to switch to
+    # something more standard.
+    return x.new(*shape)
 
-        Parameters
-        ----------
-        s0 : tensor
-            Tensor which contains the zeroth order scattering coefficents.
-        s1 : tensor
-            Tensor which contains the first order scattering coefficents.
-        s2 : tensor
-            Tensor which contains the second order scattering coefficents.
-
-        Returns
-        -------
-        s : tensor
-            Final output. Scattering transform.
-
-    """
-    if len(s2) > 0:
-        return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3), torch.cat(s2, -3)], -3)
-    else:
-        return torch.cat([torch.cat(s0, -3), torch.cat(s1, -3)], -3)
-
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -335,4 +317,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = concatenate
+backend.empty_like = empty_like

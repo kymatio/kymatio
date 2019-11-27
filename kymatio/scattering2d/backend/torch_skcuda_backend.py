@@ -265,9 +265,9 @@ def cdgmm(A, B, inplace=False):
 from .torch_backend import unpad
 from .torch_backend import Pad
 from .torch_backend import fft
-from .torch_backend import concatenate
+from .torch_backend import empty_like
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like'])
 backend.name = 'torch_skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -275,4 +275,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = concatenate
+backend.empty_like = empty_like
