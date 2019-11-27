@@ -75,6 +75,9 @@ class Pad(object):
         x = x.reshape((-1, 1) + signal_shape)
         if not self.pre_pad:
             x = self.padding_module(x)
+
+            # Note: PyTorch is not effective to pad signals of size N-1 with N
+            # elements, thus we had to add this fix.
             if self.pad_size[0] == self.input_size[0]:
                 x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.shape[2] - 2, :].unsqueeze(2)], 2)
             if self.pad_size[2] == self.input_size[1]:
