@@ -10,23 +10,23 @@ from string import Template
 BACKEND_NAME = 'torch_skcuda'
 
 @cupy.util.memoize(for_each_device=True)
-def load_kernel(kernel_name, code, **kwargs):
+def _load_kernel(kernel_name, code, **kwargs):
     code = Template(code).substitute(**kwargs)
     kernel_code = cupy.cuda.compile_with_cache(code)
     return kernel_code.get_function(kernel_name)
 
 Stream = namedtuple('Stream', ['ptr'])
 
-def getDtype(t):
+def _getDtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-def iscomplex(x):
+def _iscomplex(x):
     return x.shape[-1] == 2
 
-def isreal(x):
+def _isreal(x):
     return x.shape[-1] == 1
 
 class SubsampleFourier(object):
@@ -75,7 +75,7 @@ class SubsampleFourier(object):
 
         out = x.new(size=[x.shape[0], x.shape[1] // k, x.shape[2] // k, 2])
 
-        if not iscomplex(x):
+        if not _iscomplex(x):
             raise TypeError('The x should be complex.')
 
         if not x.is_contiguous():
@@ -110,7 +110,7 @@ class SubsampleFourier(object):
         W = x.shape[2]
         H = x.shape[1]
 
-        periodize = load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=getDtype(x))
+        periodize = _load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=_getDtype(x))
         grid = (self.GET_BLOCKS(out.shape[1], self.block[0]),
                 self.GET_BLOCKS(out.shape[2], self.block[1]),
                 self.GET_BLOCKS(out.shape[0], self.block[2]))
@@ -158,7 +158,7 @@ class Modulus(object):
 
         out = x.new(x.shape)
 
-        if not iscomplex(x):
+        if not _iscomplex(x):
             raise TypeError('The inputs should be complex.')
 
         if not x.is_contiguous():
@@ -175,7 +175,7 @@ class Modulus(object):
 
         }
         """
-        fabs = load_kernel('abs_complex_value', kernel, Dtype=getDtype(x))
+        fabs = _load_kernel('abs_complex_value', kernel, Dtype=_getDtype(x))
         fabs(grid=(self.GET_BLOCKS(int(out.nelement()) // 2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
              args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
@@ -217,7 +217,7 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
     """
-    if not iscomplex(A):
+    if not _iscomplex(A):
         raise TypeError('The input must be complex, indicated by a last '
                         'dimension of size 2.')
 
@@ -226,7 +226,7 @@ def cdgmm(A, B, inplace=False):
                            'dimension of size 1 or 2 to indicate it is real '
                            'or complex, respectively.')
 
-    if not iscomplex(B) and not isreal(B):
+    if not _iscomplex(B) and not _isreal(B):
         raise TypeError('The filter must be complex or real, indicated by a '
                         'last dimension of size 2 or 1, respectively.')
 
@@ -242,7 +242,7 @@ def cdgmm(A, B, inplace=False):
     if A.device.index != B.device.index:
         raise TypeError('A and B must be on the same GPU.')
 
-    if isreal(B):
+    if _isreal(B):
         if inplace:
             return A.mul_(B)
         else:

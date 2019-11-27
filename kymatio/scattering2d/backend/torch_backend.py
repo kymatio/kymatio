@@ -6,10 +6,10 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-def iscomplex(x):
+def _iscomplex(x):
     return x.shape[-1] == 2
 
-def isreal(x):
+def _isreal(x):
     return x.shape[-1] == 1
 
 class Pad(object):
@@ -205,7 +205,7 @@ def fft(x, direction='C2C', inverse=False):
         if not inverse:
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
-    if not iscomplex(x):
+    if not _iscomplex(x):
         raise TypeError('The input should be complex (e.g. last dimension is 2).')
 
     if not x.is_contiguous():
@@ -253,7 +253,7 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
     """
-    if not iscomplex(A):
+    if not _iscomplex(A):
         raise TypeError('The input must be complex, indicated by a last '
                         'dimension of size 2.')
 
@@ -262,7 +262,7 @@ def cdgmm(A, B, inplace=False):
                            'dimension of size 1 or 2 to indicate it is real '
                            'or complex, respectively.')
 
-    if not iscomplex(B) and not isreal(B):
+    if not _iscomplex(B) and not _isreal(B):
         raise TypeError('The filter must be complex or real, indicated by a '
                         'last dimension of size 2 or 1, respectively.')
 
@@ -283,7 +283,7 @@ def cdgmm(A, B, inplace=False):
         if A.device.type == 'cuda':
             raise TypeError('A must be on CPU.')
 
-    if isreal(B):
+    if _isreal(B):
         if inplace:
             return A.mul_(B)
         else:
