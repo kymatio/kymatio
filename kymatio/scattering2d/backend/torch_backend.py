@@ -116,8 +116,7 @@ class SubsampleFourier(object):
         ----------
         x : tensor
             Input tensor with at least 5 dimensions, the last being the real
-            and imaginary parts. Ideally, the last dimension should be a power
-            of 2 to avoid errors.
+            and imaginary parts.
         k : int
             Integer such that x is subsampled by 2**k along the spatial variables.
 
