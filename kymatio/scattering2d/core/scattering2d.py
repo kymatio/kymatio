@@ -1,8 +1,6 @@
 # Authors: Edouard Oyallon, Muawiz Chaudhary
 # Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
 
-__all__ = ['scattering2d']
-
 def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
@@ -74,3 +72,6 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
 
     out_S = concatenate(out_S_0, out_S_1, out_S_2)
     return out_S
+
+
+__all__ = ['scattering2d']

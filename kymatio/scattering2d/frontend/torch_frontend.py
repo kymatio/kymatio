@@ -1,5 +1,3 @@
-__all__ = ['ScatteringTorch2D']
-
 import torch
 
 from .base_frontend import ScatteringBase2D
@@ -105,3 +103,6 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
     def loginfo(self):
         return 'Torch frontend is used.'
+
+
+__all__ = ['ScatteringTorch2D']
