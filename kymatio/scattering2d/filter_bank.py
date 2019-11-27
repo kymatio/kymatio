@@ -3,8 +3,6 @@ Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
 All rights reserved, 2017.
 """
 
-__all__ = ['filter_bank']
-
 import numpy as np
 from .utils import fft2
 
@@ -190,3 +188,6 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0):
     gab /= norm_factor
 
     return gab
+
+
+__all__ = ['filter_bank']
