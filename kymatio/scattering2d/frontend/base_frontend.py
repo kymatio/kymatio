@@ -5,10 +5,10 @@ from ..utils import compute_padding
 
 
 class ScatteringBase2D(ScatteringBase):
-    """ Main module implementing the scattering transform in 2D.
-        The scattering transform computes two wavelet transform followed
-        by modulus non-linearity.
-        It can be summarized as::
+    """ Abstract module implementing the scattering transform in 2D. Actual
+        implementations of the Scattering2D inherits from its methods and
+        attributes. The scattering transform computes two wavelet transform
+        followed by modulus non-linearity. It can be summarized as::
 
             S_J x = [S_J^0 x, S_J^1 x, S_J^2 x]
 
@@ -27,7 +27,7 @@ class ScatteringBase2D(ScatteringBase):
         Example
         -------
             # 1) Define a Scattering2D object as:
-                s = Scattering2D_torch(J, shape=(M, N))
+                s = Scattering2D(J, shape=(M, N))
             #    where (M, N) is the image size and 2**J the scale of the scattering
             # 2) Forward on an input Tensor x of shape B x M x N,
             #     where B is the batch size.
