@@ -106,3 +106,6 @@ class ScatteringBase2D(ScatteringBase):
     def create_filters(self):
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
         self.phi, self.psi = filters['phi'], filters['psi']
+
+
+__all__ = ['ScatteringBase2D']
