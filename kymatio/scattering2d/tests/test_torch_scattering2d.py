@@ -144,7 +144,7 @@ class TestCDGMM:
         if device == 'cpu' and backend.name == 'torch_skcuda':
             with pytest.raises(TypeError) as exc:
                 z = backend.cdgmm(x, filt, inplace=inplace)
-            assert "must be cuda" in exc.value.args[0]
+            assert "must be CUDA" in exc.value.args[0]
         else:
             z = backend.cdgmm(x, filt, inplace=inplace)
             # compare
@@ -176,7 +176,7 @@ class TestCDGMM:
             elif backend.name=='torch':
                 with pytest.raises(TypeError) as exc:
                     backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
-                assert "a must be on gpu" in exc.value.args[0].lower()
+                assert "input must be on gpu" in exc.value.args[0].lower()
 
 class TestFFT:
     @pytest.mark.parametrize("backend", backends)
@@ -245,7 +245,7 @@ class TestScatteringTorch2D:
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 Sg = scattering(x)
-            assert "cuda" in ve.value.args[0]
+            assert "CUDA" in ve.value.args[0]
         else:
             Sg = scattering(x)
             assert torch.allclose(Sg, S)

@@ -234,13 +234,13 @@ def cdgmm(A, B, inplace=False):
         raise RuntimeError('The filters are not compatible for multiplication.')
 
     if A.dtype is not B.dtype:
-        raise TypeError('A and B must be of the same dtype.')
+        raise TypeError('Input and filter must be of the same dtype.')
 
     if not A.is_cuda or not B.is_cuda:
-        raise TypeError('A and B must be cuda tensors.')
+        raise TypeError('Input and filter must be CUDA tensors.')
 
     if A.device.index != B.device.index:
-        raise TypeError('A and B must be on the same GPU.')
+        raise TypeError('Input and filter must be on the same GPU.')
 
     if _isreal(B):
         if inplace:
@@ -249,7 +249,7 @@ def cdgmm(A, B, inplace=False):
             return A * B
     else:
         if not A.is_contiguous() or not B.is_contiguous():
-            raise RuntimeError('A and B should be contiguous.')
+            raise RuntimeError('Input and filter should be contiguous.')
 
         C = A.new(A.shape) if not inplace else A
         m, n = B.nelement() // 2, A.nelement() // B.nelement()
