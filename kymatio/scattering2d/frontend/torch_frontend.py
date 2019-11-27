@@ -117,8 +117,19 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         phi, psi = self.load_filters()
 
-        return scattering2d(input, self.pad, self.unpad, self.backend, self.J,
+        batch_shape = input.shape[:-2]
+        signal_shape = input.shape[-2:]
+
+        input = input.reshape((-1,) + signal_shape)
+
+        S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
                             self.L, phi, psi, self.max_order)
+
+        scattering_shape = S.shape[-3:]
+
+        S = S.reshape(batch_shape + scattering_shape)
+
+        return S
 
 
 __all__ = ['ScatteringTorch2D']
