@@ -272,18 +272,18 @@ def cdgmm(A, B, inplace=False):
         raise RuntimeError('The filters are not compatible for multiplication.')
 
     if A.dtype is not B.dtype:
-        raise TypeError('A and B must be of the same dtype.')
+        raise TypeError('Input and filter must be of the same dtype.')
 
     if B.device.type == 'cuda':
         if A.device.type == 'cuda':
             if A.device.index != B.device.index:
-                raise TypeError('A and B must be on the same GPU.')
+                raise TypeError('Input and filter must be on the same GPU.')
         else:
-            raise TypeError('A must be on GPU.')
+            raise TypeError('Input must be on GPU.')
 
     if B.device.type == 'cpu':
         if A.device.type == 'cuda':
-            raise TypeError('A must be on CPU.')
+            raise TypeError('Input must be on CPU.')
 
     if _isreal(B):
         if inplace:
