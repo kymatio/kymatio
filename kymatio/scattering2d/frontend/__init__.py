@@ -1,5 +1,3 @@
-__all__ = ['Scattering2D']
-
 import logging
 import warnings
 import importlib
@@ -30,3 +28,6 @@ class Scattering2D(object):
             raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
 
         logging.info(self.loginfo())
+
+
+__all__ = ['Scattering2D']
