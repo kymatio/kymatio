@@ -18,10 +18,10 @@ def _load_kernel(kernel_name, code, **kwargs):
 Stream = namedtuple('Stream', ['ptr'])
 
 def _get_dtype(t):
-    if isinstance(t, torch.cuda.FloatTensor):
-        return 'float'
-    elif isinstance(t, torch.cuda.DoubleTensor):
-        return 'double'
+    dtypes = {torch.float32: 'float',
+              torch.float64: 'double'}
+
+    return dtypes[t.dtype]
 
 def _iscomplex(x):
     return x.shape[-1] == 2
