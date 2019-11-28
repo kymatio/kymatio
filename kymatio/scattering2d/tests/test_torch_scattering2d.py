@@ -50,10 +50,9 @@ class TestModulus:
         assert torch.allclose(u, v)
 
         y = x[::2, ::2]
-        if backend.name == 'torch_skcuda':
-            with pytest.raises(RuntimeError) as record:
-                modulus(y)
-            assert 'should be contiguous' in record.value.args[0]
+        with pytest.raises(RuntimeError) as record:
+            modulus(y)
+        assert 'should be contiguous' in record.value.args[0]
 
 
 # Checked the subsampling
