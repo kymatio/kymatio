@@ -17,7 +17,7 @@ def _load_kernel(kernel_name, code, **kwargs):
 
 Stream = namedtuple('Stream', ['ptr'])
 
-def _getDtype(t):
+def _get_dtype(t):
     if isinstance(t, torch.cuda.FloatTensor):
         return 'float'
     elif isinstance(t, torch.cuda.DoubleTensor):
@@ -110,7 +110,7 @@ class SubsampleFourier(object):
         W = x.shape[2]
         H = x.shape[1]
 
-        periodize = _load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=_getDtype(x))
+        periodize = _load_kernel('periodize', kernel, B=B, H=H, W=W, k=k, Dtype=_get_dtype(x))
         grid = (self.GET_BLOCKS(out.shape[1], self.block[0]),
                 self.GET_BLOCKS(out.shape[2], self.block[1]),
                 self.GET_BLOCKS(out.shape[0], self.block[2]))
@@ -175,7 +175,7 @@ class Modulus(object):
 
         }
         """
-        fabs = _load_kernel('abs_complex_value', kernel, Dtype=_getDtype(x))
+        fabs = _load_kernel('abs_complex_value', kernel, Dtype=_get_dtype(x))
         fabs(grid=(self.GET_BLOCKS(int(out.nelement()) // 2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
              args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
