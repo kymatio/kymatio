@@ -1,6 +1,5 @@
 class ScatteringNumPy(object):
     def __init__(self):
-        super(ScatteringNumPy, self).__init__()
         self.frontend_name = 'numpy'
 
     def scattering(self, x):
