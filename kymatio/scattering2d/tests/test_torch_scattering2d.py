@@ -123,7 +123,7 @@ class TestCDGMM:
         y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
         y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
         if real_filter:
-            filt = filt[..., :1]
+            filt = filt[..., :1].contiguous()
         return x, filt, y
 
     @pytest.mark.parametrize("backend", backends)
