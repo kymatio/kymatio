@@ -81,9 +81,6 @@ class TestSubsampleFourier:
 
         z = subsample_fourier(x, k=16)
         assert torch.allclose(y, z)
-        if backend.name == 'torch':
-            z = subsample_fourier(x, k=16)
-            assert torch.allclose(y, z)
 
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
@@ -93,13 +90,11 @@ class TestSubsampleFourier:
     @pytest.mark.parametrize("device", devices)
     @pytest.mark.parametrize("backend", backends)
     def test_batch_shape_agnostic(self, device, backend):
+        if device == 'cpu' and backend.name == 'torch_skcuda':
+            return
+
         x = torch.rand(100, 1, 8, 128, 128, 2).to(device)
         subsample_fourier = backend.subsample_fourier
-        if device == 'cpu' and backend.name == 'torch_skcuda':
-            with pytest.raises(TypeError) as exc:
-                z = subsample_fourier(x, k=16)
-            assert "Use the torch backend" in exc.value.args[0]
-            return
 
         y = torch.zeros(100, 1, 8, 8, 8, 2).to(device)
 
@@ -113,9 +108,6 @@ class TestSubsampleFourier:
 
         z = subsample_fourier(x, k=16)
         assert torch.allclose(y, z)
-        if backend.name == 'torch':
-            z = subsample_fourier(x, k=16)
-            assert torch.allclose(y, z)
 
 
 # Check the CUBLAS routines
@@ -249,15 +241,6 @@ class TestScatteringTorch2D:
         else:
             Sg = scattering(x)
             assert torch.allclose(Sg, S)
-
-        # check also the default backend
-        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='torch')
-        Sg = []
-        x = x.to(device)
-        scattering.to(device)
-        S = S.to(device)
-        Sg = scattering(x)
-        assert torch.allclose(Sg, S)
 
     @pytest.mark.parametrize("backend", backends)
     def test_batch_shape_agnostic(self, backend):
