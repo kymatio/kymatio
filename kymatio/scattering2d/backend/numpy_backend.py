@@ -79,13 +79,8 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
-        batch_shape = x.shape[:-2]
-        signal_shape = x.shape[-2:]
-
-        x = x.reshape((-1,) + signal_shape)
         y = x.reshape(-1, k, x.shape[1] // k, k, x.shape[2] // k)
 
-        out = np.zeros_like(y, dtype=x.dtype)
         out = y.mean(axis=(1, 3))
 
         return out
