@@ -13,6 +13,151 @@ from kymatio.scattering2d.backend.numpy_backend import backend
 backends.append(backend)
 
 
+class TestPad:
+    @pytest.mark.parametrize('backend', backends)
+    def test_Pad(self, backend):
+        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
+
+        x = np.random.randn(4, 4) + 1J * np.random.randn(4, 4)
+
+        z = pad(x)
+
+        assert z.shape == (8, 8)
+        assert z[2, 2] == x[0, 0]
+        assert z[1, 0] == x[1, 2]
+        assert z[1, 1] == x[1, 1]
+        assert z[1, 2] == x[1, 0]
+        assert z[1, 3] == x[1, 1]
+
+        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=True)
+
+        x = np.random.randn(8, 8) + 1J * np.random.randn(8, 8)
+
+        z = pad(x)
+
+        assert np.allclose(x, z)
+
+    @pytest.mark.parametrize('backend', backends)
+    def test_unpad(self, backend):
+        x = np.random.randn(4, 4) + 1J * np.random.randn(4, 4)
+
+        y = backend.unpad(x)
+
+        assert y.shape == (1, 2, 2)
+        assert y[0, 0, 0] == x[1, 1]
+        assert y[0, 0, 1] == x[1, 2]
+
+
+class TestModulus:
+    @pytest.mark.parametrize('backend', backends)
+    def test_Modulus(self, backend):
+        modulus = backend.modulus
+
+        x = np.random.rand(100, 10, 4) + 1J * np.random.rand(100, 10, 4)
+
+        y = modulus(x)
+        u = np.squeeze(np.sqrt(np.real(x) ** 2 + np.imag(x) ** 2))
+        v = y
+        assert np.allclose(u, v)
+
+
+class TestSubsampleFourier:
+    @pytest.mark.parametrize('backend', backends)
+    def test_SubsampleFourier(self, backend):
+        subsample_fourier = backend.subsample_fourier
+
+        x = (np.random.rand(100, 128, 128)
+             + 1J * np.random.rand(100, 128, 128))
+
+        y = np.zeros((100, 8, 8), dtype=np.complex128)
+
+        from itertools import product
+        for i, j in product(range(8), range(8)):
+            for m, n in product(range(16), range(16)):
+                y[..., i, j] += x[..., i + m * 8, j + n * 8]
+
+        y /= 16 ** 2
+
+        z = subsample_fourier(x, k=16)
+        assert np.allclose(y, z)
+
+
+class TestCDGMM:
+    @pytest.fixture(params=(False, True))
+    def data(self, request):
+        real_filter = request.param
+        x = (np.random.randn(100, 128, 128)
+             + 1J * np.random.randn(100, 128, 128))
+        filt = (np.random.randn(128, 128)
+                + 1J * np.random.randn(128, 128))
+        y = (np.random.randn(100, 128, 128)
+             + 1J * np.random.randn(100, 128, 128))
+
+        if real_filter:
+            filt = np.real(filt)
+
+        y = x * filt
+
+        return x, filt, y
+
+    @pytest.mark.parametrize('backend', backends)
+    @pytest.mark.parametrize('inplace', (False, True))
+    def test_cdgmm_forward(self, data, backend, inplace):
+        x, filt, y = data
+
+        z = backend.cdgmm(x, filt, inplace=inplace)
+
+        assert np.allclose(y, z)
+
+    @pytest.mark.parametrize('backend', backends)
+    def test_cdgmm_exceptions(self, backend):
+        with pytest.raises(RuntimeError) as record:
+            backend.cdgmm(np.empty((3, 4, 5)), np.empty((3, 4, 5)))
+        assert 'second input must be 2' in record.value.args[0]
+
+
+class TestFFT:
+    @pytest.mark.parametrize('backend', backends)
+    def test_fft(self, backend):
+        x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
+
+        y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
+                       x[0, 0] - x[0, 1] + x[1, 0] - x[1, 1]],
+                      [x[0, 0] + x[0, 1] - x[1, 0] - x[1, 1],
+                       x[0, 0] - x[0, 1] - x[1, 0] + x[1, 1]]])
+
+        z = backend.fft(x, direction='C2C')
+
+        assert np.allclose(y, z)
+
+        z = backend.fft(x, direction='C2C', inverse=True)
+
+        assert np.allclose(y, z)
+
+        z = backend.fft(x, direction='C2R', inverse=True)
+
+        assert z.dtype == np.float64
+        assert np.allclose(np.real(y), z)
+
+
+    @pytest.mark.parametrize('backend', backends)
+    def test_fft_exceptions(self, backend):
+        with pytest.raises(RuntimeError) as record:
+            backend.fft(np.empty((2, 2)), direction='C2R',
+                        inverse=False)
+        assert 'done with an inverse' in record.value.args[0]
+
+
+class TestBackendUtils:
+    @pytest.mark.parametrize('backend', backends)
+    def test_empty_like(self, backend):
+        x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
+        y = backend.empty_like(x, (3, 3))
+
+        assert y.shape == (3, 3)
+        assert y.dtype == x.dtype
+
+
 class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2 from interleaved
@@ -65,6 +210,13 @@ class TestScattering2DNumpy:
         S = S
         Sg = scattering(x)
         assert np.allclose(Sg, S)
+
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad,
+                                  max_order=1, frontend='numpy',
+                                  backend=backend)
+
+        S1x = scattering(x)
+        assert np.allclose(S1x, S[..., 0:len(o0 + o1), :, :])
 
 
     @pytest.mark.parametrize('backend', backends)
