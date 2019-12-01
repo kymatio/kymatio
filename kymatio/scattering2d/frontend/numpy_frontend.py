@@ -20,9 +20,6 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
         if len(input.shape) < 2:
             raise RuntimeError('Input array must have at least two dimensions.')
 
-        #if not input.is_contiguous():
-        #    raise RuntimeError('Tensor must be contiguous.')
-
         if (input.shape[-1] != self.N or input.shape[-2] != self.M) and not self.pre_pad:
             raise RuntimeError('NumPy array must be of spatial size (%i,%i).' % (self.M, self.N))
 
