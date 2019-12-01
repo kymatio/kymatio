@@ -59,6 +59,32 @@ class TestScattering2DNumpy:
         assert np.allclose(Sg, S)
 
 
+    def test_scattering2d_errors(self):
+        S = Scattering2D(3, (32, 32), frontend='numpy')
+
+        with pytest.raises(TypeError) as record:
+            S(None)
+        assert 'input should be' in record.value.args[0]
+
+        x = np.random.randn(32)
+
+        with pytest.raises(RuntimeError) as record:
+            S(x)
+        assert 'have at least two dimensions' in record.value.args[0]
+
+        x = np.random.randn(31, 31)
+
+        with pytest.raises(RuntimeError) as record:
+            S(x)
+        assert 'NumPy array must be of spatial size' in record.value.args[0]
+
+        S = Scattering2D(3, (32, 32), pre_pad=True, frontend='numpy')
+
+        with pytest.raises(RuntimeError) as record:
+            S(x)
+        assert 'Padded array must be of spatial size' in record.value.args[0]
+
+
     def test_inputs(self):
         fake_backend = namedtuple('backend', ['name',])
         fake_backend.name = 'fake'
