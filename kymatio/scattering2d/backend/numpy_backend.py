@@ -3,7 +3,9 @@
 import numpy as np
 from collections import namedtuple
 
+
 BACKEND_NAME = 'numpy'
+
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -53,6 +55,7 @@ def unpad(in_):
 
     """
     return np.expand_dims(in_[..., 1:-1, 1:-1], -3)
+
 
 class SubsampleFourier(object):
     """ Subsampling of a 2D image performed in the Fourier domain.
@@ -113,8 +116,6 @@ class Modulus(object):
         return norm
 
 
-
-
 def fft(x, direction='C2C', inverse=False):
     """
         Interface with torch FFT routines for 2D signals.
@@ -140,16 +141,14 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifft2(x))*x.shape[-1]*x.shape[-2]
+        output = np.real(np.fft.ifft2(x)) * x.shape[-1] * x.shape[-2]
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifft2(x)*x.shape[-1]*x.shape[-2]
+            output = np.fft.ifft2(x) * x.shape[-1] * x.shape[-2]
         else:
             output = np.fft.fft2(x)
 
     return output
-
-
 
 
 def cdgmm(A, B, inplace=False):
@@ -180,8 +179,10 @@ def cdgmm(A, B, inplace=False):
     else:
         return A * B
 
+
 def empty_like(x, shape):
     return np.empty(shape, x.dtype)
+
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like'])
 backend.name = 'numpy'

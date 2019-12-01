@@ -6,6 +6,7 @@ import torch
 from collections import namedtuple
 import pytest
 
+
 class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2 from interleaved
@@ -25,6 +26,7 @@ class TestScattering2DNumpy:
         assert len(order1) == n_order1
         assert len(order2) == n_order2
         return order0, order1, order2
+
 
     def test_Scattering2D(self):
         test_data_dir = os.path.dirname(__file__)
@@ -56,6 +58,7 @@ class TestScattering2DNumpy:
         S = S
         Sg = scattering(x)
         assert np.allclose(Sg, S)
+
 
     def test_inputs(self):
         fake_backend = namedtuple('backend', ['name',])
