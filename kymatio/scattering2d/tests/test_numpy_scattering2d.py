@@ -51,7 +51,6 @@ class TestScattering2DNumpy:
         M = x.shape[2]
         N = x.shape[3]
 
-        # Then, let's check when using pure pytorch code
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='numpy')
 
         x = x
