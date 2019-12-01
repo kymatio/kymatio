@@ -7,6 +7,12 @@ from collections import namedtuple
 import pytest
 
 
+backends = []
+
+from kymatio.scattering2d.backend.numpy_backend import backend
+backends.append(backend)
+
+
 class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2 from interleaved
@@ -28,7 +34,8 @@ class TestScattering2DNumpy:
         return order0, order1, order2
 
 
-    def test_Scattering2D(self):
+    @pytest.mark.parametrize('backend', backends)
+    def test_Scattering2D(self, backend):
         test_data_dir = os.path.dirname(__file__)
         data = None
         with open(os.path.join(test_data_dir, 'test_data_2d.pt'), 'rb') as f:
@@ -51,7 +58,8 @@ class TestScattering2DNumpy:
         M = x.shape[2]
         N = x.shape[3]
 
-        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad, frontend='numpy')
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad,
+                                  frontend='numpy', backend=backend)
 
         x = x
         S = S
@@ -59,8 +67,9 @@ class TestScattering2DNumpy:
         assert np.allclose(Sg, S)
 
 
-    def test_scattering2d_errors(self):
-        S = Scattering2D(3, (32, 32), frontend='numpy')
+    @pytest.mark.parametrize('backend', backends)
+    def test_scattering2d_errors(self, backend):
+        S = Scattering2D(3, (32, 32), frontend='numpy', backend=backend)
 
         with pytest.raises(TypeError) as record:
             S(None)
@@ -78,7 +87,8 @@ class TestScattering2DNumpy:
             S(x)
         assert 'NumPy array must be of spatial size' in record.value.args[0]
 
-        S = Scattering2D(3, (32, 32), pre_pad=True, frontend='numpy')
+        S = Scattering2D(3, (32, 32), pre_pad=True, frontend='numpy',
+                         backend=backend)
 
         with pytest.raises(RuntimeError) as record:
             S(x)
