@@ -1,4 +1,4 @@
-class ScatteringNumPy(object):
+class ScatteringNumPy:
     def __init__(self):
         self.frontend_name = 'numpy'
 
