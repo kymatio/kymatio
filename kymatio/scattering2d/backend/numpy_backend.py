@@ -66,18 +66,16 @@ class SubsampleFourier(object):
         Parameters
         ----------
         x : tensor_like
-            input tensor with at least 5 dimensions, the last being the real
-             and imaginary parts.
-            Ideally, the last dimension should be a power of 2 to avoid errors.
+            input tensor with at least three dimensions.
         k : int
-            integer such that x is subsampled by 2**k along the spatial variables.
+            integer such that x is subsampled by k along the spatial variables.
 
         Returns
         -------
         res : tensor_like
             tensor such that its fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
-            FFT^{-1}(res)[u1, u2] = FFT^{-1}(x)[u1 * (2**k), u2 * (2**k)]
+            F^{-1}(res)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k]
 
     """
     def __call__(self, x, k):
