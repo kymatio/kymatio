@@ -38,17 +38,12 @@ if 'cuda' in devices:
 
 # Checked the modulus
 class TestModulus:
-    @pytest.mark.parametrize("device", devices)
-    @pytest.mark.parametrize("backend", backends)
-    def test_Modulus(self, device, backend):
+    @pytest.mark.parametrize("backend_device", backends_devices)
+    def test_Modulus(self, backend_device):
+        backend, device = backend_device
+
         modulus = backend.modulus
         x = torch.rand(100, 10, 4, 2).to(device)
-
-        if device == 'cpu' and backend.name == 'torch_skcuda':
-            with pytest.raises(TypeError) as exc:
-                y = modulus(x)
-            assert "Use the torch backend" in exc.value.args[0]
-            return
 
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
@@ -62,19 +57,24 @@ class TestModulus:
             modulus(y)
         assert 'should be contiguous' in record.value.args[0]
 
+    @pytest.mark.parametrize("backend", backends)
+    def test_cuda_only(self, backend):
+        modulus = backend.modulus
+        if backend.name == 'torch_skcuda':
+            x = torch.rand(100, 10, 4, 2).cpu()
+            with pytest.raises(TypeError) as exc:
+                y = modulus(x)
+            assert "Use the torch backend" in exc.value.args[0]
+
 
 # Checked the subsampling
 class TestSubsampleFourier:
-    @pytest.mark.parametrize("device", devices)
-    @pytest.mark.parametrize("backend", backends)
-    def test_SubsampleFourier(self, device, backend):
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_SubsampleFourier(self, backend_device):
+        backend, device = backend_device
+
         x = torch.rand(100, 1, 128, 128, 2).to(device)
         subsample_fourier = backend.subsample_fourier
-        if device == 'cpu' and backend.name == 'torch_skcuda':
-            with pytest.raises(TypeError) as exc:
-                z = subsample_fourier(x, k=16)
-            assert "Use the torch backend" in exc.value.args[0]
-            return
 
         y = torch.zeros(100, 1, 8, 8, 2).to(device)
 
@@ -94,11 +94,20 @@ class TestSubsampleFourier:
             subsample_fourier(y, k=16)
         assert 'should be contiguous' in record.value.args[0]
 
-    @pytest.mark.parametrize("device", devices)
-    @pytest.mark.parametrize("backend", backends)
-    def test_batch_shape_agnostic(self, device, backend):
-        if device == 'cpu' and backend.name == 'torch_skcuda':
-            return
+
+    @pytest.mark.parametrize('backend', backends)
+    def test_gpu_only(self, backend):
+        subsample_fourier = backend.subsample_fourier
+        if backend.name == 'torch_skcuda':
+            x = torch.rand(100, 1, 128, 128, 2).cpu()
+            with pytest.raises(TypeError) as exc:
+                z = subsample_fourier(x, k=16)
+            assert "Use the torch backend" in exc.value.args[0]
+
+
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_batch_shape_agnostic(self, backend_device):
+        backend, device = backend_device
 
         x = torch.rand(100, 1, 8, 128, 128, 2).to(device)
         subsample_fourier = backend.subsample_fourier
@@ -133,24 +142,33 @@ class TestCDGMM:
             filt = filt[..., :1].contiguous()
         return x, filt, y
 
-    @pytest.mark.parametrize("backend", backends)
-    @pytest.mark.parametrize("device", devices)
-    @pytest.mark.parametrize("inplace", (False, True))
-    def test_cdgmm_forward(self, data, backend, device, inplace):
+
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    @pytest.mark.parametrize('inplace', (False, True))
+    def test_cdgmm_forward(self, data, backend_device, inplace):
+        backend, device = backend_device
         x, filt, y = data
         # move to device
         x, filt, y = x.to(device), filt.to(device), y.to(device)
-        if device == 'cpu' and backend.name == 'torch_skcuda':
-            with pytest.raises(TypeError) as exc:
-                z = backend.cdgmm(x, filt, inplace=inplace)
-            assert "must be CUDA" in exc.value.args[0]
-        else:
-            z = backend.cdgmm(x, filt, inplace=inplace)
-            # compare
-            Warning('Tolerance has been slightly lowered here...')
-            assert torch.allclose(y, z, atol=1e-7, rtol =1e-6) # There is a very small meaningless difference for skcuda+GPU
 
-    @pytest.mark.parametrize("backend", backends)
+        z = backend.cdgmm(x, filt, inplace=inplace)
+        # compare
+        Warning('Tolerance has been slightly lowered here...')
+        assert torch.allclose(y, z, atol=1e-7, rtol =1e-6) # There is a very small meaningless difference for skcuda+GPU
+
+
+    @pytest.mark.parametrize('backend', backends)
+    def test_gpu_only(self, data, backend):
+        x, filt, y = data
+        if backend.name == 'torch_skcuda':
+            x = x.cpu()
+            filt = filt.cpu()
+            with pytest.raises(TypeError) as exc:
+                z = backend.cdgmm(x, filt)
+            assert "must be CUDA" in exc.value.args[0]
+
+
+    @pytest.mark.parametrize('backend', backends)
     def test_cdgmm_exceptions(self, backend):
         with pytest.raises(RuntimeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 3, 2))
@@ -178,14 +196,18 @@ class TestCDGMM:
                 assert "input must be on gpu" in exc.value.args[0].lower()
 
 class TestFFT:
-    @pytest.mark.parametrize("backend", backends)
-    def test_fft(self, backend):
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_fft(self, backend_device):
+        backend, device = backend_device
+
         x = torch.rand(4, 4, 1)
+        x = x.to(device)
         with pytest.raises(TypeError) as record:
             backend.fft(x)
         assert 'complex' in record.value.args[0]
 
         x = torch.randn(4, 4, 2)
+        x = x.to(device)
         y = x[::2, ::2]
 
         with pytest.raises(RuntimeError) as record:
@@ -213,9 +235,10 @@ class TestScatteringTorch2D:
         assert len(order2) == n_order2
         return order0, order1, order2
 
-    @pytest.mark.parametrize("backend", backends)
-    @pytest.mark.parametrize("device", devices)
-    def test_Scattering2D(self, backend, device):
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_Scattering2D(self, backend_device):
+        backend, device = backend_device
+
         test_data_dir = os.path.dirname(__file__)
         data = torch.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
 
@@ -241,16 +264,24 @@ class TestScatteringTorch2D:
         x = x.to(device)
         scattering.to(device)
         S = S.to(device)
-        if backend.name == 'torch_skcuda' and device == 'cpu':
+        Sg = scattering(x)
+        assert torch.allclose(Sg, S)
+
+
+    @pytest.mark.parametrize('backend', backends)
+    def test_gpu_only(self, backend):
+        if backend.name == 'torch_skcuda':
+            scattering = Scattering2D(3, shape=(32, 32), backend=backend, frontend='torch')
+            x = torch.rand(32, 32)
             with pytest.raises(TypeError) as ve:
                 Sg = scattering(x)
             assert "CUDA" in ve.value.args[0]
-        else:
-            Sg = scattering(x)
-            assert torch.allclose(Sg, S)
 
-    @pytest.mark.parametrize("backend", backends)
-    def test_batch_shape_agnostic(self, backend):
+
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_batch_shape_agnostic(self, backend_device):
+        backend, device = backend_device
+
         J = 3
         L = 8
         shape = (32, 32)
@@ -269,9 +300,8 @@ class TestScatteringTorch2D:
 
         x = torch.zeros(shape)
 
-        if backend.name == 'torch_skcuda':
-            x = x.cuda()
-            S.cuda()
+        x = x.to(device)
+        S.to(device)
 
         Sx = S(x)
 
@@ -286,8 +316,7 @@ class TestScatteringTorch2D:
         for test_shape in test_shapes:
             x = torch.zeros(test_shape)
 
-            if backend.name == 'torch_skcuda':
-                x = x.cuda()
+            x = x.to(device)
 
             Sx = S(x)
 
@@ -298,13 +327,13 @@ class TestScatteringTorch2D:
 
     # Make sure we test for the errors that may be raised by
     # `Scattering2D.forward`.
-    @pytest.mark.parametrize("backend", backends)
-    @pytest.mark.parametrize("device", devices)
-    def test_scattering2d_errors(self, backend, device):
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_scattering2d_errors(self, backend_device):
+        backend, device = backend_device
+
         S = Scattering2D(3, (32, 32), backend=backend, frontend='torch')
 
-        if backend.name == 'torch_skcuda':
-            S.cuda()
+        S.to(device)
 
         with pytest.raises(TypeError) as record:
             S(None)
@@ -339,35 +368,32 @@ class TestScatteringTorch2D:
             assert x.device == y.device
 
     # Check that several input size works
-    @pytest.mark.parametrize("backend", backends)
-    def test_input_size_agnostic(self, backend):
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_input_size_agnostic(self, backend_device):
+        backend, device = backend_device
+
         for N in [31, 32, 33]:
             for J in [1, 2, 4]:
                 scattering = Scattering2D(J, shape=(N, N), backend=backend, frontend='torch')
                 x = torch.zeros(3, 3, N, N)
 
-                if backend.name == 'torch_skcuda':
-                    x = x.cuda()
-                    scattering.cuda()
+                x = x.to(device)
+                scattering.to(device)
 
                 S = scattering(x)
                 scattering = Scattering2D(J, shape=(N, N), pre_pad=True, backend=backend, frontend='torch')
                 x = torch.zeros(3,3,scattering.M_padded, scattering.N_padded)
 
-                if backend.name == 'torch_skcuda':
-                    x = x.cuda()
-                    scattering.cuda()
-
-                S = scattering(x)
+                x = x.to(device)
+                scattering.to(device)
 
         N = 32
         J = 5
         scattering = Scattering2D(J, shape=(N, N), backend=backend, frontend='torch')
         x = torch.zeros(3, 3, N, N)
 
-        if backend.name == 'torch_skcuda':
-            x = x.cuda()
-            scattering.cuda()
+        x = x.to(device)
+        scattering.to(device)
 
         S = scattering(x)
         assert S.shape[-2:] == (1, 1)
@@ -377,9 +403,8 @@ class TestScatteringTorch2D:
         scattering = Scattering2D(J, shape=(N+5, N), backend=backend, frontend='torch')
         x = torch.zeros(3, 3, N+5, N)
 
-        if backend.name == 'torch_skcuda':
-            x = x.cuda()
-            scattering.cuda()
+        x = x.to(device)
+        scattering.to(device)
 
         S = scattering(x)
         assert S.shape[-2:] == (1, 1)
@@ -396,9 +421,10 @@ class TestScatteringTorch2D:
             scattering = Scattering2D(10, shape=(10, 10), frontend='torch')
         assert 'smallest dimension' in ve.value.args[0]
 
-    @pytest.mark.parametrize("backend", backends)
-    @pytest.mark.parametrize("device", devices)
-    def test_gradients(self, backend, device):
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_gradients(self, backend_device):
+        backend, device = backend_device
+
         if backend.name == 'torch_skcuda':
             pytest.skip("The gradients are currently not implemented with the skcuda backend.")
         else:
