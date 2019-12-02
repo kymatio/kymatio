@@ -36,6 +36,50 @@ if 'cuda' in devices:
     backends_devices.append((backend, 'cuda'))
 
 
+class TestPad:
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_Pad(self, backend_device):
+        backend, device = backend_device
+
+        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
+
+        x = torch.randn(1, 4, 4)
+        x = x.to(device)
+
+        z = pad(x)
+
+        assert z.shape == (1, 8, 8, 2)
+        assert torch.allclose(z[0, 2, 2, 0], x[0, 0, 0])
+        assert torch.allclose(z[0, 1, 0, 0], x[0, 1, 2])
+        assert torch.allclose(z[0, 1, 1, 0], x[0, 1, 1])
+        assert torch.allclose(z[0, 1, 2, 0], x[0, 1, 0])
+        assert torch.allclose(z[0, 1, 3, 0], x[0, 1, 1])
+        assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
+
+        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=True)
+
+        x = torch.randn(1, 8, 8)
+        x = x.to(device)
+
+        z = pad(x)
+
+        assert torch.allclose(z[..., 0], x)
+        assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
+
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_unpad(self, backend_device):
+        backend, device = backend_device
+
+        x = torch.randn(4, 4)
+        x = x.to(device)
+
+        y = backend.unpad(x)
+
+        assert y.shape == (1, 2, 2)
+        assert torch.allclose(y[0, 0, 0], x[1, 1])
+        assert torch.allclose(y[0, 0, 1], x[1, 2])
+
+
 # Checked the modulus
 class TestModulus:
     @pytest.mark.parametrize("backend_device", backends_devices)
