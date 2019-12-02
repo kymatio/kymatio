@@ -32,11 +32,7 @@ class Pad(object):
             return x
         else:
             np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
-            batch_shape = x.shape[:-2]
-            signal_shape = x.shape[-2:]
-            x = x.reshape((-1, 1) + signal_shape)
-            output = np.pad(x, ((0,0), (0,0), np_pad[0], np_pad[1]), mode='reflect')
-            output = output.reshape(batch_shape + output.shape[-2:])
+            output = np.pad(x, ((0,0), np_pad[0], np_pad[1]), mode='reflect')
             return output
 
 
