@@ -267,6 +267,14 @@ class TestScatteringTorch2D:
         Sg = scattering(x)
         assert torch.allclose(Sg, S)
 
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad,
+                                  max_order=1, frontend='torch',
+                                  backend=backend)
+        scattering.to(device)
+
+        S1x = scattering(x)
+        assert torch.allclose(S1x, S[..., 0:len(o0 + o1), :, :])
+
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):
