@@ -7,7 +7,15 @@ import pytest
 from kymatio.scattering2d import Scattering2D
 from torch.autograd import gradcheck
 from collections import namedtuple
+
+
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
+
 backends = []
+backends_devices = []
 
 try:
     if torch.cuda.is_available():
@@ -15,17 +23,17 @@ try:
         import cupy
         from kymatio.scattering2d.backend.torch_skcuda_backend import backend
         backends.append(backend)
+        if 'cuda' in devices:
+            backends_devices.append((backend, 'cuda'))
 except:
     pass
 
 
 from kymatio.scattering2d.backend.torch_backend import backend
 backends.append(backend)
-
-if torch.cuda.is_available():
-    devices = ['cuda', 'cpu']
-else:
-    devices = ['cpu']
+backends_devices.append((backend, 'cpu'))
+if 'cuda' in devices:
+    backends_devices.append((backend, 'cuda'))
 
 
 # Checked the modulus
