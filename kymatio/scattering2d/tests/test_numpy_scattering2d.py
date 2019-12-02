@@ -19,15 +19,16 @@ class TestPad:
         pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
 
         x = np.random.randn(4, 4) + 1J * np.random.randn(4, 4)
+        x = x[np.newaxis, ...]
 
         z = pad(x)
 
-        assert z.shape == (8, 8)
-        assert z[2, 2] == x[0, 0]
-        assert z[1, 0] == x[1, 2]
-        assert z[1, 1] == x[1, 1]
-        assert z[1, 2] == x[1, 0]
-        assert z[1, 3] == x[1, 1]
+        assert z.shape == (1, 8, 8)
+        assert z[0, 2, 2] == x[0, 0, 0]
+        assert z[0, 1, 0] == x[0, 1, 2]
+        assert z[0, 1, 1] == x[0, 1, 1]
+        assert z[0, 1, 2] == x[0, 1, 0]
+        assert z[0, 1, 3] == x[0, 1, 1]
 
         pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=True)
 
