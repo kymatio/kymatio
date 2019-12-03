@@ -258,6 +258,23 @@ class TestCDGMM:
             backend.cdgmm(x, y.contiguous())
         assert 'be contiguous' in exc.value.args[0]
 
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_device_mismatch(self, backend_device):
+        backend, device = backend_device
+
+        if device == 'cpu':
+            return
+
+        if torch.cuda.device_count() < 2:
+            return
+
+        x = torch.empty(3, 4, 5, 2).to('cuda:0')
+        y = torch.empty(4, 5, 1).to('cuda:1')
+
+        with pytest.raises(TypeError) as exc:
+            backend.cdgmm(x, y)
+        assert 'must be on the same GPU' in exc.value.args[0]
+
 
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
