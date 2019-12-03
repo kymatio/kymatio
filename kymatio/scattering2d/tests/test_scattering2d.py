@@ -8,11 +8,9 @@ from kymatio.scattering2d import Scattering2D
 from kymatio.scattering2d import backend
 
 
+devices = ['cpu']
 if torch.cuda.is_available():
-    devices = ['cuda', 'cpu']
-else:
-    devices = ['cpu']
-
+    devices.append('cuda')
 
 def reorder_coefficients_from_interleaved(J, L):
     # helper function to obtain positions of order0, order1, order2 from interleaved
