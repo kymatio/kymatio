@@ -26,7 +26,7 @@ try:
         if 'cuda' in devices:
             backends_devices.append((backend, 'cuda'))
 except:
-    pass
+    Warning('torch_skcuda backend not available.')
 
 
 from kymatio.scattering2d.backend.torch_backend import backend
