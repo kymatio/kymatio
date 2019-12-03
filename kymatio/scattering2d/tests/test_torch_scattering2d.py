@@ -240,9 +240,37 @@ class TestCDGMM:
                 assert "input must be on gpu" in exc.value.args[0].lower()
 
 class TestFFT:
+    @pytest.mark.parametrize('backend', backends)
+    def test_fft(self, backend):
+        x = torch.randn(2, 2, 2)
+
+        y = torch.empty_like(x)
+        y[0, 0, :] = x[0, 0, :] + x[0, 1, :] + x[1, 0, :] + x[1, 1, :]
+        y[0, 1, :] = x[0, 0, :] - x[0, 1, :] + x[1, 0, :] - x[1, 1, :]
+        y[1, 0, :] = x[0, 0, :] + x[0, 1, :] - x[1, 0, :] - x[1, 1, :]
+        y[1, 1, :] = x[0, 0, :] - x[0, 1, :] - x[1, 0, :] + x[1, 1, :]
+
+        z = backend.fft(x, direction='C2C')
+
+        assert torch.allclose(y, z)
+
+        z = backend.fft(x, direction='C2C', inverse=True)
+
+        assert torch.allclose(y, z)
+
+        z = backend.fft(x, direction='C2R', inverse=True)
+
+        assert z.shape == x.shape[:-1]
+        assert torch.allclose(y[..., 0], z)
+
     @pytest.mark.parametrize('backend_device', backends_devices)
-    def test_fft(self, backend_device):
+    def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
+
+        with pytest.raises(RuntimeError) as record:
+            backend.fft(torch.empty(2, 2), direction='C2R',
+                        inverse=False)
+        assert 'done with an inverse' in record.value.args[0]
 
         x = torch.rand(4, 4, 1)
         x = x.to(device)
