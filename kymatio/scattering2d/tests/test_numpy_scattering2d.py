@@ -113,7 +113,8 @@ class TestCDGMM:
     @pytest.mark.parametrize('backend', backends)
     def test_cdgmm_exceptions(self, backend):
         with pytest.raises(RuntimeError) as record:
-            backend.cdgmm(np.empty((3, 4, 5)), np.empty((3, 4, 5)))
+            backend.cdgmm(np.empty((3, 4, 5)).astype(np.complex128),
+                          np.empty((3, 4, 5)).astype(np.complex128))
         assert 'second input must be 2' in record.value.args[0]
 
 
