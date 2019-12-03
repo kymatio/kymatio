@@ -129,6 +129,9 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
+        if not _iscomplex(x):
+            raise TypeError('The x should be complex.')
+
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
         batch_shape = x.shape[:-3]
@@ -166,6 +169,9 @@ class Modulus(object):
     def __call__(self, x):
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
+
+        if not _iscomplex(x):
+            raise TypeError('The inputs should be complex.')
 
         norm = torch.zeros_like(x)
         norm[...,0] = (x[...,0]*x[...,0] +
