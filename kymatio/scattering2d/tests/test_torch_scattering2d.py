@@ -96,6 +96,11 @@ class TestModulus:
         v = v.squeeze()
         assert torch.allclose(u, v)
 
+        y = x[..., 0].contiguous()
+        with pytest.raises(TypeError) as record:
+            modulus(y)
+        assert 'should be complex' in record.value.args[0]
+
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
             modulus(y)
@@ -132,6 +137,11 @@ class TestSubsampleFourier:
 
         z = subsample_fourier(x, k=16)
         assert torch.allclose(y, z)
+
+        y = x[..., 0]
+        with pytest.raises(TypeError) as record:
+            subsample_fourier(y, k=16)
+        assert 'should be complex' in record.value.args[0]
 
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
