@@ -238,6 +238,26 @@ class TestCDGMM:
                 with pytest.raises(TypeError) as exc:
                     backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 1).cuda())
                 assert "input must be on gpu" in exc.value.args[0].lower()
+                with pytest.raises(TypeError) as exc:
+                    backend.cdgmm(torch.empty(3, 4, 5, 2).cuda(), torch.empty(4, 5, 1))
+                assert "input must be on cpu" in exc.value.args[0].lower()
+
+
+    @pytest.mark.parametrize('backend_device', backends_devices)
+    def test_contiguity_exception(self, backend_device):
+        backend, device = backend_device
+
+        x = torch.empty(3, 4, 5, 3).to(device)[..., :2]
+        y = torch.empty(4, 5, 3).to(device)[..., :2]
+
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(x.contiguous(), y)
+        assert 'be contiguous' in exc.value.args[0]
+
+        with pytest.raises(RuntimeError) as exc:
+            backend.cdgmm(x, y.contiguous())
+        assert 'be contiguous' in exc.value.args[0]
+
 
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
