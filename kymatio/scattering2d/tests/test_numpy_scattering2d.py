@@ -153,7 +153,7 @@ class TestFFT:
 
         z = backend.fft(x, direction='C2R', inverse=True)
 
-        assert z.dtype == np.float64
+        assert not np.iscomplexobj(z)
         assert np.allclose(np.real(y), z)
 
 
