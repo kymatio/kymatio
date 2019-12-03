@@ -1,8 +1,6 @@
 from ...frontend.numpy_frontend import ScatteringNumPy
 from kymatio.scattering2d.core.scattering2d import scattering2d
 from .base_frontend import ScatteringBase2D
-from ..utils import compute_padding
-from ..filter_bank import filter_bank
 import numpy as np
 
 class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
