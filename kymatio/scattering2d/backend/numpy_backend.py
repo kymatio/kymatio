@@ -7,6 +7,14 @@ from collections import namedtuple
 BACKEND_NAME = 'numpy'
 
 
+def _iscomplex(x):
+    return x.dtype == np.complex64 or x.dtype == np.complex128
+
+
+def _isreal(x):
+    return x.dtype == np.float32 or x.dtype == np.float64
+
+
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
         """
@@ -160,8 +168,18 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
 
     """
+    if not _iscomplex(A):
+        raise TypeError('The first input must be complex.')
+
     if B.ndim != 2:
         raise RuntimeError('The dimension of the second input must be 2.')
+
+    if not _iscomplex(B) and not _isreal(B):
+        raise TypeError('The second input must be complex or real.')
+
+    if A.shape[-2:] != B.shape[-2:]:
+        raise RuntimeError('The inputs are not compatible for '
+                           'multiplication.')
 
     if inplace:
         return np.multiply(A, B, out=A)
