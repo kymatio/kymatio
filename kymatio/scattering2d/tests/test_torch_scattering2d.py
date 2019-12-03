@@ -9,10 +9,10 @@ from torch.autograd import gradcheck
 from collections import namedtuple
 
 
+devices = ['cpu']
 if torch.cuda.is_available():
-    devices = ['cuda', 'cpu']
-else:
-    devices = ['cpu']
+    devices.append('cuda')
+
 
 backends = []
 backends_devices = []
