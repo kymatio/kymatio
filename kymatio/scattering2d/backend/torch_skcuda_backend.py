@@ -266,8 +266,9 @@ from .torch_backend import unpad
 from .torch_backend import Pad
 from .torch_backend import fft
 from .torch_backend import empty_like
+from .torch_backend import squeeze
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like', 'squeeze'])
 backend.name = 'torch_skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -276,3 +277,4 @@ backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.empty_like = empty_like
+backend.squeeze = squeeze
