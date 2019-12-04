@@ -315,7 +315,11 @@ def empty_like(x, shape):
     # something more standard.
     return x.new(*shape)
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like'])
+def squeeze(x, y, index):
+    y[..., index, :, :] = x.squeeze(-3)
+    return y
+
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like', 'squeeze'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -324,3 +328,4 @@ backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.empty_like = empty_like
+backend.squeeze = squeeze
