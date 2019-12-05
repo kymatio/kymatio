@@ -28,7 +28,6 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
     S_0 = unpad(S_0)
 
     output_shape = (x.shape[0], output_size) + S_0.shape[-2:]
-    print(output_shape)
 
     S = empty_like(x, output_shape)
 
