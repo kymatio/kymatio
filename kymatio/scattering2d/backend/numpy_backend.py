@@ -191,7 +191,11 @@ def empty_like(x, shape):
     return np.empty(shape, x.dtype)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like'])
+def concatenate(arrays):
+    return np.stack(arrays, axis=-3)
+
+
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like', 'concatenate'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -200,3 +204,4 @@ backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.empty_like = empty_like
+backend.concatenate = concatenate
