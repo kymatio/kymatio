@@ -346,6 +346,21 @@ class TestFFT:
         assert 'must be contiguous' in record.value.args[0]
 
 
+class TestBackendUtils:
+    @pytest.mark.parametrize('backend', backends)
+    def test_concatenate(self, backend):
+        x = torch.randn(3, 6, 6)
+        y = torch.randn(3, 6, 6)
+        z = torch.randn(3, 6, 6)
+
+        w = backend.concatenate((x, y, z))
+
+        assert w.shape == (x.shape[0],) + (3,) + (x.shape[-2:])
+        assert np.allclose(w[:, 0, ...], x)
+        assert np.allclose(w[:, 1, ...], y)
+        assert np.allclose(w[:, 2, ...], z)
+
+
 class TestScatteringTorch2D:
     def reorder_coefficients_from_interleaved(self, J, L):
         # helper function to obtain positions of order0, order1, order2
