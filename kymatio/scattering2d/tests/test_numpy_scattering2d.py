@@ -166,7 +166,19 @@ class TestFFT:
 
 
 class TestBackendUtils:
-    pass
+    @pytest.mark.parametrize('backend', backends)
+    def test_concatenate(self, backend):
+        x = np.random.randn(3, 6, 6) + 1J * np.random.randn(3, 6, 6)
+        y = np.random.randn(3, 6, 6) + 1J * np.random.randn(3, 6, 6)
+        z = np.random.randn(3, 6, 6) + 1J * np.random.randn(3, 6, 6)
+
+        w = backend.concatenate((x, y, z))
+
+        assert w.shape == (x.shape[0],) + (3,) + (x.shape[-2:])
+        assert np.allclose(w[:, 0, ...], x)
+        assert np.allclose(w[:, 1, ...], y)
+        assert np.allclose(w[:, 2, ...], z)
+
 
 class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
