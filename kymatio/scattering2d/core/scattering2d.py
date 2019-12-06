@@ -6,7 +6,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
     modulus = backend.modulus
     fft = backend.fft
     cdgmm = backend.cdgmm
-    empty_like = backend.empty_like
+    concatenate = backend.concatenate
 
     order0_size = 1
     order1_size = L * J
@@ -15,6 +15,8 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
 
     if max_order == 2:
         output_size += order2_size
+
+    out_S_0, out_S_1, out_S_2 = [], [], []
 
     U_r = pad(x)
 
@@ -27,13 +29,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
     S_0 = fft(U_1_c, 'C2R', inverse=True)
     S_0 = unpad(S_0)
 
-    output_shape = (x.shape[0], output_size) + S_0.shape[-2:]
-
-    S = empty_like(x, output_shape)
-
-    S[..., 0, :, :] = S_0
-    n_order1 = 1
-    n_order2 = 1 + order1_size
+    out_S_0.append(S_0)
 
     for n1 in range(len(psi)):
         j1 = psi[n1]['j']
@@ -51,8 +47,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
         S_1_r = fft(S_1_c, 'C2R', inverse=True)
         S_1_r = unpad(S_1_r)
 
-        S[..., n_order1, :, :] = S_1_r
-        n_order1 += 1
+        out_S_1.append(S_1_r)
 
         if max_order < 2:
             continue
@@ -73,10 +68,15 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
             S_2_r = fft(S_2_c, 'C2R', inverse=True)
             S_2_r = unpad(S_2_r)
 
-            S[..., n_order2, :, :] = S_2_r
-            n_order2 += 1
+            out_S_2.append(S_2_r)
 
-    return S
+    out_S = []
+    out_S.extend(out_S_0)
+    out_S.extend(out_S_1)
+    out_S.extend(out_S_2)
+
+    out_S = concatenate(out_S)
+    return out_S
 
 
 __all__ = ['scattering2d']
