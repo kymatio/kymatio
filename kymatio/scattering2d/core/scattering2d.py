@@ -31,7 +31,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
 
     S = empty_like(x, output_shape)
 
-    S[..., 0, :, :] = S_0.squeeze(-3)
+    S[..., 0, :, :] = S_0
     n_order1 = 1
     n_order2 = 1 + order1_size
 
@@ -51,7 +51,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
         S_1_r = fft(S_1_c, 'C2R', inverse=True)
         S_1_r = unpad(S_1_r)
 
-        S[..., n_order1, :, :] = S_1_r.squeeze(-3)
+        S[..., n_order1, :, :] = S_1_r
         n_order1 += 1
 
         if max_order < 2:
@@ -73,7 +73,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order):
             S_2_r = fft(S_2_c, 'C2R', inverse=True)
             S_2_r = unpad(S_2_r)
 
-            S[..., n_order2, :, :] = S_2_r.squeeze(-3)
+            S[..., n_order2, :, :] = S_2_r
             n_order2 += 1
 
     return S
