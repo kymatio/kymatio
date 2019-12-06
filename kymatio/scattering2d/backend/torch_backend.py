@@ -104,7 +104,7 @@ def unpad(in_):
             Output tensor.  Unpadded input.
 
     """
-    return torch.unsqueeze(in_[..., 1:-1, 1:-1], -3)
+    return in_[..., 1:-1, 1:-1]
 
 class SubsampleFourier(object):
     """Subsampling of a 2D image performed in the Fourier domain

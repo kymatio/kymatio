@@ -58,7 +58,7 @@ def unpad(in_):
         in_[..., 1:-1, 1:-1]
 
     """
-    return np.expand_dims(in_[..., 1:-1, 1:-1], -3)
+    return in_[..., 1:-1, 1:-1]
 
 
 class SubsampleFourier(object):
