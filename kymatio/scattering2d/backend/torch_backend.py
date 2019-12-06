@@ -316,17 +316,12 @@ def cdgmm(A, B, inplace=False):
 
         return C if not inplace else A.copy_(C)
 
-def empty_like(x, shape):
-    # Note: This function is not documented, so it might be good to switch to
-    # something more standard.
-    return x.new(*shape)
-
 
 def concatenate(arrays):
     return torch.stack(arrays, axis=-3)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'empty_like', 'concatenate'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
@@ -334,5 +329,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.empty_like = empty_like
 backend.concatenate = concatenate
