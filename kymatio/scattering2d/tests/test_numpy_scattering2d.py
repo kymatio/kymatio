@@ -44,9 +44,9 @@ class TestPad:
 
         y = backend.unpad(x)
 
-        assert y.shape == (1, 2, 2)
-        assert y[0, 0, 0] == x[1, 1]
-        assert y[0, 0, 1] == x[1, 2]
+        assert y.shape == (2, 2)
+        assert y[0, 0] == x[1, 1]
+        assert y[0, 1] == x[1, 2]
 
 
 class TestModulus:
