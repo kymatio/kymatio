@@ -166,14 +166,7 @@ class TestFFT:
 
 
 class TestBackendUtils:
-    @pytest.mark.parametrize('backend', backends)
-    def test_empty_like(self, backend):
-        x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
-        y = backend.empty_like(x, (3, 3))
-
-        assert y.shape == (3, 3)
-        assert y.dtype == x.dtype
-
+    pass
 
 class TestScattering2DNumpy:
     def reorder_coefficients_from_interleaved(self, J, L):
