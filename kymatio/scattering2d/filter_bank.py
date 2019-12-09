@@ -48,9 +48,6 @@ def filter_bank(M, N, J, L=8):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
                 psi[res] = psi_signal_fourier_res
-                # Normalization to avoid doing it with the FFT.
-                psi[res] /= M*N// 2**(2*j)
-
             filters['psi'].append(psi)
 
     filters['phi'] = {}
@@ -62,8 +59,6 @@ def filter_bank(M, N, J, L=8):
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
         filters['phi'][res] = phi_signal_fourier_res
-        # Normalization to avoid doing it with the FFT.
-        filters['phi'][res] /= M*N // 2 ** (2 * J)
 
     return filters
 

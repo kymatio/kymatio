@@ -149,9 +149,13 @@ class TestFFT:
 
         z = backend.fft(x, direction='C2C', inverse=True)
 
+        z = z * 4
+
         assert np.allclose(y, z)
 
         z = backend.fft(x, direction='C2R', inverse=True)
+
+        z = z * 4
 
         assert not np.iscomplexobj(z)
         assert np.allclose(np.real(y), z)

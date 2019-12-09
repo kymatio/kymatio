@@ -223,10 +223,10 @@ def fft(x, direction='C2C', inverse=False):
         raise RuntimeError('Tensors must be contiguous.')
 
     if direction == 'C2R':
-        output = torch.irfft(x, 2, normalized=False, onesided=False) * x.shape[-2] * x.shape[-3]
+        output = torch.irfft(x, 2, normalized=False, onesided=False)
     elif direction == 'C2C':
         if inverse:
-            output = torch.ifft(x, 2, normalized=False) * x.shape[-2] * x.shape[-3]
+            output = torch.ifft(x, 2, normalized=False)
         else:
             output = torch.fft(x, 2, normalized=False)
 
