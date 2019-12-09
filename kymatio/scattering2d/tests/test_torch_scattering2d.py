@@ -315,9 +315,13 @@ class TestFFT:
 
         z = backend.fft(x, direction='C2C', inverse=True)
 
+        z = z * 4.0
+
         assert torch.allclose(y, z)
 
         z = backend.fft(x, direction='C2R', inverse=True)
+
+        z = z * 4.0
 
         assert z.shape == x.shape[:-1]
         assert torch.allclose(y[..., 0], z)
