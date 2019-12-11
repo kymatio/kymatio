@@ -1,4 +1,4 @@
-# Authors: Edouard Oyallon, Sergey Zagoruyko
+# Authors: Edouard Oyallon, Sergey Zagoruyko, Muawiz Chaudhary
 
 import tensorflow as tf
 import numpy as np
