@@ -2,7 +2,7 @@ from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 import numpy as np
 import pytest
 from kymatio import Scattering1D
-from kymatio.scattering1d.frontend.numpy_frontend import Scattering1DNumpy
+#from kymatio.scattering1d.frontend.numpy_frontend import Scattering1DNumpy
 
 def test_compute_padding():
     """

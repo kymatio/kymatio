@@ -17,4 +17,3 @@ class Scattering1D(object):
         except Exception as e:
             raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
 
-        logging.info(self.loginfo())
