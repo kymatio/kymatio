@@ -1,16 +1,9 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import adaptive_choice_P
-from kymatio.scattering1d.filter_bank import periodize_filter_fourier
-from kymatio.scattering1d.filter_bank import get_normalizing_factor
-from kymatio.scattering1d.filter_bank import compute_sigma_psi
-from kymatio.scattering1d.filter_bank import compute_temporal_support
-from kymatio.scattering1d.filter_bank import compute_xi_max
-from kymatio.scattering1d.filter_bank import morlet_1d
-from kymatio.scattering1d.filter_bank import calibrate_scattering_filters
-from kymatio.scattering1d.filter_bank import get_max_dyadic_subsampling
-from kymatio.scattering1d.filter_bank import gauss_1d
+from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor,
+    compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
+    get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
 import math
 import pytest
@@ -161,6 +154,7 @@ def test_gauss_1d():
     with pytest.raises(ValueError) as ve:
         gauss_1d(N, xi, sigma, P_max=-5)
     assert "should be non-negative" in ve.value.args[0]
+
 
 def test_calibrate_scattering_filters():
     """

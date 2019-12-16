@@ -1,14 +1,15 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
-import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Function
 
-NAME = 'torch'
+from collections import namedtuple
 
-def is_complex(input):
-    return input.size(-1) == 2
+BACKEND_NAME = 'torch'
+
+def _is_complex(input):
+    return input.shape[-1] == 2
 
 class ModulusStable(Function):
     """Stable complex modulus
@@ -119,19 +120,17 @@ def modulus_complex(x):
 
     Returns
     -------
-    res : tensor
-        A tensor with the same dimensions as x, such that res[..., 0] contains
-        the complex modulus of x, while res[..., 1] = 0.
+    norm : tensor
+        A tensor with the same dimensions as x, such that norm[..., 0] contains
+        the complex modulus of x, while norm[..., 1] = 0.
     """
-    if not is_complex(x):
+    if not _is_complex(x):
         raise TypeError('The input should be complex.')
 
-    norm = modulus(x)
+    norm = torch.zeros_like(x)
+    norm[...,0] = modulus(x)
 
-    res = torch.zeros_like(x)
-    res[...,0] = norm
-
-    return res
+    return norm
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -156,7 +155,7 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    if not is_complex(x):
+    if not _is_complex(x):
         raise TypeError('The input should be complex.')
 
     N = x.shape[-2]
@@ -305,3 +304,20 @@ def ifft1d_c2c(x):
         Fourier transform of x_f.
     """
     return torch.ifft(x, signal_ndim=1)
+
+def concatenate(arrays):
+    return torch.stack(arrays, axis=-2)
+
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
+                                 'ifft1d_c2c', 'concatenate'])
+backend.name = 'torch'
+backend.modulus_complex = modulus_complex
+backend.ModulusStable = ModulusStable
+backend.subsample_fourier = subsample_fourier
+backend.real = real
+backend.unpad = unpad
+backend.pad = pad
+backend.pad_1d = pad_1d
+backend.fft1d_c2c = fft1d_c2c
+backend.ifft1d_c2c = ifft1d_c2c
+backend.concatenate = concatenate
