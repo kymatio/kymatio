@@ -66,7 +66,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         batch_size = x.shape[0]
         kJ = max(J - oversampling, 0)
         temporal_size = ind_end[kJ] - ind_start[kJ]
-        #S = x.new(batch_size, sum(size_scattering), temporal_size).fill_(0.)
         out_S_0, out_S_1, out_S_2 = [], [], []
     else:
         S = {}
@@ -90,7 +89,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     else:
         S0_J = x
     if vectorize:
-        #S[:, cc[0], :] = S0_J.squeeze(dim=1)
         out_S_0.append(S0_J)
         cc[0] += 1
     else:
@@ -116,7 +114,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
             # just take the real value and unpad
             S1_J = unpad(real(U1), ind_start[k1], ind_end[k1])
         if vectorize:
-            #S[:, cc[1], :] = S1_J.squeeze(dim=1)
             out_S_1.append(S1_J)
             cc[1] += 1
         else:
@@ -147,7 +144,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                         S2_J = unpad(
                             real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
                     if vectorize:
-                        #S[:, cc[2], :] = S2_J.squeeze(dim=1)
                         out_S_2.append(S2_J)
                         cc[2] += 1
                     else:
