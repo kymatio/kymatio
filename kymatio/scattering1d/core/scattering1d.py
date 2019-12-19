@@ -74,9 +74,11 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         S = {}
 
     # pad to a dyadic size and make it complex
-    U0 = pad(x, pad_left=pad_left, pad_right=pad_right, to_complex=True)
+    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, to_complex=True)
+
     # compute the Fourier transform
-    U0_hat = fft1d_c2c(U0)
+    U_0_hat = fft1d_c2c(U_0)
+
     if vectorize:
         # initialize the cursor
         cc = [0] + list(size_scattering[:-1])  # current coordinate
@@ -85,75 +87,121 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
             cc[2] = cc[1] + cc[2]
     # Get S0
     k0 = max(J - oversampling, 0)
+
     if average:
-        S0_J_hat = subsample_fourier(U0_hat * phi[0], 2**k0)
-        S0_J = unpad(real(ifft1d_c2c(S0_J_hat)),
-                     ind_start[k0], ind_end[k0])
+        S_0_c = U_0_hat * phi[0]
+
+        S_0_J_hat = subsample_fourier(S_0_c, 2**k0)
+
+        S_0_c = ifft1d_c2c(S_0_J_hat)
+
+        S_0_r = real(S_0_c)
+
+        S_0_J = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
-        S0_J = x
+        S_0_J = x
+
     if vectorize:
-        out_S_0.append(S0_J)
+        out_S_0.append(S_0_J)
         cc[0] += 1
     else:
-        S[()] = S0_J
+        S[()] = S_0_J
+
     # First order:
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
+
         k1 = max(j1 - oversampling, 0)
+
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
-        U1_hat = subsample_fourier(U0_hat * psi1[n1][0], 2**k1)
+
+        U_1_c = U_0_hat * psi1[n1][0] 
+
+        U_1_hat = subsample_fourier(U_1_c, 2**k1)
+
+        U_1_c = ifft1d_c2c(U_1_hat)
+
         # Take the modulus
-        U1 = modulus_complex(ifft1d_c2c(U1_hat))
+        U_1_m = modulus_complex(U_1_c)
+
         if average or max_order > 1:
-            U1_hat = fft1d_c2c(U1)
+            U_1_hat = fft1d_c2c(U_1_m)
+
         if average:
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
-            S1_J_hat = subsample_fourier(U1_hat * phi[k1], 2**k1_J)
-            S1_J = unpad(real(ifft1d_c2c(S1_J_hat)),
-                         ind_start[k1_J + k1], ind_end[k1_J + k1])
+
+            S_1_c = U_1_hat * phi[k1]
+
+            S_1_J_hat = subsample_fourier(S_1_c, 2**k1_J)
+
+            S_1_c = ifft1d_c2c(S_1_J_hat)
+
+            S_1_r = real(S_1_c)
+
+            S_1_J = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             # just take the real value and unpad
-            S1_J = unpad(real(U1), ind_start[k1], ind_end[k1])
+            U_1_r = real(U_1_m)
+
+            S_1_J = unpad(U_1_r, ind_start[k1], ind_end[k1])
+
         if vectorize:
-            out_S_1.append(S1_J)
+            out_S_1.append(S_1_J)
             cc[1] += 1
         else:
-            S[(n1,)] = S1_J
+            S[(n1,)] = S_1_J
+
         if max_order == 2:
             # 2nd order
             for n2 in range(len(psi2)):
                 j2 = psi2[n2]['j']
+
                 if j2 > j1:
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
+
                     # convolution + downsampling
                     k2 = max(j2 - k1 - oversampling, 0)
-                    U2_hat = subsample_fourier(U1_hat * psi2[n2][k1],
-                                               2**k2)
-                    # take the modulus and go back in Fourier
-                    U2 = modulus_complex(ifft1d_c2c(U2_hat))
+
+                    U_2_c = U_1_hat * psi2[n2][k1]
+
+                    U_2_hat = subsample_fourier(U_2_c, 2**k2)
+
+                    # take the modulus 
+                    U_2_c = ifft1d_c2c(U_2_hat)
+
+                    U_2_m = modulus_complex(U_2_c)
+
                     if average:
-                        U2_hat = fft1d_c2c(U2)
+                        U_2_hat = fft1d_c2c(U_2_m)
+
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
-                        S2_J_hat = subsample_fourier(U2_hat * phi[k1 + k2],
-                                                     2**k2_J)
-                        S2_J = unpad(real(ifft1d_c2c(S2_J_hat)),
-                                     ind_start[k1 + k2 + k2_J],
-                                     ind_end[k1 + k2 + k2_J])
+
+                        S_2_c = U_2_hat * phi[k1 + k2]
+
+                        S_2_J_hat = subsample_fourier(S_2_c, 2**k2_J)
+
+                        S_2_c = ifft1d_c2c(S_2_J_hat)
+
+                        S_2_r = real(S_2_c)
+
+                        S_2_J = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:
                         # just take the real value and unpad
-                        S2_J = unpad(
-                            real(U2), ind_start[k1 + k2], ind_end[k1 + k2])
+                        U_2_r = real(U_2_m)
+                        S_2_J = unpad(U_2_r, ind_start[k1 + k2], ind_end[k1 + k2])
+
                     if vectorize:
-                        out_S_2.append(S2_J)
+                        out_S_2.append(S_2_J)
                         cc[2] += 1
                     else:
-                        S[n1, n2] = S2_J
+                        S[n1, n2] = S_2_J
 
     if vectorize:
         S = finalize(out_S_0, out_S_1, out_S_2)
+
     return S
 
 __all__ = ['scattering1d']
