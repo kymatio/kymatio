@@ -21,7 +21,7 @@ def get_dtype(t):
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-def is_complex(input):
+def _is_complex(input):
     return input.size(-1) == 2
 
 class Modulus(object):
@@ -68,7 +68,7 @@ class Modulus(object):
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
 
-        if not is_complex(x):
+        if not _is_complex(x):
             raise TypeError('The input and outputs should be complex.')
 
         kernel = """
@@ -150,7 +150,7 @@ class SubsampleFourier(object):
         if not x.is_cuda and self.backend == 'skcuda':
             raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
 
-        if not is_complex(x):
+        if not _is_complex(x):
             raise TypeError('The input and outputs should be complex')
 
         if not x.is_contiguous():
