@@ -1,7 +1,6 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
-__all__ = ['scattering1d']
 
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_right=0,
                ind_start=None, ind_end=None, oversampling=0,
@@ -157,3 +156,5 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     if vectorize:
         S = finalize(out_S_0, out_S_1, out_S_2)
     return S
+
+__all__ = ['scattering1d']
