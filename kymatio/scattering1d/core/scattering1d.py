@@ -61,7 +61,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     fft1d_c2c = backend.fft1d_c2c
     ifft1d_c2c = backend.ifft1d_c2c
     real = backend.real
-    finalize = backend.finalize
+    concatenate = backend.concatenate
 
 
     # S is simply a dictionary if we do not perform the averaging...
@@ -202,7 +202,11 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                         S[n1, n2] = S_2
 
     if vectorize:
-        S = finalize(out_S_0, out_S_1, out_S_2)
+        S = []
+        S.extend(out_S_0)
+        S.extend(out_S_1)
+        S.extend(out_S_2)
+        S = concatenate(S)
 
     return S
 
