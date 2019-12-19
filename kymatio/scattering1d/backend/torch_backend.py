@@ -307,15 +307,11 @@ def ifft1d_c2c(x):
     """
     return torch.ifft(x, signal_ndim=1)
 
-def finalize(s0, s1, s2):
-    """ Concatenate scattering of different orders"""
-    if len(s2)>0:
-        return torch.cat([torch.cat(s0, -2), torch.cat(s1, -2), torch.cat(s2, -2)], -2)
-    else:
-        return torch.cat([torch.cat(s0, -2), torch.cat(s1, -2)], -2)
+def concatenate(arrays):
+    return torch.stack(arrays, axis=-2)
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
-                                 'ifft1d_c2c', 'finalize'])
+                                 'ifft1d_c2c', 'concatenate'])
 backend.name = 'torch'
 backend.modulus_complex = modulus_complex
 backend.ModulusStable = ModulusStable
@@ -326,5 +322,5 @@ backend.pad = pad
 backend.pad_1d = pad_1d
 backend.fft1d_c2c = fft1d_c2c
 backend.ifft1d_c2c = ifft1d_c2c
-backend.finalize = finalize
+backend.concatenate = concatenate
 
