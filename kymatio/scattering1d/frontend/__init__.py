@@ -1,7 +1,5 @@
 __all__ = ['Scattering1D']
 
-import logging
-
 class Scattering1D(object):
     def __init__(self, *args, **kwargs):
         if 'frontend' not in kwargs:
