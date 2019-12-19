@@ -83,29 +83,31 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         # initialize the cursor
         cc = [0] + list(size_scattering[:-1])  # current coordinate
         cc[1] = cc[0] + cc[1]
+
         if max_order == 2:
             cc[2] = cc[1] + cc[2]
+
     # Get S0
     k0 = max(J - oversampling, 0)
 
     if average:
         S_0_c = U_0_hat * phi[0]
 
-        S_0_J_hat = subsample_fourier(S_0_c, 2**k0)
+        S_0_hat = subsample_fourier(S_0_c, 2**k0)
 
-        S_0_c = ifft1d_c2c(S_0_J_hat)
+        S_0_c = ifft1d_c2c(S_0_hat)
 
         S_0_r = real(S_0_c)
 
-        S_0_J = unpad(S_0_r, ind_start[k0], ind_end[k0])
+        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
-        S_0_J = x
+        S_0 = x
 
     if vectorize:
-        out_S_0.append(S_0_J)
+        out_S_0.append(S_0)
         cc[0] += 1
     else:
-        S[()] = S_0_J
+        S[()] = S_0
 
     # First order:
     for n1 in range(len(psi1)):
@@ -134,24 +136,24 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
             S_1_c = U_1_hat * phi[k1]
 
-            S_1_J_hat = subsample_fourier(S_1_c, 2**k1_J)
+            S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
 
-            S_1_c = ifft1d_c2c(S_1_J_hat)
+            S_1_c = ifft1d_c2c(S_1_hat)
 
             S_1_r = real(S_1_c)
 
-            S_1_J = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             # just take the real value and unpad
             U_1_r = real(U_1_m)
 
-            S_1_J = unpad(U_1_r, ind_start[k1], ind_end[k1])
+            S_1 = unpad(U_1_r, ind_start[k1], ind_end[k1])
 
         if vectorize:
-            out_S_1.append(S_1_J)
+            out_S_1.append(S_1)
             cc[1] += 1
         else:
-            S[(n1,)] = S_1_J
+            S[(n1,)] = S_1
 
         if max_order == 2:
             # 2nd order
@@ -181,23 +183,23 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
                         S_2_c = U_2_hat * phi[k1 + k2]
 
-                        S_2_J_hat = subsample_fourier(S_2_c, 2**k2_J)
+                        S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
 
-                        S_2_c = ifft1d_c2c(S_2_J_hat)
+                        S_2_c = ifft1d_c2c(S_2_hat)
 
                         S_2_r = real(S_2_c)
 
-                        S_2_J = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
+                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:
                         # just take the real value and unpad
                         U_2_r = real(U_2_m)
-                        S_2_J = unpad(U_2_r, ind_start[k1 + k2], ind_end[k1 + k2])
+                        S_2 = unpad(U_2_r, ind_start[k1 + k2], ind_end[k1 + k2])
 
                     if vectorize:
-                        out_S_2.append(S_2_J)
+                        out_S_2.append(S_2)
                         cc[2] += 1
                     else:
-                        S[n1, n2] = S_2_J
+                        S[n1, n2] = S_2
 
     if vectorize:
         S = finalize(out_S_0, out_S_1, out_S_2)
