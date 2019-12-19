@@ -1,4 +1,3 @@
-__all__ = ['Scattering1D']
 
 class Scattering1D(object):
     def __init__(self, *args, **kwargs):
@@ -15,3 +14,4 @@ class Scattering1D(object):
         except Exception as e:
             raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
 
+__all__ = ['Scattering1D']
