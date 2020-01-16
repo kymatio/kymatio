@@ -42,7 +42,7 @@ class SubsampleFourier(object):
              and imaginary parts. Ideally, the last dimension should be a
              power of 2 to avoid errors.
         k : int
-            Integer such that x is subsampled by 2**k along the spatial variables.
+            Integer such that x is subsampled by k along the spatial variables.
 
         Raises
         ------
@@ -56,7 +56,7 @@ class SubsampleFourier(object):
         out : tensor
             Tensor such that its fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
-            F^{-1}(res)[u1, u2] = F^{-1}(x)[u1 * (2**k), u2 * (2**k)].
+            F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k)].
 
     """
     def __init__(self):

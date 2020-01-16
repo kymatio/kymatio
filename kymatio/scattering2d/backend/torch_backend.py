@@ -118,14 +118,14 @@ class SubsampleFourier(object):
             Input tensor with at least 5 dimensions, the last being the real
             and imaginary parts.
         k : int
-            Integer such that x is subsampled by 2**k along the spatial variables.
+            Integer such that x is subsampled by k along the spatial variables.
 
         Returns
         -------
         out : tensor
             Tensor such that its Fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
-            F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * (2**k), u2 * (2**k)].
+            F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k].
 
     """
     def __call__(self, x, k):
