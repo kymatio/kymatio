@@ -139,7 +139,7 @@ def main():
     model = Scattering2dCNN(K, args.classifier)
 
     if use_cuda:
-        model = torch.nn.DataParallel(Scattering2dCNN(K, args.classifier)).cuda()
+        model = torch.nn.DataParallel(model).cuda()
 
     # DataLoaders
     if use_cuda:
