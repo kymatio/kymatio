@@ -131,12 +131,15 @@ def main():
         scattering = Scattering2D(J=2, shape=(32, 32))
         K = 81*3
     if use_cuda:
-        scattering = scattering.cuda()
+        scattering = torch.nn.DataParallel(scattering).cuda()
 
 
 
 
-    model = Scattering2dCNN(K,args.classifier).to(device)
+    model = Scattering2dCNN(K, args.classifier)
+
+    if use_cuda:
+        model = torch.nn.DataParallel(Scattering2dCNN(K, args.classifier)).cuda()
 
     # DataLoaders
     if use_cuda:
