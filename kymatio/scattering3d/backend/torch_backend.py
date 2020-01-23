@@ -198,7 +198,7 @@ def fft(input, inverse=False):
             Result of FFT or IFFT.
     """
     if not _iscomplex(input):
-        raise (TypeError('The input should be complex (e.g. last dimension is 2)'.))
+        raise (TypeError('The input should be complex (e.g. last dimension is 2)'))
     if inverse:
         return torch.ifft(input, 3)
     return torch.fft(input, 3)
@@ -243,23 +243,23 @@ def cdgmm3d(A, B, inplace=False):
         B = B.contiguous()
 
     if A.shape[-4:] != B.shape:
-        raise RuntimeError('The tensors are not compatible for multiplication!')
+        raise RuntimeError('The tensors are not compatible for multiplication.')
 
     if not _iscomplex(A) or not _iscomplex(B):
-        raise TypeError('The input, filter and output should be complex')
+        raise TypeError('The input, filter and output should be complex.')
 
     if B.ndimension() != 4:
-        raise RuntimeError('The second tensor must be simply a complex array!')
+        raise RuntimeError('The second tensor must be simply a complex array.')
 
     if type(A) is not type(B):
-        raise RuntimeError('A and B should be same type!')
+        raise RuntimeError('A and B should be same type.')
 
     if A.device.type != B.device.type:
         raise TypeError('A and B must be both on GPU or both on CPU.')
 
     if A.device.type == 'cuda':
         if A.device.index != B.device.index:
-            raise TypeError('A and B must be on the same GPU!')
+            raise TypeError('A and B must be on the same GPU.')
 
     C = A.new(A.shape)
 
