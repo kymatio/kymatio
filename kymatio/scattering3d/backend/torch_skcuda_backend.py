@@ -131,7 +131,7 @@ from .torch_backend import _compute_local_scattering_coefs
 from .torch_backend import _compute_standard_scattering_coefs
 from .torch_backend import aggregate
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample', \
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',
                                  'compute_integrals', 'aggregate'])
 
 backend.name = 'torch_skcuda'

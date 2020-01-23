@@ -309,7 +309,7 @@ def aggregate(x):
     return torch.stack([arr[..., 0] for arr in x], 1)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample', \
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample', 
                                  'compute_integrals', 'aggregate'])
 
 backend.name = 'torch'
