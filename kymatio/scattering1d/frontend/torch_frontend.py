@@ -4,14 +4,13 @@
 import torch
 
 from ...frontend.torch_frontend import ScatteringTorch
-from kymatio.scattering1d.core.scattering1d import scattering1d
-from kymatio.scattering1d.utils import precompute_size_scattering
+from ..core.scattering1d import scattering1d
+from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend='torch'):
-        super(ScatteringTorch1D, self).__init__()
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average, oversampling, vectorize, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
@@ -48,7 +47,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                         psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
-
 
     def scattering(self, x):
         """Apply the scattering transform
@@ -140,5 +138,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 S[k] = v.reshape(batch_shape + scattering_shape)
 
         return S
+
 
 __all__ = ['ScatteringTorch1D']
