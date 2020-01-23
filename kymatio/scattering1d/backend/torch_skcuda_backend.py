@@ -22,7 +22,7 @@ def get_dtype(t):
         return 'double'
 
 def _is_complex(input):
-    return input.size(-1) == 2
+    return input.shape[-1] == 2
 
 class Modulus(object):
     """Stable complex modulus
@@ -63,7 +63,7 @@ class Modulus(object):
         if not x.is_cuda and self.backend=='skcuda':
             raise TypeError('Use the torch backend (without skcuda) for cpu tensors!')
 
-        out = x.new(x.size())
+        out = x.new(x.shape)
 
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
@@ -156,7 +156,7 @@ class SubsampleFourier(object):
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
 
-        out = x.new(x.size(0), x.size(1), x.size(2) // k, 2)
+        out = x.new(x.shape[0], x.shape[1], x.shape[2] // k, 2)
 
         kernel = '''
         #define NT ${T} / ${k}
@@ -182,11 +182,11 @@ class SubsampleFourier(object):
           output[ty * NT + tx] = res;
         }
         '''
-        B = x.size(0) * x.size(1)
-        T = x.size(2)
+        B = x.shape[0] * x.shape[1]
+        T = x.shape[2]
         periodize = load_kernel('periodize', kernel, B=B, T=T, k=k, dtype=get_dtype(x))
-        grid = (self.get_blocks(out.size(-2), self.block[0]),
-                self.get_blocks(out.nelement() // (2*out.size(-2)), self.block[1]),
+        grid = (self.get_blocks(out.shape[-2], self.block[0]),
+                self.get_blocks(out.nelement() // (2*out.shape[-2]), self.block[1]),
                 1)
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
