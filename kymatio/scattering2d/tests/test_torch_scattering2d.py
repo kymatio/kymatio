@@ -1,6 +1,7 @@
 """ This script will test the submodules used by the scattering module"""
 
 import os
+import io
 import numpy as np
 import torch
 import pytest
@@ -393,10 +394,12 @@ class TestScatteringTorch2D:
         backend, device = backend_device
 
         test_data_dir = os.path.dirname(__file__)
-        data = torch.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
+        with open(os.path.join(test_data_dir, 'test_data_2d.npz'), 'rb') as f:
+            buffer = io.BytesIO(f.read())
+            data = np.load(buffer)
 
-        x = data['x']
-        S = data['Sx']
+        x = torch.from_numpy(data['x'])
+        S = torch.from_numpy(data['Sx'])
         J = data['J']
 
         # we need to reorder S from interleaved (how it's saved) to o0, o1, o2

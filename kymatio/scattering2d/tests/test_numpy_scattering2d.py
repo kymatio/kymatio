@@ -2,7 +2,6 @@ import os
 import io
 import numpy as np
 from kymatio.scattering2d import Scattering2D
-import torch
 from collections import namedtuple
 import pytest
 
@@ -209,12 +208,12 @@ class TestScattering2DNumpy:
     def test_Scattering2D(self, backend):
         test_data_dir = os.path.dirname(__file__)
         data = None
-        with open(os.path.join(test_data_dir, 'test_data_2d.pt'), 'rb') as f:
+        with open(os.path.join(test_data_dir, 'test_data_2d.npz'), 'rb') as f:
             buffer = io.BytesIO(f.read())
-            data = torch.load(buffer)
+            data = np.load(buffer)
 
-        x = data['x'].numpy()
-        S = data['Sx'].numpy()
+        x = data['x']
+        S = data['Sx']
         J = data['J']
 
         # we need to reorder S from interleaved (how it's saved) to o0, o1, o2

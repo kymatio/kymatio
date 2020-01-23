@@ -1,6 +1,7 @@
 """ This script will test the submodules used by the scattering module"""
 
 import os
+import io
 import numpy as np
 import torch
 import pytest
@@ -36,10 +37,13 @@ def reorder_coefficients_from_interleaved(J, L):
 # KYMATIO_BACKEND=skcuda and KYMATIO_BACKEND=torch
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
-    data = torch.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
 
-    x = data['x']
-    S = data['Sx']
+    with open(os.path.join(test_data_dir, 'test_data_2d.npz'), 'rb') as f:
+        buffer = io.BytesIO(f.read())
+        data = np.load(buffer)
+
+    x = torch.from_numpy(data['x'])
+    S = torch.from_numpy(data['Sx'])
     J = data['J']
 
     # we need to reorder S from interleaved (how it's saved) to o0, o1, o2
