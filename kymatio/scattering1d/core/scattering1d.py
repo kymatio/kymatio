@@ -79,14 +79,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     # compute the Fourier transform
     U_0_hat = fft1d_c2c(U_0)
 
-    if vectorize:
-        # initialize the cursor
-        cc = [0] + list(size_scattering[:-1])  # current coordinate
-        cc[1] = cc[0] + cc[1]
-
-        if max_order == 2:
-            cc[2] = cc[1] + cc[2]
-
     # Get S0
     k0 = max(J - oversampling, 0)
 
@@ -102,7 +94,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
     if vectorize:
         out_S_0.append(S_0)
-        cc[0] += 1
     else:
         S[()] = S_0
 
@@ -143,7 +134,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
         if vectorize:
             out_S_1.append(S_1)
-            cc[1] += 1
         else:
             S[(n1,)] = S_1
 
@@ -184,7 +174,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
                     if vectorize:
                         out_S_2.append(S_2)
-                        cc[2] += 1
                     else:
                         S[n1, n2] = S_2
 
