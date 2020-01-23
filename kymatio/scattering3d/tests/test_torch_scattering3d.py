@@ -22,7 +22,6 @@ except:
 from kymatio.scattering3d.backend.torch_backend import backend
 backends.append(backend)
 
-
 if torch.cuda.is_available():
     devices = ['cuda', 'cpu']
 else:
@@ -31,6 +30,7 @@ else:
 
 def relative_difference(a, b):
     return np.sum(np.abs(a - b)) / max(np.sum(np.abs(a)), np.sum(np.abs(b)))
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -45,6 +45,7 @@ def test_FFT3d_central_freq_batch(device, backend):
         c = y[:,0,0,0].sum()
         assert (c-a).abs().sum()<1e-6
 
+
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_fft3d_error(backend, device):
@@ -52,6 +53,7 @@ def test_fft3d_error(backend, device):
     with pytest.raises(TypeError) as record:
         backend.fft(x)
     assert "should be complex" in record.value.args[0]
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -134,6 +136,7 @@ def test_cdgmm3d(device, backend, inplace):
             backend.cdgmm3d(x, y)
         assert "for cpu tensors" in record.value.args[0]
 
+
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_complex_modulus(backend, device):
@@ -142,6 +145,7 @@ def test_complex_modulus(backend, device):
     y = backend.modulus(x)
     assert (y[...,0] - xm).norm() < 1e-7
     assert (y[...,1]).norm() < 1e-7
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -168,8 +172,6 @@ def test_against_standard_computations(device, backend):
             sigma_0=sigma, method='integral',
             integral_powers=integral_powers, max_order=2, backend=backend, frontend='torch').to(device)
 
-
-
     order_0 = backend.compute_integrals(x, integral_powers)
     scattering.max_order = 2
     scattering.method = 'integral'
@@ -190,7 +192,6 @@ def test_against_standard_computations(device, backend):
     # power).
     order_1 = order_1.permute(0, 3, 1, 2)
     order_2 = order_2.permute(0, 3, 1, 2)
-
 
     order_1 = order_1.reshape((batch_size, -1))
     order_2 = order_2.reshape((batch_size, -1))
@@ -213,6 +214,7 @@ def test_against_standard_computations(device, backend):
 
     assert order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
     assert orders_1_and_2_diff_cpu < 1e-6, "CPU : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -237,7 +239,6 @@ def test_solid_harmonic_scattering(device, backend):
     scattering.method = 'integral'
     scattering.integral_powers = [1]
 
-
     s = scattering(x)
 
     for j in range(J+1):
@@ -246,6 +247,7 @@ def test_solid_harmonic_scattering(device, backend):
         for l in range(1, L+1):
             err = torch.abs(s[0, j, l, 0] - k ** l).sum()/(1e-6+s[0, j, l, 0].abs().sum())
             assert err<1e-4
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -263,6 +265,7 @@ def test_larger_scales(device, backend):
         scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0, frontend='torch', backend=backend).to(device)
         scattering.method = 'integral'
         Sx = scattering(x)
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
