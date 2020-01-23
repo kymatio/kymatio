@@ -1,26 +1,17 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
-import math
-import numbers
-
 import torch
-import numpy as np
 
 from ...frontend.torch_frontend import ScatteringTorch
-
 from kymatio.scattering1d.core.scattering1d import scattering1d
-
-from kymatio.scattering1d.filter_bank import scattering_filter_factory
-from kymatio.scattering1d.utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad,\
-compute_meta_scattering, precompute_size_scattering
-
+from kymatio.scattering1d.utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
 
-class Scattering1DTorch(ScatteringTorch, ScatteringBase1D):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend=None):
-        super(Scattering1DTorch, self).__init__()
+class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
+    def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend='torch'):
+        super(ScatteringTorch1D, self).__init__()
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average, oversampling, vectorize, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
@@ -57,10 +48,6 @@ class Scattering1DTorch(ScatteringTorch, ScatteringBase1D):
                         psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
-
-        #self.psi1_f = psi1_f
-        #self.psi2_f = psi2_f
-        #self.phi_f = phi_f
 
 
     def scattering(self, x):
@@ -154,4 +141,4 @@ class Scattering1DTorch(ScatteringTorch, ScatteringBase1D):
 
         return S
 
-__all__ = ['Scattering1DTorch']
+__all__ = ['ScatteringTorch1D']
