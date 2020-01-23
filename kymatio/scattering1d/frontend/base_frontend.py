@@ -5,8 +5,8 @@ import numbers
 import numpy as np
 
 from ..filter_bank import scattering_filter_factory
-from ..utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad,\
-compute_meta_scattering, precompute_size_scattering
+from ..utils import (compute_border_indices, compute_padding, compute_minimum_support_to_pad,
+compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
