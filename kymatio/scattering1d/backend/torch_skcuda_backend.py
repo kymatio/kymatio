@@ -105,9 +105,9 @@ def modulus_complex(x):
 
     Returns
     -------
-    res : tensor
-        A tensor with the same dimensions as x, such that res[..., 0] contains
-        the complex modulus of x, while res[..., 1] = 0.
+    norm : tensor
+        A tensor with the same dimensions as x, such that norm[..., 0] contains
+        the complex modulus of x, while norm[..., 1] = 0.
     """
     return modulus(x)
 
