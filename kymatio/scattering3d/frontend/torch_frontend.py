@@ -127,8 +127,8 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         if not input_array.is_contiguous():
             input_array = input_array.contiguous()
 
-        if ((input_array.size(-1) != self.O or input_array.size(-2) != self.N
-             or input_array.size(-3) != self.M)):
+        if ((input_array.shape[-1] != self.O or input_array.shape[-2] != self.N
+             or input_array.shape[-3] != self.M)):
             raise (RuntimeError(
                 'Tensor must be of spatial size (%i,%i,%i)!' % (
                     self.M, self.N, self.O)))
@@ -136,7 +136,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         if (input_array.dim() != 4):
             raise (RuntimeError('Input tensor must be 4D'))
 
-        x = input_array.new(input_array.size() + (2,)).fill_(0)
+        x = input_array.new(input_array.shape + (2,)).fill_(0)
         x[..., 0] = input_array
 
         return self.scattering(x)
