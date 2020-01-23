@@ -1,6 +1,7 @@
 """ This script will test the submodules used by the scattering module"""
 
 import os
+import io
 import numpy as np
 import torch
 import pytest
@@ -366,46 +367,18 @@ class TestBackendUtils:
 
 
 class TestScatteringTorch2D:
-    def reorder_coefficients_from_interleaved(self, J, L):
-        # helper function to obtain positions of order0, order1, order2
-        # from interleaved
-        order0, order1, order2 = [], [], []
-        n_order0, n_order1, n_order2 = 1, J * L, L ** 2 * J * (J - 1) // 2
-        n = 0
-        order0.append(n)
-        for j1 in range(J):
-            for l1 in range(L):
-                n += 1
-                order1.append(n)
-                for j2 in range(j1 + 1, J):
-                    for l2 in range(L):
-                        n += 1
-                        order2.append(n)
-
-        assert len(order0) == n_order0
-        assert len(order1) == n_order1
-        assert len(order2) == n_order2
-
-        return order0, order1, order2
-
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_Scattering2D(self, backend_device):
         backend, device = backend_device
 
         test_data_dir = os.path.dirname(__file__)
-        data = torch.load(os.path.join(test_data_dir, 'test_data_2d.pt'))
+        with open(os.path.join(test_data_dir, 'test_data_2d.npz'), 'rb') as f:
+            buffer = io.BytesIO(f.read())
+            data = np.load(buffer)
 
-        x = data['x']
-        S = data['Sx']
+        x = torch.from_numpy(data['x'])
+        S = torch.from_numpy(data['Sx'])
         J = data['J']
-
-        # we need to reorder S from interleaved (how it's saved) to o0, o1, o2
-        # (which is how it's now computed)
-
-        o0, o1, o2 = self.reorder_coefficients_from_interleaved(J, L=8)
-        reorder = torch.from_numpy(np.concatenate((o0, o1, o2)))
-        S = S[..., reorder, :, :]
-
         pre_pad = data['pre_pad']
 
         M = x.shape[2]
@@ -426,7 +399,7 @@ class TestScatteringTorch2D:
         scattering.to(device)
 
         S1x = scattering(x)
-        assert torch.allclose(S1x, S[..., 0:len(o0 + o1), :, :])
+        assert torch.allclose(S1x, S[..., :S1x.shape[-3], :, :])
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):

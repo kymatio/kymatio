@@ -3,6 +3,7 @@ import torch
 from kymatio import Scattering1D
 import math
 import os
+import io
 import numpy as np
 
 
@@ -80,47 +81,20 @@ def test_sample_scattering(device, backend):
     a previously calculated version.
     """
     test_data_dir = os.path.dirname(__file__)
-    test_data_filename = os.path.join(test_data_dir, 'test_data_1d.pt')
-    data = torch.load(test_data_filename, map_location='cpu')
 
-    x = data['x'].to(device)
+    with open(os.path.join(test_data_dir, 'test_data_1d.npz'), 'rb') as f:
+        buffer = io.BytesIO(f.read())
+        data = np.load(buffer)
+
+
+    x = torch.from_numpy(data['x']).to(device)
     J = data['J']
     Q = data['Q']
-    Sx0 = data['Sx'].to(device)
+    Sx0 = torch.from_numpy(data['Sx']).to(device)
 
-    T = x.shape[2]
-
-    # Convert from old (B, 1, T) format.
-    x = x.squeeze(1)
+    T = x.shape[-1]
 
     scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').to(device)
-
-    # Reorder reference scattering from interleaved to concatenated orders.
-    meta = scattering.meta()
-
-    orders = [[], [], []]
-
-    ind = 0
-
-    orders[0].append(ind)
-    ind = ind + 1
-
-    n1s = [meta['key'][k][0] for k in range(len(meta['key']))
-           if meta['order'][k] == 1]
-    for n1 in n1s:
-        orders[1].append(ind)
-        ind = ind + 1
-
-        n2s = [meta['key'][k][1] for k in range(len(meta['key']))
-               if meta['order'][k] == 2 and meta['key'][k][0] == n1]
-
-        for n2 in n2s:
-            orders[2].append(ind)
-            ind = ind + 1
-
-    perm = torch.from_numpy(np.concatenate(orders))
-
-    Sx0 = Sx0[:,perm,:]
 
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
