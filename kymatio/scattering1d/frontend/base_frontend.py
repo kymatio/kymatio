@@ -252,4 +252,5 @@ class ScatteringBase1D(ScatteringBase):
         return precompute_size_scattering(
             self.J, self.Q, max_order=self.max_order, detail=detail)
 
+
 __all__ = ['ScatteringBase1D']
