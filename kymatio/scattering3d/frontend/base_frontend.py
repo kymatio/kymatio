@@ -99,12 +99,6 @@ class ScatteringBase3D(ScatteringBase):
     def build(self):
         self.M, self.N, self.O = self.shape
 
-        if not self.backend:
-            from ..backend.torch_backend import backend  # is imported like a module and not a class?
-            self.backend = backend
-        elif self.backend.name[0:5] != 'torch':
-            raise RuntimeError('This backend is not supported.')
-
     def create_filters(self):
         self.filters = solid_harmonic_filter_bank(
             self.M, self.N, self.O, self.J, self.L, self.sigma_0)
