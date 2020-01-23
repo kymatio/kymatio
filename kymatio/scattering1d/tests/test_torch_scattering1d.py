@@ -46,11 +46,11 @@ def test_simple_scatterings(device, backend, random_state=42):
         with pytest.raises(TypeError) as ve:
             s = scattering(x0)
         assert "CPU" in ve.value.args[0]
-    else:
-        s = scattering(x0)
+        return
+    s = scattering(x0)
 
-        # check that s is zero!
-        assert torch.max(torch.abs(s)) < 1e-7
+    # check that s is zero!
+    assert torch.max(torch.abs(s)) < 1e-7
 
     # constant signal
     x1 = rng.randn(1)[0] * torch.ones(1, T).to(device)
@@ -126,9 +126,10 @@ def test_sample_scattering(device, backend):
         with pytest.raises(TypeError) as ve:
             Sx = scattering(x)
         assert "CPU" in ve.value.args[0]
-    else:
-        Sx = scattering(x)
-        assert torch.allclose(Sx, Sx0)
+        return
+   
+    Sx = scattering(x)
+    assert torch.allclose(Sx, Sx0)
 
 
 @pytest.mark.parametrize("device", devices)
@@ -372,35 +373,36 @@ def test_batch_shape_agnostic(device, backend):
         with pytest.raises(TypeError) as ve:
             Sx = S(x)
         assert "CPU" in ve.value.args[0]
-    else:
+        return 
+    
+    Sx = S(x)
+
+    assert Sx.dim() == 2
+    assert Sx.shape[-1] == length_ds
+
+    n_coeffs = Sx.shape[-2]
+
+    test_shapes = ((1,) + shape, (2,) + shape, (2,2) + shape, (2,2,2) + shape)
+
+    for test_shape in test_shapes:
+        x = torch.zeros(test_shape).to(device)
+
+        S.vectorize = True
         Sx = S(x)
 
-        assert Sx.dim() == 2
+        assert Sx.dim() == len(test_shape)+1
         assert Sx.shape[-1] == length_ds
+        assert Sx.shape[-2] == n_coeffs
+        assert Sx.shape[:-2] == test_shape[:-1]
 
-        n_coeffs = Sx.shape[-2]
+        S.vectorize = False
+        Sx = S(x)
 
-        test_shapes = ((1,) + shape, (2,) + shape, (2,2) + shape, (2,2,2) + shape)
-
-        for test_shape in test_shapes:
-            x = torch.zeros(test_shape).to(device)
-
-            S.vectorize = True
-            Sx = S(x)
-
-            assert Sx.dim() == len(test_shape)+1
-            assert Sx.shape[-1] == length_ds
-            assert Sx.shape[-2] == n_coeffs
-            assert Sx.shape[:-2] == test_shape[:-1]
-
-            S.vectorize = False
-            Sx = S(x)
-
-            assert len(Sx) == n_coeffs
-            for k, v in Sx.items():
-                assert v.shape[-1] == length_ds
-                assert v.shape[-2] == 1
-                assert v.shape[:-2] == test_shape[:-1]
+        assert len(Sx) == n_coeffs
+        for k, v in Sx.items():
+            assert v.shape[-1] == length_ds
+            assert v.shape[-2] == 1
+            assert v.shape[:-2] == test_shape[:-1]
 
 
 @pytest.mark.parametrize("device", devices)
