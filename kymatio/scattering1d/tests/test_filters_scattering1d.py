@@ -1,9 +1,9 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor, \
-    compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,\
-    get_max_dyadic_subsampling, gauss_1d
+from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor, 
+    compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
+    get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
 import math
 import pytest

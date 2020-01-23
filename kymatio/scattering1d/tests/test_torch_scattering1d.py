@@ -215,11 +215,14 @@ def test_coordinates(device, backend, random_state=42):
     Tests whether the coordinates correspond to the actual values (obtained
     with Scattering1d.meta()), and with the vectorization
     """
+    
     torch.manual_seed(random_state)
     J = 6
     Q = 8
     T = 2**12
+    
     scattering = Scattering1D(J, T, Q, max_order=2, backend=backend, frontend='torch')
+    
     x = torch.randn(128, T)
 
     scattering.to(device)
@@ -266,12 +269,14 @@ def test_precompute_size_scattering(device, backend, random_state=42):
     to the actual scattering computed
     """
     torch.manual_seed(random_state)
+
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, vectorize=False, backend=backend, frontend='torch')
-    x = torch.randn(128, T)
 
+    scattering = Scattering1D(J, T, Q, vectorize=False, backend=backend, frontend='torch')
+
+    x = torch.randn(128, T)
 
     scattering.to(device)
     x = x.to(device)
@@ -313,10 +318,13 @@ def test_differentiability_scattering(device, backend, random_state=42):
             "tests, but that's ok (for now).")
 
     torch.manual_seed(random_state)
+    
     J = 6
     Q = 8
     T = 2**12
+    
     scattering = Scattering1D(J, T, Q, frontend='torch', backend=backend).to(device)
+
     x = torch.randn(128, T, requires_grad=True, device=device)
 
     s = scattering.forward(x)
@@ -513,25 +521,25 @@ def test_subsample_fourier(backend, device, random_state=42):
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
         assert "for CPU tensors" in re.value.args[0].lower()
-    else:
-        rng = np.random.RandomState(random_state)
-        J = 10
-        x = rng.randn(100, 4, 2**J) + 1j * rng.randn(100, 4, 2**J)
-        x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
-        x_f.dtype = 'float64'  # make it a vector
-        x_f_th = torch.from_numpy(x_f).to(device)
+        return
+    rng = np.random.RandomState(random_state)
+    J = 10
+    x = rng.randn(100, 4, 2**J) + 1j * rng.randn(100, 4, 2**J)
+    x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
+    x_f.dtype = 'float64'  # make it a vector
+    x_f_th = torch.from_numpy(x_f).to(device)
 
-        for j in range(J + 1):
-            x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
-            x_f_sub = x_f_sub_th.numpy()
-            x_f_sub.dtype = 'complex128'
-            x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
-            assert np.allclose(x[:, :, ::2**j], x_sub)
+    for j in range(J + 1):
+        x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
+        x_f_sub = x_f_sub_th.numpy()
+        x_f_sub.dtype = 'complex128'
+        x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
+        assert np.allclose(x[:, :, ::2**j], x_sub)
 
-        # If we are using a GPU-only backend, make sure it raises the proper
-        # errors for CPU tensors.
-        if device=='cuda':
-            with pytest.raises(TypeError) as te:
-                x_bad = torch.randn(4).cuda()
-                backend.subsample_fourier(x_bad, 1)
-            assert "should be complex" in te.value.args[0]
+    # If we are using a GPU-only backend, make sure it raises the proper
+    # errors for CPU tensors.
+    if device=='cuda':
+        with pytest.raises(TypeError) as te:
+            x_bad = torch.randn(4).cuda()
+            backend.subsample_fourier(x_bad, 1)
+        assert "should be complex" in te.value.args[0]
