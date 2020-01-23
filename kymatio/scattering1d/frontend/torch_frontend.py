@@ -48,6 +48,28 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
 
+    def load_filters(self):
+        """This function loads filters from the module's buffer """
+        buffer_dict = dict(self.named_buffers())
+        n = 0
+        
+        for k in self.phi_f.keys():
+            if type(k) != str:
+                self.phi_f[k] = buffer_dict['tensor' + str(n)]
+                n += 1
+        
+        for psi_f in self.psi1_f:
+            for sub_k in psi_f.keys():
+                if type(sub_k) != str:
+                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    n += 1
+        
+        for psi_f in self.psi2_f:
+            for sub_k in psi_f.keys():
+                if type(sub_k) != str:
+                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    n += 1
+
     def scattering(self, x):
         """Apply the scattering transform
 
@@ -89,6 +111,8 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 
         x = x.reshape((-1, 1) + signal_shape)
 
+        self.load_filters()
+
         # get the arguments before calling the scattering
         # treat the arguments
         if self.vectorize:
@@ -101,26 +125,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         else:
             size_scattering = 0
 
-        n = 0
-        buffer_dict = dict(self.named_buffers())
-        for k in self.phi_f.keys():
-            if type(k) != str:
-                # view(-1, 1).repeat(1, 2) because real numbers!
-                self.phi_f[k] = buffer_dict['tensor' + str(n)]
-                n += 1
-        for psi_f in self.psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
-        for psi_f in self.psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
-
+        
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
