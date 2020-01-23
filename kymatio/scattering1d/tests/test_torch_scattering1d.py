@@ -17,11 +17,8 @@ try:
 except:
     pass
 
-
 from kymatio.scattering1d.backend.torch_backend import backend
 backends.append(backend)
-
-
 
 if torch.cuda.is_available():
     devices = ['cuda', 'cpu']
@@ -73,6 +70,7 @@ def test_simple_scatterings(device, backend, random_state=42):
             s2 = scattering(x2)
 
             assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -209,6 +207,7 @@ def test_scattering_GPU_CPU(backend, random_state=42):
         Warning('Tolerance has been slightly lowered here...')
         assert torch.allclose(s_cpu, s_gpu, atol=1e-7)
 
+
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_coordinates(device, backend, random_state=42):
@@ -300,6 +299,7 @@ def test_precompute_size_scattering(device, backend, random_state=42):
                 else:
                     assert len(s_dico) == size
 
+
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_differentiability_scattering(device, backend, random_state=42):
@@ -341,6 +341,7 @@ def test_scattering_shape_input(backend):
         # should invoke the else branch
     assert "1-tuple" in ve.value.args[0]
     assert "integer" in ve.value.args[0]
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -393,6 +394,7 @@ def test_batch_shape_agnostic(device, backend):
                 assert v.shape[-2] == 1
                 assert v.shape[:-2] == test_shape[:-1]
 
+
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_pad_1d(device, backend, random_state=42):
@@ -433,6 +435,7 @@ def test_pad_1d(device, backend, random_state=42):
         backend.pad_1d(x, x.shape[-1], 0, mode='reflect')
     with pytest.raises(ValueError):
         backend.pad_1d(x, 0, x.shape[-1], mode='reflect')
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -496,6 +499,7 @@ def test_modulus(device, backend, random_state=42):
         loss0.backward()
         assert torch.max(torch.abs(x0.grad)) <= 1e-7
 
+
 @pytest.mark.parametrize("backend", backends)
 @pytest.mark.parametrize("device", devices)
 def test_subsample_fourier(backend, device, random_state=42):
@@ -530,5 +534,3 @@ def test_subsample_fourier(backend, device, random_state=42):
                 x_bad = torch.randn(4).cuda()
                 backend.subsample_fourier(x_bad, 1)
             assert "should be complex" in te.value.args[0]
-
-

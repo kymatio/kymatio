@@ -1,8 +1,9 @@
-from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 import numpy as np
 import pytest
 from kymatio import Scattering1D
 from kymatio.scattering1d.frontend.torch_frontend import ScatteringTorch1D
+from kymatio.scattering1d.utils import compute_border_indices, compute_padding
+
 
 def test_compute_padding():
     """

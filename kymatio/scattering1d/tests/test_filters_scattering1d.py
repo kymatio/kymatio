@@ -155,6 +155,7 @@ def test_gauss_1d():
         gauss_1d(N, xi, sigma, P_max=-5)
     assert "should be non-negative" in ve.value.args[0]
 
+
 def test_calibrate_scattering_filters():
     """
     Various tests on the central frequencies xi and spectral width sigma
