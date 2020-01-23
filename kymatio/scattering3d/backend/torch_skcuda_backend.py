@@ -7,12 +7,12 @@ BACKEND_NAME = 'torch_skcuda'
 from collections import namedtuple
 
 
-def iscomplex(input):
-    return input.size(-1) == 2
+def _iscomplex(input):
+    return input.shape[-1] == 2
 
 
 def to_complex(input):
-    output = input.new(input.size() + (2,)).fill_(0)
+    output = input.new(input.shape + (2,)).fill_(0)
     output[..., 0] = input
     return output
 
@@ -50,7 +50,7 @@ def fft(input, inverse=False):
         output : tensor
             Result of FFT or IFFT.
     """
-    if not iscomplex(input):
+    if not _iscomplex(input):
         raise (TypeError('The input should be complex (e.g. last dimension is 2)'))
     if inverse:
         return torch.ifft(input, 3)
@@ -96,10 +96,10 @@ def cdgmm3d(A, B, inplace=False):
         warnings.warn("cdgmm3d: tensor B is converted to a contiguous array")
         B = B.contiguous()
 
-    if A.size()[-4:] != B.size():
+    if A.shape[-4:] != B.shape:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
-    if not iscomplex(A) or not iscomplex(B):
+    if not _iscomplex(A) or not _iscomplex(B):
         raise TypeError('The input, filter and output should be complex.')
 
     if B.ndimension() != 4:
@@ -111,7 +111,7 @@ def cdgmm3d(A, B, inplace=False):
     if not A.is_cuda:
         raise RuntimeError('Use the torch backend for cpu tensors.')
 
-    C = A.new(A.size()) if not inplace else A
+    C = A.new(A.shape) if not inplace else A
     m, n = B.nelement() // 2, A.nelement() // B.nelement()
     lda = m
     ldc = m
