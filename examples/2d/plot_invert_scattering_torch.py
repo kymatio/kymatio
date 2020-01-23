@@ -42,7 +42,7 @@ for order in [1]:
     for J in [2, 4]:
 
         # Compute scattering coefficients
-        scattering = Scattering2D(J=J, shape=(height, width), max_order=order)
+        scattering = Scattering2D(J=J, shape=(height, width), max_order=order, frontend='torch')
         if device == "cuda":
             scattering = scattering.cuda()
             max_iter = 500

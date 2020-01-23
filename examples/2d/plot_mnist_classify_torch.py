@@ -107,7 +107,7 @@ import math
 
 
 # Evaluate linear model on top of scattering
-scattering = Scattering2D(shape = (28, 28), J=2)
+scattering = Scattering2D(shape = (28, 28), J=2, frontend='torch')
 K = 81 #Number of output coefficients for each spatial postiion
 
 if use_cuda:
