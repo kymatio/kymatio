@@ -5,7 +5,7 @@ BACKEND_NAME = 'torch'
 from collections import namedtuple
 
 
-def iscomplex(input):
+def _iscomplex(input):
     """Checks if input is complex.
 
         Parameters
@@ -18,7 +18,7 @@ def iscomplex(input):
             Returns True if complex (i.e. final dimension is 2), False
             otherwise.
     """
-    return input.size(-1) == 2
+    return input.shape[-1] == 2
 
 
 def complex_modulus(input_array):
@@ -115,12 +115,12 @@ def _compute_local_scattering_coefs(input_array, filter, j, points):
             Torch tensor of size (batchsize, number of points, 1) with the values
             of the lowpass filtered moduli at the points given.
     """
-    local_coefs = torch.zeros(input_array.size(0), points.size(1), 1)
+    local_coefs = torch.zeros(input_array.shape[0], points.shape[1], 1)
     low_pass = filter[j + 1]
     convolved_input = cdgmm3d(input_array, low_pass)
     convolved_input = fft(convolved_input, inverse=True)
-    for i in range(input_array.size(0)):
-        for j in range(points[i].size(0)):
+    for i in range(input_array.shape[0]):
+        for j in range(points[i].shape[0]):
             x, y, z = points[i, j, 0], points[i, j, 1], points[i, j, 2]
             local_coefs[i, j, 0] = convolved_input[
                 i, int(x), int(y), int(z), 0]
@@ -163,10 +163,10 @@ def compute_integrals(input_array, integral_powers):
             Tensor of size (B, P) containing the integrals of the input_array
             to the powers p (l_p norms).
     """
-    integrals = torch.zeros(input_array.size(0), len(integral_powers), 1)
+    integrals = torch.zeros(input_array.shape[0], len(integral_powers), 1)
     for i_q, q in enumerate(integral_powers):
         integrals[:, i_q, 0] = (input_array ** q).view(
-            input_array.size(0), -1).sum(1).cpu()
+            input_array.shape[0], -1).sum(1).cpu()
     return integrals
 
 
@@ -197,8 +197,8 @@ def fft(input, inverse=False):
         output : tensor
             Result of FFT or IFFT.
     """
-    if not iscomplex(input):
-        raise (TypeError('The input should be complex (e.g. last dimension is 2)'))
+    if not _iscomplex(input):
+        raise (TypeError('The input should be complex (e.g. last dimension is 2)'.))
     if inverse:
         return torch.ifft(input, 3)
     return torch.fft(input, 3)
@@ -234,7 +234,6 @@ def cdgmm3d(A, B, inplace=False):
         output : torch tensor
             Torch tensor of the same size as A containing the result of the
             elementwise complex multiplication of A with B.
-
     """
     if not A.is_contiguous():
         warnings.warn("cdgmm3d: tensor A is converted to a contiguous array.")
@@ -243,10 +242,10 @@ def cdgmm3d(A, B, inplace=False):
         warnings.warn("cdgmm3d: tensor B is converted to a contiguous array.")
         B = B.contiguous()
 
-    if A.size()[-4:] != B.size():
+    if A.shape[-4:] != B.shape:
         raise RuntimeError('The tensors are not compatible for multiplication!')
 
-    if not iscomplex(A) or not iscomplex(B):
+    if not _iscomplex(A) or not _iscomplex(B):
         raise TypeError('The input, filter and output should be complex')
 
     if B.ndimension() != 4:
@@ -262,7 +261,7 @@ def cdgmm3d(A, B, inplace=False):
         if A.device.index != B.device.index:
             raise TypeError('A and B must be on the same GPU!')
 
-    C = A.new(A.size())
+    C = A.new(A.shape)
 
     C[..., 0] = A[..., 0] * B[..., 0] - A[..., 1] * B[..., 1]
     C[..., 1] = A[..., 0] * B[..., 1] + A[..., 1] * B[..., 0]
