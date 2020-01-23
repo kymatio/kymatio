@@ -87,7 +87,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
 
-    res = np.pad(x, (np_pad[0], np_pad[1]), mode=mode, value=value)
+    res = np.pad(x, ((pad_left, pad_right),), mode=mode)
     return res
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
@@ -119,8 +119,8 @@ def pad(x, pad_left=0, pad_right=0, to_complex=True):
         corresponds to the real and imaginary parts).
     """
     output = pad_1d(x, pad_left, pad_right, mode='reflect')
-    if to_complex:
-        output = torch.stack((output, torch.zeros_like(output)), dim=-1)
+    #if to_complex:
+        #output = torch.stack((output, torch.zeros_like(output)), dim=-1)
     return output
 
 def unpad(x, i0, i1):
@@ -160,7 +160,7 @@ def real(x):
     x_real : tensor
         The tensor x[..., 0] which is interpreted as the real part of x.
     """
-    return x[..., 0]
+    return np.real(x)
 
 def fft1d_c2c(x):
     """Compute the 1D FFT of a complex signal
@@ -177,7 +177,7 @@ def fft1d_c2c(x):
         A tensor of the same size as x containing its Fourier transform in the
         standard PyTorch FFT ordering.
     """
-    return np.fft(x, signal_ndim=1)
+    return np.fft.fft(x)
 
 def ifft1d_c2c(x):
     """Compute the normalized 1D inverse FFT of a complex signal
@@ -195,7 +195,7 @@ def ifft1d_c2c(x):
         A tensor of the same size of x_f containing the normalized inverse
         Fourier transform of x_f.
     """
-    return np.ifft(x, signal_ndim=1)
+    return np.fft.ifft(x)
 
 def concatenate(arrays):
     return np.stack(arrays, axis=-1)
