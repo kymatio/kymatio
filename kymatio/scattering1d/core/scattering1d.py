@@ -92,11 +92,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
     if average:
         S_0_c = U_0_hat * phi[0]
-
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
-
         S_0_c = ifft1d_c2c(S_0_hat)
-
         S_0_r = real(S_0_c)
 
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
@@ -119,9 +116,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
 
         U_1_c = U_0_hat * psi1[n1][0] 
-
         U_1_hat = subsample_fourier(U_1_c, 2**k1)
-
         U_1_c = ifft1d_c2c(U_1_hat)
 
         # Take the modulus
@@ -135,11 +130,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
             k1_J = max(J - k1 - oversampling, 0)
 
             S_1_c = U_1_hat * phi[k1]
-
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
-
             S_1_c = ifft1d_c2c(S_1_hat)
-
             S_1_r = real(S_1_c)
 
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
@@ -167,9 +159,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                     k2 = max(j2 - k1 - oversampling, 0)
 
                     U_2_c = U_1_hat * psi2[n2][k1]
-
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
-
                     # take the modulus 
                     U_2_c = ifft1d_c2c(U_2_hat)
 
@@ -182,11 +172,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                         k2_J = max(J - k2 - k1 - oversampling, 0)
 
                         S_2_c = U_2_hat * phi[k1 + k2]
-
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
-
                         S_2_c = ifft1d_c2c(S_2_hat)
-
                         S_2_r = real(S_2_c)
 
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
