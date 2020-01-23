@@ -74,7 +74,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
         S = {}
 
     # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, to_complex=True)
+    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
 
     # compute the Fourier transform
     U_0_hat = fft1d_c2c(U_0)
