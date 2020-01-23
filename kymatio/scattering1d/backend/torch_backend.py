@@ -120,19 +120,17 @@ def modulus_complex(x):
 
     Returns
     -------
-    res : tensor
-        A tensor with the same dimensions as x, such that res[..., 0] contains
-        the complex modulus of x, while res[..., 1] = 0.
+    norm : tensor
+        A tensor with the same dimensions as x, such that norm[..., 0] contains
+        the complex modulus of x, while norm[..., 1] = 0.
     """
     if not _is_complex(x):
         raise TypeError('The input should be complex.')
+    
+    norm = torch.zeros_like(x)
+    norm[...,0] = modulus(x)
 
-    norm = modulus(x)
-
-    res = torch.zeros_like(x)
-    res[...,0] = norm
-
-    return res
+    return norm
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
