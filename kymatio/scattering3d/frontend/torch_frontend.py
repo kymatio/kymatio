@@ -45,7 +45,8 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='standard', points=None,
                  integral_powers=(0.5, 1., 2.), backend='torch'):
         ScatteringTorch.__init__(self)
-        ScatteringBase3D.__init__(**locals())
+        ScatteringBase3D.__init__(self, J, shape, L, sigma_0, max_order, rotation_covariant, method, points,
+                 integral_powers, backend)
         ScatteringBase3D._instantiate_backend(self, 'kymatio.scattering3d.backend.')
         ScatteringBase3D.build(self)
         ScatteringBase3D.create_filters(self)
