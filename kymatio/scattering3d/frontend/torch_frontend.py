@@ -1,12 +1,10 @@
 # Authors: Louis Thiry, Georgios Exarchakis
 # Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
 
-from ...frontend.torch_frontend import ScatteringTorch
 import torch
+from ...frontend.torch_frontend import ScatteringTorch
+from ..core.scattering3d import scattering3d
 from .base_frontend import ScatteringBase3D
-
-from kymatio.scattering3d.core.scattering3d import scattering3d
-
 
 
 class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
@@ -81,16 +79,10 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         self.gaussian_filters = g
         self.register_buffer('tensor_gaussian_filter', self.gaussian_filters)
 
-
-
-
-
-
     def scattering(self, input_array):
         buffer_dict = dict(self.named_buffers())
         for k in range(len(self.filters)):
             self.filters[k] = buffer_dict['tensor' + str(k)]
-
 
         methods = ['standard', 'local', 'integral']
         if (not self.method in methods):
@@ -110,7 +102,6 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
 
         return scattering3d(input_array, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
                             J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
-
 
     def forward(self, input_array):
         """
@@ -149,5 +140,6 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         x[..., 0] = input_array
 
         return self.scattering(x)
+
 
 __all__ = ['HarmonicScatteringTorch3D']
