@@ -222,7 +222,7 @@ def subsample_fourier(x, k):
 
 from .torch_backend import ifft1d_c2c, fft1d_c2c, real, unpad, pad, pad_1d, concatenate, ModulusStable
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',
                                  'ifft1d_c2c', 'concatenate'])
 
 backend.name = 'torch_skcuda'
