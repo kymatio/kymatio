@@ -463,7 +463,7 @@ def test_modulus(device, backend, random_state=42):
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.modulus_complex(x_bad)
-        assert "for CPU tensors" in re.value.args[0].lower()
+        assert "for CPU tensors" in re.value.args[0]
         return
 
     
@@ -522,7 +522,7 @@ def test_subsample_fourier(backend, device, random_state=42):
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
-        assert "for CPU tensors" in re.value.args[0].lower()
+        assert "for CPU tensors" in re.value.args[0]
         return
     rng = np.random.RandomState(random_state)
     J = 10
