@@ -16,7 +16,7 @@ class HarmonicScattering3D(object):
             kwargs.pop('frontend')
 
         try:
-            module = importlib.__import__(frontend + '_frontend', globals(), locals(), [], 1)
+            module = importlib.import_module('kymatio.scattering3d.frontend.' + frontend + '_frontend')
 
             # Create frontend-specific class name by inserting frontend name
             # after `Scattering`.
