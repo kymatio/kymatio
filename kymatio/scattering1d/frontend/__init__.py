@@ -1,17 +1,36 @@
+import logging
+import warnings
+import importlib
+
 
 class Scattering1D(object):
     def __init__(self, *args, **kwargs):
+        frontend_suffixes = {'torch' : 'Torch', 'numpy' : 'NumPy', 'tensorflow'
+                : 'TensorFlow'}
         if 'frontend' not in kwargs:
-            frontend='numpy'
+            warnings.warn("Torch frontend is currently the default, but NumPy will become the default in the next"
+                          " version.", PendingDeprecationWarning)
+            frontend = 'torch'
         else:
-            frontend=kwargs['frontend']
+            frontend = kwargs['frontend'].lower()
             kwargs.pop('frontend')
 
         try:
-            module = __import__(frontend + '_frontend', globals(), locals(), [], 1)
-            self.__class__ = getattr(module, self.__class__.__name__ + frontend.capitalize())
+            module = importlib.__import__(frontend + '_frontend', globals(), locals(), [], 1)
+
+            # Create frontend-specific class name by inserting frontend name
+            # after `Scattering`.
+            frontend = frontend_suffixes[frontend]
+
+            class_name = self.__class__.__name__
+            class_name = (class_name[:-2] + frontend + class_name[-2:])
+
+            self.__class__ = getattr(module, class_name)
             self.__init__(*args, **kwargs)
         except Exception as e:
             raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
+
+        logging.info('The 1D frontend ' + frontend + ' was imported.')
+
 
 __all__ = ['Scattering1D']
