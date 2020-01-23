@@ -3,7 +3,7 @@ import warnings
 import importlib
 
 
-class Scattering2D(object):
+class HarmonicScattering3D(object):
     def __init__(self, *args, **kwargs):
         frontend_suffixes = {'torch' : 'Torch', 'numpy' : 'NumPy', 'tensorflow'
                 : 'TensorFlow'}
@@ -30,7 +30,7 @@ class Scattering2D(object):
         except Exception as e:
             raise e from RuntimeError('\nThe frontend \'' + frontend + '\' could not be correctly imported.')
 
-        logging.info('The 2D frontend ' + frontend + ' was imported.')
+        logging.info('The hardmonic 3D frontend ' + frontend + ' was imported.')
 
 
-__all__ = ['Scattering2D']
+__all__ = ['HarmonicScattering3D']
