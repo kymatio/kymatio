@@ -76,10 +76,10 @@ class SubsampleFourier(object):
 
         Returns
         -------
-        res : tensor_like
-            tensor such that its fourier transform is the Fourier
+        out : tensor_like
+            Tensor such that its Fourier transform is the Fourier
             transform of a subsampled version of x, i.e. in
-            F^{-1}(res)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k]
+            F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k]
 
     """
     def __call__(self, x, k):
