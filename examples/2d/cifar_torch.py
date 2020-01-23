@@ -176,6 +176,3 @@ if __name__ == '__main__':
 
         train(model, device, train_loader, optimizer, epoch+1, scattering)
         test(model, device, test_loader, scattering)
-
-
-
