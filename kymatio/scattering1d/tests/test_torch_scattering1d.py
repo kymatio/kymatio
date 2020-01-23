@@ -45,7 +45,7 @@ def test_simple_scatterings(device, backend, random_state=42):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             s = scattering(x0)
-        assert "cpu" in ve.value.args[0]
+        assert "CPU" in ve.value.args[0]
     else:
         s = scattering(x0)
 
@@ -125,7 +125,7 @@ def test_sample_scattering(device, backend):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = scattering(x)
-        assert "cpu" in ve.value.args[0]
+        assert "CPU" in ve.value.args[0]
     else:
         Sx = scattering(x)
         assert torch.allclose(Sx, Sx0)
@@ -233,7 +233,7 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_dico = scattering(x)
-            assert "cpu" in ve.value.args[0]
+            assert "CPU" in ve.value.args[0]
         else:
             s_dico = scattering(x)
             s_dico = {k: s_dico[k].data for k in s_dico.keys()}
@@ -242,7 +242,7 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_vec = scattering(x)
-            assert "cpu" in ve.value.args[0]
+            assert "CPU" in ve.value.args[0]
         else:
             s_vec = scattering(x)
             s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
@@ -363,7 +363,7 @@ def test_batch_shape_agnostic(device, backend):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = S(x)
-        assert "cpu" in ve.value.args[0]
+        assert "CPU" in ve.value.args[0]
     else:
         Sx = S(x)
 
@@ -453,7 +453,7 @@ def test_modulus(device, backend, random_state=42):
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.modulus_complex(x_bad)
-        assert "for cpu tensors" in re.value.args[0].lower()
+        assert "for CPU tensors" in re.value.args[0].lower()
 
     else:
         x_abs = backend.modulus_complex(x)
@@ -511,7 +511,7 @@ def test_subsample_fourier(backend, device, random_state=42):
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
-        assert "for cpu tensors" in re.value.args[0].lower()
+        assert "for CPU tensors" in re.value.args[0].lower()
     else:
         rng = np.random.RandomState(random_state)
         J = 10
