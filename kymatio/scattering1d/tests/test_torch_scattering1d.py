@@ -454,50 +454,51 @@ def test_modulus(device, backend, random_state=42):
             x_bad = torch.randn((4, 2)).cpu()
             backend.modulus_complex(x_bad)
         assert "for CPU tensors" in re.value.args[0].lower()
+        return
 
-    else:
-        x_abs = backend.modulus_complex(x)
+    
+    x_abs = backend.modulus_complex(x)
 
-        assert len(x_abs.shape) == len(x.shape)
-        # check the value
-        x_abs2 = x_abs.clone()
-        x2 = x.clone()
-        assert torch.allclose(x_abs2[..., 0], torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
+    assert len(x_abs.shape) == len(x.shape)
+    # check the value
+    x_abs2 = x_abs.clone()
+    x2 = x.clone()
+    assert torch.allclose(x_abs2[..., 0], torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
 
-        with pytest.raises(TypeError) as te:
-            x_bad = torch.randn(4).to(device)
-            backend.modulus_complex(x_bad)
-        assert "should be complex" in te.value.args[0]
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4).to(device)
+        backend.modulus_complex(x_bad)
+    assert "should be complex" in te.value.args[0]
 
-        if backend.name == "torch_skcuda":
-            pytest.skip("The skcuda backend does not pass differentiability"
-                "tests, but that's ok (for now).")
+    if backend.name == "torch_skcuda":
+        pytest.skip("The skcuda backend does not pass differentiability"
+            "tests, but that's ok (for now).")
 
-        # check the gradient
-        loss = torch.sum(x_abs)
-        loss.backward()
-        x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
-        assert torch.allclose(x.grad, x_grad)
+    # check the gradient
+    loss = torch.sum(x_abs)
+    loss.backward()
+    x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
+    assert torch.allclose(x.grad, x_grad)
 
-        # Manually check `forward`/`backward` using fake context object. This
-        # ensures that `backward` is included in code coverage since going through
-        # the PyTorch C extension seems to not play well with `coverage.py`.
-        class FakeContext:
-            def save_for_backward(self, *args):
-                self.saved_tensors = args
+    # Manually check `forward`/`backward` using fake context object. This
+    # ensures that `backward` is included in code coverage since going through
+    # the PyTorch C extension seems to not play well with `coverage.py`.
+    class FakeContext:
+        def save_for_backward(self, *args):
+            self.saved_tensors = args
 
-        ctx = FakeContext()
-        y = backend.ModulusStable.forward(ctx, x)
-        y_grad = torch.ones_like(y)
-        x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
-        assert torch.allclose(x_grad_manual, x_grad)
+    ctx = FakeContext()
+    y = backend.ModulusStable.forward(ctx, x)
+    y_grad = torch.ones_like(y)
+    x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
+    assert torch.allclose(x_grad_manual, x_grad)
 
-        # Test the differentiation with a vector made of zeros
-        x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
-        x_abs0 = backend.modulus_complex(x0)
-        loss0 = torch.sum(x_abs0)
-        loss0.backward()
-        assert torch.max(torch.abs(x0.grad)) <= 1e-7
+    # Test the differentiation with a vector made of zeros
+    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
+    x_abs0 = backend.modulus_complex(x0)
+    loss0 = torch.sum(x_abs0)
+    loss0.backward()
+    assert torch.max(torch.abs(x0.grad)) <= 1e-7
 
 
 @pytest.mark.parametrize("backend", backends)
