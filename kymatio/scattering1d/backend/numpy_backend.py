@@ -86,9 +86,8 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
-    res = F.pad(x.unsqueeze(2),
-                (pad_left, pad_right, 0, 0),
-                mode=mode, value=value).squeeze(2)
+
+    res = np.pad(x, (np_pad[0], np_pad[1]), mode=mode, value=value)
     return res
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):
@@ -205,7 +204,6 @@ backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier',
                                  'ifft1d_c2c', 'concatenate'])
 backend.name = 'numpy'
 backend.modulus_complex = modulus_complex
-backend.ModulusStable = ModulusStable
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad

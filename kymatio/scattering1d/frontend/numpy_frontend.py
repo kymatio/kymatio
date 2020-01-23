@@ -1,15 +1,15 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
-from ...frontend.torch_frontend import ScatteringNumpy
+from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
 
-class ScatteringNumpy1D(ScatteringNumpy, ScatteringBase1D):
+class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend='numpy'):
-        ScatteringNumpy.__init__(self)
+        ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average, oversampling, vectorize, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
@@ -57,8 +57,6 @@ class ScatteringNumpy1D(ScatteringNumpy, ScatteringBase1D):
 
         x = x.reshape((-1, 1) + signal_shape)
 
-        self.load_filters()
-
         # get the arguments before calling the scattering
         # treat the arguments
         if self.vectorize:
@@ -91,4 +89,4 @@ class ScatteringNumpy1D(ScatteringNumpy, ScatteringBase1D):
         return S
 
 
-__all__ = ['ScatteringNumpy1D']
+__all__ = ['ScatteringNumPy1D']
