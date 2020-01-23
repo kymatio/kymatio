@@ -1,11 +1,8 @@
 from ...frontend.base_frontend import ScatteringBase
-from ...frontend.torch_frontend import ScatteringTorch
 import math
 import numbers
 
 import numpy as np
-
-from kymatio.scattering1d.core.scattering1d import scattering1d
 
 from kymatio.scattering1d.filter_bank import scattering_filter_factory
 from kymatio.scattering1d.utils import compute_border_indices, compute_padding, compute_minimum_support_to_pad,\
