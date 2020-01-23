@@ -1,7 +1,5 @@
 from ...frontend.base_frontend import ScatteringBase
-
 from ..filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
-
 
 
 class ScatteringBase3D(ScatteringBase):
@@ -82,7 +80,6 @@ class ScatteringBase3D(ScatteringBase):
         pre_pad is particularly useful when cropping bigger images because
         this does not introduce border effects inherent to padding.
         """
-
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
                  rotation_covariant=True, method='standard', points=None,
                  integral_powers=(0.5, 1., 2.), backend=None):
@@ -108,13 +105,12 @@ class ScatteringBase3D(ScatteringBase):
         elif self.backend.name[0:5] != 'torch':
             raise RuntimeError('This backend is not supported.')
 
-
-
     def create_filters(self):
         self.filters = solid_harmonic_filter_bank(
             self.M, self.N, self.O, self.J, self.L, self.sigma_0)
 
         self.gaussian_filters = gaussian_filter_bank(
             self.M, self.N, self.O, self.J + 1, self.sigma_0)
+
 
 __all__ = ['ScatteringBase3D']
