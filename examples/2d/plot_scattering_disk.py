@@ -15,13 +15,11 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
 from kymatio import Scattering2D
 from PIL import Image
 
 
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
 img_name = "images/digit.png"
 
 ####################################################################
@@ -44,17 +42,14 @@ print("img shape: ", src_img.shape)
 
 L = 6
 J = 3
-scattering = Scattering2D(J=J, shape=src_img.shape, L=L, max_order=1)
-if device == "cuda":
-    scattering = scattering.cuda()
+scattering = Scattering2D(J=J, shape=src_img.shape, L=L, max_order=1, frontend='numpy')
 
 ####################################################################
 # We now compute the scattering coefficients:
-src_img = src_img.astype(np.float32) / 255.
-src_img_tensor = torch.from_numpy(src_img).to(device)
+src_img_tensor = src_img.astype(np.float32) / 255.
+
 scattering_coefficients = scattering(src_img_tensor)
-print("coeffs shape: ", scattering_coefficients.size())
-scattering_coefficients = scattering_coefficients.cpu().numpy()
+print("coeffs shape: ", scattering_coefficients.shape)
 # Invert colors
 scattering_coefficients = -scattering_coefficients
 
@@ -77,14 +72,14 @@ nb_coeffs, window_rows, window_columns = scattering_coefficients.shape
 #
 # Observe that as predicted, the visualization exhibit a redundancy and a symmetry.
 
-fig,ax=plt.subplots()
+fig,ax = plt.subplots()
 
-plt.imshow(1-src_img,cmap='gray',interpolation='nearest', aspect='auto')  # , extent=[mini, maxi, mini, maxi])
+plt.imshow(1-src_img,cmap='gray',interpolation='nearest', aspect='auto')
 ax.axis('off')
 offset = 0.1
 for row in range(window_rows):
     for column in range(window_columns):
-        ax=fig.add_subplot(window_rows, window_columns, 1 + column + row * window_rows, projection='polar')#ax =axes[column,row ]##p
+        ax=fig.add_subplot(window_rows, window_columns, 1 + column + row * window_rows, projection='polar')
         ax.set_ylim(0, 1)
         ax.axis('off')
         ax.set_yticklabels([])  # turn off radial tick labels (yticks)
