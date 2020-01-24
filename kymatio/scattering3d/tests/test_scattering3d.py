@@ -1,7 +1,6 @@
 """ This script will test the submodules used by the scattering module"""
 import torch
 import os
-import warnings
 import numpy as np
 import pytest
 from kymatio import HarmonicScattering3D
