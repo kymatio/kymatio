@@ -63,5 +63,7 @@ class TestScattering1DNumpy:
 
         Sx0 = Sx0[:, perm, :]
 
+        Sx0 = np.transpose(Sx0, (0, 2, 1)) 
+
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0)

@@ -51,8 +51,8 @@ def subsample_fourier(x, k):
         tensor of size x.shape[-2] // k along that dimension.
     """
 
-    N = x.shape[-2]
-    res = x.view(x.shape[:-2] + (k, N // k )).mean(dim=-1)
+    N = x.shape[-1]
+    res = x.reshape(x.shape[:-1] + (k, N // k )).mean(axis=(-2,))
     return res
 
 def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
@@ -87,7 +87,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
 
-    res = np.pad(x, ((pad_left, pad_right),), mode=mode)
+    res = np.pad(x, ((0,0),(0,0),(pad_left, pad_right),), mode=mode)
     return res
 
 def pad(x, pad_left=0, pad_right=0, to_complex=True):

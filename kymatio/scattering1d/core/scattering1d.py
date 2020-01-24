@@ -160,7 +160,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
-
                         S_2_c = U_2_hat * phi[k1 + k2]
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
                         S_2_c = ifft1d_c2c(S_2_hat)
