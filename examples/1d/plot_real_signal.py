@@ -10,13 +10,9 @@ displays the zeroth-, first-, and second-order scattering coefficients.
 # Preliminaries
 # -------------
 #
-# Since kymatio handles PyTorch arrays, we first import `torch`.
-
-import torch
-
 ###############################################################################
 # To handle audio file I/O, we import `os` and `scipy.io.wavfile`.
-
+import numpy as np
 import os
 import scipy.io.wavfile
 
@@ -33,6 +29,7 @@ import matplotlib.pyplot as plt
 
 from kymatio import Scattering1D
 from kymatio.datasets import fetch_fsdd
+from kymatio.scattering1d.utils import compute_meta_scattering
 
 ###############################################################################
 # Scattering setup
@@ -42,9 +39,8 @@ from kymatio.datasets import fetch_fsdd
 
 info_dataset = fetch_fsdd(verbose=True)
 
-file_path = os.path.join(info_dataset['path_dataset'],
-                        sorted(info_dataset['files'])[0])
-_, x = scipy.io.wavfile.read(file_path)
+file_path = os.path.join(info_dataset['path_dataset'], sorted(info_dataset['files'])[0])
+_, x_f = scipy.io.wavfile.read(file_path)
 
 ###############################################################################
 # Once the recording is in memory, we convert it to a PyTorch Tensor, normalize
@@ -54,9 +50,9 @@ _, x = scipy.io.wavfile.read(file_path)
 # a single channel, so `C = 1`. Note that `C` is almost always `1`, for input
 # Tensors as this axis indexes the different scattering coefficients.
 
-x = torch.from_numpy(x).float()
-x /= x.abs().max()
-x = x.view(1, -1)
+m = np.max(np.abs(x_f))
+x = x_f / m
+x = x.reshape((1, -1))
 
 ###############################################################################
 # We are now ready to set up the parameters for the scattering transform.
@@ -74,7 +70,7 @@ Q = 16
 # Finally, we are able to create the object which computes our scattering
 # transform, `scattering`.
 
-scattering = Scattering1D(J, T, Q)
+scattering = Scattering1D(J, T, Q, frontend='numpy')
 
 ###############################################################################
 # Compute and display the scattering coefficients
@@ -87,18 +83,17 @@ scattering = Scattering1D(J, T, Q)
 # of input samples since the scattering transform performs an average in time
 # and subsamples the result to save memory.
 
-Sx = scattering.forward(x)
+Sx = scattering(x)
 
 ###############################################################################
 # To display the scattering coefficients, we must first identify which belong
 # to each order (zeroth, first, or second). We do this by extracting the `meta`
 # information from the scattering object and constructing masks for each order.
 
-meta = Scattering1D.compute_meta_scattering(J, Q)
-order0 = (meta['order'] == 0)
-order1 = (meta['order'] == 1)
-order2 = (meta['order'] == 2)
-
+meta = compute_meta_scattering(J, Q)
+order0 = np.where(meta['order'] == 0)
+order1 = np.where(meta['order'] == 1)
+order2 = np.where(meta['order'] == 2)
 
 ###############################################################################
 # First, we plot the original signal `x`. Note that we have to index it as
@@ -106,7 +101,7 @@ order2 = (meta['order'] == 2)
 # numpy array using the `numpy()` method.
 
 plt.figure(figsize=(8, 2))
-plt.plot(x[0,:].numpy())
+plt.plot(np.squeeze(x))
 plt.title('Original signal')
 
 ###############################################################################
@@ -114,7 +109,7 @@ plt.title('Original signal')
 # average of the original signal at the scale `2**J`.
 
 plt.figure(figsize=(8, 2))
-plt.plot(Sx[0,order0,:].numpy().ravel())
+plt.plot(np.squeeze(Sx[order0,:]).ravel())
 plt.title('Scattering Order 0')
 
 ###############################################################################
@@ -122,7 +117,7 @@ plt.title('Scattering Order 0')
 # and log-frequency.
 
 plt.figure(figsize=(8, 2))
-plt.imshow(Sx[0,order1,:].numpy(), aspect='auto')
+plt.imshow(np.squeeze(Sx[0,order1,:]), aspect='auto')
 plt.title('Scattering Order 1')
 
 ###############################################################################
@@ -132,7 +127,7 @@ plt.title('Scattering Order 1')
 # the vertical axis.
 
 plt.figure(figsize=(8, 2))
-plt.imshow(Sx[0,order2,:].numpy(), aspect='auto')
+plt.imshow(np.squeeze(Sx[0,order2,:]), aspect='auto')
 plt.title('Scattering Order 2')
 
 ###############################################################################
