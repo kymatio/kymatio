@@ -6,6 +6,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'numpy'
 
+from ...backend.numpy_backend import modulus
 
 def _iscomplex(x):
     return x.dtype == np.complex64 or x.dtype == np.complex128
@@ -90,29 +91,6 @@ class SubsampleFourier(object):
         return out
 
 
-class Modulus(object):
-    """
-        This class implements a modulus transform for complex numbers.
-
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-
-        Parameters
-        ---------
-        x: input complex tensor.
-
-        Returns
-        -------
-        output: a real tensor equal to the modulus of x.
-
-    """
-    def __call__(self, x):
-        norm = np.abs(x)
-        return norm
-
-
 def fft(x, direction='C2C', inverse=False):
     """
         Interface with torch FFT routines for 2D signals.
@@ -194,7 +172,7 @@ def concatenate(arrays):
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
-backend.modulus = Modulus()
+backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
