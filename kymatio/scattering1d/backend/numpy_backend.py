@@ -1,6 +1,6 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 from collections import namedtuple
-from scipy import fft, ifft
+from scipy.fftpack import fft, ifft
 import numpy as np
 
 BACKEND_NAME = 'numpy'
