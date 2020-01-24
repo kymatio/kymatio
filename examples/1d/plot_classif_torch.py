@@ -76,7 +76,7 @@ Q = 12
 
 ###############################################################################
 # We need a small constant to add to the scattering coefficients before
-# computing the logarithm. This prevents very large values when the scattering 
+# computing the logarithm. This prevents very large values when the scattering
 # coefficients are very close to zero.
 log_eps = 1e-6
 
@@ -272,7 +272,7 @@ for e in range(num_epochs):
 Sx_te, y_te = Sx_all[subset == 1], y_all[subset == 1]
 
 ###############################################################################
-# Use the mean and standard deviation calculated on the training data to 
+# Use the mean and standard deviation calculated on the training data to
 # standardize the testing data, as well.
 Sx_te = (Sx_te - mu_tr) / std_tr
 
