@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import warnings
-from .backend.numpy_backend import fft1d_c2c, ifft1d_c2c
+from .backend.numpy_backend import ifft1d_c2c as ifft
 
 
 def adaptive_choice_P(sigma, eps=1e-7):
@@ -153,7 +153,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
     norm_factor : float
         such that h_f * norm_factor is the adequately normalized vector.
     """
-    h_real = ifft1d_c2c(h_f)
+    h_real = ifft(h_f)
     if np.abs(h_real).sum() < 1e-7:
         raise ValueError('Zero division error is very likely to occur, ' +
                          'aborting computations now.')
@@ -292,7 +292,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
         temporal support which ensures (1) for all rows of h_f
 
     """
-    h = ifft1d_c2c(h_f, axis=1)
+    h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
     # compute ||h - h_[-T, T]||_1
     l1_residual = np.fliplr(
