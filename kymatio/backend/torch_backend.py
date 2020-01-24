@@ -6,6 +6,14 @@ def _iscomplex(x):
 def _isreal(x):
     return x.shape[-1] == 1
 
+
+def sanity_check(x):
+    if not _iscomplex(x):
+        raise TypeError('The input should be complex (e.g. last dimension is 2).')
+
+    if not x.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous.')
+
 def cdgmm(A, B, inplace=False):
     """Complex pointwise multiplication.
 
@@ -38,15 +46,15 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
     """
-    if not _iscomplex(A):
-        raise TypeError('The input must be complex, indicated by a last '
-                        'dimension of size 2.')
+    if not _isreal(B):
+        sanity_check(B)
+    else:
+        if not B.is_contiguous():
+            raise RuntimeError('Tensors must be contiguous.')
 
-    if not _iscomplex(B) and not _isreal(B):
-        raise TypeError('The filter must be complex or real, indicated by a '
-                        'last dimension of size 2 or 1, respectively.')
+    sanity_check(A)
 
-    if A.shape[:-1] != B.shape[:-1]:
+    if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
     if A.dtype is not B.dtype:
@@ -62,9 +70,6 @@ def cdgmm(A, B, inplace=False):
     if B.device.type == 'cpu':
         if A.device.type == 'cuda':
             raise TypeError('Input must be on CPU.')
-
-    if not A.is_contiguous() or not B.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
 
     if _isreal(B):
         if inplace:

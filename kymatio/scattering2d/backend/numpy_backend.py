@@ -3,6 +3,7 @@
 import numpy as np
 from collections import namedtuple
 
+from ...backend.base_backend import FFT
 
 BACKEND_NAME = 'numpy'
 
@@ -91,41 +92,6 @@ class SubsampleFourier(object):
         return out
 
 
-def fft(x, direction='C2C', inverse=False):
-    """
-        Interface with torch FFT routines for 2D signals.
-
-        Example
-        -------
-        x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x, inverse=True)
-
-        Parameters
-        ----------
-        input : tensor
-            complex input for the FFT
-        direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : if direction is equal to 'C2R', then an error is raised.
-
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
-
-    if direction == 'C2R':
-        output = np.real(np.fft.ifft2(x))
-    elif direction == 'C2C':
-        if inverse:
-            output = np.fft.ifft2(x)
-        else:
-            output = np.fft.fft2(x)
-
-    return output
-
-
 def cdgmm(A, B, inplace=False):
     """
         Complex pointwise multiplication between (batched) tensor A and tensor B.
@@ -174,7 +140,10 @@ backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.fft = FFT(lambda x:np.fft.fft2(x),
+                  lambda x:np.fft.ifft2(x),
+                  lambda x:np.real(np.fft.ifft2(x)),
+                  lambda x:None)
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate
