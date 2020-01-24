@@ -8,6 +8,7 @@ import pytest
 from kymatio.scattering2d import Scattering2D
 from torch.autograd import gradcheck
 from collections import namedtuple
+import torch.nn as nn
 
 
 devices = ['cpu']
@@ -389,8 +390,9 @@ class TestScatteringTorch2D:
 
         return order0, order1, order2
 
+    @pytest.mark.parametrize('multigpu', [True, False])
     @pytest.mark.parametrize('backend_device', backends_devices)
-    def test_Scattering2D(self, backend_device):
+    def test_Scattering2D(self, backend_device, multigpu):
         backend, device = backend_device
 
         test_data_dir = os.path.dirname(__file__)
@@ -416,6 +418,9 @@ class TestScatteringTorch2D:
 
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad,
                                   backend=backend, frontend='torch')
+        if multigpu and device=='cuda':
+            scattering = nn.DataParallel(scattering)
+
         Sg = []
         x = x.to(device)
         scattering.to(device)
@@ -426,6 +431,10 @@ class TestScatteringTorch2D:
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad,
                                   max_order=1, frontend='torch',
                                   backend=backend)
+
+        if multigpu  and device=='cuda':
+            scattering = nn.DataParallel(scattering)
+
         scattering.to(device)
 
         S1x = scattering(x)
