@@ -2,7 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
-
+from scipy.fftpack import fft2, ifft2
 
 BACKEND_NAME = 'numpy'
 
@@ -138,12 +138,12 @@ def fft(x, direction='C2C', inverse=False):
             raise RuntimeError('C2R mode can only be done with an inverse FFT.')
 
     if direction == 'C2R':
-        output = np.real(np.fft.ifft2(x))
+        output = np.real(ifft2(x))
     elif direction == 'C2C':
         if inverse:
-            output = np.fft.ifft2(x)
+            output = ifft2(x)
         else:
-            output = np.fft.fft2(x)
+            output = fft2(x)
 
     return output
 

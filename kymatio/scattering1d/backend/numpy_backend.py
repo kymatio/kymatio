@@ -1,5 +1,6 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 from collections import namedtuple
+from scipy.fftpack import fft, ifft
 import numpy as np
 
 BACKEND_NAME = 'numpy'
@@ -144,7 +145,7 @@ def real(x):
     return np.real(x)
 
 
-def fft1d_c2c(x):
+def fft1d_c2c(x, axis=-1):
     """Compute the 1D FFT of a complex signal
     Input
     -----
@@ -157,10 +158,10 @@ def fft1d_c2c(x):
         A tensor of the same size as x containing its Fourier transform in the
         standard PyTorch FFT ordering.
     """
-    return np.fft.fft(x)
+    return fft(x, axis=axis)
 
 
-def ifft1d_c2c(x):
+def ifft1d_c2c(x, axis=-1):
     """Compute the normalized 1D inverse FFT of a complex signal
     Input
     -----
@@ -174,7 +175,7 @@ def ifft1d_c2c(x):
         A tensor of the same size of x_f containing the normalized inverse
         Fourier transform of x_f.
     """
-    return np.fft.ifft(x)
+    return ifft(x, axis=axis)
 
 
 def concatenate(arrays):
