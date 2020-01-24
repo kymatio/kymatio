@@ -6,7 +6,8 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, cdgmm
+from ...backend.torch_backend import _iscomplex, cdgmm, sanity_check
+from ...backend.base_backend import FFT
 
 
 class Pad(object):
@@ -175,60 +176,6 @@ class Modulus(object):
                        x[...,1]*x[...,1]).sqrt()
         return norm
 
-def fft(x, direction='C2C', inverse=False):
-    """Interface with torch FFT routines for 2D signals.
-
-        Example
-        -------
-        x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x)
-        x_ifft = fft(x, inverse=True)
-
-        Parameters
-        ----------
-        x : tensor
-            Complex input for the FFT.
-        direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex.
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : If direction is equal to 'C2R', then an error is raised.
-
-        Raises
-        ------
-        RuntimeError
-            In the event that we are going from complex to real and not doing
-            the inverse FFT or in the event x is not contiguous.
-        TypeError
-            In the event that x does not have a final dimension 2 i.e. not
-            complex.
-
-        Returns
-        -------
-        output : tensor
-            Result of FFT or IFFT.
-
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
-
-    if not _iscomplex(x):
-        raise TypeError('The input should be complex (e.g. last dimension is 2).')
-
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
-
-    if direction == 'C2R':
-        output = torch.irfft(x, 2, normalized=False, onesided=False)
-    elif direction == 'C2C':
-        if inverse:
-            output = torch.ifft(x, 2, normalized=False)
-        else:
-            output = torch.fft(x, 2, normalized=False)
-
-    return output
-
 
 def concatenate(arrays):
     return torch.stack(arrays, axis=-3)
@@ -239,7 +186,10 @@ backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.fft = FFT(lambda x:torch.fft(x, 2, normalized=False),
+                  lambda x:torch.ifft(x, 2, normalized=False),
+                  lambda x:torch.irfft(x, 2, normalized=False, onesided=False),
+                  sanity_check)
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate
