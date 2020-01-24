@@ -1,7 +1,7 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor, 
+from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor,
     compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
     get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
@@ -86,39 +86,25 @@ def test_morlet_1d():
     """
     size_signal = [2**13]
     Q_range = np.arange(1, 20, dtype=int)
-    P_range = [1, 5]
     for N in size_signal:
         for Q in Q_range:
             xi_max = compute_xi_max(Q)
             xi_range = xi_max / np.power(2, np.arange(7))
             for xi in xi_range:
-                for P in P_range:
-                    sigma = compute_sigma_psi(xi, Q)
-                    # get the morlet for these parameters
-                    psi_f = morlet_1d(N, xi, sigma, normalize='l2', P_max=P)
-                    # make sure that it has zero mean
-                    assert np.isclose(psi_f[0], 0.)
-                    # make sure that it has a fast decay in time
-                    psi = np.fft.ifft(psi_f)
-                    psi_abs = np.abs(psi)
-                    assert np.min(psi_abs) / np.max(psi_abs) < 1e-3
-                    # Check that the maximal frequency is relatively close to xi,
-                    # up to 1 percent
-                    k_max = np.argmax(np.abs(psi_f))
-                    xi_emp = float(k_max) / float(N)
-                    assert np.abs(xi_emp - xi) / xi < 1e-2
-
-    Q = 1
-    xi = compute_xi_max(Q)
-    sigma = compute_sigma_psi(xi, Q)
-
-    with pytest.raises(ValueError) as ve:
-        morlet_1d(size_signal[0], xi, sigma, P_max=5.1)
-    assert "should be an int" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        morlet_1d(size_signal[0], xi, sigma, P_max=-5)
-    assert "should be non-negative" in ve.value.args[0]
+                sigma = compute_sigma_psi(xi, Q)
+                # get the morlet for these parameters
+                psi_f = morlet_1d(N, xi, sigma)
+                # make sure that it has zero mean
+                assert np.isclose(psi_f[0], 0.)
+                # make sure that it has a fast decay in time
+                psi = np.fft.ifft(psi_f)
+                psi_abs = np.abs(psi)
+                assert np.min(psi_abs) / np.max(psi_abs) < 1e-3
+                # Check that the maximal frequency is relatively close to xi,
+                # up to 1 percent
+                k_max = np.argmax(np.abs(psi_f))
+                xi_emp = float(k_max) / float(N)
+                assert np.abs(xi_emp - xi) / xi < 1e-2
 
 
 def test_gauss_1d():
