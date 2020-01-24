@@ -8,8 +8,8 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-def _is_complex(input):
-    return input.shape[-1] == 2
+from ...backend.torch_backend import _iscomplex
+
 
 class ModulusStable(Function):
     """Stable complex modulus
@@ -124,7 +124,7 @@ def modulus_complex(x):
         A tensor with the same dimensions as x, such that norm[..., 0] contains
         the complex modulus of x, while norm[..., 1] = 0.
     """
-    if not _is_complex(x):
+    if not _iscomplex(x):
         raise TypeError('The input should be complex.')
     
     norm = torch.zeros_like(x)
@@ -155,7 +155,7 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    if not _is_complex(x):
+    if not _iscomplex(x):
         raise TypeError('The input should be complex.')
 
     N = x.shape[-2]
