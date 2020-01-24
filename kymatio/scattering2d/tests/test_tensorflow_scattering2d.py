@@ -1,6 +1,5 @@
 import os
 import io
-import tensorflow as tf
 from kymatio.scattering2d import Scattering2D
 import torch
 import numpy as np
