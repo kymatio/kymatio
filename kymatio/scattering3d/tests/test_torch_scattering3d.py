@@ -1,6 +1,7 @@
 """ This script will test the submodules used by the scattering module"""
 import torch
 import os
+import io
 import numpy as np
 import pytest
 from kymatio import HarmonicScattering3D
@@ -153,10 +154,13 @@ def test_against_standard_computations(device, backend):
     if backend.name == "torch_skcuda" and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
-    file_path = os.path.abspath(os.path.dirname(__file__))
-    data = torch.load(os.path.join(file_path, 'test_data_3d.pt'))
-    x = data['x'].to(device)
-    scattering_ref = data['Sx'].to(device)
+    test_data_dir = os.path.dirname(__file__)
+    with open(os.path.join(test_data_dir, 'test_data_3d.npz'), 'rb') as f:
+        buffer = io.BytesIO(f.read())
+        data = np.load(buffer)
+
+    x = torch.from_numpy(data['x']).to(device)
+    scattering_ref =  torch.from_numpy(data['Sx']).to(device)
     J = data['J']
     L = data['L']
     integral_powers = data['integral_powers']
@@ -197,11 +201,19 @@ def test_against_standard_computations(device, backend):
     order_2 = order_2.reshape((batch_size, -1))
 
     orders_1_and_2 = torch.cat((order_1, order_2), 1)
-
+        
+        
     order_0 = order_0.cpu().numpy().reshape((batch_size, -1))
     start = 0
     end = order_0.shape[1]
     order_0_ref = scattering_ref[:,start:end].cpu().numpy()
+    
+    start = end
+    end += orders_1_and_2.shape[1]
+    print(orders_1_and_2)
+    print(scattering_ref[:, start:end])
+
+
 
     orders_1_and_2 = orders_1_and_2.cpu().numpy().reshape((batch_size, -1))
     start = end
