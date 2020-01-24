@@ -18,6 +18,7 @@ if torch.cuda.is_available():
 
 backends = []
 backends_devices = []
+multiple_devices = [False]
 
 try:
     if torch.cuda.is_available():
@@ -27,6 +28,9 @@ try:
         backends.append(backend)
         if 'cuda' in devices:
             backends_devices.append((backend, 'cuda'))
+
+        if torch.cuda.device_count() > 1:
+            multiple_devices.append(True)
 except:
     Warning('torch_skcuda backend not available.')
 
@@ -390,7 +394,7 @@ class TestScatteringTorch2D:
 
         return order0, order1, order2
 
-    @pytest.mark.parametrize('multigpu', [True, False])
+    @pytest.mark.parametrize('multigpu', multiple_devices)
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_Scattering2D(self, backend_device, multigpu):
         backend, device = backend_device
