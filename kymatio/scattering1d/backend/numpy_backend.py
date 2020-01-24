@@ -1,5 +1,6 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 from collections import namedtuple
+from scipy import fft, ifft
 import numpy as np
 
 BACKEND_NAME = 'numpy'
@@ -157,7 +158,7 @@ def fft1d_c2c(x):
         A tensor of the same size as x containing its Fourier transform in the
         standard PyTorch FFT ordering.
     """
-    return np.fft.fft(x)
+    return fft(x)
 
 
 def ifft1d_c2c(x):
@@ -174,7 +175,7 @@ def ifft1d_c2c(x):
         A tensor of the same size of x_f containing the normalized inverse
         Fourier transform of x_f.
     """
-    return np.fft.ifft(x)
+    return ifft(x)
 
 
 def concatenate(arrays):
