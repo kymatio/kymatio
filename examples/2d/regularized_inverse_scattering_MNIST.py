@@ -68,7 +68,8 @@ class Generator(nn.Module):
         return self.main(input_tensor)
 
 
-def main():
+if __name__ == '__main__':
+
     parser = argparse.ArgumentParser(description='Regularized inverse scattering')
     parser.add_argument('--num_epochs', default=2, help='Number of epochs to train')
     parser.add_argument('--load_model', default=False, help='Load a trained model?')
@@ -162,7 +163,3 @@ def main():
         plt.axis('off')
         plt.pause(0.1)
         plt.draw()
-
-
-if __name__ == '__main__':
-    main()

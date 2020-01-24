@@ -14,6 +14,15 @@ import torch
 import argparse
 import kymatio.datasets as scattering_datasets
 import torch.nn as nn
+from numpy.random import RandomState
+import numpy as np
+
+
+class Identity(nn.Module):
+    def __init__(self, *args, **kwargs):
+        super().__init__()
+    def forward(self, x):
+        return x
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -53,18 +62,30 @@ class BasicBlock(nn.Module):
 
 
 class Scattering2dResNet(nn.Module):
-    def __init__(self, in_channels,  k=2, n=4, num_classes=10):
+    def __init__(self, in_channels,  k=2, n=4, num_classes=10,standard=False):
         super(Scattering2dResNet, self).__init__()
         self.inplanes = 16 * k
         self.ichannels = 16 * k
-        self.K = in_channels
-        self.init_conv = nn.Sequential(
-            nn.BatchNorm2d(in_channels, eps=1e-5, affine=False),
-            nn.Conv2d(in_channels, self.ichannels,
-                  kernel_size=3, stride=1, padding=1, bias=False),
-            nn.BatchNorm2d(self.ichannels),
-            nn.ReLU(True)
-        )
+        if standard:
+
+            self.init_conv = nn.Sequential(
+                nn.Conv2d(3, self.ichannels,
+                          kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(self.ichannels),
+                nn.ReLU(True)
+            )
+            self.layer1 = self._make_layer(BasicBlock, 16 * k, n)
+            self.standard = True
+        else:
+            self.K = in_channels
+            self.init_conv = nn.Sequential(
+                nn.BatchNorm2d(in_channels, eps=1e-5, affine=False),
+                nn.Conv2d(in_channels, self.ichannels,
+                      kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(self.ichannels),
+                nn.ReLU(True)
+            )
+            self.standard = False
 
         self.layer2 = self._make_layer(BasicBlock, 32 * k, n)
         self.layer3 = self._make_layer(BasicBlock, 64 * k, n)
@@ -88,8 +109,13 @@ class Scattering2dResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        x = x.view(x.size(0), self.K, 8, 8)
+        if not self.standard:
+            x = x.view(x.size(0), self.K, 8, 8)
+
         x = self.init_conv(x)
+
+        if self.standard:
+            x = self.layer1(x)
 
         x = self.layer2(x)
         x = self.layer3(x)
@@ -131,61 +157,64 @@ def test(model, device, test_loader, scattering):
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
-if __name__ == '__main__':
-
+def main():
     """Train a simple Hybrid Resnet Scattering + CNN model on CIFAR.
-
-        scattering 1st order can also be set by the mode
-        Scattering features are normalized by batch normalization.
-        The model achieves around 88% testing accuracy after 10 epochs.
-
-        scatter 1st order +
-        scatter 2nd order + linear achieves 70.5% in 90 epochs
-
-        scatter + cnn achieves 88% in 15 epochs
 
     """
     parser = argparse.ArgumentParser(description='CIFAR scattering  + hybrid examples')
-    parser.add_argument('--mode', type=int, default=1,help='scattering 1st or 2nd order')
+    parser.add_argument('--mode', type=str, default='scattering',choices=['scattering', 'standard'],
+                        help='network_type')
+    parser.add_argument('--num_samples', type=int, default=50,
+                        help='samples per class')
+    parser.add_argument('--learning_schedule_multi', type=int, default=10,
+                        help='samples per class')
+    parser.add_argument('--seed', type=int, default=0,
+                        help='seed for dataset subselection')
     parser.add_argument('--width', type=int, default=2,help='width factor for resnet')
     args = parser.parse_args()
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    if args.mode == 1:
-        scattering = Scattering2D(J=2, shape=(32, 32), max_order=1)
-        K = 17*3
-    else:
+    if args.mode == 'scattering':
         scattering = Scattering2D(J=2, shape=(32, 32))
         K = 81*3
-    if use_cuda:
-        scattering = scattering.cuda()
+        model = Scattering2dResNet(K, args.width).to(device)
+        if use_cuda:
+            scattering = scattering.cuda()
+    else:
+        model = Scattering2dResNet(8, args.width,standard=True).to(device)
+        scattering = Identity()
 
-
-
-
-    model = Scattering2dResNet(K, args.width).to(device)
 
     # DataLoaders
     if use_cuda:
         num_workers = 4
         pin_memory = True
     else:
-        num_workers = None
+        num_workers = 0
         pin_memory = False
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
 
-    train_loader = torch.utils.data.DataLoader(
-        datasets.CIFAR10(root=scattering_datasets.get_dataset_dir('CIFAR'), train=True, transform=transforms.Compose([
+
+    #####cifar data
+    cifar_data = datasets.CIFAR10(root=scattering_datasets.get_dataset_dir('CIFAR'), train=True, transform=transforms.Compose([
             transforms.RandomHorizontalFlip(),
             transforms.RandomCrop(32, 4),
             transforms.ToTensor(),
             normalize,
-        ]), download=True),
-        batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
+        ]), download=True)
+    # Extract a subset of X samples per class
+    prng = RandomState(args.seed)
+    random_permute = prng.permutation(np.arange(0, 5000))[0:args.num_samples]
+    indx = np.concatenate([np.where(np.array(cifar_data.targets) == classe)[0][random_permute] for classe in range(0, 10)])
+
+    cifar_data.data, cifar_data.targets = cifar_data.data[indx], list(np.array(cifar_data.targets)[indx])
+    train_loader = torch.utils.data.DataLoader(cifar_data,
+                                               batch_size=32, shuffle=True, num_workers=num_workers,
+                                               pin_memory=pin_memory)
 
     test_loader = torch.utils.data.DataLoader(
         datasets.CIFAR10(root=scattering_datasets.get_dataset_dir('CIFAR'), train=False, transform=transforms.Compose([
@@ -194,13 +223,23 @@ if __name__ == '__main__':
         ])),
         batch_size=128, shuffle=False, num_workers=num_workers, pin_memory=pin_memory)
 
+
+
     # Optimizer
     lr = 0.1
-    for epoch in range(0, 90):
-        if epoch%20==0:
+    M = args.learning_schedule_multi
+    drops = [60*M,120*M,160*M]
+    for epoch in range(0, 200*M):
+        if epoch in drops or epoch==0:
             optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9,
                                         weight_decay=0.0005)
             lr*=0.2
 
         train(model, device, train_loader, optimizer, epoch+1, scattering)
-        test(model, device, test_loader, scattering)
+        if epoch%10==0:
+            test(model, device, test_loader, scattering)
+
+
+
+if __name__ == '__main__':
+    main()

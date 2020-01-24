@@ -97,7 +97,8 @@ def test(model, device, test_loader, scattering):
         test_loss, correct, len(test_loader.dataset),
         100. * correct / len(test_loader.dataset)))
 
-def main():
+if __name__ == '__main__':
+
     """Train a simple Hybrid Scattering + CNN model on CIFAR.
 
         Three models are demoed:
@@ -178,5 +179,3 @@ def main():
 
 
 
-if __name__ == '__main__':
-    main()
