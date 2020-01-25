@@ -59,3 +59,4 @@ class FFT:
 
     def __call__(self, x, direction='C2C', inverse=False):
         return self.fft_forward(x, direction=direction, inverse=inverse)
+    
