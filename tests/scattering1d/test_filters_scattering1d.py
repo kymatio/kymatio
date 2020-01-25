@@ -1,33 +1,12 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor,
+from kymatio.scattering1d.filter_bank import (periodize_filter_fourier, get_normalizing_factor,
     compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
     get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
 import math
 import pytest
-
-
-def test_adaptive_choice_P():
-    """
-    Tests whether adaptive_choice_P provides a bound P which satisfies
-    the adequate requirements
-    """
-    sigma_range = np.logspace(-5, 2, num=10)
-    eps_range = np.logspace(-10, -5, num=8)
-    for i in range(sigma_range.size):
-        for j in range(eps_range.size):
-            sigma = sigma_range[i]
-            eps = eps_range[j]
-            # choose the formula
-            P = adaptive_choice_P(sigma, eps=eps)
-            # check at the boundaries
-            denom = 2 * (sigma**2)
-            lim_left = np.exp(-((1 - P)**2) / denom)
-            lim_right = np.exp(-(P**2) / denom)
-            assert lim_left <= eps
-            assert lim_right <= eps
 
 
 def test_periodize_filter_fourier(random_state=42):
