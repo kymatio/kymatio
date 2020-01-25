@@ -119,8 +119,8 @@ def morlet_1d(N, xi, sigma):
     else:
         psi_f = low_pass_f
 
-    morlet_f *= get_normalizing_factor(morlet_f, normalize='l1')
-    return morlet_f
+    psi_f *= get_normalizing_factor(psi_f, normalize='l1')
+    return psi_f
 
 
 def get_normalizing_factor(h_f, normalize='l1'):
