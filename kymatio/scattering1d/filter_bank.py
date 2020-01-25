@@ -71,35 +71,25 @@ def periodize_filter_fourier(h_f, nperiods=1):
     return v_f
 
 
-def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
+def morlet_1d(N, xi, sigma):
     """
     Computes the Fourier transform of a Morlet filter.
 
     A Morlet filter is the sum of a Gabor filter and a low-pass filter
     to ensure that the sum has exactly zero mean in the temporal domain.
     It is defined by the following formula in time:
-    psi(t) = g_{sigma}(t) (e^{i xi t} - beta)
-    where g_{sigma} is a Gaussian envelope, xi is a frequency and beta is
-    the cancelling parameter.
+    psi(t) = g_{sigma}(t) (e^{i xi t} - kappa)
+    where g_{sigma} is a Gaussian envelope, xi is a frequency and kappa is
+    a corrective term which ensures that psi has a null average.
 
     Parameters
     ----------
     N : int
         size of the temporal support
     xi : float
-        central frequency (in [0, 1])
+        center frequency in (0, 1]
     sigma : float
         bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'.
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max: int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float
-        required machine precision (to choose the adequate P)
 
     Returns
     -------
@@ -107,13 +97,9 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         numpy array of size (N,) containing the Fourier transform of the Morlet
         filter at the frequencies given by np.fft.fftfreq(N).
     """
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
     # Find the adequate value of P
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
+    P = min(adaptive_choice_P(sigma, eps=1e-7), 5)
+
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
     if P == 1:
@@ -122,18 +108,19 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         freqs_low = np.fft.fftfreq(N)
     elif P > 1:
         freqs_low = freqs
-    # define the gabor at freq xi and the low-pass, both of width sigma
-    gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
-    # discretize in signal <=> periodize in Fourier
-    gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
     low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
-    # find the summation factor to ensure that morlet_f[0] = 0.
-    kappa = gabor_f[0] / low_pass_f[0]
-    morlet_f = gabor_f - kappa * low_pass_f
-    # normalize the Morlet if necessary
-    morlet_f *= get_normalizing_factor(morlet_f, normalize=normalize)
-    return morlet_f
+    if xi:
+        gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+        gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+        kappa = gabor_f[0] / low_pass_f[0]
+        psi_f = gabor_f - kappa * low_pass_f
+    else:
+        psi_f = low_pass_f
+
+    psi_f *= get_normalizing_factor(psi_f, normalize='l1')
+    return psi_f
 
 
 def get_normalizing_factor(h_f, normalize='l1'):
@@ -166,54 +153,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
 
 
 def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
-    """
-    Computes the Fourier transform of a low pass gaussian window.
-
-    \\hat g_{\\sigma}(\\omega) = e^{-\\omega^2 / 2 \\sigma^2}
-
-    Parameters
-    ----------
-    N : int
-        size of the temporal support
-    sigma : float
-        bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max : int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float, optional
-        required machine precision (to choose the adequate P)
-
-    Returns
-    -------
-    g_f : array_like
-        numpy array of size (N,) containing the Fourier transform of the
-        filter (with the frequencies in the np.fft.fftfreq convention).
-    """
-    # Find the adequate value of P
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
-    # switch cases
-    if P == 1:
-        freqs_low = np.fft.fftfreq(N)
-    elif P > 1:
-        freqs_low = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
-    # define the low pass
-    g_f = np.exp(-freqs_low**2 / (2 * sigma**2))
-    # periodize it
-    g_f = periodize_filter_fourier(g_f, nperiods=2 * P - 1)
-    # normalize the signal
-    g_f *= get_normalizing_factor(g_f, normalize=normalize)
-    # return the Fourier transform
-    return g_f
+    return morlet_1d(N, xi=None, sigma=sigma)
 
 
 def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
