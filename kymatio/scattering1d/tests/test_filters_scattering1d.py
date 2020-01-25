@@ -1,7 +1,7 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import (periodize_filter_fourier, get_normalizing_factor,
+from kymatio.scattering1d.filter_bank import (periodize_filter_fourier,
     compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
     get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
@@ -25,34 +25,6 @@ def test_periodize_filter_fourier(random_state=42):
             x_per_f = periodize_filter_fourier(x_f, nperiods=per)
             x_per = np.fft.ifft(x_per_f)
             assert np.max(np.abs(x_per - x[::per])) < 1e-7
-
-
-def test_normalizing_factor(random_state=42):
-    """
-    Tests whether the computation of the normalizing factor does the correct
-    job (i.e. actually normalizes the signal in l1 or l2)
-    """
-    rng = np.random.RandomState(random_state)
-    size_signal = [2**j for j in range(5, 13)]
-    norm_type = ['l1', 'l2']
-    for N in size_signal:
-        x = rng.randn(N) + 1j * rng.randn(N)
-        x_f = np.fft.fft(x)
-        for norm in norm_type:
-            kappa = get_normalizing_factor(x_f, norm)
-            x_norm = kappa * x
-            if norm == 'l1':
-                assert np.isclose(np.sum(np.abs(x_norm)) - 1, 0.)
-            elif norm == 'l2':
-                assert np.isclose(np.sqrt(np.sum(np.abs(x_norm)**2)) - 1., 0.)
-
-    with pytest.raises(ValueError) as ve:
-        get_normalizing_factor(np.zeros(4))
-    assert "Zero division error is very likely" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        get_normalizing_factor(np.ones(4), normalize='l0')
-    assert "normalizations only include" in ve.value.args[0]
 
 
 def test_morlet_1d():

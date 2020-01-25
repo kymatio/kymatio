@@ -124,35 +124,6 @@ def morlet_1d(N, xi, sigma):
     return psi_f
 
 
-def get_normalizing_factor(h_f, normalize='l1'):
-    """
-    Computes the desired normalization factor for a filter defined in Fourier.
-
-    Parameters
-    ----------
-    h_f : array_like
-        numpy vector containing the Fourier transform of a filter
-    normalized : string, optional
-        desired normalization type, either 'l1' or 'l2'. Defaults to 'l1'.
-
-    Returns
-    -------
-    norm_factor : float
-        such that h_f * norm_factor is the adequately normalized vector.
-    """
-    h_real = ifft(h_f)
-    if np.abs(h_real).sum() < 1e-7:
-        raise ValueError('Zero division error is very likely to occur, ' +
-                         'aborting computations now.')
-    if normalize == 'l1':
-        norm_factor = 1. / (np.abs(h_real).sum())
-    elif normalize == 'l2':
-        norm_factor = 1. / np.sqrt((np.abs(h_real)**2).sum())
-    else:
-        raise ValueError("Supported normalizations only include 'l1' and 'l2'")
-    return norm_factor
-
-
 def gauss_1d(N, sigma):
     return morlet_1d(N, xi=None, sigma=sigma)
 
