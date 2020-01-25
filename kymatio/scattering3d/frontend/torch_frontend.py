@@ -52,19 +52,6 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         ScatteringBase3D.create_filters(self)
 
         self.register_filters()
-        self.J = J
-        self.shape = shape
-        self.L = L
-        self.sigma_0 = sigma_0
-
-        self.max_order = max_order
-        self.rotation_covariant = rotation_covariant
-        self.method = method
-        self.points = points
-        self.integral_powers = integral_powers
-        self.backend = backend
-
-        self.build()
 
     def register_filters(self):
         # transfer the filters from numpy to torch
