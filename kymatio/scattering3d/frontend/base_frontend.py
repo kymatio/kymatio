@@ -1,8 +1,9 @@
 from ...frontend.base_frontend import ScatteringBase
-from ..filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
+from ..filter_bank import (solid_harmonic_filter_bank, gaussian_filter_bank,
+nd_gabor)
 
 
-class ScatteringBase3D(ScatteringBase):
+class ScatteringBaseHarmonic3D(ScatteringBase):
     """ Abstract module implementing the scattering transform in 2D. Actual
         implementations of the Scattering2D inherits from its methods and
         attributes. The scattering transform computes two wavelet transform
@@ -97,14 +98,39 @@ class ScatteringBase3D(ScatteringBase):
         self.backend = backend
 
     def build(self):
-        self.M, self.N, self.O = self.shape
+        self.M, self.N, self.P = self.shape
 
     def create_filters(self):
         self.filters = solid_harmonic_filter_bank(
-            self.M, self.N, self.O, self.J, self.L, self.sigma_0)
+            self.M, self.N, self.P, self.J, self.L, self.sigma_0)
 
         self.gaussian_filters = gaussian_filter_bank(
-            self.M, self.N, self.O, self.J + 1, self.sigma_0)
+            self.M, self.N, self.P, self.J + 1, self.sigma_0)
 
+class ScatteringBase3D(ScatteringBase):
+    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
+                 rotation_covariant=True, method='standard', points=None,
+                 integral_powers=(0.5, 1., 2.), backend=None):
+        super(ScatteringBase3D, self).__init__()
+        self.J = J
+        self.shape = shape
+        self.L = L
+        self.sigma_0 = sigma_0
+
+        self.max_order = max_order
+        self.rotation_covariant = rotation_covariant
+        self.method = method
+        self.points = points
+        self.integral_powers = integral_powers
+        self.backend = backend
+
+    def build(self):
+        self.M, self.N, self.P = self.shape
+
+    def create_filters(self):
+
+
+        self.filters = gabor_nd(self.shape, orientation, self.J, xi0=3* np.pi
+                / 4, sigma0=self.sigma_0,slant=.5, remove_dc=True, ifftshift=True):
 
 __all__ = ['ScatteringBase3D']

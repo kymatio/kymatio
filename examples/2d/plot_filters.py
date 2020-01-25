@@ -7,17 +7,20 @@ See :meth:`kymatio.scattering2d.filter_bank` for more informations about the use
 from colorsys import hls_to_rgb
 import matplotlib.pyplot as plt
 import numpy as np
-from kymatio.scattering2d.filter_bank import filter_bank
-from kymatio.scattering2d.utils import fft2
+from numpy.fft import fft2 as fft2
+from kymatio.scattering3d.filter_bank import filter_bank
 
 
 ###############################################################################
 # Initial parameters of the filter bank
 # -------------------------------------
-M = 32
+M = 16
 J = 3
 L = 8
-filters_set = filter_bank(M, M, J, L=L)
+#standard_orientations = {'cartesian' : [(1, 0, 0), (0, 1, 0), (0, 0, 1)]}
+
+filters_set = filter_bank(M, M, M, J, 'cartesian')
+
 
 ###############################################################################
 # Imshow complex images
@@ -50,6 +53,8 @@ plt.rc('font', family='serif')
 i = 0
 for filter in filters_set['psi']:
     f = filter[0]
+    f = f[...,0]
+    print(f.shape)
     filter_c = fft2(f)
     filter_c = np.fft.fftshift(filter_c)
     axs[i // L, i % L].imshow(colorize(filter_c))
@@ -73,7 +78,7 @@ plt.rc('font', family='serif')
 plt.axis('off')
 plt.set_cmap('gray_r')
 
-f = filters_set['phi'][0]
+f = filters_set['phi'][0][..., 0]
 
 filter_c = fft2(f)
 filter_c = np.fft.fftshift(filter_c)
