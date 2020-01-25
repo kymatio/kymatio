@@ -126,6 +126,7 @@ def cdgmm3d(A, B, inplace=False):
 from .torch_backend import modulus_rotation
 from .torch_backend import subsample
 from .torch_backend import compute_integrals
+from .torch_backend import concatenate
 from .torch_backend import _compute_local_scattering_coefs
 from .torch_backend import _compute_standard_scattering_coefs
 
