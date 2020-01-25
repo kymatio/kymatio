@@ -9,7 +9,6 @@ def _iscomplex(x):
 def _isreal(x):
     return x.shape[-1] == 1
 
-
 class ModulusStable(Function):
     """Stable complex modulus
 
@@ -123,13 +122,12 @@ class Modulus(object):
         output : tensor
             A tensor with the same dimensions as x, such that output[..., 0]
             contains the complex modulus of x, while output[..., 1] = 0.
-
     """
     def __call__(self, x):
         sanity_check(x)
 
         norm = torch.zeros_like(x)
-        norm[...,0] = modulus(x)
+        norm[..., 0] = modulus(x)
         return norm
 
 def sanity_check(x):
@@ -159,6 +157,7 @@ def cdgmm(A, B, inplace=False):
             In the event that the filter B is not a 3-tensor with a last
             dimension of size 1 or 2, or A and B are not compatible for
             multiplication.
+            
         TypeError
             In the event that A is not complex, or B does not have a final
             dimension of 1 or 2, or A and B are not of the same dtype, or if
