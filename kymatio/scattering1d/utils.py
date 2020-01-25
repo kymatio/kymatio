@@ -1,6 +1,8 @@
 import numpy as np
 import math
-from kymatio.scattering1d.filter_bank import scattering_filter_factory
+from kymatio.scattering1d.filter_bank import (
+    compute_params_filterbank, scattering_filter_factory)
+
 
 def compute_border_indices(J, i0, i1):
     """
