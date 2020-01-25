@@ -120,7 +120,7 @@ def morlet_1d(N, xi, sigma):
     else:
         psi_f = low_pass_f
 
-    psi_f /= np.abs(ifft(norm_factor)).sum()
+    psi_f /= np.abs(ifft(psi_f)).sum()
     return psi_f
 
 
