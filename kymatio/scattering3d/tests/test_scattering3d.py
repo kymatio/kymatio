@@ -305,7 +305,7 @@ def test_scattering_methods():
 
 
 def test_utils():
-    # Simple test
+    # Simple tests
     x = np.arange(8)
     y = sqrt(x**2)
     assert (y == x).all()

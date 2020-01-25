@@ -6,11 +6,9 @@ from collections import namedtuple
 
 BACKEND_NAME = 'tensorflow'
 
-def _iscomplex(x):
-    return x.dtype == np.complex64 or x.dtype == np.complex128
 
-def _isreal(x):
-    return x.dtype == np.float32 or x.dtype == np.float64
+from ...backend.tensorflow_backend import _iscomplex, _isreal, Modulus
+
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -76,25 +74,6 @@ class SubsampleFourier(object):
 
         out = tf.reduce_mean(y, axis=(1, 3))
         return out
-
-
-class Modulus(object):
-    """
-        This class implements a modulus transform for complex numbers.
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-        Parameters
-        ---------
-        x: input complex tensor.
-        Returns
-        -------
-        output: a real tensor equal to the modulus of x.
-    """
-    def __call__(self, x):
-        norm = tf.abs(x)
-        return tf.cast(norm, tf.complex64)
 
 
 def fft(x, direction='C2C', inverse=False):

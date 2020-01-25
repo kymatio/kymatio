@@ -5,25 +5,7 @@ import tensorflow as tf
 BACKEND_NAME = 'tensorflow'
 
 
-def modulus_complex(x):
-    """Compute the complex modulus
-    Computes the modulus of x and stores the result in a complex tensor of the
-    same size, with the real part equal to the modulus and the imaginary part
-    equal to zero.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    norm : tensor
-        A tensor with the same dimensions as x, such that norm[..., 0] contains
-        the complex modulus of x, while norm[..., 1] = 0.
-    """
-
-    norm = tf.abs(x)
-    return tf.cast(norm, tf.complex64)
-
+from ...backend.tensorflow_backend import Modulus
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -185,7 +167,7 @@ def concatenate(arrays):
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',
                                  'ifft1d_c2c', 'concatenate'])
 backend.name = 'tensorflow'
-backend.modulus_complex = modulus_complex
+backend.modulus_complex = Modulus()
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad

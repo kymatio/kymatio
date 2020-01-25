@@ -7,14 +7,8 @@ from ...backend.base_backend import FFT
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus
+from ...backend.numpy_backend import modulus, _iscomplex, _isreal
 
-def _iscomplex(x):
-    return x.dtype == np.complex64 or x.dtype == np.complex128
-
-
-def _isreal(x):
-    return x.dtype == np.float32 or x.dtype == np.float64
 
 
 class Pad(object):

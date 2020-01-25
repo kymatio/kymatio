@@ -4,26 +4,7 @@ import numpy as np
 
 BACKEND_NAME = 'numpy'
 
-
-def modulus_complex(x):
-    """Compute the complex modulus
-    Computes the modulus of x and stores the result in a complex tensor of the
-    same size, with the real part equal to the modulus and the imaginary part
-    equal to zero.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    norm : tensor
-        A tensor with the same dimensions as x, such that norm[..., 0] contains
-        the complex modulus of x, while norm[..., 1] = 0.
-    """
-
-    norm = np.abs(x)
-
-    return norm
+from ...backend.numpy_backend import modulus
 
 
 def subsample_fourier(x, k):
@@ -185,7 +166,7 @@ backend = namedtuple('backend',
                      ['name', 'modulus_complex', 'subsample_fourier', 'real',
                       'unpad', 'fft1d_c2c', 'ifft1d_c2c', 'concatenate'])
 backend.name = 'numpy'
-backend.modulus_complex = modulus_complex
+backend.modulus_complex = modulus
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad

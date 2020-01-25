@@ -1,3 +1,6 @@
+from torch.autograd import Function
+import torch
+
 BACKEND_NAME = 'torch'
 
 def _iscomplex(x):
@@ -6,6 +9,128 @@ def _iscomplex(x):
 def _isreal(x):
     return x.shape[-1] == 1
 
+
+class ModulusStable(Function):
+    """Stable complex modulus
+
+    This class implements a modulus transform for complex numbers which is
+    stable with respect to very small inputs (z close to 0), avoiding
+    returning nans in all cases.
+
+    Usage
+    -----
+    modulus = ModulusStable.apply  # apply inherited from Function
+    x_mod = modulus(x)
+
+    Parameters
+    ---------
+    x : tensor
+        The complex tensor (i.e., whose last dimension is two) whose modulus
+        we want to compute.
+
+    Returns
+    -------
+    output : tensor
+        A tensor of same size as the input tensor, except for the last
+        dimension, which is removed. This tensor is differentiable with respect
+        to the input in a stable fashion (so gradent of the modulus at zero is
+        zero).
+    """
+
+    @staticmethod
+    def forward(ctx, x):
+        """Forward pass of the modulus.
+
+        This is a static method which does not require an instantiation of the
+        class.
+
+        Arguments
+        ---------
+        ctx : context object
+            Collected during the forward pass. These are automatically added
+            by PyTorch and should not be touched. They are then used for the
+            backward pass.
+        x : tensor
+            The complex tensor whose modulus is to be computed.
+
+        Returns
+        -------
+        output : tensor
+            This contains the modulus computed along the last axis, with that
+            axis removed.
+        """
+        ctx.p = 2
+        ctx.dim = -1
+        ctx.keepdim = False
+
+        output = (x[...,0]*x[...,0] + x[...,1]*x[...,1]).sqrt()
+
+        ctx.save_for_backward(x, output)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        """Backward pass of the modulus
+
+        This is a static method which does not require an instantiation of the
+        class.
+
+        Arguments
+        ---------
+        ctx : context object
+            Collected during the forward pass. These are automatically added
+            by PyTorch and should not be touched. They are then used for the
+            backward pass.
+        grad_output : tensor
+            The gradient with respect to the output tensor computed at the
+            forward pass.
+
+        Returns
+        -------
+        grad_input : tensor
+            The gradient with respect to the input.
+        """
+        x, output = ctx.saved_tensors
+        if ctx.dim is not None and ctx.keepdim is False and x.dim() != 1:
+            grad_output = grad_output.unsqueeze(ctx.dim)
+            output = output.unsqueeze(ctx.dim)
+
+        grad_input = x.mul(grad_output).div(output)
+
+        # Special case at 0 where we return a subgradient containing 0
+        grad_input.masked_fill_(output == 0, 0)
+
+        return grad_input
+
+# shortcut for ModulusStable.apply
+modulus = ModulusStable.apply
+
+class Modulus(object):
+    """This class implements a modulus transform for complex numbers.
+
+        Usage
+        -----
+        modulus = Modulus()
+        x_mod = modulus(x)
+
+        Parameters
+        ---------
+        x : tensor
+            Complex torch tensor.
+
+        Returns
+        -------
+        output : tensor
+            A tensor with the same dimensions as x, such that output[..., 0]
+            contains the complex modulus of x, while output[..., 1] = 0.
+
+    """
+    def __call__(self, x):
+        sanity_check(x)
+
+        norm = torch.zeros_like(x)
+        norm[...,0] = modulus(x)
+        return norm
 
 def sanity_check(x):
     if not _iscomplex(x):

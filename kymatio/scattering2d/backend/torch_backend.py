@@ -6,7 +6,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, cdgmm, sanity_check
+from ...backend.torch_backend import _iscomplex, cdgmm, sanity_check, Modulus
 from ...backend.base_backend import FFT
 
 
@@ -144,37 +144,7 @@ class SubsampleFourier(object):
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
-class Modulus(object):
-    """This class implements a modulus transform for complex numbers.
 
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-
-        Parameters
-        ---------
-        x : tensor
-            Complex torch tensor.
-
-        Returns
-        -------
-        output : tensor
-            A tensor with the same dimensions as x, such that output[..., 0]
-            contains the complex modulus of x, while output[..., 1] = 0.
-
-    """
-    def __call__(self, x):
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
-
-        if not _iscomplex(x):
-            raise TypeError('The inputs should be complex.')
-
-        norm = torch.zeros_like(x)
-        norm[...,0] = (x[...,0]*x[...,0] +
-                       x[...,1]*x[...,1]).sqrt()
-        return norm
 
 
 def concatenate(arrays):

@@ -105,7 +105,7 @@ class TestModulus:
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
             modulus(y)
-        assert 'should be contiguous' in record.value.args[0]
+        assert 'contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize('backend', backends)
     def test_cuda_only(self, backend):
