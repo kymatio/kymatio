@@ -43,8 +43,8 @@ def test_FFT3d_central_freq_batch(device, backend):
             x = x.cuda()
         a = x.sum()
         y = backend.fft(x)
-        c = y[:,0,0,0].sum()
-        assert (c-a).abs().sum()<1e-6
+        c = y[:, 0, 0, 0].sum()
+        assert (c - a).abs().sum() < 1e-6
 
 
 @pytest.mark.parametrize("device", devices)
@@ -63,27 +63,27 @@ def test_cdgmm3d(device, backend, inplace):
     if backend.name == 'torch' or device != 'cpu':
         # Not all backends currently implement the inplace variant
         x = torch.zeros(2, 3, 4, 2).to(device)
-        x[...,0] = 2
-        x[...,1] = 3
+        x[..., 0] = 2
+        x[..., 1] = 3
 
         y = torch.zeros_like(x)
-        y[...,0] = 4
-        y[...,1] = 5
+        y[..., 0] = 4
+        y[..., 1] = 5
 
         prod = torch.zeros_like(x)
-        prod[...,0] = x[...,0]*y[...,0] - x[...,1]*y[...,1]
-        prod[...,1] = x[...,0]*y[...,1] + x[...,1]*y[...,0]
+        prod[..., 0] = x[..., 0] * y[..., 0] - x[..., 1] * y[..., 1]
+        prod[..., 1] = x[..., 0] * y[..., 1] + x[..., 1] * y[..., 0]
 
         z = backend.cdgmm3d(x, y, inplace=inplace)
 
-        assert (z-prod).norm().cpu().item() < 1e-7
+        assert (z - prod).norm().cpu().item() < 1e-7
 
         if inplace:
-            assert (x-z).norm().cpu().item() < 1e-7
+            assert (x - z).norm().cpu().item() < 1e-7
 
         with pytest.warns(UserWarning) as record:
             x = torch.randn((3, 4, 3, 2), device=device)
-            x = x[:,0:3,...]
+            x = x[:, 0:3, ...]
             y = torch.randn((3, 3, 3, 2), device=device)
             backend.cdgmm3d(x, y)
         assert "A is converted" in record[0].message.args[0]
@@ -91,7 +91,7 @@ def test_cdgmm3d(device, backend, inplace):
         with pytest.warns(UserWarning) as record:
             x = torch.randn((3, 3, 3, 2), device=device)
             y = torch.randn((3, 4, 3, 2), device=device)
-            y = y[:,0:3,...]
+            y = y[:, 0:3, ...]
             backend.cdgmm3d(x, y)
         assert "B is converted" in record[0].message.args[0]
 
@@ -142,10 +142,10 @@ def test_cdgmm3d(device, backend, inplace):
 @pytest.mark.parametrize("backend", backends)
 def test_complex_modulus(backend, device):
     x = torch.randn(4, 3, 2).to(device)
-    xm = torch.sqrt(x[...,0] ** 2 + x[...,1] ** 2)
+    xm = torch.sqrt(x[..., 0] ** 2 + x[..., 1] ** 2)
     y = backend.modulus(x)
-    assert (y[...,0] - xm).norm() < 1e-7
-    assert (y[...,1]).norm() < 1e-7
+    assert (y[..., 0] - xm).norm() < 1e-7
+    assert (y[..., 1]).norm() < 1e-7
 
 
 @pytest.mark.parametrize("device", devices)
@@ -190,8 +190,8 @@ def test_against_standard_computations(device, backend):
 
     # Extract orders and make order axis the slowest in accordance with
     # the stored reference scattering transform.
-    order_1 = orders_1_and_2[:,0:n_order_1,...]
-    order_2 = orders_1_and_2[:,n_order_1:n_order_1+n_order_2,...]
+    order_1 = orders_1_and_2[:, 0:n_order_1, ...]
+    order_2 = orders_1_and_2[:, n_order_1:n_order_1 + n_order_2, ...]
 
     # Permute the axes since reference has (batch index, integral power, j,
     # ell) while the computed transform has (batch index, j, ell, integral
@@ -207,7 +207,7 @@ def test_against_standard_computations(device, backend):
     order_0 = order_0.cpu().numpy().reshape((batch_size, -1))
     start = 0
     end = order_0.shape[1]
-    order_0_ref = scattering_ref[:,start:end].cpu().numpy()
+    order_0_ref = scattering_ref[:, start:end].cpu().numpy()
 
     orders_1_and_2 = orders_1_and_2.cpu().numpy().reshape((batch_size, -1))
     start = end
@@ -234,7 +234,9 @@ def test_solid_harmonic_scattering(device, backend):
     sigma_gaussian = 3.
     sigma_0_wavelet = 3.
     M, N, O, J, L = 128, 128, 128, 1, 3
-    grid = np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1,2,3))
+    grid = np.mgrid[-M // 2:-M // 2 + M, -N // 2:-N // 2 + N, -O // 2:-O // 2 + O]
+    grid = grid.astype('float32')
+    grid = np.fft.ifftshift(grid, axes=(1, 2, 3))
     x = torch.from_numpy(generate_weighted_sum_of_gaussians(grid, centers,
         weights, sigma_gaussian)).to(device).float()
     scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,

@@ -40,7 +40,7 @@ def complex_modulus(input_array):
     return modulus
 
 
-def modulus_rotation(x, module):
+def modulus_rotation(x, module=None):
     """Used for computing rotation invariant scattering transform coefficents.
 
         Parameters
@@ -48,7 +48,8 @@ def modulus_rotation(x, module):
         x : tensor
             Size (batchsize, M, N, O, 2).
         module : tensor
-            Tensor that holds the overall sum.
+            Tensor that holds the overall sum. If none, initializes the tensor
+            to zero (default).
         Returns
         -------
         output : torch tensor
@@ -65,7 +66,7 @@ def modulus_rotation(x, module):
     return torch.sqrt(module)
 
 
-def _compute_standard_scattering_coefs(input_array, filter, J, subsample):
+def _compute_standard_scattering_coefs(input_array, filter_list, J, subsample):
     """Computes convolution and downsamples.
 
         Computes the convolution of input_array with a lowpass filter phi_J
@@ -73,9 +74,9 @@ def _compute_standard_scattering_coefs(input_array, filter, J, subsample):
 
         Parameters
         ----------
-        input_array : torch tensor
+        input_array : torch Tensor
             Size (batchsize, M, N, O, 2).
-        filter : torch tensor
+        filter_list : list of torch Tensors
             Size (M, N, O, 2).
         J : int
             Low pass scale of phi_J.
@@ -88,13 +89,13 @@ def _compute_standard_scattering_coefs(input_array, filter, J, subsample):
             The result of input_array \\star phi_J downsampled by a factor J.
 
     """
-    low_pass = filter[J]
+    low_pass = filter_list[J]
     convolved_input = cdgmm3d(input_array, low_pass)
     convolved_input = fft(convolved_input, inverse=True)
     return subsample(convolved_input, J)
 
 
-def _compute_local_scattering_coefs(input_array, filter, j, points):
+def _compute_local_scattering_coefs(input_array, filter_list, j, points):
     """Compute convolution and returns particular points.
 
         Computes the convolution of input_array with a lowpass filter phi_j+1
@@ -103,7 +104,7 @@ def _compute_local_scattering_coefs(input_array, filter, j, points):
         ----------
         input_array : torch tensor
             Size (batchsize, M, N, O, 2).
-        filter : torch tensor
+        filter_list : list of torch Tensors
             Size (M, N, O, 2).
         j : int
             The lowpass scale j of phi_j.
@@ -116,7 +117,7 @@ def _compute_local_scattering_coefs(input_array, filter, j, points):
             of the lowpass filtered moduli at the points given.
     """
     local_coefs = torch.zeros(input_array.shape[0], points.shape[1], 1)
-    low_pass = filter[j + 1]
+    low_pass = filter_list[j + 1]
     convolved_input = cdgmm3d(input_array, low_pass)
     convolved_input = fft(convolved_input, inverse=True)
     for i in range(input_array.shape[0]):
@@ -132,14 +133,14 @@ def subsample(input_array, j):
         Parameters
         ----------
         input_array : tensor
-            Input tensor.
+            Input tensor of shape (batch, channel, M, N, O, 2).
         j : int
             Downsampling factor.
         Returns
         -------
         out : tensor
-            Downsampled tensor.
-
+            Downsampled tensor of shape (batch, channel, M // 2 ** j, N // 2
+            ** j, O // 2 ** j, 2).
     """
     return input_array[..., ::2 ** j, ::2 ** j, ::2 ** j, :].contiguous()
 

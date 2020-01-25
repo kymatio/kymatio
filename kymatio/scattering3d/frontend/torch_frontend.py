@@ -45,8 +45,13 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='standard', points=None,
                  integral_powers=(0.5, 1., 2.), backend='torch'):
         ScatteringTorch.__init__(self)
-        ScatteringBase3D.__init__(self, J, shape, L, sigma_0, max_order, rotation_covariant, method, points,
-                 integral_powers, backend)
+        ScatteringBase3D.__init__(self, J, shape, L, sigma_0, max_order,
+                                  rotation_covariant, method, points,
+                                  integral_powers, backend)
+
+        self.build()
+
+    def build(self):
         ScatteringBase3D._instantiate_backend(self, 'kymatio.scattering3d.backend.')
         ScatteringBase3D.build(self)
         ScatteringBase3D.create_filters(self)
@@ -72,6 +77,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         for k in range(len(self.filters)):
             self.filters[k] = buffer_dict['tensor' + str(k)]
 
+        # NOTE: 'local' isn't really used anywhere and could be removed.
         methods = ['standard', 'local', 'integral']
         if not self.method in methods:
             raise ValueError('method must be in {}'.format(methods))
