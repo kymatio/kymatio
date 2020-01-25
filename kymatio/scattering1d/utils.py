@@ -159,8 +159,11 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         integer. If `True`, returns a tuple of size `max_order` containing
         the number of coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-        calibrate_scattering_filters(J, Q)
+    sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
+    xi1, sigma1, j1 = compute_params_filterbank(
+        sigma_low, Q, r_psi=r_psi, alpha=alpha)
+    xi2, sigma2, j2 = compute_params_filterbank(
+        sigma_low, 1, r_psi=r_psi, alpha=alpha)
 
     size_order0 = 1
     size_order1 = len(xi1)
