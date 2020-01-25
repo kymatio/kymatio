@@ -18,7 +18,6 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
     def register_single_filter(self, v, n):
         current_filter = torch.from_numpy(v).unsqueeze(-1)
         self.register_buffer('tensor' + str(n), current_filter)
-        return current_filter
 
     def register_filters(self):
         """ This function run the filterbank function that
@@ -32,7 +31,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
             if not isinstance(c, int):
                 continue
 
-            self.phi[c] = self.register_single_filter(phi, n)
+            self.register_single_filter(phi, n)
             n = n + 1
 
         for j in range(len(self.psi)):
@@ -40,8 +39,9 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
                 if not isinstance(k, int):
                     continue
 
-                self.psi[j][k] = self.register_single_filter(v, n)
+                self.register_single_filter(v, n)
                 n = n + 1
+                print(n)
 
     def load_single_filter(self, n, buffer_dict):
         return buffer_dict['tensor' + str(n)]
@@ -54,22 +54,25 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         n = 0
 
-        phis = self.phi
-        for c, phi in phis.items():
+        phis = {}
+
+        for c, phi in self.phi.items():
             if not isinstance(c, int):
-                continue
-
-            phis[c] = self.load_single_filter(n, buffer_dict)
-            n = n + 1
-
-        psis = self.psi
-        for j in range(len(psis)):
-            for k, v in psis[j].items():
-                if not isinstance(k, int):
-                    continue
-
-                psis[j][k] = self.load_single_filter(n, buffer_dict)
+                phis[c] = self.phi[c]
+            else:
+                phis[c] = self.load_single_filter(n, buffer_dict)
                 n = n + 1
+
+        psis = []
+        for j in range(len(self.psi)):
+            psi = {}
+            for k, v in self.psi[j].items():
+                if not isinstance(k, int):
+                    psi[k] = self.psi[j][k]
+                else:
+                    psi[k] = self.load_single_filter(n, buffer_dict)
+                    n = n + 1
+            psis.append(psi)
 
         return phis, psis
 
