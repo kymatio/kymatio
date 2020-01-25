@@ -152,7 +152,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
     return norm_factor
 
 
-def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
+def gauss_1d(N, sigma):
     return morlet_1d(N, xi=None, sigma=sigma)
 
 
@@ -640,7 +640,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
+    phi_f[0] = gauss_1d(T, sigma_low)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter
