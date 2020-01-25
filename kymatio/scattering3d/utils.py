@@ -1,4 +1,4 @@
-"""Author: Louis Thiry, All rights reserved, 2018."""
+"""Author: Louis Thiry"""
 import numpy as np
 import warnings
 
