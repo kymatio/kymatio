@@ -2,8 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
-
-from ...backend.base_backend import FFT
+from scipy.fftpack import fft2, ifft2
 
 BACKEND_NAME = 'numpy'
 
