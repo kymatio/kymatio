@@ -27,7 +27,7 @@ import matplotlib.pyplot as plt
 # class is what lets us calculate the scattering transform, while the
 # `fetch_fsdd` function downloads the FSDD, if needed.
 
-from kymatio import Scattering1D
+from kymatio.numpy import Scattering1D
 from kymatio.datasets import fetch_fsdd
 
 ###############################################################################
@@ -62,7 +62,7 @@ Q = 16
 # Finally, we are able to create the object which computes our scattering
 # transform, `scattering`.
 
-scattering = Scattering1D(J, T, Q, frontend='numpy')
+scattering = Scattering1D(J, T, Q)
 
 ###############################################################################
 # Compute and display the scattering coefficients
