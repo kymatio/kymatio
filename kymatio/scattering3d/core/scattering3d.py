@@ -17,8 +17,10 @@ def scattering3d(_input, filters, rotation_covariant, L, J, max_order, backend, 
         first and second order scattering coefficients,
         concatenated along the feature axis
     """
-    aggregate, finalize, fft, cdgmm3d, modulus, modulus_rotation = backend.aggregate, backend.finalize, backend.fft, backend.cdgmm3d, backend.modulus\
+    fft, cdgmm3d, modulus, modulus_rotation = backend.fft, backend.cdgmm3d, backend.modulus\
     , backend.modulus_rotation
+
+    concatenate = backend.concatenate
 
     U_0_c = fft(_input)
 
@@ -38,7 +40,7 @@ def scattering3d(_input, filters, rotation_covariant, L, J, max_order, backend, 
                 U_1_m = modulus(U_1_c)
 
             U_1_c = fft(U_1_m)
-            S_1_l = averaging(U_1_c, j_1)
+            S_1_l = averaging(U_1_c, j_1)[..., 0]
             s_order_1_l.append(S_1_l)
 
             if max_order >1:
@@ -54,10 +56,22 @@ def scattering3d(_input, filters, rotation_covariant, L, J, max_order, backend, 
                         U_2_c = fft(U_2_c, inverse=True)
                         U_2_m = modulus(U_2_c)
                     U_2_c = fft(U_2_m)
-                    S_2_l = averaging(U_2_c, j_2)
+                    S_2_l = averaging(U_2_c, j_2)[..., 0]
                     s_order_2_l.append(S_2_l)
-        s_order_1.append(aggregate(s_order_1_l))
-        if max_order == 2:
-            s_order_2.append(aggregate(s_order_2_l))
 
-    return finalize(s_order_1, s_order_2, max_order)
+        s_order_1.append(s_order_1_l)
+
+        if max_order == 2:
+            s_order_2.append(s_order_2_l)
+
+    # Concatenate the orders (along the j axis) if needed.
+    S = s_order_1
+    if max_order == 2:
+        S = [x + y for x, y in zip(S, s_order_2)]
+
+    # Invert (ell, m × j) ordering to (m × j, ell).
+    S = [x for y in zip(*S) for x in y]
+
+    S = concatenate(S, L)
+
+    return S

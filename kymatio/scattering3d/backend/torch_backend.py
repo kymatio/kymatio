@@ -308,15 +308,21 @@ def aggregate(x):
     """
     return torch.stack([arr[..., 0] for arr in x], 1)
 
+def concatenate(arrays, L):
+    S = torch.stack(arrays, dim=1)
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample', 
-                                 'compute_integrals', 'aggregate'])
+    S = S.reshape((S.shape[0], S.shape[1] // (L + 1), (L + 1)) + S.shape[2:])
+
+    return S
+
+
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_rotation', 'subsample',
+                                 'compute_integrals', 'concatenate'])
 
 backend.name = 'torch'
 backend.cdgmm3d = cdgmm3d
 backend.fft = fft
-backend.aggregate = aggregate
-backend.finalize = finalize
+backend.concatenate = concatenate
 backend.modulus = complex_modulus
 backend.modulus_rotation = modulus_rotation
 backend.subsample = subsample
