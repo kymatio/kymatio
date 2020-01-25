@@ -38,6 +38,7 @@ def filter_bank(M, N, J, L=8):
             psi = {}
             psi['j'] = j
             psi['theta'] = theta
+            psi['filters'] = []
             psi_signal = morlet_2d(M, N, 0.8 * 2**j,
                 (int(L-L/2-1)-theta) * np.pi / L,
                 3.0 / 4.0 * np.pi /2**j, 4.0/L)
@@ -47,7 +48,7 @@ def filter_bank(M, N, J, L=8):
             for res in range(min(j + 1, max(J - 1, 1))):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
-                psi[res] = psi_signal_fourier_res
+                psi['filters'].append(psi_signal_fourier_res)
             filters['psi'].append(psi)
 
     filters['phi'] = {}
@@ -56,9 +57,10 @@ def filter_bank(M, N, J, L=8):
     # drop the imaginary part, it is zero anyway
     phi_signal_fourier = np.real(phi_signal_fourier)
     filters['phi']['j'] = J
+    filters['phi']['filters'] = []
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        filters['phi'][res] = phi_signal_fourier_res
+        filters['phi']['filters'].append(phi_signal_fourier_res)
 
     return filters
 

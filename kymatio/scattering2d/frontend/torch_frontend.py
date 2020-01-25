@@ -3,7 +3,7 @@ import torch
 from .base_frontend import ScatteringBase2D
 from kymatio.scattering2d.core.scattering2d import scattering2d
 from ...frontend.torch_frontend import ScatteringTorch
-
+import torch.nn as nn
 
 class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend='torch'):
@@ -12,12 +12,8 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         ScatteringBase2D._instantiate_backend(self, 'kymatio.scattering2d.backend.')
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
-
         self.register_filters()
 
-    def register_single_filter(self, v, n):
-        current_filter = torch.from_numpy(v).unsqueeze(-1)
-        self.register_buffer('tensor' + str(n), current_filter)
 
     def register_filters(self):
         """ This function run the filterbank function that
@@ -25,56 +21,13 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
             saves those arrays as module's buffers."""
         # Create the filters
 
-        n = 0
+        f = self.phi['filters']
+        self.phi['filters'] = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
 
-        for c, phi in self.phi.items():
-            if not isinstance(c, int):
-                continue
+        for i in range(len(self.psi)):
+            f = self.psi[i]['filters']
+            self.psi[i]['filters'] = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
 
-            self.register_single_filter(phi, n)
-            n = n + 1
-
-        for j in range(len(self.psi)):
-            for k, v in self.psi[j].items():
-                if not isinstance(k, int):
-                    continue
-
-                self.register_single_filter(v, n)
-                n = n + 1
-                print(n)
-
-    def load_single_filter(self, n, buffer_dict):
-        return buffer_dict['tensor' + str(n)]
-
-    def load_filters(self):
-        """ This function loads filters from the module's buffers """
-        # each time scattering is run, one needs to make sure self.psi and self.phi point to
-        # the correct buffers
-        buffer_dict = dict(self.named_buffers())
-
-        n = 0
-
-        phis = {}
-
-        for c, phi in self.phi.items():
-            if not isinstance(c, int):
-                phis[c] = self.phi[c]
-            else:
-                phis[c] = self.load_single_filter(n, buffer_dict)
-                n = n + 1
-
-        psis = []
-        for j in range(len(self.psi)):
-            psi = {}
-            for k, v in self.psi[j].items():
-                if not isinstance(k, int):
-                    psi[k] = self.psi[j][k]
-                else:
-                    psi[k] = self.load_single_filter(n, buffer_dict)
-                    n = n + 1
-            psis.append(psi)
-
-        return phis, psis
 
     def scattering(self, input):
         """Forward pass of the scattering.
@@ -118,15 +71,13 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         if (input.shape[-1] != self.N_padded or input.shape[-2] != self.M_padded) and self.pre_pad:
             raise RuntimeError('Padded tensor must be of spatial size (%i,%i).' % (self.M_padded, self.N_padded))
 
-        phi, psi = self.load_filters()
-
         batch_shape = input.shape[:-2]
         signal_shape = input.shape[-2:]
 
         input = input.reshape((-1,) + signal_shape)
 
         S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
-                            self.L, phi, psi, self.max_order)
+                            self.L, self.phi, self.psi, self.max_order)
 
         scattering_shape = S.shape[-3:]
 
