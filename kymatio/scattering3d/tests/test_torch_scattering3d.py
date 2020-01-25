@@ -1,6 +1,7 @@
 """ This script will test the submodules used by the scattering module"""
 import torch
 import os
+import io
 import numpy as np
 import pytest
 from kymatio import HarmonicScattering3D
@@ -154,9 +155,11 @@ def test_against_standard_computations(device, backend):
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
     file_path = os.path.abspath(os.path.dirname(__file__))
-    data = torch.load(os.path.join(file_path, 'test_data_3d.pt'))
-    x = data['x'].to(device)
-    scattering_ref = data['Sx'].to(device)
+    with open(os.path.join(file_path, 'test_data_3d.npz'), 'rb') as f:
+        buffer = io.BytesIO(f.read())
+        data = np.load(buffer)
+    x = torch.from_numpy(data['x'])
+    scattering_ref = torch.from_numpy(data['Sx'])
     J = data['J']
     L = data['L']
     integral_powers = data['integral_powers']
