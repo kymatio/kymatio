@@ -10,7 +10,7 @@ and analyze it with the 1D scattering transform.
 ###############################################################################
 # Import the necessary packages
 # -----------------------------
-from kymatio import Scattering1D
+from kymatio.numpy import Scattering1D
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -75,7 +75,7 @@ plt.title("Time-Frequency spectrogram of signal")
 J = 6
 Q = 16
 
-scattering = Scattering1D(J, T, Q, frontend='numpy')
+scattering = Scattering1D(J, T, Q)
 
 meta = scattering.meta()
 order0 = np.where(meta['order'] == 0)
