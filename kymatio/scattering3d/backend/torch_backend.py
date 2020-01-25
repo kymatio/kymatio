@@ -277,8 +277,15 @@ def concatenate(arrays, L):
     return S
 
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_rotation', 'subsample',
-                                 'compute_integrals', 'concatenate'])
+backend = namedtuple('backend',
+                     ['name',
+                      'cdgmm3d',
+                      'fft',
+                      'modulus',
+                      'modulus_rotation',
+                      'subsample',
+                      'compute_integrals',
+                      'concatenate'])
 
 backend.name = 'torch'
 backend.cdgmm3d = cdgmm3d
