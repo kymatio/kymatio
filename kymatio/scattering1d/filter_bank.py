@@ -44,9 +44,7 @@ def adaptive_choice_P(sigma, eps=1e-7):
         [0, 1[. The value of P will lead to the use of the frequency
         interval [1-P, P[, so that there are 2*P - 1 periods.
     """
-    val = math.sqrt(-2 * (sigma**2) * math.log(eps))
-    P = int(math.ceil(val + 1))
-    return P
+    pass
 
 
 def periodize_filter_fourier(h_f, nperiods=1):
@@ -99,7 +97,9 @@ def morlet_1d(N, xi, sigma):
         filter at the frequencies given by np.fft.fftfreq(N).
     """
     # Find the adequate value of P
-    P = min(adaptive_choice_P(sigma, eps=1e-7), 5)
+    eps = 1e-7
+    val = math.sqrt(-2 * (sigma**2) * math.log(eps))
+    P = min(5, int(math.ceil(val + 1)))
 
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
