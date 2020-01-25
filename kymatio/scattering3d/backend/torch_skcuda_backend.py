@@ -11,12 +11,6 @@ def _iscomplex(input):
     return input.shape[-1] == 2
 
 
-def to_complex(input):
-    output = input.new(input.shape + (2,)).fill_(0)
-    output[..., 0] = input
-    return output
-
-
 def complex_modulus(input_array):
     modulus = torch.zeros_like(input_array)
     modulus[..., 0] += torch.sqrt((input_array ** 2).sum(-1))
