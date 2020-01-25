@@ -158,10 +158,7 @@ def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
-    factor = 1. / math.pow(2, 1. / Q)
-    term1 = (1 - factor) / (1 + factor)
-    term2 = 1. / math.sqrt(2 * math.log(1. / r))
-    return xi * term1 * term2
+    pass
 
 
 def compute_temporal_support(h_f, criterion_amplitude=1e-3):
@@ -316,8 +313,7 @@ def compute_xi_max(Q):
     xi_max : float
         largest frequency of the wavelet frame.
     """
-    xi_max = max(1. / (1. + math.pow(2., 3. / Q)), 0.35)
-    return xi_max
+    pass
 
 
 def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
@@ -366,8 +362,12 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
-    xi_max = compute_xi_max(Q)
-    sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
+    xi_max = max(1. / (1. + math.pow(2., 3. / Q)), 0.35)
+
+    factor = 1. / math.pow(2, 1. / Q)
+    term1 = (1 - factor) / (1 + factor)
+    term2 = 1. / math.sqrt(2 * math.log(1. / r_psi))
+    sigma_max = xi * term1 * term2
 
     xi = []
     sigma = []
