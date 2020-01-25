@@ -109,19 +109,16 @@ def morlet_1d(N, xi, sigma):
     elif P > 1:
         freqs_low = freqs
 
-    # define the gabor at freq xi and the low-pass, both of width sigma
-    gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
-
-    # discretize in signal <=> periodize in Fourier
-    gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
     low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
+    if xi:
+        gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+        gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+        kappa = gabor_f[0] / low_pass_f[0]
+        psi_f = gabor_f - kappa * low_pass_f
+    else:
+        psi_f = low_pass_f
 
-    # find the summation factor to ensure that morlet_f[0] = 0.
-    kappa = gabor_f[0] / low_pass_f[0]
-    morlet_f = gabor_f - kappa * low_pass_f
-
-    # normalize the Morlet if necessary
     morlet_f *= get_normalizing_factor(morlet_f, normalize='l1')
     return morlet_f
 
