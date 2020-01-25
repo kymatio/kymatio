@@ -122,8 +122,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         input = input.reshape((-1,) + signal_shape)
 
-        S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
-                            self.L, phi, psi, self.max_order)
+        S = scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, phi, psi, self.max_order)
 
         scattering_shape = S.shape[-3:]
 
