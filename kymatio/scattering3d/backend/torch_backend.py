@@ -36,7 +36,7 @@ def complex_modulus(input_array):
 
     """
     modulus = torch.zeros_like(input_array)
-    modulus[..., 0] += torch.sqrt((input_array ** 2).sum(-1))
+    modulus[..., 0] = torch.sqrt((input_array ** 2).sum(-1))
     return modulus
 
 
@@ -198,7 +198,7 @@ def fft(input, inverse=False):
             Result of FFT or IFFT.
     """
     if not _iscomplex(input):
-        raise (TypeError('The input should be complex (e.g. last dimension is 2)'))
+        raise TypeError('The input should be complex (e.g. last dimension is 2)')
     if inverse:
         return torch.ifft(input, 3)
     return torch.fft(input, 3)

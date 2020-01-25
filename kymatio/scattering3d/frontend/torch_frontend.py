@@ -73,8 +73,8 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
             self.filters[k] = buffer_dict['tensor' + str(k)]
 
         methods = ['standard', 'local', 'integral']
-        if (not self.method in methods):
-            raise (ValueError('method must be in {}'.format(methods)))
+        if not self.method in methods:
+            raise ValueError('method must be in {}'.format(methods))
         if self.method == 'integral': \
                 self.averaging = lambda x, j: self.backend.compute_integrals(self.backend.fft(x, inverse=True)[..., 0],
                                                                              self.integral_powers)
@@ -108,21 +108,20 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
             concatenated along the feature axis
         """
         if not torch.is_tensor(input_array):
-            raise (TypeError(
+            raise TypeError(
                 'The input should be a torch.cuda.FloatTensor, '
-                'a torch.FloatTensor or a torch.DoubleTensor'))
+                'a torch.FloatTensor or a torch.DoubleTensor.')
 
-        if not input_array.is_contiguous():
-            input_array = input_array.contiguous()
+        input_array = input_array.contiguous()
 
-        if ((input_array.shape[-1] != self.O or input_array.shape[-2] != self.N
-             or input_array.shape[-3] != self.M)):
-            raise (RuntimeError(
-                'Tensor must be of spatial size (%i,%i,%i)!' % (
-                    self.M, self.N, self.O)))
+        if (input_array.shape[-1] != self.O or input_array.shape[-2] != self.N
+            or input_array.shape[-3] != self.M):
+            raise RuntimeError(
+                'Tensor must be of spatial size (%i, %i, %i).' % (
+                    self.M, self.N, self.O))
 
-        if (input_array.dim() != 4):
-            raise (RuntimeError('Input tensor must be 4D'))
+        if input_array.dim() != 4:
+            raise RuntimeError('Input tensor must be 4D.')
 
         batch_shape = input_array.shape[:-3]
         signal_shape = input_array.shape[-3:]

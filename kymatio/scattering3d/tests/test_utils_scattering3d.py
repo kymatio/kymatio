@@ -19,7 +19,7 @@ def test_utils():
         y = sqrt(x)
     assert "Negative" in record[0].message.args[0]
 
-    # ...unless they are compled numbers!
+    # ...unless they are complex numbers!
     with pytest.warns(None) as record:
         x = np.array([-1, 0, 1], dtype='complex64')
         y = sqrt(x)
