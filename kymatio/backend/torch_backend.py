@@ -132,7 +132,7 @@ class Modulus(object):
 
 def sanity_check(x):
     if not _iscomplex(x):
-        raise TypeError('The input should be complex (e.g. last dimension is 2).')
+        raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
