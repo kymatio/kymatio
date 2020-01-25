@@ -49,7 +49,7 @@ train_data.targets = train_data.targets[random_permute]
 train_loader = torch.utils.data.DataLoader(train_data,
     batch_size=128, shuffle=True, num_workers=num_workers, pin_memory=pin_memory)
 
-#Creat the tests loader on the full MNIST tests set
+#Create the tests loader on the full MNIST tests set
 test_loader = torch.utils.data.DataLoader(
     datasets.MNIST(
         scattering_datasets.get_dataset_dir('MNIST'),
