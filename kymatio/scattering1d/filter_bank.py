@@ -200,23 +200,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
         temporal support which ensures (1) for all rows of h_f
 
     """
-    h = ifft(h_f, axis=1)
-    half_support = h.shape[1] // 2
-    # compute ||h - h_[-T, T]||_1
-    l1_residual = np.fliplr(
-        np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
-    # find the first point above criterion_amplitude
-    if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
-        # if it is possible
-        T = np.min(
-            np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
-            + 1
-    else:
-        # if there is none:
-        T = half_support
-        # Raise a warning to say that there will be border effects
-        warnings.warn('Signal support is too small to avoid border effects')
-    return T
+    pass
 
 
 def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
@@ -630,8 +614,24 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
-    t_max_phi = compute_temporal_support(
-        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
+    h = ifft(np.reshape(h_f[0], (1, -1)), axis=1)
+    half_support = h.shape[1] // 2
+    # compute ||h - h_[-T, T]||_1
+    l1_residual = np.fliplr(
+        np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
+
+    # find the first point above criterion_amplitude
+    criterion_amplitude = 1e-3
+    if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
+        # if it is possible
+        t_max_phi = np.min(
+            np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
+            + 1
+    else:
+        # if there is none:
+        t_max_phi = half_support
+        # Raise a warning to say that there will be border effects
+        warnings.warn('Signal support is too small to avoid border effects')
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi

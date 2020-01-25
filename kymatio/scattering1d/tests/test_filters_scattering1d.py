@@ -1,8 +1,8 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import (periodize_filter_fourier,
-    compute_temporal_support, morlet_1d, get_max_dyadic_subsampling, gauss_1d)
+from kymatio.scattering1d.filter_bank import (
+    gauss_1d, morlet_1d, periodize_filter_fourier)
 import numpy as np
 import math
 import pytest
@@ -75,12 +75,3 @@ def test_gauss_1d():
         phi = np.fft.ifft(g_f)
         assert np.min(phi) > - tol
         assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
-
-
-def test_compute_temporal_support():
-    # Define constant averaging filter. This will be "too long" to avoid
-    # border effects.
-    h_f = np.fft.fft(np.ones((1, 4)), axis=1)
-    with pytest.warns(UserWarning) as record:
-        compute_temporal_support(h_f)
-    assert "too small to avoid border effects" in record[0].message.args[0]
