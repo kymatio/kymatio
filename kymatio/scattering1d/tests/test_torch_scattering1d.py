@@ -315,7 +315,7 @@ def test_precompute_size_scattering(device, backend, random_state=42):
 def test_differentiability_scattering(device, backend, random_state=42):
     """
     It simply tests whether it is really differentiable or not.
-    This does NOT tests whether the gradients are correct.
+    This does NOT test whether the gradients are correct.
     """
 
     if backend.name == "torch_skcuda":
