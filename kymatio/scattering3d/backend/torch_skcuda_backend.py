@@ -123,22 +123,20 @@ def cdgmm3d(A, B, inplace=False):
     return C
 
 
-from .torch_backend import finalize
 from .torch_backend import modulus_rotation
 from .torch_backend import subsample
 from .torch_backend import compute_integrals
 from .torch_backend import _compute_local_scattering_coefs
 from .torch_backend import _compute_standard_scattering_coefs
-from .torch_backend import aggregate
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample',
-                                 'compute_integrals', 'aggregate'])
+backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_rotation', 'subsample',
+                                 'compute_integrals', 'concatenate'])
 
 backend.name = 'torch_skcuda'
 backend.aggregate = aggregate
 backend.cdgmm3d = cdgmm3d
 backend.fft = fft
-backend.finalize = finalize
+backend.concatenate = concatenate
 backend.modulus = complex_modulus
 backend.modulus_rotation = modulus_rotation
 backend.subsample = subsample
