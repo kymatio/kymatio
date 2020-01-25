@@ -352,7 +352,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     factor = 1. / math.pow(2, 1. / Q)
     term1 = (1 - factor) / (1 + factor)
     term2 = 1. / math.sqrt(2 * math.log(1. / r_psi))
-    sigma_max = xi * term1 * term2
+    sigma_max = xi_max * term1 * term2
 
     xi = []
     sigma = []
