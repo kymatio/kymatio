@@ -4,49 +4,6 @@ import warnings
 from .backend.numpy_backend import ifft1d_c2c as ifft
 
 
-def adaptive_choice_P(sigma, eps=1e-7):
-    """
-    Adaptive choice of the value of the number of periods in the frequency
-    domain used to compute the Fourier transform of a Morlet wavelet.
-
-    This function considers a Morlet wavelet defined as the sum
-    of
-    * a Gabor term hat psi(omega) = hat g_{sigma}(omega - xi)
-    where 0 < xi < 1 is some frequency and g_{sigma} is
-    the Gaussian window defined in Fourier by
-    hat g_{sigma}(omega) = e^{-omega^2/(2 sigma^2)}
-    * a low pass term \\hat \\phi which is proportional to \\hat g_{\\sigma}.
-
-    If \\sigma is too large, then these formula will lead to discontinuities
-    in the frequency interval [0, 1] (which is the interval used by numpy.fft).
-    We therefore choose a larger integer P >= 1 such that at the boundaries
-    of the Fourier transform of both filters on the interval [1-P, P], the
-    magnitude of the entries is below the required machine precision.
-    Mathematically, this means we would need P to satisfy the relations:
-
-    |\\hat \\psi(P)| <= eps and |\\hat \\phi(1-P)| <= eps
-
-    Since 0 <= xi <= 1, the latter implies the former. Hence the formula which
-    is easily derived using the explicit formula for g_{\\sigma} in Fourier.
-
-    Parameters
-    ----------
-    sigma: float
-        Positive number controlling the bandwidth of the filters
-    eps : float, optional
-        Positive number containing required precision. Defaults to 1e-7
-
-    Returns
-    -------
-    P : int
-        integer controlling the number of periods used to ensure the
-        periodicity of the final Morlet filter in the frequency interval
-        [0, 1[. The value of P will lead to the use of the frequency
-        interval [1-P, P[, so that there are 2*P - 1 periods.
-    """
-    pass
-
-
 def periodize_filter_fourier(h_f, nperiods=1):
     """
     Computes a periodization of a filter provided in the Fourier domain.
@@ -128,81 +85,6 @@ def gauss_1d(N, sigma):
     return morlet_1d(N, xi=None, sigma=sigma)
 
 
-def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
-    """
-    Computes the frequential width sigma for a Morlet filter of frequency xi
-    belonging to a family with Q wavelets.
-
-    The frequential width is adapted so that the intersection of the
-    frequency responses of the next filter occurs at a r-bandwidth specified
-    by r, to ensure a correct coverage of the whole frequency axis.
-
-    Parameters
-    ----------
-    xi : float
-        frequency of the filter in [0, 1]
-    Q : int
-        number of filters per octave, Q is an integer >= 1
-    r : float, optional
-        Positive parameter defining the bandwidth to use.
-        Should be < 1. We recommend keeping the default value.
-        The larger r, the larger the filters in frequency domain.
-
-    Returns
-    -------
-    sigma : float
-        frequential width of the Morlet wavelet.
-
-    Refs
-    ----
-    Convolutional operators in the time-frequency domain, V. Lostanlen,
-    PhD Thesis, 2017
-    https://tel.archives-ouvertes.fr/tel-01559667
-    """
-    pass
-
-
-def compute_temporal_support(h_f, criterion_amplitude=1e-3):
-    """
-    Computes the (half) temporal support of a family of centered,
-    symmetric filters h provided in the Fourier domain
-
-    This function computes the support T which is the smallest integer
-    such that for all signals x and all filters h,
-
-    \\| x \\conv h - x \\conv h_{[-T, T]} \\|_{\\infty} \\leq \\epsilon
-        \\| x \\|_{\\infty}  (1)
-
-    where 0<\\epsilon<1 is an acceptable error, and h_{[-T, T]} denotes the
-    filter h whose support is restricted in the interval [-T, T]
-
-    The resulting value T used to pad the signals to avoid boundary effects
-    and numerical errors.
-
-    If the support is too small, no such T might exist.
-    In this case, T is defined as the half of the support of h, and a
-    UserWarning is raised.
-
-    Parameters
-    ----------
-    h_f : array_like
-        a numpy array of size batch x time, where each row contains the
-        Fourier transform of a filter which is centered and whose absolute
-        value is symmetric
-    criterion_amplitude : float, optional
-        value \\epsilon controlling the numerical
-        error. The larger criterion_amplitude, the smaller the temporal
-        support and the larger the numerical error. Defaults to 1e-3
-
-    Returns
-    -------
-    t_max : int
-        temporal support which ensures (1) for all rows of h_f
-
-    """
-    pass
-
-
 def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
@@ -282,23 +164,6 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
     new_cv['j'] = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'], alpha=alpha)
     new_cv['key'] = n + 1
     return new_cv
-
-
-def compute_xi_max(Q):
-    """
-    Computes the maximal xi to use for the Morlet family, depending on Q.
-
-    Parameters
-    ----------
-    Q : int
-        number of wavelets per octave (integer >= 1)
-
-    Returns
-    -------
-    xi_max : float
-        largest frequency of the wavelet frame.
-    """
-    pass
 
 
 def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
@@ -383,60 +248,6 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
     # return results
     return xi, sigma, j
-
-
-def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
-                                 alpha=5.):
-    """
-    Calibrates the parameters of the filters used at the 1st and 2nd orders
-    of the scattering transform.
-
-    These filterbanks share the same low-pass filterbank, but use a
-    different Q: Q_1 = Q and Q_2 = 1.
-
-    The dictionaries for the band-pass filters have keys which are 2-tuples
-    of the type (j, n), where n is an integer >=0 counting the filters (for
-    identification purposes) and j is an integer >= 0 denoting the maximal
-    subsampling 2**j which can be performed on a signal convolved with this
-    filter without aliasing.
-
-    Parameters
-    ----------
-    J : int
-        maximal scale of the scattering (controls the number of wavelets)
-    Q : int
-        number of wavelets per octave for the first order
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5)
-    sigma0 : float, optional
-        frequential width of the low-pass filter at scale J=0
-        (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
-        Defaults to 1e-1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
-
-    Returns
-    -------
-    sigma_low : float
-        frequential width of the low-pass filter
-    xi1 : dictionary
-        dictionary containing the center frequencies of the first order
-        filters. See above for a decsription of the keys.
-    sigma1 : dictionary
-        dictionary containing the frequential width of the first order
-        filters. See above for a description of the keys.
-    xi2 : dictionary
-        dictionary containing the center frequencies of the second order
-        filters. See above for a decsription of the keys.
-    sigma2 : dictionary
-        dictionary containing the frequential width of the second order
-        filters. See above for a description of the keys.
-    """
-    pass
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
