@@ -173,7 +173,10 @@ def test_against_standard_computations(device, backend):
 
     scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,
             sigma_0=sigma, method='integral',
-            integral_powers=integral_powers, max_order=2, backend=backend, frontend='torch').to(device)
+            integral_powers=integral_powers, max_order=2, backend=backend, frontend='torch')
+
+    scattering.to(device)
+    x = x.to(device)
 
     order_0 = backend.compute_integrals(x, integral_powers)
     scattering.max_order = 2
