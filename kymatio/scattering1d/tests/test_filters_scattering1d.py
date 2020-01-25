@@ -38,7 +38,7 @@ def test_morlet_1d():
     xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
     sigma_over_xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
     for N in size_signal:
-        for xi in sigma_range:
+        for xi in xi_range:
             for xi_over_sigma in xi_over_sigma_range:
                 sigma = xi * sigma_over_xi
                 # get the morlet for these parameters
