@@ -7,8 +7,8 @@ from ...backend.base_backend import FFT
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, _iscomplex, _isreal
 
+from ...backend.numpy_backend import modulus, _iscomplex, _isreal
 
 
 class Pad(object):

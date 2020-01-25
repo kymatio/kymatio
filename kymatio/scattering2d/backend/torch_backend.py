@@ -145,8 +145,6 @@ class SubsampleFourier(object):
         return out
 
 
-
-
 def concatenate(arrays):
     return torch.stack(arrays, axis=-3)
 
