@@ -135,7 +135,7 @@ def test_cdgmm3d(device, backend, inplace):
         y = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
         with pytest.raises(RuntimeError) as record:
             backend.cdgmm3d(x, y)
-        assert "for cpu tensors" in record.value.args[0]
+        assert "for CPU tensors" in record.value.args[0]
 
 
 @pytest.mark.parametrize("device", devices)

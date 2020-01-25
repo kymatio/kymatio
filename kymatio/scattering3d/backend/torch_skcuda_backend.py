@@ -63,7 +63,7 @@ def cdgmm3d(A, B, inplace=False):
         raise RuntimeError('A and B should be same type.')
 
     if not A.is_cuda:
-        raise RuntimeError('Use the torch backend for cpu tensors.')
+        raise RuntimeError('Use the torch backend for CPU tensors.')
 
     C = A.new(A.shape) if not inplace else A
     m, n = B.nelement() // 2, A.nelement() // B.nelement()
