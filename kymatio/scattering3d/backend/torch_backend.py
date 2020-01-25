@@ -269,45 +269,6 @@ def cdgmm3d(A, B, inplace=False):
     return C if not inplace else A.copy_(C)
 
 
-def finalize(s_order_1, s_order_2, max_order):
-    """Concatenate scattering of different orders.
-        Parameters
-        ----------
-        s0 : tensor
-            Tensor which contains the zeroth order scattering coefficents.
-        s1 : tensor
-            Tensor which contains the first order scattering coefficents.
-        s2 : tensor
-            Tensor which contains the second order scattering coefficents.
-
-        Returns
-        -------
-        s : tensor
-            Final output. Scattering transform.
-    """
-    s_order_1 = torch.stack(s_order_1, 2)
-    if max_order == 2:
-        s_order_2 = torch.stack(s_order_2, 2)
-        return torch.cat([s_order_1, s_order_2], dim=1)
-    else:
-        return s_order_1
-
-
-def aggregate(x):
-    """Aggregation of scattering coefficents.
-        Parameters
-        ----------
-        x : list
-            List of tensors.
-
-        Returns
-        -------
-        out : tensor
-            Stacked scattering coefficents.
-
-    """
-    return torch.stack([arr[..., 0] for arr in x], 1)
-
 def concatenate(arrays, L):
     S = torch.stack(arrays, dim=1)
 

@@ -133,7 +133,6 @@ backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_r
                                  'compute_integrals', 'concatenate'])
 
 backend.name = 'torch_skcuda'
-backend.aggregate = aggregate
 backend.cdgmm3d = cdgmm3d
 backend.fft = fft
 backend.concatenate = concatenate
