@@ -430,6 +430,9 @@ class TestScatteringTorch2D:
         scattering.to(device)
         S = S.to(device)
         Sg = scattering(x)
+        if multigpu and device == 'cuda':
+            for i in range(5):  # Just to avoid stochastic bugs...
+                Sg = scattering(x)
         assert torch.allclose(Sg, S)
 
         scattering = Scattering2D(J, shape=(M, N), pre_pad=pre_pad,

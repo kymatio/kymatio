@@ -5,9 +5,11 @@ import math
 import os
 import io
 import numpy as np
+import torch.nn as nn
 
 
 backends = []
+multiple_devices = [False]
 
 try:
     if torch.cuda.is_available():
@@ -15,6 +17,9 @@ try:
         import cupy
         from kymatio.scattering1d.backend.torch_skcuda_backend import backend
         backends.append(backend)
+
+        if torch.cuda.device_count() > 1:
+            multiple_devices.append(True)
 except:
     pass
 
@@ -72,10 +77,10 @@ def test_simple_scatterings(device, backend, random_state=42):
 
             assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
 
-
+@pytest.mark.parametrize('multigpu', multiple_devices)
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_sample_scattering(device, backend):
+def test_sample_scattering(device, backend, multigpu):
     """
     Applies scattering on a stored signal to make sure its output agrees with
     a previously calculated version.
@@ -98,6 +103,11 @@ def test_sample_scattering(device, backend):
     x = x.squeeze(1)
 
     scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').to(device)
+
+    if multigpu and device == 'cuda':
+        scattering = nn.DataParallel(scattering)
+
+    scattering.to(device)
 
     # Reorder reference scattering from interleaved to concatenated orders.
     meta = scattering.meta()
@@ -133,6 +143,11 @@ def test_sample_scattering(device, backend):
         return
    
     Sx = scattering(x)
+
+    if multigpu and device == 'cuda':
+        for i in range(5): # Just to avoid stochastic bugs...
+            Sx = scattering(x)
+
     assert torch.allclose(Sx, Sx0)
 
 
