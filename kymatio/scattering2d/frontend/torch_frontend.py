@@ -5,6 +5,19 @@ from kymatio.scattering2d.core.scattering2d import scattering2d
 from ...frontend.torch_frontend import ScatteringTorch
 import torch.nn as nn
 
+
+class filters_(nn.Module):
+    def __init__(self, J, f):
+        super(filters_, self).__init__()
+        self.j = J
+        self.filters = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
+
+    def __getitem__(self, key):
+        if key == 'j':
+            return self.j
+        if key == 'filters':
+            return self.filters
+
 class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
     def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend='torch'):
         ScatteringTorch.__init__(self)
@@ -20,13 +33,17 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
             will create the filters as numpy array, and then, it
             saves those arrays as module's buffers."""
         # Create the filters
-
-        f = self.phi['filters']
-        self.phi['filters'] = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
+        self.phi_ = filters_(self.phi['j'], self.phi['filters'])
+        self.psi_ = nn.ModuleList()
+        #f = self.phi['filters']
+        #self.phi['filters'] = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
 
         for i in range(len(self.psi)):
-            f = self.psi[i]['filters']
-            self.psi[i]['filters'] = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
+            psi = filters_(self.psi[i]['j'], self.psi[i]['filters'])
+            self.psi_.append(psi)
+            #nn.ModuleDict(psi[i].j)
+            #f = self.psi[i]['filters']
+            #self.psi[i]['filters'] = nn.ParameterList([nn.Parameter(torch.from_numpy(f[j]).unsqueeze(-1)) for j in range(len(f))])
 
 
     def scattering(self, input):
@@ -77,7 +94,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         input = input.reshape((-1,) + signal_shape)
 
         S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
-                            self.L, self.phi, self.psi, self.max_order)
+                            self.L, self.phi_, self.psi_, self.max_order)
 
         scattering_shape = S.shape[-3:]
 
