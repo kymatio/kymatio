@@ -79,31 +79,6 @@ def test_gauss_1d():
         assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
 
 
-def test_get_max_dyadic_subsampling():
-    """
-    Tests on the subsampling formula for wavelets, to check that the retained
-    value does not create aliasing (the wavelet should have decreased by
-    a relative value of 1e-2 at the border of the aliasing.)
-    """
-    N = 2**12
-    Q_range = np.arange(1, 20, dtype=int)
-    J = 7
-    for Q in Q_range:
-        xi_max = compute_xi_max(Q)
-        xi_range = xi_max * np.power(0.5, np.arange(J * Q) / float(Q))
-        for xi in xi_range:
-            sigma = compute_sigma_psi(xi, Q)
-            j = get_max_dyadic_subsampling(xi, sigma)
-            # Check for subsampling. If there is no subsampling, the filters
-            # cannot be aliased, so no need to check them.
-            if j > 0:
-                # compute the corresponding Morlet
-                psi_f = morlet_1d(N, xi, sigma)
-                # find the integer k such that
-                k = N // 2**(j + 1)
-                assert np.abs(psi_f[k]) / np.max(np.abs(psi_f)) < 1e-2
-
-
 def test_compute_temporal_support():
     # Define constant averaging filter. This will be "too long" to avoid
     # border effects.
