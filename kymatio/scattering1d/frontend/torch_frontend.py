@@ -52,23 +52,42 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         """This function loads filters from the module's buffer """
         buffer_dict = dict(self.named_buffers())
         n = 0
-        
+
+
+        phi_f = {}
+
         for k in self.phi_f.keys():
             if type(k) != str:
-                self.phi_f[k] = buffer_dict['tensor' + str(n)]
+                phi_f[k] = buffer_dict['tensor' + str(n)]
                 n += 1
-        
+            else:
+                phi_f[k] = self.phi_f[k]
+
+        psi1_f = []
+
         for psi_f in self.psi1_f:
+            psi_f_ = {}
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    psi_f_[sub_k] = buffer_dict['tensor' + str(n)]
                     n += 1
-        
+                else:
+                    psi_f_[sub_k] = psi_f[sub_k]
+            psi1_f.append(psi_f_)
+
+        psi2_f = []
+
         for psi_f in self.psi2_f:
+            psi_f_ = {}
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
+                    psi_f_[sub_k] = buffer_dict['tensor' + str(n)]
                     n += 1
+                else:
+                    psi_f_[sub_k] = psi_f[sub_k]
+            psi2_f.append(psi_f_)
+
+        return psi1_f, psi2_f, phi_f
 
     def scattering(self, x):
         """Apply the scattering transform
@@ -111,12 +130,12 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 
         x = x.reshape((-1, 1) + signal_shape)
 
-        self.load_filters()
+        psi1_f, psi2_f, phi_f = self.load_filters()
 
         # get the arguments before calling the scattering
         # treat the arguments
         if self.vectorize:
-            if not(self.average):
+            if not self.average:
                 raise ValueError(
                     'Options average=False and vectorize=True are ' +
                     'mutually incompatible. Please set vectorize to False.')
@@ -126,7 +145,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             size_scattering = 0
 
         
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, psi1_f, psi2_f, phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,
