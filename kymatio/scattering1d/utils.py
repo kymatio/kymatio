@@ -1,6 +1,7 @@
 import numpy as np
 import math
-from .filter_bank import scattering_filter_factory
+from .filter_bank import scattering_filter_factory, compute_params_filterbank
+
 
 def compute_border_indices(J, i0, i1):
     """
