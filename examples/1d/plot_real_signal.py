@@ -97,7 +97,8 @@ plt.title('Original signal')
 # We now plot the zeroth-order scattering coefficient, which is simply an
 # average of the original signal at the scale `2**J`.
 
-plt.figure(figsize=(8, 2))
+plt.figure(figsize=(8, 8))
+plt.subplot(3, 1, 1)
 plt.plot(Sx[order0][0])
 plt.title('Zeroth-order scattering')
 
@@ -105,7 +106,7 @@ plt.title('Zeroth-order scattering')
 # We then plot the first-order coefficients, which are arranged along time
 # and log-frequency.
 
-plt.figure(figsize=(8, 2))
+plt.subplot(3, 1, 2)
 plt.imshow(Sx[order1], aspect='auto')
 plt.title('First-order scattering')
 
@@ -115,7 +116,7 @@ plt.title('First-order scattering')
 # frequency and one second-order frequency. Here, both indices are mixed along
 # the vertical axis.
 
-plt.figure(figsize=(8, 2))
+plt.subplot(3, 1, 3)
 plt.imshow(Sx[order2], aspect='auto')
 plt.title('Second-order scattering')
 
