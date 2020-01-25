@@ -31,6 +31,7 @@ class FFT:
             RuntimeError
                 In the event that we are going from complex to real and not doing
                 the inverse FFT or in the event x is not contiguous.
+
             TypeError
                 In the event that x does not have a final dimension 2 i.e. not
                 complex.
@@ -39,7 +40,6 @@ class FFT:
             -------
             output : tensor
                 Result of FFT or IFFT.
-
         """
         if direction == 'C2R':
             if not inverse:
@@ -59,4 +59,3 @@ class FFT:
 
     def __call__(self, x, direction='C2C', inverse=False):
         return self.fft_forward(x, direction=direction, inverse=inverse)
-    
