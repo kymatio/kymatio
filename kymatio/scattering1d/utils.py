@@ -226,8 +226,12 @@ def compute_meta_scattering(J, Q, max_order=2):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-        calibrate_scattering_filters(J, Q)
+    sigma0 = 0.1
+    sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
+    xi1s, sigma1s, j1s = compute_params_filterbank(
+        sigma_low, Q, r_psi=r_psi, alpha=alpha)
+    xi2s, sigma2s, j2s = compute_params_filterbank(
+        sigma_low, 1, r_psi=r_psi, alpha=alpha)
 
     meta = {}
 
