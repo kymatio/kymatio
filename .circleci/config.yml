@@ -7,7 +7,7 @@ jobs:
   build:
     branches:
       only:
-        - auto_site
+        - master
     docker:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
