@@ -137,10 +137,18 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         if (input_array.dim() != 4):
             raise (RuntimeError('Input tensor must be 4D'))
 
+        batch_shape = input_array.shape[:-3]
+        signal_shape = input_array.shape[-3:]
+
         x = input_array.new(input_array.shape + (2,)).fill_(0)
         x[..., 0] = input_array
 
-        return self.scattering(x)
+        S = self.scattering(x)
+        scattering_shape = S.shape[1:]
+
+        S = S.reshape(batch_shape + scattering_shape)
+
+        return S
 
 
 __all__ = ['HarmonicScatteringTorch3D']
