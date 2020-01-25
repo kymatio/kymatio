@@ -614,9 +614,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         T = 2**J_support
 
         psi_f = {}
-        psi_f[0] = morlet_1d(
-            T, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-            eps=eps)
+        psi_f[0] = morlet_1d(T, xi2[n2], sigma2[n2])
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -629,9 +627,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # can only compute them with T=2**J_support
     for (n1, j1) in enumerate(j1s):
         T = 2**J_support
-        psi1_f.append({0: morlet_1d(
-            T, xi1[n1], sigma1[n1], normalize=normalize,
-            P_max=P_max, eps=eps)})
+        psi1_f.append({0: morlet_1d(T, xi1[n1], sigma1[n1])})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
