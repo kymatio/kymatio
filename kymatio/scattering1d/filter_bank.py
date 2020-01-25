@@ -424,7 +424,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
-    h = ifft(np.reshape(h_f[0], (1, -1)), axis=1)
+    h = ifft(np.reshape(phi_f[0], (1, -1)), axis=1)
     half_support = h.shape[1] // 2
     # compute ||h - h_[-T, T]||_1
     l1_residual = np.fliplr(
