@@ -4,7 +4,6 @@ import tensorflow as tf
 def _iscomplex(x):
     return x.dtype == np.complex64 or x.dtype == np.complex128
 
-
 def _isreal(x):
     return x.dtype == np.float32 or x.dtype == np.float64
 
