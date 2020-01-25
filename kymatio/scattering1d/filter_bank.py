@@ -153,54 +153,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
 
 
 def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
-    """
-    Computes the Fourier transform of a low pass gaussian window.
-
-    \\hat g_{\\sigma}(\\omega) = e^{-\\omega^2 / 2 \\sigma^2}
-
-    Parameters
-    ----------
-    N : int
-        size of the temporal support
-    sigma : float
-        bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max : int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float, optional
-        required machine precision (to choose the adequate P)
-
-    Returns
-    -------
-    g_f : array_like
-        numpy array of size (N,) containing the Fourier transform of the
-        filter (with the frequencies in the np.fft.fftfreq convention).
-    """
-    # Find the adequate value of P
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
-    # switch cases
-    if P == 1:
-        freqs_low = np.fft.fftfreq(N)
-    elif P > 1:
-        freqs_low = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
-    # define the low pass
-    g_f = np.exp(-freqs_low**2 / (2 * sigma**2))
-    # periodize it
-    g_f = periodize_filter_fourier(g_f, nperiods=2 * P - 1)
-    # normalize the signal
-    g_f *= get_normalizing_factor(g_f, normalize=normalize)
-    # return the Fourier transform
-    return g_f
+    return morlet_1d(N, xi=None, sigma=sigma)
 
 
 def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
