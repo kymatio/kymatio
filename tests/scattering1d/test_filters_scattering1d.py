@@ -2,8 +2,7 @@
 Testing all functions in filters_bank
 """
 from kymatio.scattering1d.filter_bank import (periodize_filter_fourier,
-    compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
-    get_max_dyadic_subsampling, gauss_1d)
+    compute_temporal_support, morlet_1d, get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
 import math
 import pytest
@@ -36,13 +35,12 @@ def test_morlet_1d():
         up to 1% accuracy
     """
     size_signal = [2**13]
-    Q_range = np.arange(1, 20, dtype=int)
+    xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
+    sigma_over_xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
     for N in size_signal:
-        for Q in Q_range:
-            xi_max = compute_xi_max(Q)
-            xi_range = xi_max / np.power(2, np.arange(7))
-            for xi in xi_range:
-                sigma = compute_sigma_psi(xi, Q)
+        for xi in sigma_range:
+            for xi_over_sigma in xi_over_sigma_range:
+                sigma = xi * sigma_over_xi
                 # get the morlet for these parameters
                 psi_f = morlet_1d(N, xi, sigma)
                 # make sure that it has zero mean
