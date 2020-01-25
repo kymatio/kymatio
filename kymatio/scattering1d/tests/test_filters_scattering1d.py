@@ -115,31 +115,17 @@ def test_gauss_1d():
     """
     N = 2**13
     J = 7
-    P_range = [1, 5]
     sigma0 = 0.1
     tol = 1e-7
     for j in range(1, J + 1):
-        for P in P_range:
-            sigma_low = sigma0 / math.pow(2, j)
-            g_f = gauss_1d(N, sigma_low, P_max=P)
-            # check the symmetry of g_f
-            assert np.max(np.abs(g_f[1:N // 2] - g_f[N // 2 + 1:][::-1])) < tol
-            # make sure that it has a fast decay in time
-            phi = np.fft.ifft(g_f)
-            assert np.min(phi) > - tol
-            assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
-
-    Q = 1
-    xi = compute_xi_max(Q)
-    sigma = compute_sigma_psi(xi, Q)
-
-    with pytest.raises(ValueError) as ve:
-        gauss_1d(N, xi, sigma, P_max=5.1)
-    assert "should be an int" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        gauss_1d(N, xi, sigma, P_max=-5)
-    assert "should be non-negative" in ve.value.args[0]
+        sigma_low = sigma0 / math.pow(2, j)
+        g_f = gauss_1d(N, sigma_low)
+        # check the symmetry of g_f
+        assert np.max(np.abs(g_f[1:N // 2] - g_f[N // 2 + 1:][::-1])) < tol
+        # make sure that it has a fast decay in time
+        phi = np.fft.ifft(g_f)
+        assert np.min(phi) > - tol
+        assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
 
 
 def test_calibrate_scattering_filters():
