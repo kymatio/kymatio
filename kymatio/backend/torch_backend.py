@@ -124,13 +124,13 @@ class Modulus():
             contains the complex modulus of x, while output[..., 1] = 0.
     """
     def __call__(self, x):
-        sanity_check(x)
+        type_checks(x)
 
         norm = torch.zeros_like(x)
         norm[..., 0] = modulus(x)
         return norm
 
-def sanity_check(x):
+def type_checks(x):
     if not _iscomplex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
@@ -171,12 +171,12 @@ def cdgmm(A, B, inplace=False):
 
     """
     if not _isreal(B):
-        sanity_check(B)
+        type_checks(B)
     else:
         if not B.is_contiguous():
             raise RuntimeError('Tensors must be contiguous.')
 
-    sanity_check(A)
+    type_checks(A)
 
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')

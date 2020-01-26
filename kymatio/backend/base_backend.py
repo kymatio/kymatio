@@ -1,11 +1,11 @@
 
 
 class FFT:
-    def __init__(self, fft, ifft, irfft, sanity_checks):
+    def __init__(self, fft, ifft, irfft, type_checks):
         self.fft = fft
         self.ifft = ifft
         self.irfft = irfft
-        self.sanity_checks = sanity_checks
+        self.sanity_checks = type_checks
 
     def fft_forward(self, x, direction='C2C', inverse=False):
         """Interface with FFT routines for any dimensional signals and any backend signals.

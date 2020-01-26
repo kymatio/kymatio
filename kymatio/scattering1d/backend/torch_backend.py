@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, Modulus, concatenate, sanity_check, cdgmm, real
+from ...backend.torch_backend import _iscomplex, Modulus, concatenate, type_checks, cdgmm, real
 from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
@@ -144,5 +144,5 @@ backend.pad_1d = pad_1d
 backend.fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
                   lambda x: torch.ifft(x, 1, normalized=False),
                   lambda x: torch.irfft(x, 1, normalized=False, onesided=False),
-                  sanity_check)
+                  type_checks)
 backend.concatenate = lambda x: concatenate(x, -2)
