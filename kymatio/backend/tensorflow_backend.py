@@ -7,7 +7,7 @@ def _iscomplex(x):
 def _isreal(x):
     return x.dtype == np.float32 or x.dtype == np.float64
 
-class Modulus(object):
+class Modulus():
     """This class implements a modulus transform for complex numbers.
 
     Parameters
@@ -16,7 +16,7 @@ class Modulus(object):
 
     Returns
     ----------
-    output: a real tensor equal to the modulus of x.
+    output: a complex tensor equal to the modulus of x.
 
     Usage
     ----------

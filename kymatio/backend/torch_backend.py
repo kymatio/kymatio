@@ -104,7 +104,7 @@ class ModulusStable(Function):
 # shortcut for ModulusStable.apply
 modulus = ModulusStable.apply
 
-class Modulus(object):
+class Modulus():
     """This class implements a modulus transform for complex numbers.
 
         Usage

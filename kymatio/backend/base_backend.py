@@ -8,9 +8,9 @@ class FFT:
         self.sanity_checks = sanity_checks
 
     def fft_forward(self, x, direction='C2C', inverse=False):
-        """Interface with torch FFT routines for 2D signals.
+        """Interface with FFT routines for any dimensional signals and any backend signals.
 
-            Example
+            Example (for Torch)
             -------
             x = torch.randn(128, 32, 32, 2)
             x_fft = fft(x)
@@ -18,7 +18,7 @@ class FFT:
 
             Parameters
             ----------
-            x : tensor
+            x : input
                 Complex input for the FFT.
             direction : string
                 'C2R' for complex to real, 'C2C' for complex to complex.
@@ -32,13 +32,10 @@ class FFT:
                 In the event that we are going from complex to real and not doing
                 the inverse FFT or in the event x is not contiguous.
 
-            TypeError
-                In the event that x does not have a final dimension 2 i.e. not
-                complex.
 
             Returns
             -------
-            output : tensor
+            output :
                 Result of FFT or IFFT.
         """
         if direction == 'C2R':
