@@ -201,12 +201,9 @@ def compute_meta_scattering(J, Q, max_order=2):
 
     Returns
     -------
-    meta : dictionary
-        A dictionary with the following keys:
+    meta_phi, meta_psi: filters with their des cription
+        Each filter is filled with the following keys:
 
-        - `'order`' : tensor
-            A Tensor of length `C`, the total number of scattering
-            coefficients, specifying the scattering order.
         - `'xi'` : tensor
             A Tensor of size `(C, max_order)`, specifying the center
             frequency of the filter used at each order (padded with NaNs).
@@ -216,64 +213,34 @@ def compute_meta_scattering(J, Q, max_order=2):
         - `'j'` : tensor
             A Tensor of size `(C, max_order)`, specifying the dyadic scale
             of the filter used at each order (padded with NaNs).
-        - `'n'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the indices of
-            the filters used at each order (padded with NaNs).
-        - `'key'` : list
-            The tuples indexing the corresponding scattering coefficient
-            in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-        calibrate_scattering_filters(J, Q)
+    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = calibrate_scattering_filters(J, Q)
 
-    meta = {}
+    meta_phi = {'sigma':sigma_low}
 
-    meta['order'] = [[], [], []]
-    meta['xi'] = [[], [], []]
-    meta['sigma'] = [[], [], []]
-    meta['j'] = [[], [], []]
-    meta['n'] = [[], [], []]
-    meta['key'] = [[], [], []]
+    meta_psi = {}
 
-    meta['order'][0].append(0)
-    meta['xi'][0].append(())
-    meta['sigma'][0].append(())
-    meta['j'][0].append(())
-    meta['n'][0].append(())
-    meta['key'][0].append(())
 
     for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
-        meta['order'][1].append(1)
-        meta['xi'][1].append((xi1,))
-        meta['sigma'][1].append((sigma1,))
-        meta['j'][1].append((j1,))
-        meta['n'][1].append((n1,))
-        meta['key'][1].append((n1,))
+        f1 = {}
+        f1['xi'] = xi1
+        f1['sigma'] = sigma1
+        f1['j'] = j1
+        meta_psi[(n1,)] = f1
 
         if max_order < 2:
             continue
 
         for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
             if j2 > j1:
-                meta['order'][2].append(2)
-                meta['xi'][2].append((xi1, xi2))
-                meta['sigma'][2].append((sigma1, sigma2))
-                meta['j'][2].append((j1, j2))
-                meta['n'][2].append((n1, n2))
-                meta['key'][2].append((n1, n2))
+                f1 = {}
+                f2 = {}
+                f1['xi'] = xi1
+                f1['sigma'] = sigma1
+                f1['j'] = j1
+                f2['xi'] = xi2
+                f2['sigma'] = sigma2
+                f2['j'] = j2
+                meta_psi[(n1, n2)] = (f1, f2)
 
-    for field, value in meta.items():
-        meta[field] = value[0] + value[1] + value[2]
-
-    pad_fields = ['xi', 'sigma', 'j', 'n']
-    pad_len = max_order
-
-    for field in pad_fields:
-        meta[field] = [x + (math.nan,) * (pad_len - len(x)) for x in meta[field]]
-
-    array_fields = ['order', 'xi', 'sigma', 'j', 'n']
-
-    for field in array_fields:
-        meta[field] = np.array(meta[field])
-
-    return meta
+    return meta_phi, meta_psi
