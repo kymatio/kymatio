@@ -118,7 +118,9 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
                 'The input should be a torch.cuda.FloatTensor, '
                 'a torch.FloatTensor or a torch.DoubleTensor.')
 
-        input_array = input_array.contiguous()
+        if input_array.dim() < 3:
+            raise RuntimeError('Input tensor must have at least three '
+                               'dimensions.')
 
         if (input_array.shape[-1] != self.O or input_array.shape[-2] != self.N
             or input_array.shape[-3] != self.M):
@@ -126,11 +128,12 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
                 'Tensor must be of spatial size (%i, %i, %i).' % (
                     self.M, self.N, self.O))
 
-        if input_array.dim() != 4:
-            raise RuntimeError('Input tensor must be 4D.')
+        input_array = input_array.contiguous()
 
         batch_shape = input_array.shape[:-3]
         signal_shape = input_array.shape[-3:]
+
+        input_array = input_array.reshape((-1,) + signal_shape)
 
         x = input_array.new(input_array.shape + (2,)).fill_(0)
         x[..., 0] = input_array
