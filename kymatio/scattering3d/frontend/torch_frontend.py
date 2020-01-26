@@ -42,7 +42,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         List of exponents to the power of which moduli are raised before
         integration. Used with method == 'standard', method == 'integral'
     """
-    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='standard', points=None,
+    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='integral', points=None,
                  integral_powers=(0.5, 1., 2.), backend='torch'):
         ScatteringTorch.__init__(self)
         ScatteringBase3D.__init__(self, J, shape, L, sigma_0, max_order,
@@ -77,22 +77,12 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         for k in range(len(self.filters)):
             self.filters[k] = buffer_dict['tensor' + str(k)]
 
-        # NOTE: 'local' isn't really used anywhere and could be removed.
-        methods = ['standard', 'local', 'integral']
+        methods = ['integral']
         if not self.method in methods:
             raise ValueError('method must be in {}'.format(methods))
+
         if self.method == 'integral': \
-                self.averaging = lambda x, j: self.backend.compute_integrals(self.backend.fft(x, inverse=True)[..., 0],
-                                                                             self.integral_powers)
-        elif self.method == 'local':
-            self.averaging = lambda x, j: \
-                self.backend._compute_local_scattering_coefs(x,
-                                                             self.tensor_gaussian_filter, j, self.points)
-        elif self.method == 'standard':
-            self.averaging = lambda x, j: \
-                self.backend._compute_standard_scattering_coefs(x,
-                                                                self.tensor_gaussian_filter, self.J,
-                                                                self.backend.subsample)
+                self.averaging = lambda x: self.backend.compute_integrals(x, self.integral_powers)
 
         return scattering3d(input_array, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
                             J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
