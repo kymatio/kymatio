@@ -1,4 +1,7 @@
-BACKEND_NAME = 'torch'
+import torch
+
+
+BACKEND_NAME = 'torch_skcuda'
 
 
 def _is_complex(x):
