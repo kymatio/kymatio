@@ -113,13 +113,15 @@ class ScatteringBaseHarmonic3D(ScatteringBase):
 class ScatteringBase3D(ScatteringBase):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
                  rotation_covariant=True, method='standard', points=None,
-                 integral_powers=(0.5, 1., 2.), backend=None, pre_pad=False):
+                 integral_powers=(0.5, 1., 2.), backend=None, pre_pad=False,
+                 orientations='cartesian'):
         super(ScatteringBase3D, self).__init__()
         self.J = J
         self.shape = shape
         self.L = L
         self.sigma_0 = sigma_0
         self.pre_pad = pre_pad
+        self.orientations = orientations
 
         self.max_order = max_order
         self.rotation_covariant = rotation_covariant
@@ -143,7 +145,7 @@ class ScatteringBase3D(ScatteringBase):
 
     def create_filters(self):
         self.filters = filter_bank(self.M_padded, self.N_padded, self.P_padded, self.J,
-                orientations="cartesian")
+                orientations=self.orientations)
         self.phi, self.psi = self.filters['phi'], self.filters['psi']
 
 

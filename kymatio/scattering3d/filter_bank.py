@@ -195,8 +195,6 @@ standard_orientations = {'cartesian' : [(1, 0, 0), (0, 1, 0), (0, 0, 1)]}
 def filter_bank(M, N, P, J, orientations='cartesian'):
     if isinstance(orientations, str):
         orientations = np.array(standard_orientations[orientations])
-
-
     filters = {}
     filters['psi'] = []
 
