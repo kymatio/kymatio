@@ -1,4 +1,5 @@
 import torch
+from skcuda import cublas
 
 
 BACKEND_NAME = 'torch_skcuda'
