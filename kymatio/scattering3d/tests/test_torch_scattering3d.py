@@ -10,14 +10,20 @@ from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 
 backends = []
 
+skcuda_available = False
 try:
-    if torch.cuda.is_available():
+    if torch.cuda_is_available():
         from skcuda import cublas
         import cupy
-        from kymatio.scattering3d.backend.torch_skcuda_backend import backend
-        backends.append(backend)
+        skcuda_available = True
 except:
-    pass
+    Warning('torch_skcuda backend not available.')
+
+if skcuda_available:
+    from kymatio.scattering2d.backend.torch_skcuda_backend import backend
+    backends.append(backend)
+    if 'cuda' in devices:
+        backends_devices.append((backend, 'cuda'))
 
 
 from kymatio.scattering3d.backend.torch_backend import backend
