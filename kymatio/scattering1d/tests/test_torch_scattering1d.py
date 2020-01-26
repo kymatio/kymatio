@@ -9,14 +9,18 @@ import numpy as np
 
 backends = []
 
+skcuda_available = False
 try:
     if torch.cuda.is_available():
         from skcuda import cublas
         import cupy
-        from kymatio.scattering1d.backend.torch_skcuda_backend import backend
-        backends.append(backend)
+        skcuda_available = True
 except:
-    pass
+    Warning('torch_skcuda backend not available.')
+
+if skcuda_available:
+    from kymatio.scattering1d.backend.torch_skcuda_backend import backend
+    backends.append(backend)
 
 from kymatio.scattering1d.backend.torch_backend import backend
 backends.append(backend)
