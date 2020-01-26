@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, Modulus, concatenate, sanity_check
+from ...backend.torch_backend import _iscomplex, Modulus, concatenate, sanity_check, cdgmm
 from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
@@ -148,41 +148,6 @@ def real(x):
     """
     return x[..., 0]
 
-def fft1d_c2c(x):
-    """Compute the 1D FFT of a complex signal
-
-    Input
-    -----
-    x : tensor
-        A tensor of size (..., T, 2), where x[..., 0] is the real part and
-        x[..., 1] is the imaginary part.
-
-    Returns
-    -------
-    x_f : tensor
-        A tensor of the same size as x containing its Fourier transform in the
-        standard PyTorch FFT ordering.
-    """
-    return torch.fft(x, signal_ndim=1)
-
-def ifft1d_c2c(x):
-    """Compute the normalized 1D inverse FFT of a complex signal
-
-    Input
-    -----
-    x_f : tensor
-        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
-        x[..., 1] is the imaginary part. The frequencies are assumed to be in
-        the standard PyTorch FFT ordering.
-
-    Returns
-    -------
-    x : tensor
-        A tensor of the same size of x_f containing the normalized inverse
-        Fourier transform of x_f.
-    """
-    return torch.ifft(x, signal_ndim=1)
-
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'torch'
@@ -190,6 +155,7 @@ backend.modulus_complex = Modulus()
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad
+backend.cdgmm = cdgmm
 backend.pad = pad
 backend.pad_1d = pad_1d
 backend.fft = FFT(lambda x: torch.fft(x, 1, normalized=False),

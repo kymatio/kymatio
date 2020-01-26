@@ -58,8 +58,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     """
     subsample_fourier = backend.subsample_fourier
     modulus_complex = backend.modulus_complex
-    fft = backend.fft
     real = backend.real
+    fft = backend.fft
+    cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
 
@@ -82,10 +83,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     k0 = max(J - oversampling, 0)
 
     if average:
-        S_0_c = U_0_hat * phi[0]
+        S_0_c = cdgmm(U_0_hat, phi[0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
-        S_0_c = fft(S_0_hat, 'C2C', inverse=True)
-        S_0_r = real(S_0_c)
+        S_0_r = fft(S_0_hat, 'C2R', inverse=True)
 
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
@@ -105,7 +105,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
 
-        U_1_c = U_0_hat * psi1[n1][0] 
+        U_1_c = cdgmm(U_0_hat, psi1[n1][0])
         U_1_hat = subsample_fourier(U_1_c, 2**k1)
         U_1_c = fft(U_1_hat, 'C2C', inverse=True)
 
@@ -119,10 +119,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
 
-            S_1_c = U_1_hat * phi[k1]
+            S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
-            S_1_c = fft(S_1_hat, 'C2C', inverse=True)
-            S_1_r = real(S_1_c)
+            S_1_r = fft(S_1_hat, 'C2R', inverse=True)
 
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
@@ -147,7 +146,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                     # convolution + downsampling
                     k2 = max(j2 - k1 - oversampling, 0)
 
-                    U_2_c = U_1_hat * psi2[n2][k1]
+                    U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
                     # take the modulus 
                     U_2_c = fft(U_2_hat, 'C2C', inverse=True)
@@ -160,10 +159,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
 
-                        S_2_c = U_2_hat * phi[k1 + k2]
+                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
-                        S_2_c = fft(S_2_hat, 'C2C', inverse=True)
-                        S_2_r = real(S_2_c)
+                        S_2_r = fft(S_2_hat, 'C2R', inverse=True)
 
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:

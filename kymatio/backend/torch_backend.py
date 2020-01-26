@@ -203,14 +203,14 @@ def cdgmm(A, B, inplace=False):
     else:
         C = A.new(A.shape)
 
-        A_r = A[..., 0].view(-1, A.shape[-2]*A.shape[-3])
-        A_i = A[..., 1].view(-1, A.shape[-2]*A.shape[-3])
+        A_r = A[..., 0].view(-1, B.nelement()//2)
+        A_i = A[..., 1].view(-1, B.nelement()//2)
 
-        B_r = B[...,0].view(B.shape[-2]*B.shape[-3]).unsqueeze(0).expand_as(A_i)
-        B_i = B[..., 1].view(B.shape[-2]*B.shape[-3]).unsqueeze(0).expand_as(A_r)
+        B_r = B[..., 0].view(-1).unsqueeze(0).expand_as(A_r)
+        B_i = B[..., 1].view(-1).unsqueeze(0).expand_as(A_i)
 
-        C[..., 0].view(-1, C.shape[-2]*C.shape[-3])[:] = A_r * B_r - A_i * B_i
-        C[..., 1].view(-1, C.shape[-2]*C.shape[-3])[:] = A_r * B_i + A_i * B_r
+        C[..., 0].view(-1, B.nelement()//2)[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, B.nelement()//2)[:] = A_r * B_i + A_i * B_r
 
         return C if not inplace else A.copy_(C)
 

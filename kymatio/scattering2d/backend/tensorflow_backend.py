@@ -7,7 +7,7 @@ from collections import namedtuple
 BACKEND_NAME = 'tensorflow'
 
 
-from ...backend.tensorflow_backend import _iscomplex, _isreal, Modulus
+from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate
 from ...backend.base_backend import FFT
 
 class Pad(object):
@@ -108,41 +108,6 @@ def fft(x, direction='C2C', inverse=False):
     return output
 
 
-def cdgmm(A, B, inplace=False):
-    """
-        Complex pointwise multiplication between (batched) tensor A and tensor B.
-        Parameters
-        ----------
-        A : tensor
-            A is a complex tensor of size (B, C, M, N, 2)
-        B : tensor
-            B is a complex tensor of size (M, N) or real tensor of (M, N)
-        inplace : boolean, optional
-            if set to True, all the operations are performed inplace
-        Returns
-        -------
-        C : tensor
-            output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
-    """
-    if B.ndim != 2:
-        raise RuntimeError('The dimension of the second input must be 2.')
-
-    if not _iscomplex(A):
-        raise TypeError('The first input must be complex.')
-
-    if not _iscomplex(B) and not _isreal(B):
-        raise TypeError('The second input must be complex or real.')
-
-    if A.shape[-2:] != B.shape[-2:]:
-        raise RuntimeError('The inputs are not compatible for '
-                           'multiplication.')
-
-    return A * B
-
-def concatenate(arrays):
-    return tf.stack(arrays, axis=-3)
-
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 
@@ -156,4 +121,5 @@ backend.fft = FFT(lambda x: tf.signal.fft2d(x, name='ifft2d'),
                   lambda x: None)
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = concatenate
+backend.concatenate = lambda x: concatenate(x, -3)
+
