@@ -42,7 +42,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         List of exponents to the power of which moduli are raised before
         integration. Used with method == 'standard', method == 'integral'
     """
-    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='local', points=None,
+    def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='integral', points=None,
                  integral_powers=(0.5, 1., 2.), backend='torch'):
         ScatteringTorch.__init__(self)
         ScatteringBase3D.__init__(self, J, shape, L, sigma_0, max_order,
@@ -77,7 +77,6 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         for k in range(len(self.filters)):
             self.filters[k] = buffer_dict['tensor' + str(k)]
 
-        # NOTE: 'local' isn't really used anywhere and could be removed.
         methods = ['integral']
         if not self.method in methods:
             raise ValueError('method must be in {}'.format(methods))
