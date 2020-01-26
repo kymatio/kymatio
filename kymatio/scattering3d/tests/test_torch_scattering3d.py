@@ -277,35 +277,6 @@ def test_larger_scales(device, backend):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_scattering_methods(device, backend):
-    if backend.name == "torch_skcuda" and device == "cpu":
-        pytest.skip("The skcuda backend does not support CPU tensors.")
-
-    shape = (32, 32, 32)
-    J = 4
-    L = 3
-    sigma_0 = 1
-    x = torch.randn((1,) + shape).to(device)
-
-    scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0,
-            frontend='torch',backend=backend).to(device)
-
-    scattering.method = 'standard'
-    Sx = scattering(x)
-    scattering.rotation_covariant = False
-    Sx = scattering(x)
-
-    points = torch.zeros(1, 1, 3)
-    points[0,0,:] = torch.tensor(shape)/2
-
-    scattering.method = 'local'
-    scattering.points = points
-    Sx = scattering(x)
-    scattering.rotation_covariant = False
-    Sx = scattering(x)
-
-@pytest.mark.parametrize("device", devices)
-@pytest.mark.parametrize("backend", backends)
 def test_scattering_batch_shape_agnostic(device, backend):
     if backend.name == "torch_skcuda" and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
