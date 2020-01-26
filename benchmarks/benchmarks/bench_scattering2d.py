@@ -1,6 +1,9 @@
+import numpy as np
 import torch
 import kymatio.scattering2d.backend as backend
 from kymatio import Scattering2D
+
+from .common import SCATTERING_BENCHMARK_SIZE
 
 class BenchmarkScattering2D:
     params = [
@@ -10,24 +13,23 @@ class BenchmarkScattering2D:
                 "shape": (32, 32),
                 "L": 8,
             },
-            { # ImageNet-like. 224x224, 3 scales, 8 orientations
+            { # ImageNet-like. 256x256, 3 scales, 8 orientations
                 "J": 3,
-                "shape": (224, 224),
+                "shape": (256, 256),
                 "L": 8,
             },
-            { # A case with many scales (J=7) and few orientations (L=2)
-                "J": 7,
-                "shape": (224, 224),
+            { # A case with many scales (J=6) and few orientations (L=2)
+                "J": 6,
+                "shape": (256, 256),
                 "L": 2,
             },
-        ],
-        [
-            32,
         ]
     ]
-    param_names = ["sc_params", "batch_size"]
+    param_names = ["sc_params"]
 
-    def setup(self, sc_params, batch_size):
+    def setup(self, sc_params):
+        signal_size = int(np.prod(sc_params["shape"]))
+        batch_size = SCATTERING_BENCHMARK_SIZE // signal_size
         n_channels = 1
         scattering = Scattering2D(**sc_params)
         scattering.cpu()
@@ -40,8 +42,8 @@ class BenchmarkScattering2D:
         self.scattering = scattering
         self.x = x
 
-    def time_constructor(self, sc_params, batch_size):
+    def time_constructor(self, sc_params):
         Scattering2D(**sc_params)
 
-    def time_forward(self, sc_params, batch_size):
+    def time_forward(self, sc_params):
         (self.scattering).forward(self.x)
