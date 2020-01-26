@@ -9,7 +9,7 @@ from string import Template
 
 BACKEND_NAME = 'torch_skcuda'
 
-from ...backend.torch_backend import _iscomplex
+from ...backend.torch_backend import _is_complex
 from ...backend.torch_skcuda_backend import cdgmm
 
 @cupy.util.memoize(for_each_device=True)
@@ -72,7 +72,7 @@ class SubsampleFourier(object):
 
         out = x.new(size=[x.shape[0], x.shape[1] // k, x.shape[2] // k, 2])
 
-        if not _iscomplex(x):
+        if not _is_complex(x):
             raise TypeError('The x should be complex.')
 
         if not x.is_contiguous():
@@ -155,7 +155,7 @@ class Modulus(object):
 
         out = x.new(x.shape)
 
-        if not _iscomplex(x):
+        if not _is_complex(x):
             raise TypeError('The inputs should be complex.')
 
         if not x.is_contiguous():

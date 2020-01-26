@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, Modulus, concatenate, type_checks, cdgmm, real
+from ...backend.torch_backend import _is_complex, Modulus, concatenate, type_checks, cdgmm, real
 from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
@@ -33,7 +33,7 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    if not _iscomplex(x):
+    if not _is_complex(x):
         raise TypeError('The input should be complex.')
 
     N = x.shape[-2]

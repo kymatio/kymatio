@@ -6,7 +6,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, cdgmm, type_checks, Modulus, concatenate
+from ...backend.torch_backend import _is_complex, cdgmm, type_checks, Modulus, concatenate
 from ...backend.base_backend import FFT
 
 
@@ -127,7 +127,7 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
-        if not _iscomplex(x):
+        if not _is_complex(x):
             raise TypeError('The x should be complex.')
 
         if not x.is_contiguous():

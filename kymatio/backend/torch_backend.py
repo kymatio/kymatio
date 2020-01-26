@@ -3,10 +3,10 @@ import torch
 
 BACKEND_NAME = 'torch'
 
-def _iscomplex(x):
+def _is_complex(x):
     return x.shape[-1] == 2
 
-def _isreal(x):
+def _is_real(x):
     return x.shape[-1] == 1
 
 class ModulusStable(Function):
@@ -62,9 +62,10 @@ class ModulusStable(Function):
         ctx.dim = -1
         ctx.keepdim = False
 
-        output = (x[...,0]*x[...,0] + x[...,1]*x[...,1]).sqrt()
+        output = (x[...,0] * x[...,0] + x[...,1] * x[...,1]).sqrt()
 
         ctx.save_for_backward(x, output)
+
         return output
 
     @staticmethod
@@ -131,7 +132,7 @@ class Modulus():
         return norm
 
 def type_checks(x):
-    if not _iscomplex(x):
+    if not _is_complex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
     if not x.is_contiguous():
@@ -170,7 +171,7 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
     """
-    if not _isreal(B):
+    if not _is_real(B):
         type_checks(B)
     else:
         if not B.is_contiguous():
@@ -195,7 +196,7 @@ def cdgmm(A, B, inplace=False):
         if A.device.type == 'cuda':
             raise TypeError('Input must be on CPU.')
 
-    if _isreal(B):
+    if _is_real(B):
         if inplace:
             return A.mul_(B)
         else:
@@ -203,14 +204,14 @@ def cdgmm(A, B, inplace=False):
     else:
         C = A.new(A.shape)
 
-        A_r = A[..., 0].view(-1, B.nelement()//2)
-        A_i = A[..., 1].view(-1, B.nelement()//2)
+        A_r = A[..., 0].view(-1, B.nelement() // 2)
+        A_i = A[..., 1].view(-1, B.nelement() // 2)
 
         B_r = B[..., 0].view(-1).unsqueeze(0).expand_as(A_r)
         B_i = B[..., 1].view(-1).unsqueeze(0).expand_as(A_i)
 
-        C[..., 0].view(-1, B.nelement()//2)[:] = A_r * B_r - A_i * B_i
-        C[..., 1].view(-1, B.nelement()//2)[:] = A_r * B_i + A_i * B_r
+        C[..., 0].view(-1, B.nelement() // 2)[:] = A_r * B_r - A_i * B_i
+        C[..., 1].view(-1, B.nelement() // 2)[:] = A_r * B_i + A_i * B_r
 
         return C if not inplace else A.copy_(C)
 

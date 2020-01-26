@@ -1,9 +1,11 @@
 BACKEND_NAME = 'torch'
 
-def _iscomplex(x):
+
+def _is_complex(x):
     return x.shape[-1] == 2
 
-def _isreal(x):
+
+def _is_real(x):
     return x.shape[-1] == 1
 
 
@@ -42,11 +44,11 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
     """
-    if not _iscomplex(A):
+    if not _is_complex(A):
         raise TypeError('The input must be complex, indicated by a last '
                         'dimension of size 2.')
 
-    if not _iscomplex(B) and not _isreal(B):
+    if not _is_complex(B) and not _is_real(B):
         raise TypeError('The filter must be complex or real, indicated by a '
                         'last dimension of size 2 or 1, respectively.')
 
@@ -62,7 +64,7 @@ def cdgmm(A, B, inplace=False):
     if A.device.index != B.device.index:
         raise TypeError('Input and filter must be on the same GPU.')
 
-    if _isreal(B):
+    if _is_real(B):
         if inplace:
             return A.mul_(B)
         else:

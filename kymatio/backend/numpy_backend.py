@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def modulus(x):
     """
         This function implements a modulus transform for complex numbers.
@@ -19,12 +20,14 @@ def modulus(x):
     """
     return np.abs(x)
 
-def _iscomplex(x):
-    return x.dtype == np.complex64 or x.dtype == np.complex128
+
+def _is_complex(x):
+    return (x.dtype == np.complex64) or (x.dtype == np.complex128)
 
 
-def _isreal(x):
-    return x.dtype == np.float32 or x.dtype == np.float64
+def _is_real(x):
+    return (x.dtype == np.float32) or (x.dtype == np.float64)
+
 
 def cdgmm(A, B, inplace=False):
     """
@@ -47,14 +50,14 @@ def cdgmm(A, B, inplace=False):
 
     """
 
-    if not _iscomplex(A):
+    if not _is_complex(A):
         raise TypeError('The first input must be complex.')
 
     if A.shape[-len(B.shape):] != B.shape[:]:
         raise RuntimeError('The inputs are not compatible for '
                            'multiplication.')
 
-    if not _iscomplex(B) and not _isreal(B):
+    if not _is_complex(B) and not _is_real(B):
         raise TypeError('The second input must be complex or real.')
 
     if inplace:

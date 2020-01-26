@@ -90,4 +90,3 @@ backend.fft = FFT(lambda x: tf.signal.fft2d(x, name='ifft2d'),
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = lambda x: concatenate(x, -3)
-

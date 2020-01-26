@@ -1,11 +1,14 @@
 import numpy as np
 import tensorflow as tf
 
-def _iscomplex(x):
-    return x.dtype == np.complex64 or x.dtype == np.complex128
 
-def _isreal(x):
-    return x.dtype == np.float32 or x.dtype == np.float64
+def _is_complex(x):
+    return (x.dtype == np.complex64) or (x.dtype == np.complex128)
+
+
+def _is_real(x):
+    return (x.dtype == np.float32) or (x.dtype == np.float64)
+
 
 class Modulus():
     """This class implements a modulus transform for complex numbers.
@@ -27,6 +30,7 @@ class Modulus():
         norm = tf.abs(x)
         return tf.cast(norm, tf.complex64)
 
+
 def real(x):
     """Real part of complex tensor
     Takes the real part of a complex tensor, where the last axis corresponds
@@ -41,6 +45,7 @@ def real(x):
         The tensor x[..., 0] which is interpreted as the real part of x.
     """
     return tf.math.real(x)
+
 
 def concatenate(arrays, dim):
     return tf.stack(arrays, axis=dim)
@@ -64,20 +69,21 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
 
-    if not _iscomplex(A):
+    if not _is_complex(A):
         raise TypeError('The first input must be complex.')
 
     if A.shape[-len(B.shape):] != B.shape[:]:
         raise RuntimeError('The inputs are not compatible for multiplication.')
 
-    if not _iscomplex(B) and not _isreal(B):
+    if not _is_complex(B) and not _is_real(B):
         raise TypeError('The second input must be complex or real.')
 
     return A * B
 
+
 def sanity_check(x):
-    if not _iscomplex(x):
-        raise TypeError('The input should be complex (i.e. last dimension is 2).')
+    if not _is_complex(x):
+        raise TypeError('The input should be complex.')
 
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')

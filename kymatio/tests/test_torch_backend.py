@@ -2,6 +2,7 @@ import torch
 import pytest
 from kymatio.backend.torch_backend import ModulusStable, modulus
 
+
 def test_modulus(random_state=42):
     """
     Tests the stability and differentiability of modulus
