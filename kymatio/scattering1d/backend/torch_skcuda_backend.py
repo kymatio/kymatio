@@ -232,4 +232,4 @@ backend.unpad = unpad
 backend.pad = pad
 backend.pad_1d = pad_1d
 backend.fft = fft
-backend.concatenate = concatenate
+backend.concatenate = lambda x: concatenate(x, -2)
