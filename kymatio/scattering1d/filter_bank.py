@@ -166,7 +166,7 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
     return new_cv
 
 
-def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
+def compute_params_filterbank(sigma_low, Q):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
@@ -190,14 +190,6 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
         support among all filters.
     Q : int
         number of wavelets per octave.
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5).
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
 
     Returns
     -------
