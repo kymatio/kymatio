@@ -7,7 +7,7 @@ from scipy.fftpack import fft2, ifft2
 BACKEND_NAME = 'numpy'
 
 
-from ...backend.numpy_backend import modulus, _iscomplex, _isreal
+from ...backend.numpy_backend import modulus, cdgmm
 from ...backend.base_backend import FFT
 
 
@@ -86,50 +86,12 @@ class SubsampleFourier(object):
         return out
 
 
-def cdgmm(A, B, inplace=False):
-    """
-        Complex pointwise multiplication between (batched) tensor A and tensor B.
-
-        Parameters
-        ----------
-        A : tensor
-            A is a complex tensor of size (B, C, M, N, 2)
-        B : tensor
-            B is a complex tensor of size (M, N) or real tensor of (M, N)
-        inplace : boolean, optional
-            if set to True, all the operations are performed inplace
-
-        Returns
-        -------
-        C : tensor
-            output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
-
-    """
-    if not _iscomplex(A):
-        raise TypeError('The first input must be complex.')
-
-    if B.ndim != 2:
-        raise RuntimeError('The dimension of the second input must be 2.')
-
-    if not _iscomplex(B) and not _isreal(B):
-        raise TypeError('The second input must be complex or real.')
-
-    if A.shape[-2:] != B.shape[-2:]:
-        raise RuntimeError('The inputs are not compatible for '
-                           'multiplication.')
-
-    if inplace:
-        return np.multiply(A, B, out=A)
-    else:
-        return A * B
-
-
 def concatenate(arrays):
     return np.stack(arrays, axis=-3)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate',
+                                 'cdgmm'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = modulus

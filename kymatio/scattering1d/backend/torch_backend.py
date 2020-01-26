@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, Modulus, concatenate, sanity_check, cdgmm
+from ...backend.torch_backend import _iscomplex, Modulus, concatenate, sanity_check, cdgmm, real
 from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
@@ -130,23 +130,6 @@ def unpad(x, i0, i1):
     """
     return x[..., i0:i1]
 
-def real(x):
-    """Real part of complex tensor
-
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
-
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-
-    Returns
-    -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
-    """
-    return x[..., 0]
 
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])

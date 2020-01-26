@@ -76,38 +76,6 @@ class SubsampleFourier(object):
         return out
 
 
-def fft(x, direction='C2C', inverse=False):
-    """
-        Interface with torch FFT routines for 2D signals.
-        Example
-        -------
-        x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x, inverse=True)
-        Parameters
-        ----------
-        input : tensor
-            complex input for the FFT
-        direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : if direction is equal to 'C2R', then an error is raised.
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
-
-    if direction == 'C2R':
-        output = tf.math.real(tf.signal.ifft2d(x, name='irfft2d'))
-    elif direction == 'C2C':
-        if inverse:
-            output = tf.signal.ifft2d(x, name='ifft2d')
-        else:
-            output = tf.signal.fft2d(x, name='fft2d')
-
-    return output
-
-
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 
