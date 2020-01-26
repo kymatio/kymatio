@@ -249,10 +249,8 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     return xi, sigma, j
 
 
-def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
-                              criterion_amplitude=1e-3, normalize='l1',
-                              max_subsampling=None, sigma0=0.1, alpha=5.,
-                              P_max=5, eps=1e-7, **kwargs):
+def scattering_filter_factory(J_support, J_scattering, Q,
+                              max_subsampling=None, **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -276,37 +274,10 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     Q : int
         number of wavelets per octave at the first order. For audio signals,
         a value Q >= 12 is recommended in order to separate partials.
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5).
-    criterion_amplitude : float, optional
-        Represents the numerical error which is allowed to be lost after
-        convolution and padding. Defaults to 1e-3.
-    normalize : string, optional
-        Normalization convention for the filters (in the
-        temporal domain). Supported values include 'l1' and 'l2'; a ValueError
-        is raised otherwise. Defaults to 'l1'.
     max_subsampling: int or None, optional
         maximal dyadic subsampling to compute, in order
         to save computation time if it is not required. Defaults to None, in
         which case this value is dynamically adjusted depending on the filters.
-    sigma0 : float, optional
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering. Defaults to 1e-1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
-    P_max : int, optional
-        maximal number of periods to use to make sure that the Fourier
-        transform of the filters is periodic. P_max = 5 is more than enough for
-        double precision. Defaults to 5. Should be >= 1
-    eps : float, optional
-        required machine precision for the periodization (single
-        floating point is enough for deep learning applications).
-        Defaults to 1e-7
 
     Returns
     -------
@@ -346,11 +317,10 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
+    sigma0 = 0.1
     sigma_low = sigma0 / math.pow(2, J_scattering)  # width of the low pass
-    xi1, sigma1, j1s = compute_params_filterbank(
-        sigma_low, Q, r_psi=r_psi, alpha=alpha)
-    xi2, sigma2, j2s = compute_params_filterbank(
-        sigma_low, 1, r_psi=r_psi, alpha=alpha)
+    xi1, sigma1, j1s = compute_params_filterbank(sigma_low, Q)
+    xi2, sigma2, j2s = compute_params_filterbank(sigma_low, 1)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
