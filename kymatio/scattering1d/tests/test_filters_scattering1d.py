@@ -39,7 +39,7 @@ def test_morlet_1d():
     sigma_over_xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
     for N in size_signal:
         for xi in xi_range:
-            for sigma_over_xi in xi_over_sigma_range:
+            for sigma_over_xi in sigma_over_xi_range:
                 sigma = xi * sigma_over_xi
                 # get the morlet for these parameters
                 psi_f = morlet_1d(N, xi, sigma)
