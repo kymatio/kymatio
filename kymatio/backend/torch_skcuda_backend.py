@@ -45,14 +45,13 @@ def cdgmm(A, B, inplace=False):
 
     """
     if not _is_complex(A):
-        raise TypeError('The input must be complex, indicated by a last '
-                        'dimension of size 2.')
+        raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
     if not _is_complex(B) and not _is_real(B):
         raise TypeError('The filter must be complex or real, indicated by a '
                         'last dimension of size 2 or 1, respectively.')
 
-    if A.shape[:-1] != B.shape[:-1]:
+    if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
     if A.dtype is not B.dtype:
@@ -71,7 +70,7 @@ def cdgmm(A, B, inplace=False):
             return A * B
     else:
         if not A.is_contiguous() or not B.is_contiguous():
-            raise RuntimeError('Input and filter should be contiguous.')
+            raise RuntimeError('Tensors must be contiguous.')
 
         C = A.new(A.shape) if not inplace else A
         m, n = B.nelement() // 2, A.nelement() // B.nelement()

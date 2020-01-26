@@ -193,4 +193,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = concatenate
+backend.concatenate = lambda x: concatenate(x, -3)
