@@ -20,7 +20,7 @@ except:
     Warning('torch_skcuda backend not available.')
 
 if skcuda_available:
-    from kymatio.scattering2d.backend.torch_skcuda_backend import backend
+    from kymatio.scattering3d.backend.torch_skcuda_backend import backend
     backends.append(backend)
 
 
