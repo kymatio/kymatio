@@ -145,16 +145,18 @@ class SubsampleFourier(object):
         return out
 
 
+fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
+          lambda x: torch.ifft(x, 2, normalized=False),
+          lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
+          type_checks)
+
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
-                  lambda x: torch.ifft(x, 2, normalized=False),
-                  lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
-                  type_checks)
+backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = lambda x: concatenate(x, -3)
