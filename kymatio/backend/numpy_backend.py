@@ -46,11 +46,34 @@ def cdgmm(A, B, inplace=False):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
 
     """
-    if A.shape[-len(B.shape):-1] != B.shape[:-1]:
+
+    if not _iscomplex(A):
+        raise TypeError('The first input must be complex.')
+
+    if A.shape[-len(B.shape):] != B.shape[:]:
         raise RuntimeError('The inputs are not compatible for '
                            'multiplication.')
+
+    if not _iscomplex(B) and not _isreal(B):
+        raise TypeError('The second input must be complex or real.')
 
     if inplace:
         return np.multiply(A, B, out=A)
     else:
         return A * B
+
+
+def real(x):
+    """Real part of complex tensor
+    Takes the real part of a complex tensor, where the last axis corresponds
+    to the real and imaginary parts.
+    Parameters
+    ----------
+    x : tensor
+        A complex tensor (that is, whose last dimension is equal to 2).
+    Returns
+    -------
+    x_real : tensor
+        The tensor x[..., 0] which is interpreted as the real part of x.
+    """
+    return np.real(x)

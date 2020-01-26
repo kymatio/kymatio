@@ -46,7 +46,7 @@ def concatenate(arrays, dim):
     return tf.stack(arrays, axis=dim)
 
 
-def cdgmm(A, B):
+def cdgmm(A, B, inplace=False):
     """
         Complex pointwise multiplication between (batched) tensor A and tensor B.
         Parameters
@@ -64,7 +64,20 @@ def cdgmm(A, B):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
     """
 
-    if A.shape[-len(B.shape):-1] != B.shape[:-1]:
+    if not _iscomplex(A):
+        raise TypeError('The first input must be complex.')
+
+    if A.shape[-len(B.shape):] != B.shape[:]:
         raise RuntimeError('The inputs are not compatible for multiplication.')
 
+    if not _iscomplex(B) and not _isreal(B):
+        raise TypeError('The second input must be complex or real.')
+
     return A * B
+
+def sanity_check(x):
+    if not _iscomplex(x):
+        raise TypeError('The input should be complex (i.e. last dimension is 2).')
+
+    if not x.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous.')

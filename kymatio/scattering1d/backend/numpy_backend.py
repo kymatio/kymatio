@@ -5,7 +5,7 @@ import numpy as np
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, cdgmm
+from ...backend.numpy_backend import modulus, cdgmm, real
 from ...backend.base_backend import FFT
 
 
@@ -109,22 +109,6 @@ def unpad(x, i0, i1):
         The tensor x[..., i0:i1].
     """
     return x[..., i0:i1]
-
-
-def real(x):
-    """Real part of complex tensor
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
-    """
-    return np.real(x)
 
 
 

@@ -90,8 +90,7 @@ def concatenate(arrays):
     return np.stack(arrays, axis=-3)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate',
-                                 'cdgmm'])
+backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = modulus
