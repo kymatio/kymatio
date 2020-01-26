@@ -88,8 +88,8 @@ def compute_integrals(input_array, integral_powers):
     integrals = torch.zeros((input_array.shape[0], len(integral_powers)),
             device=input_array.device)
     for i_q, q in enumerate(integral_powers):
-        integrals[:, i_q, 0] = (input_array ** q).view(
-            input_array.shape[0], -1).sum(1).cpu()
+        integrals[:, i_q] = (input_array ** q).view(
+            input_array.shape[0], -1).sum(1)
     return integrals
 
 

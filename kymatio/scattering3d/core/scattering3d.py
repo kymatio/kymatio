@@ -41,7 +41,7 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
                 U_1_m = modulus(U_1_c)
 
             U_1_c = fft(U_1_m)
-            S_1_l = averaging(U_1_c, j_1)[..., 0]
+            S_1_l = averaging(U_1_c, j_1)
             s_order_1_l.append(S_1_l)
 
             if max_order > 1:
@@ -57,7 +57,7 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
                         U_2_c = fft(U_2_c, inverse=True)
                         U_2_m = modulus(U_2_c)
                     U_2_c = fft(U_2_m)
-                    S_2_l = averaging(U_2_c, j_2)[..., 0]
+                    S_2_l = averaging(U_2_c, j_2)
                     s_order_2_l.append(S_2_l)
 
         s_order_1.append(s_order_1_l)
