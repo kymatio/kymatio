@@ -303,3 +303,48 @@ def test_scattering_methods(device, backend):
     Sx = scattering(x)
     scattering.rotation_covariant = False
     Sx = scattering(x)
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_scattering_batch_shape_agnostic(device, backend):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+
+    J = 2
+    shape = (16, 16, 16)
+
+    shape_ds = tuple(n // (2 **J ) for n in shape)
+
+    S = HarmonicScattering3D(J=J, shape=shape)
+
+    for k in range(3):
+        with pytest.raises(RuntimeError) as ve:
+            S(torch.zeros(shape[:k]))
+        assert 'at least three' in ve.value.args[0]
+
+    x = torch.zeros(shape)
+
+    x = x.to(device)
+    S.to(device)
+
+    Sx = S(x)
+
+    assert len(Sx.shape) == 5
+    assert Sx.shape[-3:] == shape_ds
+
+    coeffs_shape = Sx.shape[-4:-2]
+
+    test_shapes = ((1,) + shape, (2,) + shape, (2, 2) + shape,
+                   (2, 2, 2) + shape)
+
+    for test_shape in test_shapes:
+        x = torch.zeros(test_shape)
+
+        x = x.to(device)
+
+        Sx = S(x)
+
+        assert len(Sx.shape) == len(test_shape) + 2
+        assert Sx.shape[-3:] == shape_ds
+        assert Sx.shape[-4:-2] == coeffs_shape
+        assert Sx.shape[:-5] == test_shape[:-3]
