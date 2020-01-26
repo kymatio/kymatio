@@ -1,6 +1,9 @@
+import numpy as np
 import torch
 import kymatio.scattering3d.backend as backend
 from kymatio import HarmonicScattering3D
+
+from .common import SCATTERING_BENCHMARK_SIZE
 
 class BenchmarkHarmonicScattering3D:
     params = [
@@ -25,15 +28,14 @@ class BenchmarkHarmonicScattering3D:
                 "shape": (32, 32, 32),
                 "L": 4,
             }
-        ],
-        [
-            1,
         ]
     ]
-    param_names = ["sc_params", "batch_size"]
+    param_names = ["sc_params"]
 
-    def setup(self, sc_params, batch_size):
+    def setup(self, sc_params):
         scattering = HarmonicScattering3D(**sc_params)
+        signal_size = int(np.prod(sc_params["shape"]))
+        batch_size = SCATTERING_BENCHMARK_SIZE // signal_size
         scattering.cpu()
         x = torch.randn(
             batch_size,
@@ -43,8 +45,8 @@ class BenchmarkHarmonicScattering3D:
         self.scattering = scattering
         self.x = x
 
-    def time_constructor(self, sc_params, batch_size):
+    def time_constructor(self, sc_params):
         HarmonicScattering3D(**sc_params)
 
-    def time_forward(self, sc_params, batch_size):
+    def time_forward(self, sc_params):
         (self.scattering).forward(self.x)

@@ -1,6 +1,9 @@
 import torch
+import numpy as np
 import kymatio.scattering1d.backend as backend
 from kymatio import Scattering1D
+
+from .common import SCATTERING_BENCHMARK_SIZE
 
 class BenchmarkScattering1D:
     params = [
@@ -23,14 +26,13 @@ class BenchmarkScattering1D:
                 "Q": 12,
                 "shape": 131072,
             },
-        ],
-        [
-            32,
         ]
     ]
-    param_names = ["sc_params", "batch_size"]
+    param_names = ["sc_params"]
 
-    def setup(self, sc_params, batch_size):
+    def setup(self, sc_params):
+        signal_size = int(np.prod(sc_params["shape"]))
+        batch_size = SCATTERING_BENCHMARK_SIZE // signal_size
         n_channels = 1
         scattering = Scattering1D(**sc_params)
         scattering.cpu()
@@ -43,8 +45,8 @@ class BenchmarkScattering1D:
         self.scattering = scattering
         self.x = x
 
-    def time_constructor(self, sc_params, batch_size):
+    def time_constructor(self, sc_params):
         Scattering1D(**sc_params)
 
-    def time_forward(self, sc_params, batch_size):
+    def time_forward(self, sc_params):
         (self.scattering).forward(self.x)
