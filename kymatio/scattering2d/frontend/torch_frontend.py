@@ -6,7 +6,7 @@ from ...frontend.torch_frontend import ScatteringTorch
 
 
 class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend='torch'):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend='torch', vectorize=True):
         ScatteringTorch.__init__(self)
         ScatteringBase2D.__init__(**locals())
         ScatteringBase2D._instantiate_backend(self, 'kymatio.scattering2d.backend.')
@@ -123,7 +123,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         input = input.reshape((-1,) + signal_shape)
 
         S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
-                            self.L, phi, psi, self.max_order)
+                            self.L, phi, psi, self.max_order, vectorize=self.vectorize)
 
         scattering_shape = S.shape[-3:]
 
