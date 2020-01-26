@@ -20,7 +20,7 @@ backends_devices = []
 
 skcuda_available = False
 try:
-    if torch.cuda_is_available():
+    if torch.cuda.is_available():
         from skcuda import cublas
         import cupy
         skcuda_available = True
