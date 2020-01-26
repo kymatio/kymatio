@@ -84,7 +84,7 @@ def gauss_1d(N, sigma):
     return morlet_1d(N, xi=None, sigma=sigma)
 
 
-def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
+def get_max_dyadic_subsampling(xi, sigma):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
     filter of frequency xi and width sigma
@@ -105,9 +105,6 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
         frequency of the filter in [0, 1]
     sigma : float
         frequential width of the filter
-    alpha : float, optional
-        parameter controlling the error done in the aliasing.
-        The larger alpha, the smaller the error. Defaults to 5.
 
     Returns
     -------
@@ -115,13 +112,17 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
         integer such that 2^j is the maximal subsampling accepted by the
         Gabor filter without aliasing.
     """
+    # Parameter controlling the error done in the aliasing.
+    # The larger alpha, the smaller the error. Recommended value: 5.0
+    alpha = 5.0
+
     upper_bound = min(xi + alpha * sigma, 0.5)
     j = math.floor(-math.log2(upper_bound)) - 1
     j = int(j)
     return j
 
 
-def move_one_dyadic_step(cv, Q, alpha=5.):
+def move_one_dyadic_step(cv, Q):
     """
     Computes the parameters of the next wavelet on the low frequency side,
     based on the parameters of the current wavelet.
@@ -146,9 +147,6 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
     Q : int
         number of wavelets per octave. Controls the relationship between
         the frequency and width of the current wavelet and the next wavelet.
-    alpha : float, optional
-        tolerance parameter for the aliasing. The larger alpha,
-        the more conservative the algorithm is. Defaults to 5.
 
     Returns
     -------
@@ -160,7 +158,7 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
     n = cv['key']
     new_cv = {'xi': cv['xi'] * factor, 'sigma': cv['sigma'] * factor}
     # compute the new j
-    new_cv['j'] = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'], alpha=alpha)
+    new_cv['j'] = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'])
     new_cv['key'] = n + 1
     return new_cv
 
@@ -203,7 +201,7 @@ def compute_params_filterbank(sigma_low, Q):
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
-    xi_max = max(1. / (1. + math.pow(2., 3. / Q)), 0.35)
+    xi_max = max(1. / (1. + math.pow(2., 3./Q)), 0.35)
 
     factor = 1. / math.pow(2, 1. / Q)
     term1 = (1 - factor) / (1 + factor)
@@ -226,7 +224,7 @@ def compute_params_filterbank(sigma_low, Q):
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
-            current = move_one_dyadic_step(current, Q, alpha=alpha)
+            current = move_one_dyadic_step(current, Q)
         # get the last key
         last_xi = xi[-1]
     # fill num_interm wavelets between last_xi and 0, both excluded
@@ -237,7 +235,7 @@ def compute_params_filterbank(sigma_low, Q):
         new_sigma = sigma_low
         xi.append(new_xi)
         sigma.append(new_sigma)
-        j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
+        j.append(get_max_dyadic_subsampling(new_xi, new_sigma))
     # return results
     return xi, sigma, j
 
