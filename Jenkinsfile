@@ -6,7 +6,7 @@ pipeline {
     timeout(time: 1, unit: 'HOURS')
   }
   stages {
-    stage('torch') {
+    stage('main') {
       agent {
 	dockerfile {
 	  dir 'tools'
@@ -22,27 +22,7 @@ pipeline {
 	sh '''#!/bin/bash -ex
 	  source $HOME/bin/activate
 	  python3 setup.py develop
-	  TF_FORCE_GPU_ALLOW_GROWTH=true KYMATIO_BACKEND=$STAGE_NAME python3 -m pytest --cov=kymatio
-	  python3 -m coverage xml
-	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME -s $WORKSPACE
-	'''
-      }
-    }
-    stage('skcuda') {
-      agent {
-	dockerfile {
-	  dir 'tools'
-	}
-      }
-      environment {
-	HOME = "$WORKSPACE/build"
-      }
-      steps {
-	sh 'python3 -m venv --system-site-packages --without-pip $HOME'
-	sh '''#!/bin/bash -ex
-	  source $HOME/bin/activate
-	  python3 setup.py develop
-	  TF_FORCE_GPU_ALLOW_GROWTH=true KYMATIO_BACKEND=$STAGE_NAME python3 -m pytest --cov=kymatio
+	  TF_FORCE_GPU_ALLOW_GROWTH=true python3 -m pytest --cov=kymatio
 	  python3 -m coverage xml
 	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME -s $WORKSPACE
 	'''

@@ -1,19 +1,21 @@
 """
-Compute the scattering transform of a synthetic signal
-======================================================
-
-In this example we generate a harmonic signal of a few different frequencies
-and analyze it with the 1D scattering transform.
+Reconstruct a synthetic signal from its scattering transform
+============================================================
+In this example we generate a harmonic signal of a few different frequencies,
+analyze it with the 1D scattering transform, and reconstruct the scattering
+transform back to the harmonic signal.
 """
-
 
 ###############################################################################
 # Import the necessary packages
 # -----------------------------
-from kymatio.numpy import Scattering1D
-import matplotlib.pyplot as plt
-import numpy as np
 
+import numpy as np
+import torch
+from kymatio.torch import Scattering1D
+
+from torch.autograd import backward
+import matplotlib.pyplot as plt
 
 ###############################################################################
 # Write a function that can generate a harmonic signal
@@ -53,46 +55,87 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
     return x
 
 ###############################################################################
-# Let's take a look at what such a signal could look like
-# -------------------------------------------------------
+# Let’s take a look at what such a signal could look like.
+
 T = 2 ** 13
-x = generate_harmonic_signal(T)
+x = torch.from_numpy(generate_harmonic_signal(T))
 plt.figure(figsize=(8, 2))
-plt.plot(x)
+plt.plot(x.numpy())
 plt.title("Original signal")
 
 ###############################################################################
-# Spectrogram
-# -----------
-# Let's take a look at the signal spectrogram
-plt.figure(figsize=(8, 4))
-plt.specgram(x, Fs=1024)
-plt.title("Time-Frequency spectrogram of signal")
+# Let’s take a look at the signal spectrogram.
+
+plt.figure(figsize=(8, 8))
+plt.specgram(x.numpy(), Fs=1024)
+plt.title("Spectrogram of original signal")
 
 ###############################################################################
-# Doing the scattering transform
-# ------------------------------
+## Doing the scattering transform.
+
 J = 6
 Q = 16
 
 scattering = Scattering1D(J, T, Q)
 
-meta = scattering.meta()
-order0 = np.where(meta['order'] == 0)
-order1 = np.where(meta['order'] == 1)
-order2 = np.where(meta['order'] == 2)
-
 Sx = scattering(x)
 
+learning_rate = 100
+bold_driver_accelerator = 1.1
+bold_driver_brake = 0.55
+n_iterations = 200
+
+###############################################################################
+# Reconstruct the scattering transform back to original signal.
+
+# Random guess to initialize.
+torch.manual_seed(0)
+y = torch.randn((T,), requires_grad=True)
+Sy = scattering(y)
+
+history = []
+signal_update = torch.zeros_like(x)
+
+# Iterate to recontsruct random guess to be close to target.
+for k in range(n_iterations):
+    # Backpropagation.
+    err = torch.norm(Sx - Sy)
+
+    if k % 10 == 0:
+        print('Iteration %3d, loss %.2f' % (k, err.detach().numpy()))
+
+    # Measure the new loss.
+    history.append(err)
+
+    backward(err)
+
+    delta_y = y.grad
+
+    # Gradient descent
+    with torch.no_grad():
+        signal_update = - learning_rate * delta_y
+        new_y = y + signal_update
+    new_y.requires_grad = True
+
+    # New forward propagation.
+    Sy = scattering(new_y)
+
+    if history[k] > history[k - 1]:
+        learning_rate *= bold_driver_brake
+    else:
+        learning_rate *= bold_driver_accelerator
+        y = new_y
+
+plt.figure(figsize=(8, 2))
+plt.plot(history)
+plt.title("MSE error vs. iterations")
+
+plt.figure(figsize=(8, 2))
+plt.plot(y.detach().numpy())
+plt.title("Reconstructed signal")
+
 plt.figure(figsize=(8, 8))
-plt.subplot(3, 1, 1)
-plt.plot(Sx[order0][0])
-plt.title('Zeroth-order scattering')
-plt.subplot(3, 1, 2)
-plt.imshow(Sx[order1], aspect='auto')
-plt.title('First-order scattering')
-plt.subplot(3, 1, 3)
-plt.imshow(Sx[order2], aspect='auto')
-plt.title('Second-order scattering')
+plt.specgram(y.detach().numpy(), Fs=1024)
+plt.title("Spectrogram of reconstructed signal")
 
 plt.show()
