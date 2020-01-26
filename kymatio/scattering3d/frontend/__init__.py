@@ -22,8 +22,9 @@ class HarmonicScattering3D(object):
             # after `Scattering`.
             frontend = frontend_suffixes[frontend]
 
-            class_name = self.__class__.__name__
-            class_name = (class_name[:-2] + frontend + class_name[-2:])
+            #class_name = self.__class__.__name__
+            #class_name = (class_name[:-2] + frontend + class_name[-2:])
+            class_name = "ScatteringTorch3D"
 
             self.__class__ = getattr(module, class_name)
             self.__init__(*args, **kwargs)

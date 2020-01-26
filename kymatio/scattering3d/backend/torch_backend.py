@@ -1,4 +1,5 @@
 import torch
+from torch.nn.functional import pad
 import warnings
 
 BACKEND_NAME = 'torch'
@@ -19,6 +20,22 @@ def _iscomplex(input):
             otherwise.
     """
     return input.shape[-1] == 2
+
+def _isreal(input):
+    """Checks if input is complex.
+
+        Parameters
+        ----------
+        input : tensor
+            Input to be checked if complex.
+        Returns
+        -------
+        output : boolean
+            Returns True if complex (i.e. final dimension is 2), False
+            otherwise.
+    """
+    return input.shape[-1] == 1
+
 
 
 def complex_modulus(input_array):
@@ -125,6 +142,129 @@ def _compute_local_scattering_coefs(input_array, filter, j, points):
             local_coefs[i, j, 0] = convolved_input[
                 i, int(x), int(y), int(z), 0]
     return local_coefs
+
+
+class Pad(object):
+    def __init__(self, pad_size, input_size, pre_pad=False):
+        """Padding which allows to simultaneously pad in a reflection fashion
+            and map to complex.
+
+            Parameters
+            ----------
+            pad_size : list of 4 integers
+                Size of padding to apply [top, bottom, left, right].
+            input_size : list of 2 integers
+                size of the original signal [height, width].
+            pre_pad : boolean, optional
+                If set to true, then there is no padding, one simply adds the imaginary part.
+
+        """
+        self.pre_pad = pre_pad
+        self.pad_size = pad_size
+        self.input_size = input_size
+
+        self.build()
+
+    def build(self):
+        """Builds the padding module.
+
+            Attributes
+            ----------
+            padding_module : ReflectionPad2d
+                Pads the input tensor using the reflection of the input
+                boundary.
+
+        """
+        pad_size_tmp = list(self.pad_size)
+
+        # This handles the case where the padding is equal to the image size
+        if pad_size_tmp[0] == self.input_size[0]:
+            pad_size_tmp[0] -= 1
+            pad_size_tmp[1] -= 1
+        if pad_size_tmp[2] == self.input_size[1]:
+            pad_size_tmp[2] -= 1
+            pad_size_tmp[3] -= 1
+        if pad_size_tmp[4] == self.input_size[2]:
+            pad_size_tmp[4] -= 1
+            pad_size_tmp[5] -= 1
+
+        self.pad_size_tmp = pad_size_tmp
+
+    def __call__(self, x):
+        """Applies padding and maps to complex.
+
+            Parameters
+            ----------
+            x : tensor
+                Real tensor input to be padded and sent to complex domain.
+
+            Returns
+            -------
+            output : tensor
+                Complex torch tensor that has been padded.
+
+        """
+        if not self.pre_pad:
+            # Pytorch expects its padding as [left, right, top, bottom]
+            pad_size_tmp = self.pad_size_tmp
+            print(x.shape)
+            x = pad(x, (0, 0, pad_size_tmp[2], pad_size_tmp[3],
+            pad_size_tmp[0], pad_size_tmp[1], pad_size_tmp[4],
+            pad_size_tmp[5]), mode='constant')
+            print(x.shape)
+
+            #TODO FIX LATER
+            # Note: PyTorch is not effective to pad signals of size N-1 with N
+            # elements, thus we had to add this fix.
+            if self.pad_size[0] == self.input_size[0]:
+                print("D")
+                x = torch.cat([x[:, 1, :,  :, :, :].unsqueeze(2), x,
+                    x[:,x.shape[1] - 2, :, :, :, :].unsqueeze(2)], 2)
+            if self.pad_size[2] == self.input_size[1]:
+                print("D")
+
+                x = torch.cat([x[:, :, 1, :, :, :].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2, :, :].unsqueeze(3)], 3)
+            if self.pad_size[4] == self.input_size[2]:
+                print("D")
+
+                x = torch.cat([x[:, :, :, :, 1, :].unsqueeze(4), x, x[:, :, :, :, x.shape[4] - 2, :].unsqueeze(4)], 4)
+        
+        return x
+
+def unpad(in_):
+    """Unpads input.
+
+        Slices the input tensor at indices between 1:-1.
+
+        Parameters
+        ----------
+        in_ : tensor
+            Input tensor.
+
+        Returns
+        -------
+        in_[..., 1:-1, 1:-1] : tensor
+            Output tensor.  Unpadded input.
+
+    """
+    return in_[..., 1:-1, 1:-1, 1:-1, :]
+
+class SubsampleFourier(object):    
+    def __call__(self, x, k):
+        if not _iscomplex(x):
+            raise TypeError('The x should be complex.')
+
+        if not x.is_contiguous():
+            raise RuntimeError('Input should be contiguous.')
+        
+        y = x.view(-1,
+                       k, x.shape[1] // k,
+                       k, x.shape[2] // k,
+                       k, x.shape[3] // k,
+                       2)
+
+        out = y.mean(5, keepdim=False).mean(3, keepdim=False).mean(1, keepdim=False)
+        return out
 
 
 def subsample(input_array, j):
@@ -242,11 +382,11 @@ def cdgmm3d(A, B, inplace=False):
         warnings.warn("cdgmm3d: tensor B is converted to a contiguous array.")
         B = B.contiguous()
 
-    if A.shape[-4:] != B.shape:
+    if A.shape[-4:] != B.shape and not _isreal(B):
         raise RuntimeError('The tensors are not compatible for multiplication.')
 
-    if not _iscomplex(A) or not _iscomplex(B):
-        raise TypeError('The input, filter and output should be complex.')
+    if not _iscomplex(A):
+        raise TypeError('The input and output should be complex.')
 
     if B.ndimension() != 4:
         raise RuntimeError('The second tensor must be simply a complex array.')
@@ -260,6 +400,11 @@ def cdgmm3d(A, B, inplace=False):
     if A.device.type == 'cuda':
         if A.device.index != B.device.index:
             raise TypeError('A and B must be on the same GPU.')
+    if _isreal(B):
+        if inplace:
+            return A.mul_(B)
+        else:
+            return A * B
 
     C = A.new(A.shape)
 
@@ -310,11 +455,11 @@ def aggregate(x):
 
 
 def concatenate(arrays):
-    return torch.stack(arrays, axis=-3)
+    return torch.stack(arrays, axis=1)[...,0]
 
 
 backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'finalize', 'modulus', 'modulus_rotation', 'subsample', 
-                                 'compute_integrals', 'aggregate', 'concatenate'])
+                                 'compute_integrals', 'aggregate', 'concatenate', 'Pad', 'unpad'])
 
 backend.name = 'torch'
 backend.cdgmm3d = cdgmm3d
@@ -328,3 +473,6 @@ backend.subsample = subsample
 backend.compute_integrals = compute_integrals
 backend._compute_standard_scattering_coefs = _compute_standard_scattering_coefs
 backend._compute_local_scattering_coefs = _compute_local_scattering_coefs
+backend.Pad = Pad
+backend.unpad = unpad
+backend.subsample_fourier = SubsampleFourier()

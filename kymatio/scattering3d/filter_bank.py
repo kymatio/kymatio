@@ -271,7 +271,7 @@ def periodize_filter_fft(x, res):
                 for i in range(int(2 ** res)):
                     for j in range(int(2 ** res)):
                         for n in range(int(2 ** res)):
-                            crop[k, l, n] += x[k + i * int(M / 2 ** res), l + j * int(N / 2 ** res),
+                            crop[k, l, m] += x[k + i * int(M / 2 ** res), l + j * int(N / 2 ** res),
                                     m + n * int(P / 2 ** res)]
 
     return crop

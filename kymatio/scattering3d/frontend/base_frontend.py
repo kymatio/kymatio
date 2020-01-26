@@ -1,6 +1,7 @@
 from ...frontend.base_frontend import ScatteringBase
 from ..filter_bank import (solid_harmonic_filter_bank, gaussian_filter_bank,
-nd_gabor)
+gabor_nd, filter_bank)
+from ..utils import compute_padding
 
 
 class ScatteringBaseHarmonic3D(ScatteringBase):
@@ -100,6 +101,7 @@ class ScatteringBaseHarmonic3D(ScatteringBase):
     def build(self):
         self.M, self.N, self.P = self.shape
 
+        
     def create_filters(self):
         self.filters = solid_harmonic_filter_bank(
             self.M, self.N, self.P, self.J, self.L, self.sigma_0)
@@ -107,15 +109,17 @@ class ScatteringBaseHarmonic3D(ScatteringBase):
         self.gaussian_filters = gaussian_filter_bank(
             self.M, self.N, self.P, self.J + 1, self.sigma_0)
 
+
 class ScatteringBase3D(ScatteringBase):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
                  rotation_covariant=True, method='standard', points=None,
-                 integral_powers=(0.5, 1., 2.), backend=None):
+                 integral_powers=(0.5, 1., 2.), backend=None, pre_pad=False):
         super(ScatteringBase3D, self).__init__()
         self.J = J
         self.shape = shape
         self.L = L
         self.sigma_0 = sigma_0
+        self.pre_pad = pre_pad
 
         self.max_order = max_order
         self.rotation_covariant = rotation_covariant
@@ -126,11 +130,21 @@ class ScatteringBase3D(ScatteringBase):
 
     def build(self):
         self.M, self.N, self.P = self.shape
+        
+        if 2 ** self.J > self.M or 2 ** self.J > self.N or 2 ** self.J > self.M:
+            raise RuntimeError('The smallest dimension should be larger than 2^J.')
+        self.M_padded, self.N_padded, self.P_padded = compute_padding(self.M, self.N, self.P, self.J)
+        # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
+        self.pad = self.backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
+                                (self.N_padded - self.N + 1) // 2,
+                                (self.P_padded - self.P) // 2, (self.P_padded - self.P + 1) // 2], 
+                                [self.M, self.N, self.P], pre_pad=self.pre_pad)
+        self.unpad = self.backend.unpad
 
     def create_filters(self):
+        self.filters = filter_bank(self.M_padded, self.N_padded, self.P_padded, self.J,
+                orientations="cartesian")
+        self.phi, self.psi = self.filters['phi'], self.filters['psi']
 
-
-        self.filters = gabor_nd(self.shape, orientation, self.J, xi0=3* np.pi
-                / 4, sigma0=self.sigma_0,slant=.5, remove_dc=True, ifftshift=True):
 
 __all__ = ['ScatteringBase3D']
