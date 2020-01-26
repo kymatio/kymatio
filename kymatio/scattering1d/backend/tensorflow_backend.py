@@ -6,6 +6,7 @@ BACKEND_NAME = 'tensorflow'
 
 
 from ...backend.tensorflow_backend import Modulus
+from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -164,8 +165,7 @@ def concatenate(arrays):
     return tf.stack(arrays, axis=-2)
 
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',
-                                 'ifft1d_c2c', 'concatenate'])
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
 backend.modulus_complex = Modulus()
 backend.subsample_fourier = subsample_fourier
@@ -173,6 +173,8 @@ backend.real = real
 backend.unpad = unpad
 backend.pad = pad
 backend.pad_1d = pad_1d
-backend.fft1d_c2c = fft1d_c2c
-backend.ifft1d_c2c = ifft1d_c2c
+backend.fft = FFT(lambda x: tf.signal.fft(x, name='ifft1d'),
+                  lambda x: tf.signal.ifft(x, name='ifft1d'),
+                  lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
+                  lambda x: None)
 backend.concatenate = concatenate

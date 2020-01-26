@@ -213,3 +213,6 @@ def cdgmm(A, B, inplace=False):
         C[..., 1].view(-1, C.shape[-2]*C.shape[-3])[:] = A_r * B_i + A_i * B_r
 
         return C if not inplace else A.copy_(C)
+
+def concatenate(arrays, dim):
+    return torch.stack(arrays, dim=dim)

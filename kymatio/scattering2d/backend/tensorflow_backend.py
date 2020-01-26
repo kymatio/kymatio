@@ -8,7 +8,7 @@ BACKEND_NAME = 'tensorflow'
 
 
 from ...backend.tensorflow_backend import _iscomplex, _isreal, Modulus
-
+from ...backend.base_backend import FFT
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -150,7 +150,10 @@ backend.name = 'tensorflow'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.fft = FFT(lambda x: tf.signal.fft2d(x, name='ifft2d'),
+                  lambda x: tf.signal.ifft2d(x, name='ifft2d'),
+                  lambda x: tf.math.real(tf.signal.ifft2d(x, name='irfft2d')),
+                  lambda x: None)
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate

@@ -6,7 +6,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, cdgmm, sanity_check, Modulus
+from ...backend.torch_backend import _iscomplex, cdgmm, sanity_check, Modulus, concatenate
 from ...backend.base_backend import FFT
 
 
@@ -145,19 +145,16 @@ class SubsampleFourier(object):
         return out
 
 
-def concatenate(arrays):
-    return torch.stack(arrays, axis=-3)
-
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(lambda x:torch.fft(x, 2, normalized=False),
-                  lambda x:torch.ifft(x, 2, normalized=False),
-                  lambda x:torch.irfft(x, 2, normalized=False, onesided=False),
+backend.fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
+                  lambda x: torch.ifft(x, 2, normalized=False),
+                  lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
                   sanity_check)
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = concatenate
+backend.concatenate = lambda x: concatenate(x, -3)

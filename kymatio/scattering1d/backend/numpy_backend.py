@@ -1,11 +1,12 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 from collections import namedtuple
-from scipy.fftpack import fft, ifft
+import scipy
 import numpy as np
 
 BACKEND_NAME = 'numpy'
 
 from ...backend.numpy_backend import modulus
+from ...backend.base_backend import FFT
 
 
 def subsample_fourier(x, k):
@@ -126,37 +127,6 @@ def real(x):
     return np.real(x)
 
 
-def fft1d_c2c(x, axis=-1):
-    """Compute the 1D FFT of a complex signal
-    Input
-    -----
-    x : tensor
-        A tensor of size (..., T, 2), where x[..., 0] is the real part and
-        x[..., 1] is the imaginary part.
-    Returns
-    -------
-    x_f : tensor
-        A tensor of the same size as x containing its Fourier transform in the
-        standard PyTorch FFT ordering.
-    """
-    return fft(x, axis=axis)
-
-
-def ifft1d_c2c(x, axis=-1):
-    """Compute the normalized 1D inverse FFT of a complex signal
-    Input
-    -----
-    x_f : tensor
-        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
-        x[..., 1] is the imaginary part. The frequencies are assumed to be in
-        the standard PyTorch FFT ordering.
-    Returns
-    -------
-    x : tensor
-        A tensor of the same size of x_f containing the normalized inverse
-        Fourier transform of x_f.
-    """
-    return ifft(x, axis=axis)
 
 
 def concatenate(arrays):
@@ -165,7 +135,7 @@ def concatenate(arrays):
 
 backend = namedtuple('backend',
                      ['name', 'modulus_complex', 'subsample_fourier', 'real',
-                      'unpad', 'fft1d_c2c', 'ifft1d_c2c', 'concatenate'])
+                      'unpad', 'fft', 'concatenate'])
 backend.name = 'numpy'
 backend.modulus_complex = modulus
 backend.subsample_fourier = subsample_fourier
@@ -173,6 +143,8 @@ backend.real = real
 backend.unpad = unpad
 backend.pad = pad
 backend.pad_1d = pad_1d
-backend.fft1d_c2c = fft1d_c2c
-backend.ifft1d_c2c = ifft1d_c2c
+backend.fft = FFT(lambda x:scipy.fftpack.fft(x),
+                  lambda x:scipy.fftpack.ifft(x),
+                  lambda x:np.real(scipy.fftpack.ifft(x)),
+                  lambda x:None)
 backend.concatenate = concatenate

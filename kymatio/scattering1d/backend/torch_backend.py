@@ -7,8 +7,8 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _iscomplex, Modulus
-
+from ...backend.torch_backend import _iscomplex, Modulus, concatenate, sanity_check
+from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -183,11 +183,8 @@ def ifft1d_c2c(x):
     """
     return torch.ifft(x, signal_ndim=1)
 
-def concatenate(arrays):
-    return torch.stack(arrays, dim=-2)
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',\
-                                 'ifft1d_c2c', 'concatenate'])
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'torch'
 backend.modulus_complex = Modulus()
 backend.subsample_fourier = subsample_fourier
@@ -195,6 +192,8 @@ backend.real = real
 backend.unpad = unpad
 backend.pad = pad
 backend.pad_1d = pad_1d
-backend.fft1d_c2c = fft1d_c2c
-backend.ifft1d_c2c = ifft1d_c2c
-backend.concatenate = concatenate
+backend.fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
+                  lambda x: torch.ifft(x, 1, normalized=False),
+                  lambda x: torch.irfft(x, 1, normalized=False, onesided=False),
+                  sanity_check)
+backend.concatenate = lambda x: concatenate(x, -2)
