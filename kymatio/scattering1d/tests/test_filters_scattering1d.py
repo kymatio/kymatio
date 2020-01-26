@@ -34,9 +34,9 @@ def test_morlet_1d():
     - Check that the maximal frequency is relatively close to xi,
         up to 1% accuracy
     """
-    size_signal = [2**13]
-    xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
-    sigma_over_xi_range = [0.01, 0.02, 0.04, 0.08, 0.16, 0.32]
+    size_signal = [2**12, 2**13, 2**14, 2**16]
+    xi_range = [0.02, 0.04, 0.08, 0.16, 0.32]
+    sigma_over_xi_range = [0.02, 0.04, 0.08, 0.16, 0.32]
     for N in size_signal:
         for xi in xi_range:
             for sigma_over_xi in sigma_over_xi_range:
