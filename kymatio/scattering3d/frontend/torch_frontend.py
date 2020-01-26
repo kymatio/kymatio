@@ -80,9 +80,10 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         methods = ['integral']
         if not self.method in methods:
             raise ValueError('method must be in {}'.format(methods))
+
         if self.method == 'integral': \
-                self.averaging = lambda x, j: self.backend.compute_integrals(self.backend.fft(x, inverse=True),
-                                                                             self.integral_powers)
+                self.averaging = lambda x: self.backend.compute_integrals(x, self.integral_powers)
+
         return scattering3d(input_array, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
                             J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
 
