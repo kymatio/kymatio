@@ -284,8 +284,6 @@ def test_scattering_batch_shape_agnostic(device, backend):
     J = 2
     shape = (16, 16, 16)
 
-    shape_ds = tuple(n // (2 **J ) for n in shape)
-
     S = HarmonicScattering3D(J=J, shape=shape)
 
     for k in range(3):
@@ -300,10 +298,9 @@ def test_scattering_batch_shape_agnostic(device, backend):
 
     Sx = S(x)
 
-    assert len(Sx.shape) == 5
-    assert Sx.shape[-3:] == shape_ds
+    assert len(Sx.shape) == 3
 
-    coeffs_shape = Sx.shape[-4:-2]
+    coeffs_shape = Sx.shape[-3:]
 
     test_shapes = ((1,) + shape, (2,) + shape, (2, 2) + shape,
                    (2, 2, 2) + shape)
@@ -315,7 +312,6 @@ def test_scattering_batch_shape_agnostic(device, backend):
 
         Sx = S(x)
 
-        assert len(Sx.shape) == len(test_shape) + 2
-        assert Sx.shape[-3:] == shape_ds
-        assert Sx.shape[-4:-2] == coeffs_shape
-        assert Sx.shape[:-5] == test_shape[:-3]
+        assert len(Sx.shape) == len(test_shape) 
+        assert Sx.shape[-3:] == coeffs_shape
+        assert Sx.shape[:-3] == test_shape[:-3]
