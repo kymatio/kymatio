@@ -46,7 +46,7 @@ class ScatteringBase3D(ScatteringBase):
 
     """
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
-                 rotation_covariant=True, method='standard', points=None,
+                 rotation_covariant=True, method='integral', points=None,
                  integral_powers=(0.5, 1., 2.), backend=None):
         super(ScatteringBase3D, self).__init__()
         self.J = J

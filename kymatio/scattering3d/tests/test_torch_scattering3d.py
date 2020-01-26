@@ -257,43 +257,12 @@ def test_larger_scales(device, backend):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_scattering_methods(device, backend):
-    if backend.name == "torch_skcuda" and device == "cpu":
-        pytest.skip("The skcuda backend does not support CPU tensors.")
-
-    shape = (32, 32, 32)
-    J = 4
-    L = 3
-    sigma_0 = 1
-    x = torch.randn((1,) + shape).to(device)
-
-    scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0,
-            frontend='torch',backend=backend).to(device)
-
-    scattering.method = 'standard'
-    Sx = scattering(x)
-    scattering.rotation_covariant = False
-    Sx = scattering(x)
-
-    points = torch.zeros(1, 1, 3)
-    points[0,0,:] = torch.tensor(shape)/2
-
-    scattering.method = 'local'
-    scattering.points = points
-    Sx = scattering(x)
-    scattering.rotation_covariant = False
-    Sx = scattering(x)
-
-@pytest.mark.parametrize("device", devices)
-@pytest.mark.parametrize("backend", backends)
 def test_scattering_batch_shape_agnostic(device, backend):
     if backend.name == "torch_skcuda" and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
     J = 2
     shape = (16, 16, 16)
-
-    shape_ds = tuple(n // (2 **J ) for n in shape)
 
     S = HarmonicScattering3D(J=J, shape=shape)
 
@@ -309,10 +278,9 @@ def test_scattering_batch_shape_agnostic(device, backend):
 
     Sx = S(x)
 
-    assert len(Sx.shape) == 5
-    assert Sx.shape[-3:] == shape_ds
+    assert len(Sx.shape) == 3
 
-    coeffs_shape = Sx.shape[-4:-2]
+    coeffs_shape = Sx.shape[-3:]
 
     test_shapes = ((1,) + shape, (2,) + shape, (2, 2) + shape,
                    (2, 2, 2) + shape)
@@ -324,7 +292,6 @@ def test_scattering_batch_shape_agnostic(device, backend):
 
         Sx = S(x)
 
-        assert len(Sx.shape) == len(test_shape) + 2
-        assert Sx.shape[-3:] == shape_ds
-        assert Sx.shape[-4:-2] == coeffs_shape
-        assert Sx.shape[:-5] == test_shape[:-3]
+        assert len(Sx.shape) == len(test_shape) 
+        assert Sx.shape[-3:] == coeffs_shape
+        assert Sx.shape[:-3] == test_shape[:-3]
