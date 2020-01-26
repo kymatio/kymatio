@@ -66,85 +66,6 @@ def modulus_rotation(x, module=None):
     return torch.sqrt(module)
 
 
-def _compute_standard_scattering_coefs(input_array, filter_list, J, subsample):
-    """Computes convolution and downsamples.
-
-        Computes the convolution of input_array with a lowpass filter phi_J
-        and downsamples by a factor J.
-
-        Parameters
-        ----------
-        input_array : torch Tensor
-            Size (batchsize, M, N, O, 2).
-        filter_list : list of torch Tensors
-            Size (M, N, O, 2).
-        J : int
-            Low pass scale of phi_J.
-        subsample : function
-            Subsampling function.
-
-        Returns
-        -------
-        output : tensor
-            The result of input_array \\star phi_J downsampled by a factor J.
-
-    """
-    low_pass = filter_list[J]
-    convolved_input = cdgmm3d(input_array, low_pass)
-    convolved_input = fft(convolved_input, inverse=True)
-    return subsample(convolved_input, J)
-
-
-def _compute_local_scattering_coefs(input_array, filter_list, j, points):
-    """Compute convolution and returns particular points.
-
-        Computes the convolution of input_array with a lowpass filter phi_j+1
-        and returns the value of the output at particular points.
-        Parameters
-        ----------
-        input_array : torch tensor
-            Size (batchsize, M, N, O, 2).
-        filter_list : list of torch Tensors
-            Size (M, N, O, 2).
-        j : int
-            The lowpass scale j of phi_j.
-        points : torch tensor
-            Size (batchsize, number of points, 3).
-        Returns
-        -------
-        output : torch tensor
-            Torch tensor of size (batchsize, number of points, 1) with the values
-            of the lowpass filtered moduli at the points given.
-    """
-    local_coefs = torch.zeros(input_array.shape[0], points.shape[1], 1)
-    low_pass = filter_list[j + 1]
-    convolved_input = cdgmm3d(input_array, low_pass)
-    convolved_input = fft(convolved_input, inverse=True)
-    for i in range(input_array.shape[0]):
-        for j in range(points[i].shape[0]):
-            x, y, z = points[i, j, 0], points[i, j, 1], points[i, j, 2]
-            local_coefs[i, j, 0] = convolved_input[
-                i, int(x), int(y), int(z), 0]
-    return local_coefs
-
-
-def subsample(input_array, j):
-    """Downsamples.
-        Parameters
-        ----------
-        input_array : tensor
-            Input tensor of shape (batch, channel, M, N, O, 2).
-        j : int
-            Downsampling factor.
-        Returns
-        -------
-        out : tensor
-            Downsampled tensor of shape (batch, channel, M // 2 ** j, N // 2
-            ** j, O // 2 ** j, 2).
-    """
-    return input_array[..., ::2 ** j, ::2 ** j, ::2 ** j, :].contiguous()
-
-
 def compute_integrals(input_array, integral_powers):
     """Computes integrals.
 
@@ -164,10 +85,11 @@ def compute_integrals(input_array, integral_powers):
             Tensor of size (B, P) containing the integrals of the input_array
             to the powers p (l_p norms).
     """
-    integrals = torch.zeros(input_array.shape[0], len(integral_powers), 1)
+    integrals = torch.zeros((input_array.shape[0], len(integral_powers)),
+            device=input_array.device)
     for i_q, q in enumerate(integral_powers):
-        integrals[:, i_q, 0] = (input_array ** q).view(
-            input_array.shape[0], -1).sum(1).cpu()
+        integrals[:, i_q] = (input_array ** q).view(
+            input_array.shape[0], -1).sum(1)
     return integrals
 
 
@@ -272,9 +194,7 @@ def cdgmm3d(A, B, inplace=False):
 
 def concatenate(arrays, L):
     S = torch.stack(arrays, dim=1)
-
     S = S.reshape((S.shape[0], S.shape[1] // (L + 1), (L + 1)) + S.shape[2:])
-
     return S
 
 
@@ -284,7 +204,6 @@ backend = namedtuple('backend',
                       'fft',
                       'modulus',
                       'modulus_rotation',
-                      'subsample',
                       'compute_integrals',
                       'concatenate'])
 
@@ -294,7 +213,4 @@ backend.fft = fft
 backend.concatenate = concatenate
 backend.modulus = complex_modulus
 backend.modulus_rotation = modulus_rotation
-backend.subsample = subsample
 backend.compute_integrals = compute_integrals
-backend._compute_standard_scattering_coefs = _compute_standard_scattering_coefs
-backend._compute_local_scattering_coefs = _compute_local_scattering_coefs
