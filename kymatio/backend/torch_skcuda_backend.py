@@ -51,7 +51,7 @@ def cdgmm(A, B, inplace=False):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
     if not _is_complex(B) and not _is_real(B):
-        raise TypeError('The filter must be complex or real, indicated by a '
+        raise TypeError('The filter should be complex or real, indicated by a '
                         'last dimension of size 2 or 1, respectively.')
 
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
