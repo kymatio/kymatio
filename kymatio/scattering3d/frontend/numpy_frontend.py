@@ -105,4 +105,7 @@ class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringBase3D):
         return S
 
 
+HarmonicScatteringNumPy3D._document()
+
+
 __all__ = ['HarmonicScatteringNumPy3D']

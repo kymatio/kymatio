@@ -38,4 +38,8 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
 
         return S
 
+
+ScatteringNumPy2D._document()
+
+
 __all__ = ['ScatteringNumPy2D']

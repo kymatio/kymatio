@@ -10,148 +10,6 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    """The 1D scattering transform
-
-        The scattering transform computes a cascade of wavelet transforms
-        alternated with a complex modulus non-linearity. The scattering transform
-        of a 1D signal :math:`x(t)` may be written as
-
-            $S_J x = [S_J^{(0)} x, S_J^{(1)} x, S_J^{(2)} x]$
-
-        where
-
-            $S_J^{(0)} x(t) = x \\star \\phi_J(t)$,
-
-            $S_J^{(1)} x(t, \\lambda) =|x \\star \\psi_\\lambda^{(1)}| \\star \\phi_J$, and
-
-            $S_J^{(2)} x(t, \\lambda, \\mu) = |\\,| x \\star \\psi_\\lambda^{(1)}| \\star \\psi_\\mu^{(2)} | \\star \\phi_J$.
-
-        In the above formulas, :math:`\\star` denotes convolution in time. The
-        filters $\\psi_\\lambda^{(1)}(t)$ and $\\psi_\\mu^{(2)}(t)$
-        are analytic wavelets with center frequencies $\\lambda$ and
-        $\\mu$, while $\\phi_J(t)$ is a real lowpass filter centered
-        at the zero frequency.
-
-        The `Scattering1D` class implements the 1D scattering transform for a
-        given set of filters whose parameters are specified at initialization.
-        While the wavelets are fixed, other parameters may be changed after the
-        object is created, such as whether to compute all of :math:`S_J^{(0)} x`,
-        $S_J^{(1)} x$, and $S_J^{(2)} x$ or just $S_J^{(0)} x$
-        and $S_J^{(1)} x$.
-
-        The scattering transform may be computed on the CPU (the default) or a
-        GPU, if available. A `Scattering1D` object may be transferred from one
-        to the other using the `cuda()` and `cpu()` methods.
-
-        Given an input Tensor `x` of size `(B, T)`, where `B` is the number of
-        signals to transform (the batch size) and `T` is the length of the signal,
-        we compute its scattering transform by passing it to the `forward()`
-        method.
-
-        Example
-        -------
-        ::
-
-            # Set the parameters of the scattering transform.
-            J = 6
-            T = 2**13
-            Q = 8
-
-            # Generate a sample signal.
-            x = torch.randn(1, 1, T)
-
-            # Define a Scattering1D object.
-            S = Scattering1D(J, T, Q)
-
-            # Calculate the scattering transform.
-            Sx = S.forward(x)
-
-        Above, the length of the signal is `T = 2**13 = 8192`, while the maximum
-        scale of the scattering transform is set to `2**J = 2**6 = 64`. The
-        time-frequency resolution of the first-order wavelets
-        :math:`\\psi_\\lambda^{(1)}(t)` is set to `Q = 8` wavelets per octave.
-        The second-order wavelets :math:`\\psi_\\mu^{(2)}(t)` always have one
-        wavelet per octave.
-
-        Parameters
-        ----------
-        J : int
-            The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by `2**J`.
-        T : int
-            The length of the input signals.
-        Q : int >= 1
-            The number of first-order wavelets per octave (second-order wavelets
-            are fixed to one wavelet per octave). Defaults to `1`.
-        max_order : int, optional
-            The maximum order of scattering coefficients to compute. Must be either
-            `1` or `2`. Defaults to `2`.
-        average : boolean, optional
-            Determines whether the output is averaged in time or not. The averaged
-            output corresponds to the standard scattering transform, while the
-            un-averaged output skips the last convolution by :math:`\\phi_J(t)`.
-            This parameter may be modified after object creation.
-            Defaults to `True`.
-        oversampling : integer >= 0, optional
-            Controls the oversampling factor relative to the default as a power
-            of two. Since the convolving by wavelets (or lowpass filters) and
-            taking the modulus reduces the high-frequency content of the signal,
-            we can subsample to save space and improve performance. However, this
-            may reduce precision in the calculation. If this is not desirable,
-            `oversampling` can be set to a large value to prevent too much
-            subsampling. This parameter may be modified after object creation.
-            Defaults to `0`.
-        vectorize : boolean, optional
-            Determines wheter to return a vectorized scattering transform (that
-            is, a large array containing the output) or a dictionary (where each
-            entry corresponds to a separate scattering coefficient). This parameter
-            may be modified after object creation. Defaults to True.
-
-        Attributes
-        ----------
-        J : int
-            The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by `2**J`.
-        shape : int
-            The length of the input signals.
-        Q : int
-            The number of first-order wavelets per octave (second-order wavelets
-            are fixed to one wavelet per octave).
-        J_pad : int
-            The logarithm of the padded length of the signals.
-        pad_left : int
-            The amount of padding to the left of the signal.
-        pad_right : int
-            The amount of padding to the right of the signal.
-        phi_f : dictionary
-            A dictionary containing the lowpass filter at all resolutions. See
-            `filter_bank.scattering_filter_factory` for an exact description.
-        psi1_f : dictionary
-            A dictionary containing all the first-order wavelet filters, each
-            represented as a dictionary containing that filter at all
-            resolutions. See `filter_bank.scattering_filter_factory` for an exact
-            description.
-        psi2_f : dictionary
-            A dictionary containing all the second-order wavelet filters, each
-            represented as a dictionary containing that filter at all
-            resolutions. See `filter_bank.scattering_filter_factory` for an exact
-            description.
-            description
-        max_order : int
-            The maximum scattering order of the transform.
-        average : boolean
-            Controls whether the output should be averaged (the standard
-            scattering transform) or not (resulting in wavelet modulus
-            coefficients). Note that to obtain unaveraged output, the `vectorize`
-            flag must be set to `False`.
-        oversampling : int
-            The number of powers of two to oversample the output compared to the
-            default subsampling rate determined from the filters.
-        vectorize : boolean
-            Controls whether the output should be vectorized into a single Tensor
-            or collected into a dictionary. For more details, see the
-            documentation for `forward()`.
-        """
     def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
@@ -249,6 +107,196 @@ class ScatteringBase1D(ScatteringBase):
 
         return precompute_size_scattering(
             self.J, self.Q, max_order=self.max_order, detail=detail)
+
+    _doc_shape = 'T'
+
+    _doc_class = \
+    r"""The 1D scattering transform
+
+        The scattering transform computes a cascade of wavelet transforms
+        alternated with a complex modulus non-linearity. The scattering
+        transform of a 1D signal :math:`x(t)` may be written as
+
+            $S_J x = [S_J^{{(0)}} x, S_J^{{(1)}} x, S_J^{{(2)}} x]$
+
+        where
+
+            $S_J^{{(0)}} x(t) = x \star \phi_J(t)$,
+
+            $S_J^{{(1)}} x(t, \lambda) = |x \star \psi_\lambda^{{(1)}}| \star \phi_J$, and
+
+            $S_J^{{(2)}} x(t, \lambda, \mu) = |\,| x \star \psi_\lambda^{{(1)}}| \star \psi_\mu^{{(2)}} | \star \phi_J$.
+
+        In the above formulas, :math:`\star` denotes convolution in time. The
+        filters $\psi_\lambda^{{(1)}}(t)$ and $\psi_\mu^{{(2)}}(t)$ are analytic
+        wavelets with center frequencies $\lambda$ and $\mu$, while
+        $\phi_J(t)$ is a real lowpass filter centered at the zero frequency.
+
+        The `Scattering1D` class implements the 1D scattering transform for a
+        given set of filters whose parameters are specified at initialization.
+        While the wavelets are fixed, other parameters may be changed after
+        the object is created, such as whether to compute all of
+        :math:`S_J^{{(0)}} x`, $S_J^{{(1)}} x$, and $S_J^{{(2)}} x$ or just
+        $S_J^{{(0)}} x$ and $S_J^{{(1)}} x$.
+        {frontend_paragraph}
+        Given an input `{array}` `x` of shape `(B, T)`, where `B` is the
+        number of signals to transform (the batch size) and `T` is the length
+        of the signal, we compute its scattering transform by passing it to
+        the `scattering` method (or calling the alias `{alias_name}`). Note
+        that `B` can be one, in which case it may be omitted, giving an input
+        of shape `(T,)`.
+
+        Example
+        -------
+        ::
+
+            # Set the parameters of the scattering transform.
+            J = 6
+            T = 2 ** 13
+            Q = 8
+
+            # Generate a sample signal.
+            x = {sample}
+
+            # Define a Scattering1D object.
+            S = Scattering1D(J, T, Q)
+
+            # Calculate the scattering transform.
+            Sx = S.scattering(x)
+
+            # Equivalently, use the alias.
+            Sx = S{alias_call}(x)
+
+        Above, the length of the signal is `T = 2 ** 13 = 8192`, while the
+        maximum scale of the scattering transform is set to `2 ** J = 2 ** 6 =
+        64`. The time-frequency resolution of the first-order wavelets
+        :math:`\psi_\lambda^{{(1)}}(t)` is set to `Q = 8` wavelets per octave.
+        The second-order wavelets :math:`\psi_\mu^{{(2)}}(t)` always have one
+        wavelet per octave.
+
+        Parameters
+        ----------
+        J : int
+            The maximum log-scale of the scattering transform. In other words,
+            the maximum scale is given by `2**J`.
+        T : int
+            The length of the input signals.
+        Q : int >= 1
+            The number of first-order wavelets per octave (second-order
+            wavelets are fixed to one wavelet per octave). Defaults to `1`.
+        max_order : int, optional
+            The maximum order of scattering coefficients to compute. Must be
+            either `1` or `2`. Defaults to `2`.
+        average : boolean, optional
+            Determines whether the output is averaged in time or not. The
+            averaged output corresponds to the standard scattering transform,
+            while the un-averaged output skips the last convolution by
+            :math:`\phi_J(t)`.  This parameter may be modified after object
+            creation. Defaults to `True`.
+        oversampling : integer >= 0, optional
+            Controls the oversampling factor relative to the default as a
+            power of two. Since the convolving by wavelets (or lowpass
+            filters) and taking the modulus reduces the high-frequency content
+            of the signal, we can subsample to save space and improve
+            performance. However, this may reduce precision in the
+            calculation. If this is not desirable, `oversampling` can be set
+            to a large value to prevent too much subsampling. This parameter
+            may be modified after object creation. Defaults to `0`.
+        vectorize : boolean, optional
+            Determines wheter to return a vectorized scattering transform
+            (that is, a large array containing the output) or a dictionary
+            (where each entry corresponds to a separate scattering
+            coefficient). This parameter may be modified after object
+            creation. Defaults to True.
+
+        Attributes
+        ----------
+        J : int
+            The maximum log-scale of the scattering transform. In other words,
+            the maximum scale is given by `2 ** J`.
+        shape : int
+            The length of the input signals.
+        Q : int
+            The number of first-order wavelets per octave (second-order
+            wavelets are fixed to one wavelet per octave).
+        J_pad : int
+            The logarithm of the padded length of the signals.
+        pad_left : int
+            The amount of padding to the left of the signal.
+        pad_right : int
+            The amount of padding to the right of the signal.
+        phi_f : dictionary
+            A dictionary containing the lowpass filter at all resolutions. See
+            `filter_bank.scattering_filter_factory` for an exact description.
+        psi1_f : dictionary
+            A dictionary containing all the first-order wavelet filters, each
+            represented as a dictionary containing that filter at all
+            resolutions. See `filter_bank.scattering_filter_factory` for an
+            exact description.
+        psi2_f : dictionary
+            A dictionary containing all the second-order wavelet filters, each
+            represented as a dictionary containing that filter at all
+            resolutions. See `filter_bank.scattering_filter_factory` for an
+            exact description.
+        max_order : int
+            The maximum scattering order of the transform.
+        average : boolean
+            Controls whether the output should be averaged (the standard
+            scattering transform) or not (resulting in wavelet modulus
+            coefficients). Note that to obtain unaveraged output, the
+            `vectorize` flag must be set to `False`.
+        oversampling : int
+            The number of powers of two to oversample the output compared to
+            the default subsampling rate determined from the filters.
+        vectorize : boolean
+            Controls whether the output should be vectorized into a single
+            Tensor or collected into a dictionary. For more details, see the
+            documentation for `scattering`.
+        """
+
+    _doc_scattering = \
+    """Apply the scattering transform
+
+       Given an input `{array}` of size `(B, T)`, where `B` is the batch
+       size and `T` is the length of the individual signals, this function
+       computes its scattering transform. If the `vectorize` flag is set to
+       `True`, the output is in the form of a `{array}` or size `(B, C, T1)`,
+       where `T1` is the signal length after subsampling to the scale `2**J`
+       (with the appropriate oversampling factor to reduce aliasing), and
+       `C` is the number of scattering coefficients.  If `vectorize` is set
+       `False`, however, the output is a dictionary containing `C` keys, each
+       a tuple whose length corresponds to the scattering order and whose
+       elements are the sequence of filter indices used.
+
+       Furthermore, if the `average` flag is set to `False`, these outputs
+       are not averaged, but are simply the wavelet modulus coefficients of
+       the filters.
+
+       Parameters
+       ----------
+       x : {array}
+           An input `{array}` of size `(B, T)`.
+
+       Returns
+       -------
+       S : tensor or dictionary
+           If the `vectorize` flag is `True`, the output is a{n} `{array}`
+           containing the scattering coefficients, while if `vectorize` is
+           `False`, it is a dictionary indexed by tuples of filter indices.
+       """
+
+    @classmethod
+    def _document(cls):
+        cls.__doc__ = ScatteringBase1D._doc_class.format(
+            array=cls._doc_array,
+            frontend_paragraph=cls._doc_frontend_paragraph,
+            alias_name=cls._doc_alias_name,
+            alias_call=cls._doc_alias_call,
+            sample=cls._doc_sample.format(shape=cls._doc_shape))
+
+        cls.scattering.__doc__ = ScatteringBase1D._doc_scattering.format(
+            array=cls._doc_array,
+            n=cls._doc_array_n)
 
 
 __all__ = ['ScatteringBase1D']
