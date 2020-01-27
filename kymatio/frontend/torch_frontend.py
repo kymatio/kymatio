@@ -15,6 +15,23 @@ class ScatteringTorch(nn.Module):
         raise NotImplementedError
 
     def forward(self, x):
-        """ This function provides the standard calling interface for PyTorch
-        modules."""
+        """This method is an alias for `scattering`."""
         return self.scattering(x)
+
+    _doc_array = 'torch.Tensor'
+    _doc_array_n = ''
+
+    _doc_alias_name = 'forward'
+
+    _doc_alias_call = '.forward'
+
+    _doc_frontend_paragraph = \
+        """
+        This class inherits from `torch.nn.Module`. As a result, it has all
+        the same capabilities, including transferring the object to the GPU
+        using the `cuda` or `to` methods. This object would then take GPU
+        tensors as input and output the scattering coefficients of those
+        tensors.
+        """
+
+    _doc_sample = 'torch.randn({shape})'
