@@ -42,7 +42,7 @@ setup_info = dict(
             'Michael Eickenberg, Mathieu Andreux, Georgios Exarchakis, '
             'Louis Thiry, Vincent Lostanlen, Joakim Andén, '
             'Tomás Angles, Gabriel Huang, Roberto Leonarduzzi'),
-    author_email=('edouard.oyallon@centralesupelec.fr, belilove@iro.umontreal.ca, '
+    author_email=('edouard.oyallon@lip6.fr, belilove@iro.umontreal.ca, '
                   'sergey.zagoruyko@inria.fr, michael.eickenberg@berkeley.edu, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
                   'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@flatironinstitute.org, '

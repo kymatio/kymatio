@@ -17,14 +17,15 @@ Use Kymatio if you need a library that:
 * runs seamlessly on CPU and GPU hardware, with major deep learning APIs, such
   as PyTorch and TensorFlow.
 
+# The environment Kymatio
 
-### Flexibility
+## Flexibility
 
 The Kymatio organization associates the developers of several pre-existing packages for wavelet scattering, including `ScatNet`, `scattering.m`, `PyScatWave`, `WaveletScattering.jl`, and `PyScatHarm`.
 
 The resort to PyTorch tensors as inputs to Kymatio allows the programmer to backpropagate the gradient of wavelet scattering coefficients, thus integrating them within an end-to-end trainable pipeline, such as a deep neural network.
 
-### Portability
+## Portability
 
 Each of these algorithms is written in a high-level imperative paradigm, making it portable to any Python library for array operations as long as it enables complex-valued linear algebra and a fast Fourier transform (FFT).
 
@@ -34,7 +35,7 @@ computation of the scattering transform.
 
 Currently, there are four available frontend-backends, PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU only), TensorFlow (CPU and GPU) and NumPy (CPU).
 
-### Scalability
+## Scalability
 
 Kymatio integrates the construction of wavelet filter banks in 1D, 2D, and 3D, as well as memory-efficient algorithms for extracting wavelet scattering coefficients, under a common application programming interface.
 
@@ -43,16 +44,16 @@ The current speedup with respect to CPU-based MATLAB code is of the order of 10 
 
 We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchmarks) for further details.
 
-### How to cite
+## How to cite
 
 If you use this package, please cite the following paper:
 
 Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J., Belilovsky E., Bruna J., Lostanlen V., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M. (2019). Kymatio: Scattering Transforms in Python. arXiv preprint arXiv:1812.11214. [(paper)](https://arxiv.org/abs/1812.11214)
 
-## Installation
+# Installation
 
 
-### Dependencies
+## Dependencies
 
 Kymatio requires:
 
@@ -72,9 +73,9 @@ pip install kymatio
 Linux and macOS are the two officially supported operating systems.
 
 
-### Frontend
+# Frontend
 
-#### NumPy
+## NumPy
 
 To explicitly call the `numpy` frontend, run:
 
@@ -83,7 +84,7 @@ from kymatio.numpy import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
-#### PyTorch
+## PyTorch
 
 After installing the latest version of `torch`, you can call `Scattering2D` as a `nn.Module` via for instance:
 
@@ -92,7 +93,7 @@ from kymatio.torch import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
-#### TensorFlow
+## TensorFlow
 
 After installing the latest version of `tensorflow`, you can call `Scattering2D` as a `tf.Module` via for instance:
 
@@ -101,7 +102,24 @@ from kymatio.tensorflow import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
-### GPU acceleration
+# Installation from source
+
+Assuming the Kymatio source has been downloaded, you may install it by running
+
+```
+pip install -r requirements.txt
+python setup.py install
+```
+
+Developers can also install Kymatio via:
+
+```
+pip install -r requirements.txt
+python setup.py develop
+```
+
+
+## GPU acceleration
 
 The available backends are PyTorch (`torch`), PyTorch+scikit-cuda (`torch_skcuda`), TensorFlow (`tensorflow`), and NumPy
 (`numpy`).
@@ -110,7 +128,7 @@ NumPy is the default frontend in 1D, 2D, and 3D scattering. For applications of 
 images (e.g. ImageNet, of size 224x224), however, we recommend the `torch_skcuda` backend, which is substantially faster
 than NumPy.
 
-#### PyTorch and scikit-cuda
+## PyTorch and scikit-cuda
 
 To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your
 object to GPU. Kymatio is designed to operate on a variety of backends for tensor operations. For extra speed, install
@@ -127,28 +145,12 @@ from kymatio.torch import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32)), backend='torch_skcuda')
 ```
 
-### Installation from source
-
-Assuming the Kymatio source has been downloaded, you may install it by running
-
-```
-pip install -r requirements.txt
-python setup.py install
-```
-
-Developers can also install Kymatio via:
-
-```
-pip install -r requirements.txt
-python setup.py develop
-```
-
-## Documentation
+# Documentation
 
 The documentation of Kymatio is officially hosted on the [kymat.io](https://www.kymat.io/) website.
 
 
-### Online resources
+## Online resources
 
 * [GitHub repository](https://github.com/kymatio/kymatio)
 * [GitHub issue tracker](https://github.com/kymatio/kymatio/issues)
@@ -157,7 +159,7 @@ The documentation of Kymatio is officially hosted on the [kymat.io](https://www.
 * [Code of conduct](https://github.com/kymatio/kymatio/blob/master/CODE_OF_CONDUCT.md)
 
 
-### Building the documentation from source
+## Building the documentation from source
 The documentation can also be found in the `doc/` subfolder of the GitHub repository.
 To build the documentation locally, please clone this repository and run
 
@@ -170,7 +172,7 @@ cd doc; make clean; make html
 
 We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
 
-[![Flatiron](doc/source/_static/FL_Full_Logo_Mark_Small.png)](https://www.simonsfoundation.org/flatiron)
+[![Flatiron](../../doc/source/_static/FL_Full_Logo_Mark_Small.png)](https://www.simonsfoundation.org/flatiron)
 
 We would also like to thank École Normale Supérieure for their support.
 
