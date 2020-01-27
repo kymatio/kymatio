@@ -3,6 +3,13 @@ import torch
 
 BACKEND_NAME = 'torch'
 
+def input_checks(x):
+    if x is None:
+        raise TypeError('The input should be not empty.')
+
+    if not x.is_contiguous():
+        raise RuntimeError('The input must be contiguous.')
+
 def _is_complex(x):
     return x.shape[-1] == 2
 
