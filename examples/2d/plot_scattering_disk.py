@@ -17,10 +17,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 from kymatio import Scattering2D
 from PIL import Image
+import os
 
 
-
-img_name = "images/digit.png"
+img_name = os.path.join(os.getcwd(),"images/digit.png")
 
 ####################################################################
 # Scattering computations
