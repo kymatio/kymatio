@@ -37,6 +37,7 @@ class ScatteringBase3D(ScatteringBase):
         This class implements solid harmonic scattering on a 3D input image.
         For details see https://arxiv.org/abs/1805.00571.
         {frontend_paragraph}
+
         Example
         -------
         ::
