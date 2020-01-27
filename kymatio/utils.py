@@ -1,10 +1,8 @@
 from sklearn.base import BaseEstimator, TransformerMixin
-
 import torch
 
 
 class ScatteringTransformer(BaseEstimator, TransformerMixin):
-
     def __init__(self, S, signal_shape, frontend='numpy'):
         """Creates an object that is compatible with the scikit-learn API
         and implements the .transform method.
@@ -53,5 +51,3 @@ class ScatteringTransformer(BaseEstimator, TransformerMixin):
         return output
 
     transform = predict
-
-
