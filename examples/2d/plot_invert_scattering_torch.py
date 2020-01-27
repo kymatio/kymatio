@@ -17,13 +17,14 @@ from PIL import Image
 from torch import optim
 
 from kymatio import Scattering2D
+import os
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 ###############################################################################
 # Load test image
 # ---------------
-img_name = "./images/baboon.bmp"
+img_name = os.path.join(__file__,"./images/baboon.bmp")
 src_img = Image.open(img_name).convert("RGB")
 src_img = np.array(src_img).astype(np.float32)
 src_img = src_img / 255.0
