@@ -101,13 +101,13 @@ def test(model, device, test_loader, scattering):
 ############################################################################
 # Train a simple Hybrid Scattering + CNN model on MNIST.
 
-from kymatio import Scattering2D
+from kymatio.torch import Scattering2D
 import torch.optim
 import math
 
 
 # Evaluate linear model on top of scattering
-scattering = Scattering2D(shape = (28, 28), J=2, frontend='torch')
+scattering = Scattering2D(shape = (28, 28), J=2)
 K = 81 #Number of output coefficients for each spatial postiion
 
 if use_cuda:
