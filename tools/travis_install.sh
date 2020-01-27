@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 sudo apt-get update
 if [[ $CONDA == "1" ]]; then
