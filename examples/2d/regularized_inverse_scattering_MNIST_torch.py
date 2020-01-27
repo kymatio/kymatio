@@ -23,12 +23,12 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from PIL import Image
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
+from PIL import Image
 
-from kymatio import Scattering2D as Scattering
+from kymatio.torch import Scattering2D as Scattering
 from kymatio.caching import get_cache_dir
 from kymatio.datasets import get_dataset_dir
 

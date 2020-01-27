@@ -17,7 +17,7 @@ from PIL import Image
 from torch import optim
 from scipy.misc import face
 
-from kymatio import Scattering2D
+from kymatio.torch import Scattering2D
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -43,7 +43,7 @@ for order in [1]:
     for J in [2, 4]:
 
         # Compute scattering coefficients
-        scattering = Scattering2D(J=J, shape=(height, width), max_order=order, frontend='torch')
+        scattering = Scattering2D(J=J, shape=(height, width), max_order=order)
         if device == "cuda":
             scattering = scattering.cuda()
             max_iter = 500
