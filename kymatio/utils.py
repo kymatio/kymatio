@@ -5,7 +5,7 @@ import torch
 
 class ScatteringTransformer(BaseEstimator, TransformerMixin):
 
-    def __init__(self, S, signal_shape, J, frontend='numpy'):
+    def __init__(self, S, signal_shape, frontend='numpy'):
         """Creates an object that is compatible with the scikit-learn API
         and implements the .transform method.
         
@@ -30,7 +30,7 @@ class ScatteringTransformer(BaseEstimator, TransformerMixin):
         self.signal_shape = signal_shape
         self.frontend = frontend
 
-        assert frontend in ['numpy','torch']
+        assert frontend in ['numpy','torch','tensorflow']
 
     def fit(self, X=None, y=None):
         # no fitting necessary
