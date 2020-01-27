@@ -54,7 +54,7 @@ import matplotlib.pyplot as plt
 # class is what lets us calculate the scattering transform, while the
 # `fetch_fsdd` function downloads the FSDD, if needed.
 
-from kymatio import Scattering1D
+from kymatio.torch import Scattering1D
 from kymatio.datasets import fetch_fsdd
 
 ###############################################################################

@@ -6,15 +6,14 @@ Based on pytorch example for CIFAR10
 """
 
 
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim
 from torchvision import datasets, transforms
-import torch.nn.functional as F
-from kymatio import Scattering2D
-import torch
-import argparse
+from kymatio.torch import Scattering2D
 import kymatio.datasets as scattering_datasets
-import torch.nn as nn
-
+import argparse
 
 def conv3x3(in_planes, out_planes, stride=1):
     "3x3 convolution with padding"
@@ -122,7 +121,7 @@ def test(model, device, test_loader, scattering):
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
             output = model(scattering(data))
-            test_loss += F.cross_entropy(output, target, size_average=False).item() # sum up batch loss
+            test_loss += F.cross_entropy(output, target, reduction='sum').item() # sum up batch loss
             pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
             correct += pred.eq(target.view_as(pred)).sum().item()
 
