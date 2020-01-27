@@ -132,4 +132,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         return S
 
 
+ScatteringTorch2D._document()
+
+
 __all__ = ['ScatteringTorch2D']

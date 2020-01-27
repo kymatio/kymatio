@@ -40,9 +40,8 @@ class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
             S = tf.reshape(S, batch_shape + scattering_shape)
             return S
 
-    @tf.Module.with_name_scope
-    def __call__(self, x):
-        return self.scattering(x)
+
+ScatteringTensorFlow2D._document()
 
 
 __all__ = ['ScatteringTensorFlow2D']
