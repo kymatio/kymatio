@@ -86,4 +86,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         return S
 
 
+ScatteringTensorFlow1D._document()
+
+
 __all__ = ['ScatteringTensorFlow1D']

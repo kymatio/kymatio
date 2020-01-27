@@ -136,4 +136,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         return S
 
 
+HarmonicScatteringTorch3D._document()
+
+
 __all__ = ['HarmonicScatteringTorch3D']
