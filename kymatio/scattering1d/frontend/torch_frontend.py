@@ -145,4 +145,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         return S
 
 
+ScatteringTorch1D._document()
+
+
 __all__ = ['ScatteringTorch1D']
