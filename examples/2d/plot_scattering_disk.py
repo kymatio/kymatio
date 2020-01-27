@@ -20,7 +20,7 @@ from PIL import Image
 import os
 
 
-img_name = os.path.join(__file__,"images/digit.png")
+img_name = os.path.join(os.getcwd(),"images/digit.png")
 
 ####################################################################
 # Scattering computations
