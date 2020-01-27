@@ -4,7 +4,7 @@ All rights reserved, 2017.
 """
 
 import numpy as np
-from .backend.numpy_backend import fft as fft2
+from scipy.fftpack import fft2, ifft2
 
 
 def filter_bank(M, N, J, L=8):
