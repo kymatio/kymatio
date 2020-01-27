@@ -217,23 +217,35 @@ def compute_meta_scattering(J, Q, max_order=2):
 
     meta_psi = {}
 
+    n_1 = 1
+    n_2 = len(j1s)+1
+
 
     for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
         f1 = {}
         f1['xi'] = xi1
         f1['sigma'] = sigma1
         f1['j'] = j1
-        meta_psi[(n1,)] = f1
+        f1['order'] = 1
+        f1['idx'] = n_1
+        n_1 += 1
+        meta_psi[(n1,)] = (f1,)
 
         if max_order < 2:
             continue
 
         for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
             if j2 > j1:
+                f1 = f1.copy()
                 f2 = {}
                 f2['xi'] = xi2
                 f2['sigma'] = sigma2
                 f2['j'] = j2
+                f2['order'] = 2
+                f2['idx'] = n_2
+                f1['order'] = 2
+                f1['idx'] = n_2
+                n_2 += 1
                 meta_psi[(n1, n2)] = (f1, f2)
 
     return meta_phi, meta_psi

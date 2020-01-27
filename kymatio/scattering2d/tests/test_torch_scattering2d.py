@@ -431,6 +431,32 @@ class TestScatteringTorch2D:
         S1x = scattering(x)
         assert torch.allclose(S1x, S[..., 0:len(o0 + o1), :, :])
 
+    def test_vectorize(self):
+        M,N = 32,32
+
+        x = torch.randn(2, M, N).cpu()
+
+        scattering = Scattering2D(J, shape=(M, N), pre_pad=False,
+                                  backend='torch', frontend='torch')
+
+        scattering.vectorize = False
+        s_dico = scattering(x)
+        s_dico = {k: s_dico[k].data for k in s_dico.keys()}
+
+        scattering.vectorize = True
+
+
+        s_vec = scattering(x)
+        s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
+        s_vec = s_vec.cpu()
+
+        meta_phi, meta_psi = scattering.meta()
+
+        assert len(s_dico) == s_vec.shape[1]
+        for cc in meta_psi.keys():
+            k = meta_psi[cc][0]['idx']
+            assert torch.allclose(s_vec[:, k], torch.squeeze(s_dico[cc]))
+
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):
         if backend.name == 'torch_skcuda':

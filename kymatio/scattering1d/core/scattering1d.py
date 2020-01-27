@@ -175,7 +175,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                     if vectorize:
                         out_S_2.append(S_2)
                     else:
-                        S[n1, n2] = S_2
+                        S[(n1, n2)] = S_2
 
     if vectorize:
         S = []

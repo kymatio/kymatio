@@ -256,14 +256,13 @@ def test_coordinates(device, backend, random_state=42):
             s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
             s_vec = s_vec.cpu()
 
-        meta = scattering.meta()
+        meta_phi, meta_psi = scattering.meta()
 
         if backend.name != 'torch_skcuda' or device != 'cpu':
             assert len(s_dico) == s_vec.shape[1]
-
-            for cc in range(s_vec.shape[1]):
-                k = meta['key'][cc]
-                assert torch.allclose(s_vec[:, cc], torch.squeeze(s_dico[k]))
+            for cc in meta_psi.keys():
+                k = meta_psi[cc][0]['idx']
+                assert torch.allclose(s_vec[:, k], torch.squeeze(s_dico[cc]))
 
 
 @pytest.mark.parametrize("device", devices)

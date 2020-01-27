@@ -348,3 +348,30 @@ def test_scattering_batch_shape_agnostic(device, backend):
         assert Sx.shape[-3:] == shape_ds
         assert Sx.shape[-4:-2] == coeffs_shape
         assert Sx.shape[:-5] == test_shape[:-3]
+
+
+def test_vectorize():
+    M, N, O = 32, 32, 32
+
+    x = torch.randn(2, M, N, O).cpu()
+
+    scattering = HarmonicScattering3D(J, shape=(M, N, O), pre_pad=False,
+                              backend='torch', frontend='torch')
+
+    scattering.vectorize = False
+
+    s_dico = scattering(x)
+    s_dico = {k: s_dico[k].data for k in s_dico.keys()}
+
+    scattering.vectorize = True
+
+    s_vec = scattering(x)
+    s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
+    s_vec = s_vec.cpu()
+
+    meta_phi, meta_psi = scattering.meta()
+
+    assert len(s_dico) == s_vec.shape[1]
+    for cc in meta_psi.keys():
+        k = meta_psi[cc][0]['idx']
+        assert torch.allclose(s_vec[:, k], torch.squeeze(s_dico[cc]))
