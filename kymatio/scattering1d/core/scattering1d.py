@@ -75,7 +75,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
 
     # compute the Fourier transform
-    U_0_hat = fft(U_0, 'C2C')
+    U_0_hat = fft(U_0, 'R2C')
 
     # Get S0
     k0 = max(J - oversampling, 0)
@@ -110,7 +110,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         U_1_m = modulus_complex(U_1_c)
 
         if average or max_order > 1:
-            U_1_hat = fft(U_1_m, 'C2C')
+            U_1_hat = fft(U_1_m, 'R2C')
 
         if average:
             # Convolve with phi_J
@@ -122,10 +122,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
-            # just take the real value and unpad
-            U_1_r = real(U_1_m)
-
-            S_1 = unpad(U_1_r, ind_start[k1], ind_end[k1])
+            S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
         out_S_1.append({'coef': S_1,
                         'j': (j1,),
@@ -150,7 +147,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     U_2_m = modulus_complex(U_2_c)
 
                     if average:
-                        U_2_hat = fft(U_2_m, 'C2C')
+                        U_2_hat = fft(U_2_m, 'R2C')
 
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
@@ -161,9 +158,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:
-                        # just take the real value and unpad
-                        U_2_r = real(U_2_m)
-                        S_2 = unpad(U_2_r, ind_start[k1 + k2], ind_end[k1 + k2])
+                        S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
                     out_S_2.append({'coef': S_2,
                                     'j': (j1, j2),
