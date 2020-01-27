@@ -7,7 +7,7 @@ BACKEND_NAME = 'torch_skcuda'
 from collections import namedtuple
 
 
-def _iscomplex(input):
+def _is_complex(input):
     return input.shape[-1] == 2
 
 
@@ -53,7 +53,7 @@ def cdgmm3d(A, B, inplace=False):
     if A.shape[-4:] != B.shape:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
-    if not _iscomplex(A) or not _iscomplex(B):
+    if not _is_complex(A) or not _is_complex(B):
         raise TypeError('The input, filter and output should be complex.')
 
     if B.ndimension() != 4:

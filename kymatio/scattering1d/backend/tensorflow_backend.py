@@ -5,25 +5,8 @@ import tensorflow as tf
 BACKEND_NAME = 'tensorflow'
 
 
-def modulus_complex(x):
-    """Compute the complex modulus
-    Computes the modulus of x and stores the result in a complex tensor of the
-    same size, with the real part equal to the modulus and the imaginary part
-    equal to zero.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    norm : tensor
-        A tensor with the same dimensions as x, such that norm[..., 0] contains
-        the complex modulus of x, while norm[..., 1] = 0.
-    """
-
-    norm = tf.abs(x)
-    return tf.cast(norm, tf.complex64)
-
+from ...backend.tensorflow_backend import Modulus, real, concatenate, cdgmm
+from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -129,68 +112,18 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
-def real(x):
-    """Real part of complex tensor
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
-    """
-    return tf.math.real(x)
 
-
-def fft1d_c2c(x):
-    """Compute the 1D FFT of a complex signal
-    Input
-    -----
-    x : tensor
-        A tensor of size (..., T, 2), where x[..., 0] is the real part and
-        x[..., 1] is the imaginary part.
-    Returns
-    -------
-    x_f : tensor
-        A tensor of the same size as x containing its Fourier transform in the
-        standard PyTorch FFT ordering.
-    """
-    return tf.signal.fft(x)
-
-
-def ifft1d_c2c(x):
-    """Compute the normalized 1D inverse FFT of a complex signal
-    Input
-    -----
-    x_f : tensor
-        A tensor of size (..., T, 2), where x_f[..., 0] is the real part and
-        x[..., 1] is the imaginary part. The frequencies are assumed to be in
-        the standard PyTorch FFT ordering.
-    Returns
-    -------
-    x : tensor
-        A tensor of the same size of x_f containing the normalized inverse
-        Fourier transform of x_f.
-    """
-    return tf.signal.ifft(x)
-
-
-def concatenate(arrays):
-    return tf.stack(arrays, axis=-2)
-
-
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft1d_c2c',
-                                 'ifft1d_c2c', 'concatenate'])
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
-backend.modulus_complex = modulus_complex
+backend.modulus_complex = Modulus()
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad
+backend.cdgmm = cdgmm
 backend.pad = pad
 backend.pad_1d = pad_1d
-backend.fft1d_c2c = fft1d_c2c
-backend.ifft1d_c2c = ifft1d_c2c
-backend.concatenate = concatenate
+backend.fft = FFT(lambda x: tf.signal.fft(x, name='ifft1d'),
+                  lambda x: tf.signal.ifft(x, name='ifft1d'),
+                  lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
+                  lambda x: None)
+backend.concatenate = lambda x: concatenate(x, -2)

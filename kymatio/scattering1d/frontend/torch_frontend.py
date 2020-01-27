@@ -28,7 +28,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 self.phi_f[k] = torch.from_numpy(
-                    self.phi_f[k]).float().view(-1, 1).repeat(1, 2)
+                    self.phi_f[k]).float().view(-1, 1)
                 self.register_buffer('tensor' + str(n), self.phi_f[k])
                 n += 1
         for psi_f in self.psi1_f:
@@ -36,7 +36,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
+                        psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
         for psi_f in self.psi2_f:
@@ -44,7 +44,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1).repeat(1, 2)
+                        psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
 

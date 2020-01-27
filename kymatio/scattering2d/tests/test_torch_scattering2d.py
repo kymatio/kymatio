@@ -109,7 +109,7 @@ class TestModulus:
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
             modulus(y)
-        assert 'should be contiguous' in record.value.args[0]
+        assert 'contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize('backend', backends)
     def test_cuda_only(self, backend):
@@ -238,15 +238,11 @@ class TestCDGMM:
 
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
-        assert 'input must be complex' in exc.value.args[0]
+        assert 'input should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
-        assert 'filter must be complex or real' in exc.value.args[0]
-
-        with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(3, 4, 5, 2))
-        assert 'filter must be a 3-tensor' in exc.value.args[0]
+        assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2),

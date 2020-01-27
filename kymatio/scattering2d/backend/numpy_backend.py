@@ -7,12 +7,8 @@ from scipy.fftpack import fft2, ifft2
 BACKEND_NAME = 'numpy'
 
 
-def _iscomplex(x):
-    return x.dtype == np.complex64 or x.dtype == np.complex128
-
-
-def _isreal(x):
-    return x.dtype == np.float32 or x.dtype == np.float64
+from ...backend.numpy_backend import modulus, cdgmm
+from ...backend.base_backend import FFT
 
 
 class Pad(object):
@@ -90,103 +86,6 @@ class SubsampleFourier(object):
         return out
 
 
-class Modulus(object):
-    """
-        This class implements a modulus transform for complex numbers.
-
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-
-        Parameters
-        ---------
-        x: input complex tensor.
-
-        Returns
-        -------
-        output: a real tensor equal to the modulus of x.
-
-    """
-    def __call__(self, x):
-        norm = np.abs(x)
-        return norm
-
-
-def fft(x, direction='C2C', inverse=False):
-    """
-        Interface with torch FFT routines for 2D signals.
-
-        Example
-        -------
-        x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x, inverse=True)
-
-        Parameters
-        ----------
-        input : tensor
-            complex input for the FFT
-        direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : if direction is equal to 'C2R', then an error is raised.
-
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
-
-    if direction == 'C2R':
-        output = np.real(ifft2(x))
-    elif direction == 'C2C':
-        if inverse:
-            output = ifft2(x)
-        else:
-            output = fft2(x)
-
-    return output
-
-
-def cdgmm(A, B, inplace=False):
-    """
-        Complex pointwise multiplication between (batched) tensor A and tensor B.
-
-        Parameters
-        ----------
-        A : tensor
-            A is a complex tensor of size (B, C, M, N, 2)
-        B : tensor
-            B is a complex tensor of size (M, N) or real tensor of (M, N)
-        inplace : boolean, optional
-            if set to True, all the operations are performed inplace
-
-        Returns
-        -------
-        C : tensor
-            output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
-
-    """
-    if not _iscomplex(A):
-        raise TypeError('The first input must be complex.')
-
-    if B.ndim != 2:
-        raise RuntimeError('The dimension of the second input must be 2.')
-
-    if not _iscomplex(B) and not _isreal(B):
-        raise TypeError('The second input must be complex or real.')
-
-    if A.shape[-2:] != B.shape[-2:]:
-        raise RuntimeError('The inputs are not compatible for '
-                           'multiplication.')
-
-    if inplace:
-        return np.multiply(A, B, out=A)
-    else:
-        return A * B
-
-
 def concatenate(arrays):
     return np.stack(arrays, axis=-3)
 
@@ -194,9 +93,12 @@ def concatenate(arrays):
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
-backend.modulus = Modulus()
+backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.fft = FFT(lambda x:np.fft.fft2(x),
+                  lambda x:np.fft.ifft2(x),
+                  lambda x:np.real(np.fft.ifft2(x)),
+                  lambda x:None)
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate
