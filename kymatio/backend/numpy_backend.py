@@ -1,5 +1,9 @@
 import numpy as np
 
+def input_checks(x):
+    if x is None:
+        raise TypeError('The input should be not empty.')
+
 
 def modulus(x):
     """
