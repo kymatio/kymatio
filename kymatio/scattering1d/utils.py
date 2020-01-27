@@ -204,19 +204,16 @@ def compute_meta_scattering(J, Q, max_order=2):
     meta_phi, meta_psi: filters with their des cription
         Each filter is filled with the following keys:
 
-        - `'xi'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the center
-            frequency of the filter used at each order (padded with NaNs).
-        - `'sigma'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the frequency
-            bandwidth of the filter used at each order (padded with NaNs).
-        - `'j'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the dyadic scale
-            of the filter used at each order (padded with NaNs).
+        - `'xi'` : float
+            The center frequency of the filter used at each order (padded with NaNs).
+        - `'sigma'` : float
+            The frequency bandwidth of the filter used at each order (padded with NaNs).
+        - `'j'` : float
+            The dyadic scale of the filter used at each order (padded with NaNs).
     """
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = calibrate_scattering_filters(J, Q)
 
-    meta_phi = {'sigma':sigma_low}
+    meta_phi = {'sigma': sigma_low, 'J': J}
 
     meta_psi = {}
 
@@ -233,11 +230,7 @@ def compute_meta_scattering(J, Q, max_order=2):
 
         for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
             if j2 > j1:
-                f1 = {}
                 f2 = {}
-                f1['xi'] = xi1
-                f1['sigma'] = sigma1
-                f1['j'] = j1
                 f2['xi'] = xi2
                 f2['sigma'] = sigma2
                 f2['j'] = j2
