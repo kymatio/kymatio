@@ -318,7 +318,7 @@ def cdgmm(A, B, inplace=False):
 
 
 def concatenate(arrays):
-    return torch.stack(arrays, axis=-3)
+    return torch.stack(arrays, dim=-3)
 
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
