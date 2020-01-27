@@ -1,3 +1,5 @@
+from ..backend.numpy_backend import input_checks
+
 class ScatteringNumPy:
     def __init__(self):
         self.frontend_name = 'numpy'
@@ -8,6 +10,9 @@ class ScatteringNumPy:
 
     def __call__(self, x):
         """This method is an alias for `scattering`."""
+
+        input_checks(x)
+
         return self.scattering(x)
 
     _doc_array = 'np.ndarray'
