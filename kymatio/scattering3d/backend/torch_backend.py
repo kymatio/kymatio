@@ -5,7 +5,7 @@ BACKEND_NAME = 'torch'
 from collections import namedtuple
 
 
-def _iscomplex(input):
+def _is_complex(input):
     """Checks if input is complex.
 
         Parameters
@@ -120,7 +120,7 @@ def fft(input, inverse=False):
         output : tensor
             Result of FFT or IFFT.
     """
-    if not _iscomplex(input):
+    if not _is_complex(input):
         raise TypeError('The input should be complex (e.g. last dimension is 2)')
     if inverse:
         return torch.ifft(input, 3)
@@ -168,7 +168,7 @@ def cdgmm3d(A, B, inplace=False):
     if A.shape[-4:] != B.shape:
         raise RuntimeError('The tensors are not compatible for multiplication.')
 
-    if not _iscomplex(A) or not _iscomplex(B):
+    if not _is_complex(A) or not _is_complex(B):
         raise TypeError('The input, filter and output should be complex.')
 
     if B.ndimension() != 4:

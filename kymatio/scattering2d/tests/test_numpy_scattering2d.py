@@ -116,11 +116,6 @@ class TestCDGMM:
                           np.empty((4, 5)).astype(np.complex128))
         assert 'first input must be complex' in record.value.args[0]
 
-        with pytest.raises(RuntimeError) as record:
-            backend.cdgmm(np.empty((3, 4, 5)).astype(np.complex128),
-                          np.empty((3, 4, 5)).astype(np.complex128))
-        assert 'second input must be 2' in record.value.args[0]
-
         with pytest.raises(TypeError) as record:
             backend.cdgmm(np.empty((3, 4, 5)).astype(np.complex128),
                           np.empty((4, 5)).astype(np.int64))

@@ -6,11 +6,9 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-def _iscomplex(x):
-    return x.shape[-1] == 2
+from ...backend.torch_backend import _is_complex, cdgmm, type_checks, Modulus, concatenate
+from ...backend.base_backend import FFT
 
-def _isreal(x):
-    return x.shape[-1] == 1
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -129,7 +127,7 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
-        if not _iscomplex(x):
+        if not _is_complex(x):
             raise TypeError('The x should be complex.')
 
         if not x.is_contiguous():
@@ -146,179 +144,11 @@ class SubsampleFourier(object):
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
-class Modulus(object):
-    """This class implements a modulus transform for complex numbers.
 
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-
-        Parameters
-        ---------
-        x : tensor
-            Complex torch tensor.
-
-        Returns
-        -------
-        output : tensor
-            A tensor with the same dimensions as x, such that output[..., 0]
-            contains the complex modulus of x, while output[..., 1] = 0.
-
-    """
-    def __call__(self, x):
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
-
-        if not _iscomplex(x):
-            raise TypeError('The inputs should be complex.')
-
-        norm = torch.zeros_like(x)
-        norm[...,0] = (x[...,0]*x[...,0] +
-                       x[...,1]*x[...,1]).sqrt()
-        return norm
-
-def fft(x, direction='C2C', inverse=False):
-    """Interface with torch FFT routines for 2D signals.
-
-        Example
-        -------
-        x = torch.randn(128, 32, 32, 2)
-        x_fft = fft(x)
-        x_ifft = fft(x, inverse=True)
-
-        Parameters
-        ----------
-        x : tensor
-            Complex input for the FFT.
-        direction : string
-            'C2R' for complex to real, 'C2C' for complex to complex.
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : If direction is equal to 'C2R', then an error is raised.
-
-        Raises
-        ------
-        RuntimeError
-            In the event that we are going from complex to real and not doing
-            the inverse FFT or in the event x is not contiguous.
-        TypeError
-            In the event that x does not have a final dimension 2 i.e. not
-            complex.
-
-        Returns
-        -------
-        output : tensor
-            Result of FFT or IFFT.
-
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT.')
-
-    if not _iscomplex(x):
-        raise TypeError('The input should be complex (e.g. last dimension is 2).')
-
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
-
-    if direction == 'C2R':
-        output = torch.irfft(x, 2, normalized=False, onesided=False)
-    elif direction == 'C2C':
-        if inverse:
-            output = torch.ifft(x, 2, normalized=False)
-        else:
-            output = torch.fft(x, 2, normalized=False)
-
-    return output
-
-def cdgmm(A, B, inplace=False):
-    """Complex pointwise multiplication.
-
-        Complex pointwise multiplication between (batched) tensor A and tensor B.
-
-        Parameters
-        ----------
-        A : tensor
-            A is a complex tensor of size (B, C, M, N, 2).
-        B : tensor
-            B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1).
-        inplace : boolean, optional
-            If set to True, all the operations are performed in place.
-
-        Raises
-        ------
-        RuntimeError
-            In the event that the filter B is not a 3-tensor with a last
-            dimension of size 1 or 2, or A and B are not compatible for
-            multiplication.
-        TypeError
-            In the event that A is not complex, or B does not have a final
-            dimension of 1 or 2, or A and B are not of the same dtype, or if
-            A and B are not on the same device.
-
-        Returns
-        -------
-        C : tensor
-            Output tensor of size (B, C, M, N, 2) such that:
-            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
-
-    """
-    if not _iscomplex(A):
-        raise TypeError('The input must be complex, indicated by a last '
-                        'dimension of size 2.')
-
-    if B.ndimension() != 3:
-        raise RuntimeError('The filter must be a 3-tensor, with a last '
-                           'dimension of size 1 or 2 to indicate it is real '
-                           'or complex, respectively.')
-
-    if not _iscomplex(B) and not _isreal(B):
-        raise TypeError('The filter must be complex or real, indicated by a '
-                        'last dimension of size 2 or 1, respectively.')
-
-    if A.shape[-3:-1] != B.shape[-3:-1]:
-        raise RuntimeError('The filters are not compatible for multiplication.')
-
-    if A.dtype is not B.dtype:
-        raise TypeError('Input and filter must be of the same dtype.')
-
-    if B.device.type == 'cuda':
-        if A.device.type == 'cuda':
-            if A.device.index != B.device.index:
-                raise TypeError('Input and filter must be on the same GPU.')
-        else:
-            raise TypeError('Input must be on GPU.')
-
-    if B.device.type == 'cpu':
-        if A.device.type == 'cuda':
-            raise TypeError('Input must be on CPU.')
-
-    if not A.is_contiguous() or not B.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
-
-    if _isreal(B):
-        if inplace:
-            return A.mul_(B)
-        else:
-            return A * B
-    else:
-        C = A.new(A.shape)
-
-        A_r = A[..., 0].view(-1, A.shape[-2]*A.shape[-3])
-        A_i = A[..., 1].view(-1, A.shape[-2]*A.shape[-3])
-
-        B_r = B[...,0].view(B.shape[-2]*B.shape[-3]).unsqueeze(0).expand_as(A_i)
-        B_i = B[..., 1].view(B.shape[-2]*B.shape[-3]).unsqueeze(0).expand_as(A_r)
-
-        C[..., 0].view(-1, C.shape[-2]*C.shape[-3])[:] = A_r * B_r - A_i * B_i
-        C[..., 1].view(-1, C.shape[-2]*C.shape[-3])[:] = A_r * B_i + A_i * B_r
-
-        return C if not inplace else A.copy_(C)
-
-
-def concatenate(arrays):
-    return torch.stack(arrays, axis=-3)
+fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
+          lambda x: torch.ifft(x, 2, normalized=False),
+          lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
+          type_checks)
 
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
@@ -329,4 +159,4 @@ backend.subsample_fourier = SubsampleFourier()
 backend.fft = fft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = concatenate
+backend.concatenate = lambda x: concatenate(x, -3)
