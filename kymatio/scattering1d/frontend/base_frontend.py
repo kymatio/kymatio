@@ -167,8 +167,8 @@ class ScatteringBase1D(ScatteringBase):
             # Equivalently, use the alias.
             Sx = S{alias_call}(x)
 
-        Above, the length of the signal is `T = 2 ** 13 = 8192`, while the
-        maximum scale of the scattering transform is set to `2 ** J = 2 ** 6 =
+        Above, the length of the signal is :math:`T = 2^{{13}} = 8192`, while the
+        maximum scale of the scattering transform is set to :math:`2^J = 2^6 =
         64`. The time-frequency resolution of the first-order wavelets
         :math:`\psi_\lambda^{{(1)}}(t)` is set to `Q = 8` wavelets per octave.
         The second-order wavelets :math:`\psi_\mu^{{(2)}}(t)` always have one
@@ -178,7 +178,7 @@ class ScatteringBase1D(ScatteringBase):
         ----------
         J : int
             The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by `2**J`.
+            the maximum scale is given by :math:`2^J`.
         T : int
             The length of the input signals.
         Q : int >= 1
@@ -261,7 +261,7 @@ class ScatteringBase1D(ScatteringBase):
        size and `T` is the length of the individual signals, this function
        computes its scattering transform. If the `vectorize` flag is set to
        `True`, the output is in the form of a `{array}` or size `(B, C, T1)`,
-       where `T1` is the signal length after subsampling to the scale `2**J`
+       where `T1` is the signal length after subsampling to the scale :math:`2^J`
        (with the appropriate oversampling factor to reduce aliasing), and
        `C` is the number of scattering coefficients.  If `vectorize` is set
        `False`, however, the output is a dictionary containing `C` keys, each

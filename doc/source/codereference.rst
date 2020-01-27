@@ -1,7 +1,16 @@
 Documentation
 =============
 
-.. automodule:: kymatio
+.. automodule:: kymatio.numpy
     :members:
     :show-inheritance:
-    :exclude-members: __dict__
+
+
+.. automodule:: kymatio.torch
+    :members:
+    :show-inheritance:
+
+
+.. automodule:: kymatio.tensorflow
+    :members:
+    :show-inheritance:

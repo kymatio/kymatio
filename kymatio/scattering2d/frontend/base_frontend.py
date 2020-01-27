@@ -42,20 +42,25 @@ class ScatteringBase2D(ScatteringBase):
 
         where
 
-            $S_J^{{(0)}} x = x \star \phi_J$
-            $S_J^{{(1)}} x = [|x \star \psi^{{(1)}}_\lambda| \star \phi_J]_\lambda$
+            $S_J^{{(0)}} x = x \star \phi_J$,
+
+            $S_J^{{(1)}} x = [|x \star \psi^{{(1)}}_\lambda| \star \phi_J]_\lambda$, and
+
             $S_J^{{(2)}} x = [||x \star \psi^{{(1)}}_\lambda| \star
-            \psi^{{(2)}}_\mu| \star \phi_J]_{{\lambda, \mu}}$
+            \psi^{{(2)}}_\mu| \star \phi_J]_{{\lambda, \mu}}$.
 
         where $\star$ denotes the convolution (in space), $\phi_J$ is a
         lowpass filter, $\psi^{{(1)}}_\lambda$ is a family of bandpass filters
         and $\psi^{{(2)}}_\mu$ is another family of bandpass filters. Only
         Morlet filters are used in this implementation. Convolutions are
         efficiently performed in the Fourier domain.
+
         {frontend_paragraph}
+
         Example
         -------
         ::
+
             # Set the parameters of the scattering transform.
             J = 3
             M, N = 32, 32
