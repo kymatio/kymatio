@@ -1,7 +1,7 @@
 # Authors: Louis Thiry, Georgios Exarchakis
 # Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
 
-def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, averaging):
+def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, averaging, vectorize=True):
     """
     The forward pass of 3D solid harmonic scattering
     Parameters
@@ -71,7 +71,7 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
 
     # Invert (ell, m × j) ordering to (m × j, ell).
     S = [x for y in zip(*S) for x in y]
-
-    S = concatenate(S, L)
+    if vectorize:
+        S = concatenate(S, L)
 
     return S
