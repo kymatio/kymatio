@@ -498,18 +498,6 @@ def test_modulus(device, backend, random_state=42):
     x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
     assert torch.allclose(x.grad, x_grad)
 
-    # Manually check `forward`/`backward` using fake context object. This
-    # ensures that `backward` is included in code coverage since going through
-    # the PyTorch C extension seems to not play well with `coverage.py`.
-    class FakeContext:
-        def save_for_backward(self, *args):
-            self.saved_tensors = args
-
-    ctx = FakeContext()
-    y = backend.ModulusStable.forward(ctx, x)
-    y_grad = torch.ones_like(y)
-    x_grad_manual = backend.ModulusStable.backward(ctx, y_grad)
-    assert torch.allclose(x_grad_manual, x_grad)
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
