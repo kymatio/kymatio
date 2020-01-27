@@ -84,4 +84,7 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
         return S
 
 
+ScatteringNumPy1D._document()
+
+
 __all__ = ['ScatteringNumPy1D']

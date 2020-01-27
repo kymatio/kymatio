@@ -41,4 +41,7 @@ class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
             return S
 
 
+ScatteringTensorFlow2D._document()
+
+
 __all__ = ['ScatteringTensorFlow2D']
