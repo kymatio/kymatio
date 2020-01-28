@@ -1,7 +1,8 @@
 # Authors: Edouard Oyallon, Muawiz Chaudhary
 # Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
 
-def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order, vectorize=True):
+def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
+        out_type='array'):
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
     fft = backend.fft
@@ -79,7 +80,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order, vectorize=Tr
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
 
-    if vectorize:
+    if out_type == 'array':
         out_S = concatenate([x['coef'] for x in out_S])
 
     return out_S

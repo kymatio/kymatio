@@ -6,7 +6,8 @@ from ...frontend.torch_frontend import ScatteringTorch
 
 
 class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend='torch', vectorize=True):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False,
+            backend='torch', out_type='array'):
         ScatteringTorch.__init__(self)
         ScatteringBase2D.__init__(**locals())
         ScatteringBase2D._instantiate_backend(self, 'kymatio.scattering2d.backend.')
@@ -115,6 +116,9 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         if (input.shape[-1] != self.N_padded or input.shape[-2] != self.M_padded) and self.pre_pad:
             raise RuntimeError('Padded tensor must be of spatial size (%i,%i).' % (self.M_padded, self.N_padded))
 
+        if not self.out_type in ('array', 'list'):
+            raise RuntimeError("The out_type must be one of 'array' or 'list'.")
+
         phi, psi = self.load_filters()
 
         batch_shape = input.shape[:-2]
@@ -123,9 +127,9 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         input = input.reshape((-1,) + signal_shape)
 
         S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
-                            self.L, phi, psi, self.max_order, vectorize=self.vectorize)
+                            self.L, phi, psi, self.max_order, self.out_type)
 
-        if self.vectorize:
+        if self.out_type == 'array':
             scattering_shape = S.shape[-3:]
             S = S.reshape(batch_shape + scattering_shape)
         else:
