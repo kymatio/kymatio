@@ -5,7 +5,8 @@ from ..utils import compute_padding
 
 
 class ScatteringBase2D(ScatteringBase):
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None, vectorize=True):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False,
+            backend=None, out_type='array'):
         super(ScatteringBase2D, self).__init__()
         self.pre_pad = pre_pad
         self.L = L
@@ -13,7 +14,7 @@ class ScatteringBase2D(ScatteringBase):
         self.J = J
         self.shape = shape
         self.max_order = max_order
-        self.vectorize = vectorize
+        self.out_type = out_type
 
     def build(self):
         self.M, self.N = self.shape
