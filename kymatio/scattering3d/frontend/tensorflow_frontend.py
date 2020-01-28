@@ -86,3 +86,6 @@ class HarmonicScatteringTensorFlow3D(ScatteringTensorFlow, ScatteringBase3D):
                     self.M, self.N, self.O))
 
         return self.scattering(x)
+
+
+HarmonicScatteringTensorFlow3D._document()
