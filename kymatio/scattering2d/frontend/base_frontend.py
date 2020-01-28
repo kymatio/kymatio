@@ -5,6 +5,34 @@ from ..utils import compute_padding
 
 
 class ScatteringBase2D(ScatteringBase):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None, vectorize=True):
+        super(ScatteringBase2D, self).__init__()
+        self.pre_pad = pre_pad
+        self.L = L
+        self.backend = backend
+        self.J = J
+        self.shape = shape
+        self.max_order = max_order
+        self.vectorize = vectorize
+
+    def build(self):
+        self.M, self.N = self.shape
+
+        if 2 ** self.J > self.M or 2 ** self.J > self.N:
+            raise RuntimeError('The smallest dimension should be larger than 2^J.')
+        self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
+        # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
+        self.pad = self.backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
+                                (self.N_padded - self.N + 1) // 2], [self.M, self.N], pre_pad=self.pre_pad)
+        self.unpad = self.backend.unpad
+
+    def create_filters(self):
+        filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
+        self.phi, self.psi = filters['phi'], filters['psi']
+
+    _doc_shape = 'M, N'
+
+    _doc_class = \
     r"""The 2D scattering transform
 
         The scattering transform computes two wavelet transform
@@ -94,33 +122,6 @@ class ScatteringBase2D(ScatteringBase):
         because this does not introduce border effects inherent to padding.
         """
 
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False, backend=None, vectorize=True):
-        super(ScatteringBase2D, self).__init__()
-        self.pre_pad = pre_pad
-        self.L = L
-        self.backend = backend
-        self.J = J
-        self.shape = shape
-        self.max_order = max_order
-        self.vectorize = vectorize
-
-    def build(self):
-        self.M, self.N = self.shape
-
-        if 2 ** self.J > self.M or 2 ** self.J > self.N:
-            raise RuntimeError('The smallest dimension should be larger than 2^J.')
-        self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
-        # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
-        self.pad = self.backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
-                                (self.N_padded - self.N + 1) // 2], [self.M, self.N], pre_pad=self.pre_pad)
-        self.unpad = self.backend.unpad
-
-    def create_filters(self):
-        filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
-        self.phi, self.psi = filters['phi'], filters['psi']
-
-    _doc_shape = 'M, N'
-
     _doc_scattering = \
     """Apply the scattering transform
 
@@ -149,7 +150,7 @@ class ScatteringBase2D(ScatteringBase):
 
     @classmethod
     def _document(cls):
-        cls.__doc__ = ScatteringBase2D.__doc__.format(
+        cls.__doc__ = ScatteringBase2D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,

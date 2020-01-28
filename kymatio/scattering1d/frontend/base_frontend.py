@@ -10,6 +10,107 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
+    def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend=None):
+        super(ScatteringBase1D, self).__init__()
+        self.J = J
+        self.shape = shape
+        self.Q = Q
+        self.max_order = max_order
+        self.average = average
+        self.oversampling = oversampling
+        self.vectorize = vectorize
+        self.backend = backend
+
+    def build(self):
+        """Set up padding and filters
+
+        Certain internal data, such as the amount of padding and the wavelet
+        filters to be used in the scattering transform, need to be computed
+        from the parameters given during construction. This function is called
+        automatically during object creation and no subsequent calls are
+        therefore needed.
+        """
+        self.r_psi = math.sqrt(0.5)
+        self.sigma0 = 0.1
+        self.alpha = 5.
+        self.P_max = 5
+        self.eps = 1e-7
+        self.criterion_amplitude = 1e-3
+        self.normalize = 'l1'
+
+        # check the shape
+        if isinstance(self.shape, numbers.Integral):
+            self.T = self.shape
+        elif isinstance(self.shape, tuple):
+            self.T = self.shape[0]
+            if len(self.shape) > 1:
+                raise ValueError("If shape is specified as a tuple, it must "
+                                 "have exactly one element")
+        else:
+            raise ValueError("shape must be an integer or a 1-tuple")
+
+        # Compute the minimum support to pad (ideally)
+        min_to_pad = compute_minimum_support_to_pad(
+            self.T, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
+            alpha=self.alpha, P_max=self.P_max, eps=self.eps,
+            criterion_amplitude=self.criterion_amplitude,
+            normalize=self.normalize)
+        # to avoid padding more than T - 1 on the left and on the right,
+        # since otherwise torch sends nans
+        J_max_support = int(np.floor(np.log2(3 * self.T - 2)))
+        self.J_pad = min(int(np.ceil(np.log2(self.T + 2 * min_to_pad))),
+                         J_max_support)
+        # compute the padding quantities:
+        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.T)
+        # compute start and end indices
+        self.ind_start, self.ind_end = compute_border_indices(
+            self.J, self.pad_left, self.pad_left + self.T)
+
+    def create_filters(self):
+        # Create the filters
+        self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
+            self.J_pad, self.J, self.Q, normalize=self.normalize,
+            criterion_amplitude=self.criterion_amplitude,
+            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
+            P_max=self.P_max, eps=self.eps)
+
+    def meta(self):
+        """Get meta information on the transform
+
+        Calls the static method `compute_meta_scattering()` with the
+        parameters of the transform object.
+
+        Returns
+        ------
+        meta : dictionary
+            See the documentation for `compute_meta_scattering()`.
+        """
+        return compute_meta_scattering(self.J, self.Q, max_order=self.max_order)
+
+    def output_size(self, detail=False):
+        """Get size of the scattering transform
+
+        Calls the static method `precompute_size_scattering()` with the
+        parameters of the transform object.
+
+        Parameters
+        ----------
+        detail : boolean, optional
+            Specifies whether to provide a detailed size (number of coefficient
+            per order) or an aggregate size (total number of coefficients).
+
+        Returns
+        ------
+        size : int or tuple
+            See the documentation for `precompute_size_scattering()`.
+        """
+
+        return precompute_size_scattering(
+            self.J, self.Q, max_order=self.max_order, detail=detail)
+
+    _doc_shape = 'T'
+
+    _doc_class = \
     r"""The 1D scattering transform
     
         The scattering transform computes a cascade of wavelet transforms
@@ -153,106 +254,6 @@ class ScatteringBase1D(ScatteringBase):
             documentation for `scattering`.
         """
 
-    def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend=None):
-        super(ScatteringBase1D, self).__init__()
-        self.J = J
-        self.shape = shape
-        self.Q = Q
-        self.max_order = max_order
-        self.average = average
-        self.oversampling = oversampling
-        self.vectorize = vectorize
-        self.backend = backend
-
-    def build(self):
-        """Set up padding and filters
-
-        Certain internal data, such as the amount of padding and the wavelet
-        filters to be used in the scattering transform, need to be computed
-        from the parameters given during construction. This function is called
-        automatically during object creation and no subsequent calls are
-        therefore needed.
-        """
-        self.r_psi = math.sqrt(0.5)
-        self.sigma0 = 0.1
-        self.alpha = 5.
-        self.P_max = 5
-        self.eps = 1e-7
-        self.criterion_amplitude = 1e-3
-        self.normalize = 'l1'
-
-        # check the shape
-        if isinstance(self.shape, numbers.Integral):
-            self.T = self.shape
-        elif isinstance(self.shape, tuple):
-            self.T = self.shape[0]
-            if len(self.shape) > 1:
-                raise ValueError("If shape is specified as a tuple, it must "
-                                 "have exactly one element")
-        else:
-            raise ValueError("shape must be an integer or a 1-tuple")
-
-        # Compute the minimum support to pad (ideally)
-        min_to_pad = compute_minimum_support_to_pad(
-            self.T, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
-            alpha=self.alpha, P_max=self.P_max, eps=self.eps,
-            criterion_amplitude=self.criterion_amplitude,
-            normalize=self.normalize)
-        # to avoid padding more than T - 1 on the left and on the right,
-        # since otherwise torch sends nans
-        J_max_support = int(np.floor(np.log2(3 * self.T - 2)))
-        self.J_pad = min(int(np.ceil(np.log2(self.T + 2 * min_to_pad))),
-                         J_max_support)
-        # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.T)
-        # compute start and end indices
-        self.ind_start, self.ind_end = compute_border_indices(
-            self.J, self.pad_left, self.pad_left + self.T)
-
-    def create_filters(self):
-        # Create the filters
-        self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, normalize=self.normalize,
-            criterion_amplitude=self.criterion_amplitude,
-            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
-            P_max=self.P_max, eps=self.eps)
-
-    def meta(self):
-        """Get meta information on the transform
-
-        Calls the static method `compute_meta_scattering()` with the
-        parameters of the transform object.
-
-        Returns
-        ------
-        meta : dictionary
-            See the documentation for `compute_meta_scattering()`.
-        """
-        return compute_meta_scattering(self.J, self.Q, max_order=self.max_order)
-
-    def output_size(self, detail=False):
-        """Get size of the scattering transform
-
-        Calls the static method `precompute_size_scattering()` with the
-        parameters of the transform object.
-
-        Parameters
-        ----------
-        detail : boolean, optional
-            Specifies whether to provide a detailed size (number of coefficient
-            per order) or an aggregate size (total number of coefficients).
-
-        Returns
-        ------
-        size : int or tuple
-            See the documentation for `precompute_size_scattering()`.
-        """
-
-        return precompute_size_scattering(
-            self.J, self.Q, max_order=self.max_order, detail=detail)
-
-    _doc_shape = 'T'
-
     _doc_scattering = \
     """Apply the scattering transform
 
@@ -286,7 +287,7 @@ class ScatteringBase1D(ScatteringBase):
 
     @classmethod
     def _document(cls):
-        cls.__doc__ = ScatteringBase1D.__doc__.format(
+        cls.__doc__ = ScatteringBase1D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
