@@ -8,8 +8,8 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order, vectorize=Tr
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
-    # S is simply a dictionary if we do not perform the averaging...
-    S = {}
+    # Define lists for output.
+    out_S_0, out_S_1, out_S_2 = [], [], []
 
     U_r = pad(x)
 
@@ -22,7 +22,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order, vectorize=Tr
     S_0 = fft(U_1_c, 'C2R', inverse=True)
     S_0 = unpad(S_0)
 
-    S[()] = S_0
+    out_S_0.append(S_0)
 
     for n1 in range(len(psi)):
         j1 = psi[n1]['j']
@@ -40,8 +40,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order, vectorize=Tr
         S_1_r = fft(S_1_c, 'C2R', inverse=True)
         S_1_r = unpad(S_1_r)
 
-
-        S[(n1,)] = S_1_r
+        out_S_1.append(S_1_r)
 
         if max_order < 2:
             continue
@@ -62,16 +61,17 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order, vectorize=Tr
             S_2_r = fft(S_2_c, 'C2R', inverse=True)
             S_2_r = unpad(S_2_r)
 
-            S[(n1, n2)] = S_2_r
+            out_S_2.append(S_2_r)
+
+    out_S = []
+    out_S.extend(out_S_0)
+    out_S.extend(out_S_1)
+    out_S.extend(out_S_2)
 
     if vectorize:
-        sorted_keys = sorted(S.keys(), key=lambda x: (len(x),) + x)
+        out_S = concatenate(out_S)
 
-        S = [S[key] for key in sorted_keys]
-
-        S = concatenate(S)
-
-    return S
+    return out_S
 
 
 __all__ = ['scattering2d']

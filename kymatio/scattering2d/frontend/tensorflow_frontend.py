@@ -36,8 +36,18 @@ class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
 
             S = scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi,
                              self.max_order, vectorize=self.vectorize)
-            scattering_shape = tuple(S.shape[-3:])
-            S = tf.reshape(S, batch_shape + scattering_shape)
+
+            if self.vectorize:
+                scattering_shape = tuple(S.shape[-3:])
+                new_shape = batch_shape + scattering_shape
+
+                S = tf.reshape(S, new_shape)
+            else:
+                scattering_shape = tuple(S[0].shape[-2:])
+                new_shape = batch_shape + scattering_shape
+
+                S = [tf.reshape(x, new_shape) for x in S]
+
             return S
 
 
