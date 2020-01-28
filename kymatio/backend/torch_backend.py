@@ -42,7 +42,6 @@ class ModulusStable(Function):
         to the input in a stable fashion (so gradent of the modulus at zero is
         zero).
     """
-
     @staticmethod
     def forward(ctx, x):
         """Forward pass of the modulus.
@@ -132,16 +131,17 @@ class Modulus():
             contains the complex modulus of x, while output[..., 1] = 0.
     """
     def __call__(self, x):
-        type_checks(x)
-
-        norm = torch.zeros_like(x)
-        norm[..., 0] = modulus(x)
+        type_checks_modulus(x)
+        norm = modulus(x)
         return norm
 
-def type_checks(x):
+def type_checks_modulus(x):
     if not _is_complex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
+    if not x.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous.')
 
+def type_checks(x):
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
 
@@ -186,6 +186,7 @@ def cdgmm(A, B, inplace=False):
 
     type_checks(A)
 
+    print(A.shape, B.shape)
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 

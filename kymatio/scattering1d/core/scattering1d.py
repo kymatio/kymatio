@@ -58,7 +58,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
     """
     subsample_fourier = backend.subsample_fourier
-    modulus_complex = backend.modulus_complex
+    modulus = backend.modulus
     real = backend.real
     fft = backend.fft
     cdgmm = backend.cdgmm
@@ -75,7 +75,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
 
     # compute the Fourier transform
+    print(U_0.shape)
     U_0_hat = fft(U_0, 'R2C')
+    print(U_0_hat.shape)
 
     # Get S0
     k0 = max(J - oversampling, 0)
@@ -107,7 +109,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         U_1_c = fft(U_1_hat, 'C2C', inverse=True)
 
         # Take the modulus
-        U_1_m = modulus_complex(U_1_c)
+        U_1_m = modulus(U_1_c)
 
         if average or max_order > 1:
             U_1_hat = fft(U_1_m, 'R2C')
@@ -144,7 +146,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     # take the modulus 
                     U_2_c = fft(U_2_hat, 'C2C', inverse=True)
 
-                    U_2_m = modulus_complex(U_2_c)
+                    U_2_m = modulus(U_2_c)
 
                     if average:
                         U_2_hat = fft(U_2_m, 'R2C')
