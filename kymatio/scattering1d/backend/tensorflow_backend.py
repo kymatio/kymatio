@@ -122,7 +122,7 @@ backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
 backend.pad_1d = pad_1d
-backend.fft = FFT(lambda x: tf.signal.fft(x, name='ifft1d'),
+backend.fft = FFT(lambda x: tf.signal.fft(x, name='fft1d'),
                   lambda x: tf.signal.ifft(x, name='ifft1d'),
                   lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
                   lambda x: None)
