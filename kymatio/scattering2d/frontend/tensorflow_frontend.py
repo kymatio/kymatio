@@ -43,10 +43,11 @@ class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
 
                 S = tf.reshape(S, new_shape)
             else:
-                scattering_shape = tuple(S[0].shape[-2:])
+                scattering_shape = tuple(S[0]['coef'].shape[-2:])
                 new_shape = batch_shape + scattering_shape
 
-                S = [tf.reshape(x, new_shape) for x in S]
+                for x in S:
+                    x['coef'] = tf.reshape(x['coef'], new_shape)
 
             return S
 

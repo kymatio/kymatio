@@ -38,10 +38,11 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
 
             S = S.reshape(new_shape)
         else:
-            scattering_shape = S[0].shape[-2:]
+            scattering_shape = S[0]['coef'].shape[-2:]
             new_shape = batch_shape + scattering_shape
 
-            S = [x.reshape(new_shape) for x in S]
+            for x in S:
+                x['coef'] = x['coef'].reshape(new_shape)
 
         return S
 
