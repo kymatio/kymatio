@@ -32,9 +32,16 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
         S = scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi, self.max_order,
                          vectorize=self.vectorize)
 
-        scattering_shape = S.shape[-3:]
+        if self.vectorize:
+            scattering_shape = S.shape[-3:]
+            new_shape = batch_shape + scattering_shape
 
-        S = S.reshape(batch_shape + scattering_shape)
+            S = S.reshape(new_shape)
+        else:
+            scattering_shape = S[0].shape[-2:]
+            new_shape = batch_shape + scattering_shape
+
+            S = [x.reshape(new_shape) for x in S]
 
         return S
 

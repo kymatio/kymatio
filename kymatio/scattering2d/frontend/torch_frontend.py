@@ -125,9 +125,14 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
                             self.L, phi, psi, self.max_order, vectorize=self.vectorize)
 
-        scattering_shape = S.shape[-3:]
+        if self.vectorize:
+            scattering_shape = S.shape[-3:]
+            S = S.reshape(batch_shape + scattering_shape)
+        else:
+            scattering_shape = S[0].shape[-2:]
+            new_shape = batch_shape + scattering_shape
 
-        S = S.reshape(batch_shape + scattering_shape)
+            S = [x.reshape(new_shape) for x in S]
 
         return S
 
