@@ -53,13 +53,12 @@ class TestPad:
 
         z = pad(x)
 
-        assert z.shape == (1, 8, 8, 2)
-        assert torch.allclose(z[0, 2, 2, 0], x[0, 0, 0])
-        assert torch.allclose(z[0, 1, 0, 0], x[0, 1, 2])
-        assert torch.allclose(z[0, 1, 1, 0], x[0, 1, 1])
-        assert torch.allclose(z[0, 1, 2, 0], x[0, 1, 0])
-        assert torch.allclose(z[0, 1, 3, 0], x[0, 1, 1])
-        assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
+        assert z.shape == (1, 8, 8)
+        assert torch.allclose(z[0, 2, 2], x[0, 0, 0])
+        assert torch.allclose(z[0, 1, 0], x[0, 1, 2])
+        assert torch.allclose(z[0, 1, 1], x[0, 1, 1])
+        assert torch.allclose(z[0, 1, 2], x[0, 1, 0])
+        assert torch.allclose(z[0, 1, 3], x[0, 1, 1])
 
         pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=True)
 
@@ -68,8 +67,7 @@ class TestPad:
 
         z = pad(x)
 
-        assert torch.allclose(z[..., 0], x)
-        assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
+        assert torch.allclose(z, x)
 
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_unpad(self, backend_device):
@@ -96,10 +94,9 @@ class TestModulus:
 
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-        v = y.narrow(3, 0, 1)
         u = u.squeeze()
-        v = v.squeeze()
-        assert torch.allclose(u, v)
+        y = y.squeeze()
+        assert torch.allclose(u, y)
 
         y = x[..., 0].contiguous()
         with pytest.raises(TypeError) as record:

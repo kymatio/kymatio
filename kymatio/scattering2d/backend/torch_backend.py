@@ -81,9 +81,7 @@ class Pad(object):
             if self.pad_size[2] == self.input_size[1]:
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
-        output = x.new_zeros(x.shape + (2,))
-        output[..., 0] = x
-        output = output.reshape(batch_shape + output.shape[-3:])
+        output = x.reshape(batch_shape + x.shape[-2:])
         return output
 
 def unpad(in_):
@@ -146,6 +144,7 @@ class SubsampleFourier(object):
 
 
 fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
+          lambda x: torch.rfft(x, 2, normalized=False, onesided=False),
           lambda x: torch.ifft(x, 2, normalized=False),
           lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
           type_checks)
