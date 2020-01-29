@@ -85,9 +85,5 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 
         return S
 
-    @tf.Module.with_name_scope
-    def __call__(self, x):
-        return self.scattering(x)
-
 
 __all__ = ['ScatteringTensorFlow1D']
