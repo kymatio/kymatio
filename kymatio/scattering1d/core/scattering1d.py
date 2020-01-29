@@ -2,9 +2,10 @@
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
 
-def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_right=0,
-               ind_start=None, ind_end=None, oversampling=0,
-               max_order=2, average=True, size_scattering=(0, 0, 0), vectorize=False):
+def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
+        pad_right=0, ind_start=None, ind_end=None, oversampling=0,
+        max_order=2, average=True, size_scattering=(0, 0, 0),
+        vectorize=False, out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -173,10 +174,14 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
 
-    if vectorize:
+    if out_type == 'array' and vectorize:
         out_S = concatenate([x['coef'] for x in out_S])
-    else:
+    elif out_type == 'array' and not vectorize:
         out_S = {x['n']: x['coef'] for x in out_S}
+    elif out_type == 'list':
+        # NOTE: This overrides the vectorize flag.
+        for x in out_S:
+            x.pop('n')
 
     return out_S
 
