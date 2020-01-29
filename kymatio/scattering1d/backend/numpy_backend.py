@@ -35,7 +35,7 @@ def subsample_fourier(x, k):
     return res
 
 
-def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
+def pad(x, pad_left, pad_right, mode='reflect', value=0.):
     """Pad real 1D tensors
     1D implementation of the padding function for real PyTorch tensors.
     Parameters
@@ -57,38 +57,14 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
         0.
     Returns
     -------
-    res : tensor
+    output : tensor
         The tensor passed along the third dimension.
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
 
-    res = np.pad(x, ((0, 0), (0, 0), (pad_left, pad_right),), mode=mode)
-    return res
-
-
-def pad(x, pad_left=0, pad_right=0):
-    """Pad real 1D tensors and map to complex
-    Padding which allows to simultaneously pad in a reflection fashion and map
-    to complex if necessary.
-    Parameters
-    ----------
-    x : tensor
-        Three-dimensional input tensor with the third axis being the one to
-        be padded.
-    pad_left : int
-        Amount to add on the left of the tensor (at the beginning of the
-        temporal axis).
-    pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
-        axis).
-    Returns
-    -------
-    output : tensor
-        A padded signal.
-    """
-    output = pad_1d(x, pad_left, pad_right, mode='reflect')
+    output = np.pad(x, ((0, 0), (0, 0), (pad_left, pad_right),), mode=mode)
     return output
 
 
@@ -111,8 +87,6 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
-
-
 def concatenate(arrays):
     return np.stack(arrays, axis=-2)
 
@@ -121,15 +95,15 @@ backend = namedtuple('backend',
                      ['name', 'modulus_complex', 'subsample_fourier', 'real',
                       'unpad', 'fft', 'concatenate', 'cdgmm'])
 backend.name = 'numpy'
-backend.modulus_complex = modulus
+backend.modulus = modulus
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad
 backend.pad = pad
-backend.pad_1d = pad_1d
 backend.cdgmm = cdgmm
-backend.fft = FFT(lambda x:scipy.fftpack.fft(x),
-                  lambda x:scipy.fftpack.ifft(x),
-                  lambda x:np.real(scipy.fftpack.ifft(x)),
+backend.fft = FFT(lambda x:scipy.fft.fft(x),
+                  lambda x:scipy.fft.fft(x),
+                  lambda x:scipy.fft.ifft(x),
+                  lambda x:np.real(scipy.fft.ifft(x)),
                   lambda x:None)
 backend.concatenate = concatenate
