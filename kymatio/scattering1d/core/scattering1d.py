@@ -75,9 +75,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
 
     # compute the Fourier transform
-    print(U_0.shape)
     U_0_hat = fft(U_0, 'R2C')
-    print(U_0_hat.shape)
 
     # Get S0
     k0 = max(J - oversampling, 0)
