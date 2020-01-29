@@ -234,10 +234,6 @@ class TestCDGMM:
         assert 'not compatible' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
-        assert 'input should be complex' in exc.value.args[0]
-
-        with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
         assert 'should be complex' in exc.value.args[0]
 
@@ -324,6 +320,17 @@ class TestFFT:
         assert z.shape == x.shape[:-1]
         assert torch.allclose(y[..., 0], z)
 
+        x = x[..., 0].contiguous()
+        y[..., 1] = 0.0
+
+        z = backend.fft(x, 'R2C')
+        z = z
+
+        assert torch.allclose(y, z)
+
+
+        
+
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
@@ -333,11 +340,6 @@ class TestFFT:
                         inverse=False)
         assert 'done with an inverse' in record.value.args[0]
 
-        x = torch.rand(4, 4, 1)
-        x = x.to(device)
-        with pytest.raises(TypeError) as record:
-            backend.fft(x)
-        assert 'complex' in record.value.args[0]
 
         x = torch.randn(4, 4, 2)
         x = x.to(device)
