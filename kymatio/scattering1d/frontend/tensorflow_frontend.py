@@ -58,6 +58,12 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
 
+        if not self.average and self.out_type == 'array' and self.vectorize:
+            raise ValueError("Options average=False, out_type='array' and "
+                             "vectorize=True are mutually incompatible. "
+                             "Please set out_type to 'list' or vectorize to "
+                             "False.")
+
         batch_shape = tuple(x.shape[:-1])
         signal_shape = tuple(x.shape[-1:])
 
@@ -66,10 +72,6 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         # get the arguments before calling the scattering
         # treat the arguments
         if self.vectorize:
-            if not (self.average):
-                raise ValueError(
-                    'Options average=False and vectorize=True are ' +
-                    'mutually incompatible. Please set vectorize to False.')
             size_scattering = precompute_size_scattering(
                 self.J, self.Q, max_order=self.max_order, detail=True)
         else:
