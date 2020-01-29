@@ -29,7 +29,7 @@ class Modulus():
     """
     def __call__(self, x):
         norm = tf.abs(x)
-        return tf.cast(norm, tf.complex64)
+        return norm
 
 
 def real(x):

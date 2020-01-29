@@ -36,7 +36,7 @@ def subsample_fourier(x, k):
     return tf.reduce_mean(y, axis=(1,))
 
 
-def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
+def pad(x, pad_left=0, pad_right=0, mode='reflect', value=0.):
     """Pad real 1D tensors
     1D implementation of the padding function for real PyTorch tensors.
     Parameters
@@ -67,31 +67,7 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
 
     paddings = [[0, 0]] * len(x.shape[:-1])
     paddings += [[pad_left, pad_right],]
-    return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
-
-
-def pad(x, pad_left=0, pad_right=0):
-    """Pad real 1D tensors and map to complex
-    Padding which allows to simultaneously pad in a reflection fashion and map
-    to complex if necessary.
-    Parameters
-    ----------
-    x : tensor
-        Three-dimensional input tensor with the third axis being the one to
-        be padded.
-    pad_left : int
-        Amount to add on the left of the tensor (at the beginning of the
-        temporal axis).
-    pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
-        axis).
-    Returns
-    -------
-    output : tensor
-        A padded signal
-    """
-    output = pad_1d(x, pad_left, pad_right, mode='reflect')
-    return output
+    return tf.pad(x, paddings, mode="REFLECT")
 
 
 def unpad(x, i0, i1):
@@ -116,14 +92,14 @@ def unpad(x, i0, i1):
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
-backend.modulus_complex = Modulus()
+backend.modulus = Modulus()
 backend.subsample_fourier = subsample_fourier
 backend.real = real
 backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
-backend.pad_1d = pad_1d
 backend.fft = FFT(lambda x: tf.signal.fft(x, name='fft1d'),
+                  lambda x: tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d'),
                   lambda x: tf.signal.ifft(x, name='ifft1d'),
                   lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
                   lambda x: None)
