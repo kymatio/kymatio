@@ -59,7 +59,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
-    real = backend.real
     fft = backend.fft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate

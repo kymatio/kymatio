@@ -5,7 +5,7 @@ import numpy as np
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, cdgmm, real
+from ...backend.numpy_backend import modulus, cdgmm
 from ...backend.base_backend import FFT
 
 
@@ -92,12 +92,11 @@ def concatenate(arrays):
 
 
 backend = namedtuple('backend',
-                     ['name', 'modulus_complex', 'subsample_fourier', 'real',
+                     ['name', 'modulus_complex', 'subsample_fourier', 
                       'unpad', 'fft', 'concatenate', 'cdgmm'])
 backend.name = 'numpy'
 backend.modulus = modulus
 backend.subsample_fourier = subsample_fourier
-backend.real = real
 backend.unpad = unpad
 backend.pad = pad
 backend.cdgmm = cdgmm
