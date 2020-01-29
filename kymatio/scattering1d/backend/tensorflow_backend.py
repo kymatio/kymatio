@@ -6,7 +6,7 @@ from collections import namedtuple
 BACKEND_NAME = 'tensorflow'
 
 
-from ...backend.tensorflow_backend import Modulus, real, concatenate, cdgmm
+from ...backend.tensorflow_backend import Modulus, concatenate, cdgmm
 from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
@@ -90,11 +90,10 @@ def unpad(x, i0, i1):
 
 
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
 backend.modulus = Modulus()
 backend.subsample_fourier = subsample_fourier
-backend.real = real
 backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
