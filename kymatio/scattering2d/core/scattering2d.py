@@ -14,7 +14,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
 
     U_r = pad(x)
 
-    U_0_c = fft(U_r, 'C2C')
+    U_0_c = fft(U_r, 'R2C')
 
     # First low pass filter
     U_1_c = cdgmm(U_0_c, phi[0])
@@ -36,7 +36,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
             U_1_c = subsample_fourier(U_1_c, k=2 ** j1)
         U_1_c = fft(U_1_c, 'C2C', inverse=True)
         U_1_c = modulus(U_1_c)
-        U_1_c = fft(U_1_c, 'C2C')
+        U_1_c = fft(U_1_c, 'R2C')
 
         # Second low pass filter
         S_1_c = cdgmm(U_1_c, phi[j1])
@@ -62,7 +62,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
             U_2_c = subsample_fourier(U_2_c, k=2 ** (j2 - j1))
             U_2_c = fft(U_2_c, 'C2C', inverse=True)
             U_2_c = modulus(U_2_c)
-            U_2_c = fft(U_2_c, 'C2C')
+            U_2_c = fft(U_2_c, 'R2C')
 
             # Third low pass filter
             S_2_c = cdgmm(U_2_c, phi[j2])
