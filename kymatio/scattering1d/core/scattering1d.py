@@ -65,13 +65,10 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
 
     # S is simply a dictionary if we do not perform the averaging...
-    if vectorize:
-        batch_size = x.shape[0]
-        kJ = max(J - oversampling, 0)
-        temporal_size = ind_end[kJ] - ind_start[kJ]
-        out_S_0, out_S_1, out_S_2 = [], [], []
-    else:
-        S = {}
+    batch_size = x.shape[0]
+    kJ = max(J - oversampling, 0)
+    temporal_size = ind_end[kJ] - ind_start[kJ]
+    out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
@@ -91,10 +88,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
     else:
         S_0 = x
 
-    if vectorize:
-        out_S_0.append(S_0)
-    else:
-        S[()] = S_0
+    out_S_0.append({'coef': S_0,
+                    'j': (),
+                    'n': ()})
 
     # First order:
     for n1 in range(len(psi1)):
@@ -130,10 +126,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
 
             S_1 = unpad(U_1_r, ind_start[k1], ind_end[k1])
 
-        if vectorize:
-            out_S_1.append(S_1)
-        else:
-            S[(n1,)] = S_1
+        out_S_1.append({'coef': S_1,
+                        'j': (j1,),
+                        'n': (n1,)})
 
         if max_order == 2:
             # 2nd order
@@ -169,18 +164,20 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0, pad_rig
                         U_2_r = real(U_2_m)
                         S_2 = unpad(U_2_r, ind_start[k1 + k2], ind_end[k1 + k2])
 
-                    if vectorize:
-                        out_S_2.append(S_2)
-                    else:
-                        S[n1, n2] = S_2
+                    out_S_2.append({'coef': S_2,
+                                    'j': (j1, j2),
+                                    'n': (n1, n2)})
+
+    out_S = []
+    out_S.extend(out_S_0)
+    out_S.extend(out_S_1)
+    out_S.extend(out_S_2)
 
     if vectorize:
-        S = []
-        S.extend(out_S_0)
-        S.extend(out_S_1)
-        S.extend(out_S_2)
-        S = concatenate(S)
+        out_S = concatenate([x['coef'] for x in out_S])
+    else:
+        out_S = {x['n']: x['coef'] for x in out_S}
 
-    return S
+    return out_S
 
 __all__ = ['scattering1d']
