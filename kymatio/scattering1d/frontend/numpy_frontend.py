@@ -1,6 +1,8 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
+import warnings
+
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..utils import precompute_size_scattering
@@ -61,6 +63,11 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                              "vectorize=True are mutually incompatible. "
                              "Please set out_type to 'list' or vectorize to "
                              "False.")
+        if not self.vectorize:
+            warnings.warn("The vectorize option is deprecated and will be "
+                          "removed in version 0.3. Please set "
+                          "out_type='list' for equivalent functionality.",
+                          DeprecationWarning)
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]

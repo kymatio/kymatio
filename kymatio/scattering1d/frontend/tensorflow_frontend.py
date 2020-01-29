@@ -6,6 +6,7 @@ from ..core.scattering1d import scattering1d
 from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 import tensorflow as tf
+import warnings
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
@@ -63,6 +64,12 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                              "vectorize=True are mutually incompatible. "
                              "Please set out_type to 'list' or vectorize to "
                              "False.")
+
+        if not self.vectorize:
+            warnings.warn("The vectorize option is deprecated and will be "
+                          "removed in version 0.3. Please set "
+                          "out_type='list' for equivalent functionality.",
+                          DeprecationWarning)
 
         batch_shape = tuple(x.shape[:-1])
         signal_shape = tuple(x.shape[-1:])
