@@ -186,7 +186,6 @@ def cdgmm(A, B, inplace=False):
 
     type_checks(A)
 
-    print(A.shape, B.shape)
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
