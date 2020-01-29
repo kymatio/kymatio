@@ -95,6 +95,7 @@ backend.cdgmm = cdgmm
 backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
 backend.fft = FFT(lambda x:np.fft.fft2(x),
+                  lambda x:np.fft.fft2(x),
                   lambda x:np.fft.ifft2(x),
                   lambda x:np.real(np.fft.ifft2(x)),
                   lambda x:None)
