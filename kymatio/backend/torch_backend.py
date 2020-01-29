@@ -131,13 +131,14 @@ class Modulus():
             contains the complex modulus of x, while output[..., 1] = 0.
     """
     def __call__(self, x):
-        type_checks_modulus(x)
+        type_checks_complex(x)
         norm = modulus(x)
         return norm
 
-def type_checks_modulus(x):
+def type_checks_complex(x):
     if not _is_complex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
+
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
 
@@ -179,7 +180,7 @@ def cdgmm(A, B, inplace=False):
 
     """
     if not _is_real(B):
-        type_checks(B)
+        type_checks_complex(B)
     else:
         if not B.is_contiguous():
             raise RuntimeError('Tensors must be contiguous.')
