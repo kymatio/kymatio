@@ -9,10 +9,12 @@ import tensorflow as tf
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True, oversampling=0, vectorize=True, backend='tensorflow',
+    def __init__(self, J, shape, Q=1, max_order=2, average=True,
+            oversampling=0, vectorize=True, out_type='array', backend='tensorflow',
                  name='Scattering2D'):
         ScatteringTensorFlow.__init__(self, name=name)
-        ScatteringBase1D.__init__(self, J, shape, Q, max_order, average, oversampling, vectorize, backend)
+        ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
+                oversampling, vectorize, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -53,6 +55,9 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
+        if not self.out_type in ('array', 'list'):
+            raise RuntimeError("The out_type must be one of 'array' or 'list'.")
+
         batch_shape = tuple(x.shape[:-1])
         signal_shape = tuple(x.shape[-1:])
 
@@ -73,15 +78,30 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
-                         oversampling=self.oversampling, vectorize=self.vectorize, size_scattering=size_scattering)
+                         oversampling=self.oversampling,
+                         vectorize=self.vectorize,
+                         size_scattering=size_scattering,
+                         out_type=self.out_type)
 
-        if self.vectorize:
+        if self.out_type == 'array' and self.vectorize:
             scattering_shape = tuple(S.shape[-2:])
-            S = tf.reshape(S, batch_shape + scattering_shape)
-        else:
+            new_shape = batch_shape + scattering_shape
+
+            S = tf.reshape(S, new_shape)
+        elif self.out_type == 'array' and not self.vectorize:
             for k, v in S.items():
+                # NOTE: Have to get the shape for each one since we may have
+                # average == False.
                 scattering_shape = tuple(v.shape[-2:])
-                S[k] = tf.reshape(v, batch_shape + scattering_shape)
+                new_shape = batch_shape + scattering_shape
+
+                S[k] = tf.reshape(v, new_shape)
+        elif self.out_type == 'list':
+            for x in S:
+                scattering_shape = tuple(x['coef'].shape[-1:])
+                new_shape = batch_shape + scattering_shape
+
+                x['coef'] = tf.reshape(x['coef'], new_shape)
 
         return S
 
