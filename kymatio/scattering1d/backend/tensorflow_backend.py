@@ -36,7 +36,7 @@ def subsample_fourier(x, k):
     return tf.reduce_mean(y, axis=(1,))
 
 
-def pad(x, pad_left=0, pad_right=0, mode='reflect', value=0.):
+def pad(x, pad_left, pad_right, mode='reflect', value=0.):
     """Pad real 1D tensors
     1D implementation of the padding function for real PyTorch tensors.
     Parameters
