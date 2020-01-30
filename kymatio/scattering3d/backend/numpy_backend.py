@@ -10,9 +10,6 @@ BACKEND_NAME = 'numpy'
 from ...backend.numpy_backend import modulus, cdgmm
 from ...backend.base_backend import FFT
 
-def _iscomplex(x):
-    return x.dtype == np.complex64 or x.dtype == np.complex128
-
 
 def modulus_rotation(x, module=None):
     """Used for computing rotation invariant scattering transform coefficents.
