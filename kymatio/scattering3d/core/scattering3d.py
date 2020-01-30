@@ -23,7 +23,7 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
     modulus_rotation = backend.modulus_rotation
     concatenate = backend.concatenate
 
-    U_0_c = fft(x)
+    U_0_c = fft(x, 'R2C')
 
     s_order_1, s_order_2 = [], []
     for l in range(L + 1):
@@ -33,28 +33,28 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
             if rotation_covariant:
                 for m in range(len(filters[l][j_1])):
                     U_1_c = cdgmm3d(U_0_c, filters[l][j_1][m])
-                    U_1_c = fft(U_1_c, inverse=True)
+                    U_1_c = fft(U_1_c, 'C2C', inverse=True)
                     U_1_m = modulus_rotation(U_1_c, U_1_m)
             else:
                 U_1_c = cdgmm3d(U_0_c, filters[l][j_1][0])
-                U_1_c = fft(U_1_c , inverse=True)
+                U_1_c = fft(U_1_c, 'C2C', inverse=True)
                 U_1_m = modulus(U_1_c)
 
             S_1_l = averaging(U_1_m)
             s_order_1_l.append(S_1_l)
 
             if max_order > 1:
-                U_1_c = fft(U_1_m)
+                U_1_c = fft(U_1_m, 'R2C')
                 for j_2 in range(j_1 + 1, J + 1):
                     U_2_m = None
                     if rotation_covariant:
                         for m in range(len(filters[l][j_2])):
                             U_2_c = cdgmm3d(U_1_c, filters[l][j_2][m])
-                            U_2_c = fft(U_2_c, inverse=True)
+                            U_2_c = fft(U_2_c, 'C2C', inverse=True)
                             U_2_m = modulus_rotation(U_2_c, U_2_m)
                     else:
                         U_2_c = cdgmm3d(U_1_c, filters[l][j_2][0])
-                        U_2_c = fft(U_2_c, inverse=True)
+                        U_2_c = fft(U_2_c, 'C2C', inverse=True)
                         U_2_m = modulus(U_2_c)
                     S_2_l = averaging(U_2_m)
                     s_order_2_l.append(S_2_l)
