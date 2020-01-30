@@ -61,22 +61,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
 
         input_array = input_array.reshape((-1,) + signal_shape)
 
-        x = input_array.new(input_array.shape + (2,)).fill_(0)
-        x[..., 0] = input_array
-
-        buffer_dict = dict(self.named_buffers())
-        for k in range(len(self.filters)):
-            self.filters[k] = buffer_dict['tensor' + str(k)]
-
-        methods = ['integral']
-        if not self.method in methods:
-            raise ValueError('method must be in {}'.format(methods))
-
-        if self.method == 'integral': \
-                self.averaging = lambda x: self.backend.compute_integrals(x, self.integral_powers)
-
-        S = scattering3d(x, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
-                            J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
+        S = self.scattering(input_array)
         scattering_shape = S.shape[1:]
 
         S = S.reshape(batch_shape + scattering_shape)
