@@ -92,7 +92,7 @@ def concatenate(arrays):
 
 
 backend = namedtuple('backend',
-                     ['name', 'modulus_complex', 'subsample_fourier', 
+                     ['name', 'modulus', 'subsample_fourier', 
                       'unpad', 'fft', 'concatenate', 'cdgmm'])
 backend.name = 'numpy'
 backend.modulus = modulus

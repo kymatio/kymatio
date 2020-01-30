@@ -90,7 +90,7 @@ def unpad(x, i0, i1):
 
 
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
+backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
 backend.modulus = Modulus()
 backend.subsample_fourier = subsample_fourier
