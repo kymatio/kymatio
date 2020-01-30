@@ -7,24 +7,8 @@ from collections import namedtuple
 
 BACKEND_NAME = 'tensorflow'
 
-
-def complex_modulus(x):
-    """Computes complex modulus.
-
-        Parameters
-        ----------
-        x : tensor
-            Input tensor whose complex modulus is to be calculated.
-
-        Returns
-        -------
-        modulus : tensor
-            Tensor the same size as input_array. modulus holds the
-            result of the complex modulus.
-
-    """
-    modulus = tf.abs(x)
-    return modulus
+from ...backend.tensorflow_backend import Modulus
+from ...backend.base_backend import FFT
 
 
 def modulus_rotation(x, module):
@@ -84,60 +68,6 @@ def compute_integrals(input_array, integral_powers):
     return tf.stack(integrals, axis=-1)
 
 
-def fft(x, direction='C2C', inverse=False):
-    """FFT of a 3d signal.
-
-        Example
-        -------
-        real = tf.random.uniform(128, 32, 32, 32)
-        imag = tf.random.uniform(128, 32, 32, 32)
-
-        x = tf.complex(real, imag)
-
-        x_fft = fft(x)
-        x_ifft = fft(x, inverse=True)
-
-        x = fft(x_fft, inverse=True)
-        x = fft(x_ifft, inverse=False)
-
-        Parameters
-        ----------
-        input : tensor
-            Complex input for the FFT.
-        direction : string
-        'C2R' for complex to real, 'C2C' for complex to complex.
-        inverse : bool
-            True for computing the inverse FFT.
-            NB : If direction is equal to 'C2R', then an error is raised.
-
-        Raises
-        ------
-        RuntimeError
-            Raised in event we attempt to map from complex to real without
-            inverse FFT.
-
-        Returns
-        -------
-        output : tensor
-            Result of FFT or IFFT.
-
-    """
-    if direction == 'C2R':
-        if not inverse:
-            raise RuntimeError('C2R mode can only be done with an inverse FFT')
-
-    x = tf.cast(x, tf.complex64)
-
-    if direction == 'C2R':
-        output = tf.math.real(tf.signal.ifft3d(x, name='irfft3d'))
-    elif direction == 'C2C':
-        if inverse:
-            output = tf.signal.ifft3d(x, name='ifft3d')
-        else:
-            output = tf.signal.fft3d(x, name='fft3d')
-    return tf.cast(output, tf.complex64)
-
-
 def cdgmm3d(A, B, inplace=False):
     """Complex pointwise multiplication.
 
@@ -178,8 +108,12 @@ backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_r
 
 backend.name = 'tensorflow'
 backend.cdgmm3d = cdgmm3d
-backend.fft = fft
-backend.modulus = complex_modulus
+backend.fft = FFT(lambda x: tf.signal.fft3d(x, name='fft3d'),
+                  lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64), name='rfft3d'),
+                  lambda x: tf.signal.ifft3d(x, name='ifft3d'),
+                  lambda x: tf.math.real(tf.signal.ifft3d(x, name='irfft3d')),
+                  lambda x: None)
+backend.modulus = Modulus()
 backend.modulus_rotation = modulus_rotation
 backend.compute_integrals = compute_integrals
 backend.concatenate = concatenate
