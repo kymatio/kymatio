@@ -32,7 +32,7 @@ class Pad(object):
         else:
             paddings = [[0, 0]] * len(x.shape[:-2])
             paddings += [[self.pad_size[0], self.pad_size[1]], [self.pad_size[2], self.pad_size[3]]]
-            return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
+            return tf.pad(x, paddings, mode="REFLECT")
 
 def unpad(in_):
     """
@@ -83,6 +83,7 @@ backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
 backend.fft = FFT(lambda x: tf.signal.fft2d(x, name='fft2d'),
+                  lambda x: tf.signal.fft2d(tf.cast(x, tf.complex64), name='rfft2d'),
                   lambda x: tf.signal.ifft2d(x, name='ifft2d'),
                   lambda x: tf.math.real(tf.signal.ifft2d(x, name='irfft2d')),
                   lambda x: None)
