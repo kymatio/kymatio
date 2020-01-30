@@ -327,8 +327,6 @@ class TestFFT:
         z = z
 
         assert torch.allclose(y, z)
-
-
         
 
     @pytest.mark.parametrize('backend_device', backends_devices)
