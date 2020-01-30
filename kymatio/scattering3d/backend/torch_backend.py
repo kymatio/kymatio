@@ -8,24 +8,6 @@ from ...backend.torch_backend import _is_complex, cdgmm, type_checks, Modulus, c
 from ...backend.base_backend import FFT
 
 
-def complex_modulus(input_array):
-    """Computes complex modulus.
-
-        Parameters
-        ----------
-        input_array : tensor
-            Input tensor whose complex modulus is to be calculated.
-        Returns
-        -------
-        modulus : tensor
-            Tensor the same size as input_array. modulus[..., 0] holds the
-            result of the complex modulus.
-
-    """
-    modulus = torch.sqrt((input_array ** 2).sum(-1))
-    return modulus
-
-
 def modulus_rotation(x, module=None):
     """Used for computing rotation invariant scattering transform coefficents.
 
