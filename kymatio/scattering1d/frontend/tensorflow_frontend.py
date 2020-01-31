@@ -71,10 +71,10 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                           "out_type='list' for equivalent functionality.",
                           DeprecationWarning)
 
-        batch_shape = tuple(x.shape[:-1])
-        signal_shape = tuple(x.shape[-1:])
+        batch_shape = tf.shape(x)[:-1]
+        signal_shape = tf.shape(x)[-1:]
 
-        x = tf.reshape(x, (-1, 1) + signal_shape)
+        x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
 
         # get the arguments before calling the scattering
         # treat the arguments
@@ -93,22 +93,22 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                          out_type=self.out_type)
 
         if self.out_type == 'array' and self.vectorize:
-            scattering_shape = tuple(S.shape[-2:])
-            new_shape = batch_shape + scattering_shape
+            scattering_shape = tf.shape(S)[-2:]
+            new_shape = tf.concat((batch_shape, scattering_shape), 0)
 
             S = tf.reshape(S, new_shape)
         elif self.out_type == 'array' and not self.vectorize:
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.
-                scattering_shape = tuple(v.shape[-2:])
-                new_shape = batch_shape + scattering_shape
+                scattering_shape = tf.shape(v)[-2:]
+                new_shape = tf.concat((batch_shape, scattering_shape), 0)
 
                 S[k] = tf.reshape(v, new_shape)
         elif self.out_type == 'list':
             for x in S:
-                scattering_shape = tuple(x['coef'].shape[-1:])
-                new_shape = batch_shape + scattering_shape
+                scattering_shape = tf.shape(x['coef'])[-1:]
+                new_shape = tf.concat((batch_shape, scattering_shape), 0)
 
                 x['coef'] = tf.reshape(x['coef'], new_shape)
 
