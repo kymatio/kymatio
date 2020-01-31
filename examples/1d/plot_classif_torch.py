@@ -21,7 +21,7 @@ Testing accuracy = 98.0%
 # Preliminaries
 # -------------
 #
-# Since kymatio handles PyTorch arrays, we first import `torch`.
+# Since we're using PyTorch to train the model, import `torch`.
 
 import torch
 
@@ -49,8 +49,8 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
 ###############################################################################
-# Finally, we import the `Scattering1D` class from the `scattering` package and
-# the `fetch_fsdd` function from `scattering.datasets`. The `Scattering1D`
+# Finally, we import the `Scattering1D` class from the `kymatio.torch` package
+# and the `fetch_fsdd` function from `kymatio.datasets`. The `Scattering1D`
 # class is what lets us calculate the scattering transform, while the
 # `fetch_fsdd` function downloads the FSDD, if needed.
 
@@ -66,11 +66,13 @@ from kymatio.datasets import fetch_fsdd
 # First, we have signal length. Longer signals are truncated and shorter
 # signals are zero-padded. The sampling rate is 8000 Hz, so this corresponds to
 # little over a second.
+
 T = 2**13
 
 ###############################################################################
 # Maximum scale 2**J of the scattering transform (here, about 30 milliseconds)
 # and the number of wavelets per octave.
+
 J = 8
 Q = 12
 
@@ -78,14 +80,17 @@ Q = 12
 # We need a small constant to add to the scattering coefficients before
 # computing the logarithm. This prevents very large values when the scattering
 # coefficients are very close to zero.
+
 log_eps = 1e-6
 
 ###############################################################################
 # If a GPU is available, let's use it!
+
 use_cuda = torch.cuda.is_available()
 
 ###############################################################################
 # For reproducibility, we fix the seed of the random number generator.
+
 torch.manual_seed(42)
 
 ###############################################################################
@@ -98,6 +103,7 @@ torch.manual_seed(42)
 # We first download the dataset. If it's already downloaded, `fetch_fsdd` will
 # simply return the information corresponding to the dataset that's already
 # on disk.
+
 info_data = fetch_fsdd()
 files = info_data['files']
 path_dataset = info_data['path_dataset']
@@ -105,6 +111,7 @@ path_dataset = info_data['path_dataset']
 ###############################################################################
 # Set up Tensors to hold the audio signals (`x_all`), the labels (`y_all`), and
 # whether the signal is in the train or test set (`subset`).
+
 x_all = torch.zeros(len(files), T, dtype=torch.float32)
 y_all = torch.zeros(len(files), dtype=torch.int64)
 subset = torch.zeros(len(files), dtype=torch.int64)
@@ -116,6 +123,7 @@ subset = torch.zeros(len(files), dtype=torch.int64)
 # normalized to have maximum amplitude one, and are truncated or zero-padded
 # to the desired length `T`. They are then stored in the `x_all` Tensor while
 # their labels are in `y_all`.
+
 for k, f in enumerate(files):
     basename = f.split('.')[0]
 
@@ -151,11 +159,13 @@ for k, f in enumerate(files):
 # ------------------------
 # We now create the `Scattering1D` object that will be used to calculate the
 # scattering coefficients.
+
 scattering = Scattering1D(J, T, Q)
 
 ###############################################################################
 # If we are using CUDA, the scattering transform object must be transferred to
 # the GPU by calling its `cuda()` method. The data is similarly transferred.
+
 if use_cuda:
     scattering.cuda()
     x_all = x_all.cuda()
@@ -163,23 +173,28 @@ if use_cuda:
 
 ###############################################################################
 # Compute the scattering transform for all signals in the dataset.
+
 Sx_all = scattering.forward(x_all)
 
 ###############################################################################
 # Since it does not carry useful information, we remove the zeroth-order
 # scattering coefficients, which are always placed in the first channel of
 # the scattering Tensor.
+
 Sx_all = Sx_all[:,1:,:]
 
 ###############################################################################
 # To increase discriminability, we take the logarithm of the scattering
 # coefficients (after adding a small constant to make sure nothing blows up
-# when scattering coefficients are close to zero).
+# when scattering coefficients are close to zero). This is known as the
+# log-scattering transform.
+
 Sx_all = torch.log(torch.abs(Sx_all) + log_eps)
 
 ###############################################################################
 # Finally, we average along the last dimension (time) to get a time-shift
 # invariant representation.
+
 Sx_all = torch.mean(Sx_all, dim=-1)
 
 ###############################################################################
@@ -190,19 +205,22 @@ Sx_all = torch.mean(Sx_all, dim=-1)
 #
 # First, we extract the training data (those for which `subset` equals `0`)
 # and the associated labels.
+
 Sx_tr, y_tr = Sx_all[subset == 0], y_all[subset == 0]
 
 ###############################################################################
 # Standardize the data to have mean zero and unit variance. Note that we need
 # to apply the same transformation to the test data later, so we save the
 # mean and standard deviation Tensors.
+
 mu_tr = Sx_tr.mean(dim=0)
 std_tr = Sx_tr.std(dim=0)
 Sx_tr = (Sx_tr - mu_tr) / std_tr
 
 ###############################################################################
-# Here we define a Logistic Regression model using PyTorch. We train it using
+# Here we define a logistic regression model using PyTorch. We train it using
 # Adam with a negative log-likelihood loss.
+
 num_input = Sx_tr.shape[-1]
 num_classes = y_tr.cpu().unique().numel()
 model = Sequential(Linear(num_input, num_classes), LogSoftmax(dim=1))
@@ -212,6 +230,7 @@ criterion = NLLLoss()
 ###############################################################################
 # As before, if we're on a GPU, transfer the model and the loss function onto
 # the device.
+
 if use_cuda:
     model = model.cuda()
     criterion = criterion.cuda()
@@ -229,11 +248,13 @@ lr = 1e-4
 
 ###############################################################################
 # Given these parameters, we compute the total number of batches.
+
 nsamples = Sx_tr.shape[0]
 nbatches = nsamples // batch_size
 
 ###############################################################################
 # Now we're ready to train the classifier.
+
 for e in range(num_epochs):
     # Randomly permute the data. If necessary, transfer the permutation to the
     # GPU.
@@ -269,21 +290,25 @@ for e in range(num_epochs):
 #
 # First, we extract the test data (those for which `subset` equals `1`) and the
 # associated labels.
+
 Sx_te, y_te = Sx_all[subset == 1], y_all[subset == 1]
 
 ###############################################################################
 # Use the mean and standard deviation calculated on the training data to
 # standardize the testing data, as well.
+
 Sx_te = (Sx_te - mu_tr) / std_tr
 
 ###############################################################################
 # Calculate the response of the classifier on the test data and the resulting
 # loss.
+
 resp = model.forward(Sx_te)
 avg_loss = criterion(resp, y_te)
 
 # Try predicting the labels of the signals in the test data and compute the
 # accuracy.
+
 y_hat = resp.argmax(dim=1)
 accu = (y_te == y_hat).float().mean()
 
