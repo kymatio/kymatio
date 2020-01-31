@@ -12,7 +12,7 @@ import warnings
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
             oversampling=0, vectorize=True, out_type='array', backend='tensorflow',
-                 name='Scattering2D'):
+                 name='Scattering1D'):
         ScatteringTensorFlow.__init__(self, name=name)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
                 oversampling, vectorize, out_type, backend)
