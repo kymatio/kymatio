@@ -1,4 +1,4 @@
-from .frontend import Scattering2D
+from .frontend import ScatteringEntry2D
 
 
-__all__ = ['Scattering2D']
+__all__ = ['ScatteringEntry2D']

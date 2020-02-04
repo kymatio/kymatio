@@ -1,4 +1,4 @@
-from .frontend import HarmonicScattering3D
+from .frontend import HarmonicScatteringEntry3D
 
 
-__all__ = ['HarmonicScattering3D']
+__all__ = ['HarmonicScatteringEntry3D']

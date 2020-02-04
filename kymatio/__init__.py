@@ -15,8 +15,8 @@ __all__ = [
             'HarmonicScattering3D'
             ]
 
-from .scattering1d import Scattering1D
-from .scattering2d import Scattering2D
-from .scattering3d import HarmonicScattering3D
+from .scattering1d import ScatteringEntry1D as Scattering1D
+from .scattering2d import ScatteringEntry2D as Scattering2D
+from .scattering3d import HarmonicScatteringEntry3D as HarmonicScattering3D
 
 from .version import version as __version__
