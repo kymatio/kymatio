@@ -1,6 +1,6 @@
 import os
 import io
-from kymatio.scattering2d import Scattering2D
+from kymatio import Scattering2D
 import numpy as np
 import pytest
 from collections import namedtuple
