@@ -54,31 +54,21 @@ class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringBase3D):
         ScatteringBase3D.create_filters(self)
 
     def scattering(self, input_array):
-        methods = ['integral']
-        if not self.method in methods:
-            raise ValueError('method must be in {}'.format(methods))
-        if self.method == 'integral': \
-                self.averaging = lambda x: self.backend.compute_integrals(x, self.integral_powers)
-
-        return scattering3d(input_array, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
-                            J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
-
-    def __call__(self, input_array):
         """
-        The forward pass of 3D solid harmonic scattering
-        Parameters
-        ----------
-        input_array: numpy array
-            input of size (batchsize, M, N, O)
-        Returns
-        -------
-        output: tuple | numpy array
-            if max_order is 1 it returns a numpy array with the
-            first order scattering coefficients
-            if max_order is 2 it returns a numpy array with the
-            first and second order scattering coefficients,
-            concatenated along the feature axis
-        """
+            The forward pass of 3D solid harmonic scattering
+            Parameters
+            ----------
+            input_array: numpy array
+                input of size (batchsize, M, N, O)
+            Returns
+            -------
+            output: tuple | numpy array
+                if max_order is 1 it returns a numpy array with the
+                first order scattering coefficients
+                if max_order is 2 it returns a numpy array with the
+                first and second order scattering coefficients,
+                concatenated along the feature axis
+            """
         if not type(input_array) is np.ndarray:
             raise TypeError('The input should be a NumPy array.')
 
@@ -96,8 +86,12 @@ class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringBase3D):
         signal_shape = input_array.shape[-3:]
 
         input_array = input_array.reshape((-1,) + signal_shape)
+        self.averaging = lambda x: self.backend.compute_integrals(x, self.integral_powers)
 
-        S = self.scattering(input_array)
+        S = scattering3d(input_array, filters=self.filters, rotation_covariant=self.rotation_covariant, L=self.L,
+                            J=self.J, max_order=self.max_order, backend=self.backend, averaging=self.averaging)
+
+
         scattering_shape = S.shape[1:]
 
         S = S.reshape(batch_shape + scattering_shape)
