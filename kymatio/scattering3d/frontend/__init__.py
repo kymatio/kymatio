@@ -1,11 +1,11 @@
-from ...frontend import Scattering
+from ...frontend import ScatteringEntry
 
 
-class HarmonicScattering3D(Scattering):
+class HarmonicScatteringEntry3D(ScatteringEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(name='harmonic 3D',
                          class_name='scattering3d',
                          *args, **kwargs)
 
 
-__all__ = ['HarmonicScattering3D']
+__all__ = ['HarmonicScatteringEntry3D']

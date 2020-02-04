@@ -1,8 +1,8 @@
-from ...frontend import Scattering
+from ...frontend import ScatteringEntry
 
-class Scattering2D(Scattering):
+class ScatteringEntry2D(ScatteringEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(name='2D', class_name='scattering2d', *args, **kwargs)
 
 
-__all__ = ['Scattering2D']
+__all__ = ['ScatteringEntry2D']
