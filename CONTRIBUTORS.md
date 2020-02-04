@@ -8,6 +8,7 @@ Gabriel Huang
 Roberto Leonarduzzi
 Vincent Lostanlen
 nshervt
+Eftychios Pnevmatikakis
 Jan Schlüter
 Edouard Oyallon
 Dylan Simon
