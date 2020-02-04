@@ -51,19 +51,19 @@ class HarmonicScatteringTensorFlow3D(ScatteringTensorFlow, ScatteringBase3D):
             if self.method == 'integral':
                 self.averaging = lambda x: self.backend.compute_integrals(x, self.integral_powers)
 
-            batch_shape = tuple(x.shape[:-3])
-            signal_shape = tuple(x.shape[-3:])
+            batch_shape = tf.shape(x)[:-3]
+            signal_shape = tf.shape(x)[-3:]
 
-            x = tf.reshape(x, (-1,) + signal_shape)
+            x = tf.reshape(x, tf.concat(((-1,), signal_shape), 0))
 
             S = scattering3d(x, filters=self.filters,
                              rotation_covariant=self.rotation_covariant,
                              L=self.L, J=self.J, max_order=self.max_order,
                              backend=self.backend, averaging=self.averaging)
 
-            scattering_shape = tuple(S.shape[1:])
+            scattering_shape = tf.shape(S)[1:]
 
-            S = tf.reshape(S, batch_shape + scattering_shape)
+            S = tf.reshape(S, tf.concat((batch_shape, scattering_shape), 0))
 
             return S
 
