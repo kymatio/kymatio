@@ -5,7 +5,7 @@ import io
 import numpy as np
 import torch
 import pytest
-from kymatio.scattering2d import Scattering2D
+from kymatio import Scattering2D
 from torch.autograd import gradcheck
 from collections import namedtuple
 
