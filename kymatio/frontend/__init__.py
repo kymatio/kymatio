@@ -3,7 +3,7 @@ import warnings
 import importlib
 
 
-class Scattering(object):
+class ScatteringEntry(object):
     def __init__(self, *args, **kwargs):
         self.name = kwargs['name']
         self.class_name = kwargs['class_name']
@@ -28,7 +28,11 @@ class Scattering(object):
             frontend = frontend_suffixes[frontend]
 
             class_name = self.__class__.__name__
-            class_name = (class_name[:-2] + frontend + class_name[-2:])
+
+            base_name = class_name[:-len('Entry*D')]
+            dim_suffix = class_name[-len('*D'):]
+
+            class_name = base_name + frontend + dim_suffix
 
             self.__class__ = getattr(module, class_name)
             self.__init__(*args, **kwargs)
@@ -38,4 +42,4 @@ class Scattering(object):
         logging.info('The ' + self.name + ' frontend ' + frontend + ' was imported.')
 
 
-__all__ = ['Scattering']
+__all__ = ['ScatteringEntry']
