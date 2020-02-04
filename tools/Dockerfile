@@ -24,4 +24,5 @@ RUN pip3 install \
       torchvision \
       scikit-cuda \
       cupy \
-      'tensorflow-gpu>=2.0.0a0'
+      'tensorflow-gpu>=2.0.0a0' \
+      scikit-learn
