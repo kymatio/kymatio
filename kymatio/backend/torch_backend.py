@@ -139,8 +139,7 @@ def type_checks_complex(x):
     if not _is_complex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
+    type_checks(x)
 
 def type_checks(x):
     if not x.is_contiguous():
