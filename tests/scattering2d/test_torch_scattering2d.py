@@ -320,11 +320,10 @@ class TestFFT:
         assert z.shape == x.shape[:-1]
         assert torch.allclose(y[..., 0], z)
 
-        x = x[..., 0].contiguous()
-        y[..., 1] = 0.0
+        x_r = x[..., 0].contiguous()
+        y[..., 1] = 0
 
-        z = backend.fft(x, 'R2C')
-        z = z
+        z = backend.fft(x_r, 'R2C')
 
         assert torch.allclose(y, z)
         
