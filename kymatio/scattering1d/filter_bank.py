@@ -54,7 +54,7 @@ def morlet_1d(N, xi, sigma):
     """
     # Find the adequate value of P
     eps = 1e-7
-    val = math.sqrt(-2 * (sigma**2) * math.log(eps))
+    val = math.sqrt(-2 * (sigma ** 2) * math.log(eps))
     P = min(5, int(math.ceil(val + 1)))
 
     # Define the frequencies over [1-P, P[
@@ -66,10 +66,10 @@ def morlet_1d(N, xi, sigma):
     elif P > 1:
         freqs_low = freqs
 
-    low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
+    low_pass_f = np.exp(-(freqs_low ** 2) / (2 * sigma ** 2))
     low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
     if xi:
-        gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+        gabor_f = np.exp(-(freqs - xi) ** 2 / (2 * sigma ** 2))
         gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
         kappa = gabor_f[0] / low_pass_f[0]
         psi_f = gabor_f - kappa * low_pass_f
@@ -347,14 +347,14 @@ def scattering_filter_factory(J_support, J_scattering, Q,
         else:
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
-        T = 2**J_support
+        T = 2 ** J_support
 
         psi_f = {}
         psi_f[0] = morlet_1d(T, xi2[n2], sigma2[n2])
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
-            factor_subsampling = 2**subsampling
+            factor_subsampling = 2 ** subsampling
             psi_f[subsampling] = periodize_filter_fourier(
                 psi_f[0], nperiods=factor_subsampling)
         psi2_f.append(psi_f)
@@ -362,7 +362,7 @@ def scattering_filter_factory(J_support, J_scattering, Q,
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with T=2**J_support
     for (n1, j1) in enumerate(j1s):
-        T = 2**J_support
+        T = 2 ** J_support
         psi1_f.append({0: morlet_1d(T, xi1[n1], sigma1[n1])})
 
     # compute the low-pass filters phi
@@ -379,7 +379,7 @@ def scattering_filter_factory(J_support, J_scattering, Q,
     # compute the filters at all possible subsamplings
     phi_f[0] = gauss_1d(T, sigma_low)
     for subsampling in range(1, max_sub_phi + 1):
-        factor_subsampling = 2**subsampling
+        factor_subsampling = 2 ** subsampling
         # compute the low_pass filter
         phi_f[subsampling] = periodize_filter_fourier(
             phi_f[0], nperiods=factor_subsampling)
