@@ -324,7 +324,7 @@ def scattering_filter_factory(J_support, J_scattering, Q,
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma0 = 0.1
+    sigma0 = MORLET_SIGMA
     sigma_low = sigma0 / math.pow(2, J_scattering)  # width of the low pass
     xi1, sigma1, j1s = compute_params_filterbank(sigma_low, Q)
     xi2, sigma2, j2s = compute_params_filterbank(sigma_low, 1)
