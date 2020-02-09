@@ -113,8 +113,9 @@ def get_max_dyadic_subsampling(xi, sigma):
         integer such that 2^j is the maximal subsampling accepted by the
         Gabor filter without aliasing.
     """
-    # Parameter controlling the error done in the aliasing.
-    # The larger alpha, the smaller the error. Recommended value: 5.0
+    # Parameter controlling the error done in the aliasing, as a multiple
+    # of sigma. The larger the alpha, the smaller the error.
+    # Recommended value: alpha = 5.0
     alpha = 5.0
 
     upper_bound = min(xi + alpha * sigma, 0.5)
