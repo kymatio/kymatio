@@ -201,7 +201,21 @@ def compute_params_filterbank(sigma_low, Q):
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
-    xi_max = max(1. / (1. + math.pow(2., 3./Q)), 0.35)
+    # The dimensionless mother center frequency xi (corresponding to j=0) is
+    # computed as the midpoint between the center frequency of the second
+    # wavelet xi*2^(-1/Q) (corresponding to j=1) and the negative mother
+    # center frequency (1-xi). Hence the equation
+    #      2*xi = xi*2^(-1/Q) + (1-xi)
+    # from which we derive
+    #      xi = 1 / (3 - 2^(-1/Q)).
+    # This formula is only valid if the wavelet is a symmetric bump in the
+    # Fourier domain, which is satisfied for Q>1.
+    # In the special case Q=1, we manually set xi=0.39. That is more accurate
+    # with the Littlewood-Paley energy conservation criterion than
+    # the generic fallback xi=0.4, which is only valid when the wavelet has a
+    # symmetric profile in the Fourier domain. This is no longer the case for
+    # Q=1 as the Morlet low-frequency corrective term is no longer negligible.
+    xi_max = max(1. / (3. - math.pow(2., 1./Q)), 0.39)
 
     factor = 1. / math.pow(2, 1. / Q)
     term1 = (1 - factor) / (1 + factor)
