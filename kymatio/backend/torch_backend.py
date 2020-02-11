@@ -7,8 +7,11 @@ def input_checks(x):
     if x is None:
         raise TypeError('The input should be not empty.')
 
-    if not x.is_contiguous():
-        raise RuntimeError('The input must be contiguous.')
+    type_checks(x)
+
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
 def _is_complex(x):
     return x.shape[-1] == 2
@@ -136,9 +139,7 @@ class Modulus():
         return norm
 
 def type_checks_complex(x):
-    if not _is_complex(x):
-        raise TypeError('The input should be complex (i.e. last dimension is 2).')
-
+    complex_check(x)
     type_checks(x)
 
 def type_checks(x):
