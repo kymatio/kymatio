@@ -4,7 +4,7 @@ import warnings
 BACKEND_NAME = 'torch'
 from collections import namedtuple
 
-from ...backend.torch_backend import _is_complex, cdgmm, type_checks, Modulus, concatenate
+from ...backend.torch_backend import _is_complex, cdgmm, type_checks, Modulus, concatenate, complex_check
 from ...backend.base_backend import FFT
 
 
@@ -71,7 +71,8 @@ fft = FFT(lambda x: torch.fft(x, 3, normalized=False),
           lambda x: torch.rfft(x, 3, normalized=False, onesided=False),
           lambda x: torch.ifft(x, 3, normalized=False),
           lambda x: torch.irfft(x, 3, normalized=False, onesided=False),
-          type_checks)
+          type_checks, lambda x: None, complex_check)
+
 
 backend = namedtuple('backend',
                      ['name',

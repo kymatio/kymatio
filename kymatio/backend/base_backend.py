@@ -1,12 +1,14 @@
 
 
 class FFT:
-    def __init__(self, fft, rfft, ifft, irfft, type_checks):
+    def __init__(self, fft, rfft, ifft, irfft, type_checks, real_check, complex_check):
         self.fft = fft
         self.rfft = rfft
         self.ifft = ifft
         self.irfft = irfft
         self.sanity_checks = type_checks
+        self.real_check = real_check
+        self.complex_check = complex_check
 
     def fft_forward(self, x, direction='C2C', inverse=False):
         """Interface with FFT routines for any dimensional signals and any backend signals.
@@ -50,13 +52,16 @@ class FFT:
         self.sanity_checks(x)
 
         if direction == 'C2R':
+            self.complex_check(x)
             output = self.irfft(x)
         elif direction == 'C2C':
+            self.complex_check(x)
             if inverse:
                 output = self.ifft(x)
             else:
                 output = self.fft(x)
         elif direction == 'R2C':
+            self.real_check(x)
             output = self.rfft(x)
 
         return output
