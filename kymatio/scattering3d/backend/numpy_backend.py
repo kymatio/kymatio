@@ -6,7 +6,7 @@ import scipy.fft
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, cdgmm
+from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
 from ...backend.base_backend import FFT
 
 
@@ -29,7 +29,7 @@ def modulus_rotation(x, module=None):
             which is covariant to 3D translations and rotations.
     """
     if module is None:
-        module = np.zeros_like(x)
+        module = np.zeros_like(x, np.float64)
     else:
         module = module ** 2
     module += np.abs(x) ** 2
@@ -83,7 +83,7 @@ backend.fft = FFT(lambda x:scipy.fft.fftn(x),
                   lambda x:scipy.fft.fftn(x),
                   lambda x:scipy.fft.ifftn(x),
                   lambda x:np.real(scipy.fft.ifftn(x)),
-                  lambda x:None)
+                  lambda x:None, real_check, complex_check)
 backend.concatenate = concatenate
 backend.modulus = modulus
 backend.modulus_rotation = modulus_rotation

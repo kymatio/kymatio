@@ -5,7 +5,7 @@ import numpy as np
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, cdgmm
+from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
 from ...backend.base_backend import FFT
 
 
@@ -104,5 +104,5 @@ backend.fft = FFT(lambda x:scipy.fft.fft(x),
                   lambda x:scipy.fft.fft(x),
                   lambda x:scipy.fft.ifft(x),
                   lambda x:np.real(scipy.fft.ifft(x)),
-                  lambda x:None)
+                  lambda x:None, real_check, complex_check)
 backend.concatenate = concatenate
