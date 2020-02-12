@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'tensorflow'
 
-from ...backend.tensorflow_backend import Modulus
+from ...backend.tensorflow_backend import Modulus, complex_check, real_check
 from ...backend.base_backend import FFT
 
 
@@ -112,7 +112,7 @@ backend.fft = FFT(lambda x: tf.signal.fft3d(x, name='fft3d'),
                   lambda x: tf.signal.fft3d(tf.cast(x, tf.complex64), name='rfft3d'),
                   lambda x: tf.signal.ifft3d(x, name='ifft3d'),
                   lambda x: tf.math.real(tf.signal.ifft3d(x, name='irfft3d')),
-                  lambda x: None)
+                  lambda x: None, real_check, complex_check)
 backend.modulus = Modulus()
 backend.modulus_rotation = modulus_rotation
 backend.compute_integrals = compute_integrals

@@ -7,7 +7,7 @@ from collections import namedtuple
 BACKEND_NAME = 'tensorflow'
 
 
-from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate
+from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate, complex_check, real_check
 from ...backend.base_backend import FFT
 
 class Pad(object):
@@ -87,7 +87,7 @@ backend.fft = FFT(lambda x: tf.signal.fft2d(x, name='fft2d'),
                   lambda x: tf.signal.fft2d(tf.cast(x, tf.complex64), name='rfft2d'),
                   lambda x: tf.signal.ifft2d(x, name='ifft2d'),
                   lambda x: tf.math.real(tf.signal.ifft2d(x, name='irfft2d')),
-                  lambda x: None)
+                  lambda x: None, real_check, complex_check)
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = lambda x: concatenate(x, -3)
