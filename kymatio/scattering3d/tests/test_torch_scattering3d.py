@@ -115,13 +115,8 @@ def test_cdgmm3d(device, backend, inplace):
             backend.cdgmm3d(x, y)
         assert "not compatible" in record.value.args[0]
 
-        # Create a tensor that behaves like `torch.Tensor` but is technically a
-        # different type.
-        class FakeTensor(torch.Tensor):
-            pass
-
         with pytest.raises(TypeError) as record:
-            x = FakeTensor(3, 3, 3, 2)
+            x = torch.randn(3, 3, 3, 2).double()
             y = torch.randn(3, 3, 3, 2)
             backend.cdgmm3d(x, y)
         assert " must be of the same dtype" in record.value.args[0]
