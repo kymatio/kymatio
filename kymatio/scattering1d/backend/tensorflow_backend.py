@@ -6,7 +6,7 @@ from collections import namedtuple
 BACKEND_NAME = 'tensorflow'
 
 
-from ...backend.tensorflow_backend import Modulus, concatenate, cdgmm
+from ...backend.tensorflow_backend import Modulus, concatenate, cdgmm, complex_check, real_check
 from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
@@ -101,5 +101,5 @@ backend.fft = FFT(lambda x: tf.signal.fft(x, name='fft1d'),
                   lambda x: tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d'),
                   lambda x: tf.signal.ifft(x, name='ifft1d'),
                   lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
-                  lambda x: None)
+                  lambda x: None, real_check, complex_check)
 backend.concatenate = lambda x: concatenate(x, -2)

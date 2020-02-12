@@ -3,6 +3,15 @@ import numpy as np
 
 
 
+
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex.')
+
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
+
 def _is_complex(x):
     return (x.dtype == np.complex64) or (x.dtype == np.complex128)
 
@@ -67,8 +76,7 @@ def cdgmm(A, B, inplace=False):
 
 
 def sanity_check(x):
-    if not _is_complex(x):
-        raise TypeError('The input should be complex.')
-
+    complex_check(x)    
+    
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
