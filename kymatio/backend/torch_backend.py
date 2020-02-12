@@ -189,7 +189,7 @@ def cdgmm(A, B, inplace=False):
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
-    if A.dtype is not B.dtype or type(A) is not type(B):
+    if A.dtype is not B.dtype:
         raise TypeError('Input and filter must be of the same dtype.')
 
     if B.device.type == 'cuda':
