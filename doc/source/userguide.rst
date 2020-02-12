@@ -92,7 +92,7 @@ Output size
 1-D
 ---
 
-If the input :math:`x` is a Tensor of size :math:`(B, 1, T)`, the output of the
+If the input :math:`x` is a Tensor of size :math:`(B, T)`, the output of the
 1D scattering transform is of size :math:`(B, P, T/2^J)`, where :math:`P` is
 the number of scattering coefficients and :math:`2^J` is the maximum scale of the
 transform. The value of :math:`P` depends on the maximum order of the scattering
