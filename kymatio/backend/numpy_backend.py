@@ -4,6 +4,14 @@ def input_checks(x):
     if x is None:
         raise TypeError('The input should be not empty.')
 
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex.')
+
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
+
 
 def modulus(x):
     """
