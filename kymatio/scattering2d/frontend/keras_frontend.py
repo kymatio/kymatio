@@ -1,26 +1,25 @@
+from kymatio.frontend.keras_frontend import ScatteringKeras
+from kymatio.scattering2d.frontend.base_frontend import ScatteringBase2D
+
 from kymatio.tensorflow import Scattering2D as ScatteringTensorFlow2D
 
-from tensorflow.keras.layers import Layer
 from tensorflow.python.framework import tensor_shape
 
 
-class ScatteringKeras2D(Layer):
+class ScatteringKeras2D(ScatteringKeras, ScatteringBase2D):
     def __init__(self, J, L=8, max_order=2, pre_pad=False):
-        super(ScatteringKeras2D, self).__init__()
-        self.J = J
-        self.L = L
-        self.max_order = max_order
-        self.pre_pad = pre_pad
+        ScatteringKeras.__init__(self)
+        ScatteringBase2D.__init__(self, J, None, L, max_order, pre_pad,
+                                  'array')
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-2:])
         self.S = ScatteringTensorFlow2D(J=self.J, shape=shape,
                                         L=self.L, max_order=self.max_order,
                                         pre_pad=self.pre_pad)
-        super(ScatteringKeras2D, self).build(input_shape)
-
-    def call(self, x):
-        return self.S(x)
+        ScatteringKeras.build(self, input_shape)
+        # NOTE: Do not call ScatteringBase2D.build here since that will
+        # recreate the filters already in self.S
 
     def compute_output_shape(self, input_shape):
         input_shape = tensor_shape.TensorShape(input_shape).as_list()
@@ -29,3 +28,6 @@ class ScatteringKeras2D(Layer):
         nc = (self.L ** 2) * self.J * (self.J - 1) // 2 + self.L * self.J + 1
         output_shape = [input_shape[0], nc, m0, m1]
         return tensor_shape.TensorShape(output_shape)
+
+
+ScatteringKeras2D._document()
