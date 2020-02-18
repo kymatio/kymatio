@@ -24,6 +24,14 @@ class ScatteringEntry(object):
             frontend = kwargs['frontend'].lower()
             kwargs.pop('frontend')
 
+        frontends = list(frontend_suffixes.keys())
+
+        if frontend not in frontends:
+            raise RuntimeError('The frontend \'%s\" is not valid. Must be '
+                               'one of \'%s\', or \'%s\'.' %
+                               (frontend, '\', \''.join(frontends[:-1]),
+                                frontends[-1]))
+
         try:
             module = importlib.import_module('kymatio.' + self.class_name + '.frontend.' + frontend + '_frontend')
 
