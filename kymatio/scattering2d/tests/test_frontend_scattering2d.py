@@ -8,9 +8,9 @@ def test_scattering2d_frontend():
     scattering = Scattering2D(2, shape=(10, 10))
     assert isinstance(scattering, ScatteringTorch2D), 'Torch frontend is not selected by default'
 
-    with pytest.raises(ImportError) as ve:
+    with pytest.raises(RuntimeError) as ve:
         scattering = Scattering2D(2, shape=(10, 10), frontend='doesnotexist')
-    assert "module named" in ve.value.args[0]
+    assert "is not valid" in ve.value.args[0]
 
 # Check the default backend is Torch and that errors are correctly launched.
 def test_scattering2d_backend():
