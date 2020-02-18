@@ -8,11 +8,8 @@ class ScatteringTransformerMixin(BaseEstimator, TransformerMixin):
 
     def predict(self, x):
         n_samples = x.shape[0]
-
         x = x.reshape((-1,) + self.shape)
-
         Sx = self.scattering(x)
-
         Sx = Sx.reshape(n_samples, -1)
 
         return Sx
