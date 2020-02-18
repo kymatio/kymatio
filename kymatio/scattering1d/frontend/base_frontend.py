@@ -112,6 +112,69 @@ class ScatteringBase1D(ScatteringBase):
 
     _doc_shape = 'T'
 
+    _doc_instantiation_shape = {True: 'S = Scattering1D(J, T, Q)',
+                                False: 'S = Scattering1D(J, Q)'}
+
+    _doc_param_shape = \
+    r"""shape : int
+            The length of the input signals.
+        """
+
+    _doc_attrs_shape = \
+    r"""J_pad : int
+            The logarithm of the padded length of the signals.
+        pad_left : int
+            The amount of padding to the left of the signal.
+        pad_right : int
+            The amount of padding to the right of the signal.
+        phi_f : dictionary
+            A dictionary containing the lowpass filter at all resolutions. See
+            `filter_bank.scattering_filter_factory` for an exact description.
+        psi1_f : dictionary
+            A dictionary containing all the first-order wavelet filters, each
+            represented as a dictionary containing that filter at all
+            resolutions. See `filter_bank.scattering_filter_factory` for an
+            exact description.
+        psi2_f : dictionary
+            A dictionary containing all the second-order wavelet filters, each
+            represented as a dictionary containing that filter at all
+            resolutions. See `filter_bank.scattering_filter_factory` for an
+            exact description.
+        """
+
+    _doc_param_average = \
+    r"""average : boolean, optional
+            Determines whether the output is averaged in time or not. The
+            averaged output corresponds to the standard scattering transform,
+            while the un-averaged output skips the last convolution by
+            :math:`\phi_J(t)`.  This parameter may be modified after object
+            creation. Defaults to `True`.
+        """
+
+    _doc_attr_average = \
+    r"""average : boolean
+            Controls whether the output should be averaged (the standard
+            scattering transform) or not (resulting in wavelet modulus
+            coefficients). Note that to obtain unaveraged output, the
+            `vectorize` flag must be set to `False`.
+        """
+
+    _doc_param_vectorize = \
+    r"""vectorize : boolean, optional
+            Determines wheter to return a vectorized scattering transform
+            (that is, a large array containing the output) or a dictionary
+            (where each entry corresponds to a separate scattering
+            coefficient). This parameter may be modified after object
+            creation. Defaults to True.
+        """
+
+    _doc_attr_vectorize = \
+    r"""vectorize : boolean
+            Controls whether the output should be vectorized into a single
+            Tensor or collected into a dictionary. For more details, see the
+            documentation for `scattering`.
+        """
+
     _doc_class = \
     r"""The 1D scattering transform
 
@@ -161,7 +224,7 @@ class ScatteringBase1D(ScatteringBase):
             x = {sample}
 
             # Define a Scattering1D object.
-            S = Scattering1D(J, T, Q)
+            {instantiation}
 
             # Calculate the scattering transform.
             Sx = S.scattering(x)
@@ -181,21 +244,13 @@ class ScatteringBase1D(ScatteringBase):
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by :math:`2^J`.
-        T : int
-            The length of the input signals.
-        Q : int >= 1
+        {param_shape}Q : int >= 1
             The number of first-order wavelets per octave (second-order
             wavelets are fixed to one wavelet per octave). Defaults to `1`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
-        average : boolean, optional
-            Determines whether the output is averaged in time or not. The
-            averaged output corresponds to the standard scattering transform,
-            while the un-averaged output skips the last convolution by
-            :math:`\phi_J(t)`.  This parameter may be modified after object
-            creation. Defaults to `True`.
-        oversampling : integer >= 0, optional
+        {param_average}oversampling : integer >= 0, optional
             Controls the oversampling factor relative to the default as a
             power of two. Since the convolving by wavelets (or lowpass
             filters) and taking the modulus reduces the high-frequency content
@@ -204,57 +259,21 @@ class ScatteringBase1D(ScatteringBase):
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
             may be modified after object creation. Defaults to `0`.
-        vectorize : boolean, optional
-            Determines wheter to return a vectorized scattering transform
-            (that is, a large array containing the output) or a dictionary
-            (where each entry corresponds to a separate scattering
-            coefficient). This parameter may be modified after object
-            creation. Defaults to True.
-
+        {param_vectorize}
         Attributes
         ----------
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by `2 ** J`.
-        shape : int
-            The length of the input signals.
-        Q : int
+        {param_shape}Q : int
             The number of first-order wavelets per octave (second-order
             wavelets are fixed to one wavelet per octave).
-        J_pad : int
-            The logarithm of the padded length of the signals.
-        pad_left : int
-            The amount of padding to the left of the signal.
-        pad_right : int
-            The amount of padding to the right of the signal.
-        phi_f : dictionary
-            A dictionary containing the lowpass filter at all resolutions. See
-            `filter_bank.scattering_filter_factory` for an exact description.
-        psi1_f : dictionary
-            A dictionary containing all the first-order wavelet filters, each
-            represented as a dictionary containing that filter at all
-            resolutions. See `filter_bank.scattering_filter_factory` for an
-            exact description.
-        psi2_f : dictionary
-            A dictionary containing all the second-order wavelet filters, each
-            represented as a dictionary containing that filter at all
-            resolutions. See `filter_bank.scattering_filter_factory` for an
-            exact description.
-        max_order : int
+        {attrs_shape}max_order : int
             The maximum scattering order of the transform.
-        average : boolean
-            Controls whether the output should be averaged (the standard
-            scattering transform) or not (resulting in wavelet modulus
-            coefficients). Note that to obtain unaveraged output, the
-            `vectorize` flag must be set to `False`.
-        oversampling : int
+        {attr_average}oversampling : int
             The number of powers of two to oversample the output compared to
             the default subsampling rate determined from the filters.
-        vectorize : boolean
-            Controls whether the output should be vectorized into a single
-            Tensor or collected into a dictionary. For more details, see the
-            documentation for `scattering`.
-        """
+        {attr_vectorize}"""
 
     _doc_scattering = \
     """Apply the scattering transform
@@ -290,11 +309,27 @@ class ScatteringBase1D(ScatteringBase):
 
     @classmethod
     def _document(cls):
+        instantiation = cls._doc_instantiation_shape[cls._doc_has_shape]
+        param_shape = cls._doc_param_shape if cls._doc_has_shape else ''
+        attrs_shape = cls._doc_attrs_shape if cls._doc_has_shape else ''
+
+        param_average = cls._doc_param_average if cls._doc_has_out_type else ''
+        attr_average = cls._doc_attr_average if cls._doc_has_out_type else ''
+        param_vectorize = cls._doc_param_vectorize if cls._doc_has_out_type else ''
+        attr_vectorize = cls._doc_attr_vectorize if cls._doc_has_out_type else ''
+
         cls.__doc__ = ScatteringBase1D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
             alias_call=cls._doc_alias_call,
+            instantiation=instantiation,
+            param_shape=param_shape,
+            attrs_shape=attrs_shape,
+            param_average=param_average,
+            attr_average=attr_average,
+            param_vectorize=param_vectorize,
+            attr_vectorize=attr_vectorize,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
         cls.scattering.__doc__ = ScatteringBase1D._doc_scattering.format(
