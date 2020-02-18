@@ -33,6 +33,25 @@ class ScatteringBase2D(ScatteringBase):
 
     _doc_shape = 'M, N'
 
+    _doc_instantiation_shape = {True: 'S = Scattering2D(J, (M, N))',
+                                False: 'S = Scattering2D(J)'}
+
+    _doc_param_shape = \
+    r"""shape : tuple of ints
+            Spatial support (M, N) of the input
+        """
+
+    _doc_attrs_shape = \
+    r"""Psi : dictionary
+            Contains the wavelets filters at all resolutions. See
+            `filter_bank.filter_bank` for an exact description.
+        Phi : dictionary
+            Contains the low-pass filters at all resolutions. See
+            `filter_bank.filter_bank` for an exact description.
+        M_padded, N_padded : int
+             Spatial support of the padded input.
+        """
+
     _doc_class = \
     r"""The 2D scattering transform
 
@@ -70,7 +89,7 @@ class ScatteringBase2D(ScatteringBase):
             x = {sample}
 
             # Define a Scattering2D object.
-            S = Scattering2D(J, (M, N))
+            {instantiation}
 
             # Calculate the scattering transform.
             Sx = S.scattering(x)
@@ -82,9 +101,7 @@ class ScatteringBase2D(ScatteringBase):
         ----------
         J : int
             Log-2 of the scattering scale.
-        shape : tuple of ints
-            Spatial support (M, N) of the input.
-        L : int, optional
+        {param_shape}L : int, optional
             Number of angles used for the wavelet transform. Defaults to `8`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
@@ -100,9 +117,7 @@ class ScatteringBase2D(ScatteringBase):
         ----------
         J : int
             Log-2 of the scattering scale.
-        shape : tuple of int
-            Spatial support (M, N) of the input.
-        L : int, optional
+        {param_shape}L : int, optional
             Number of angles used for the wavelet transform.
         max_order : int, optional
             The maximum order of scattering coefficients to compute.
@@ -111,15 +126,7 @@ class ScatteringBase2D(ScatteringBase):
             Controls the padding: if set to False, a symmetric padding is
             applied on the signal. If set to True, the software will assume
             the signal was padded externally.
-        Psi : dictionary
-            Contains the wavelets filters at all resolutions. See
-            `filter_bank.filter_bank` for an exact description.
-        Phi : dictionary
-            Contains the low-pass filters at all resolutions. See
-            `filter_bank.filter_bank` for an exact description.
-        M_padded, N_padded : int
-             Spatial support of the padded input.
-
+        {attrs_shape}
         Notes
         -----
         The design of the filters is optimized for the value `L = 8`.
@@ -156,11 +163,18 @@ class ScatteringBase2D(ScatteringBase):
 
     @classmethod
     def _document(cls):
+        instantiation = cls._doc_instantiation_shape[cls._doc_has_shape]
+        param_shape = cls._doc_param_shape if cls._doc_has_shape else ''
+        attrs_shape = cls._doc_attrs_shape if cls._doc_has_shape else ''
+
         cls.__doc__ = ScatteringBase2D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
             alias_call=cls._doc_alias_call,
+            instantiation=instantiation,
+            param_shape=param_shape,
+            attrs_shape=attrs_shape,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
         cls.scattering.__doc__ = ScatteringBase2D._doc_scattering.format(

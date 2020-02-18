@@ -30,3 +30,7 @@ class ScatteringKeras(Layer):
         """
 
     _doc_sample = 'np.random.randn({shape})'
+
+    _doc_has_shape = False
+
+    _doc_has_out_type = False

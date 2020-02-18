@@ -30,3 +30,7 @@ class ScatteringTensorFlow(tf.Module):
         """
 
     _doc_sample = 'np.random.randn({shape})'
+
+    _doc_has_shape = True
+
+    _doc_has_out_type = True
