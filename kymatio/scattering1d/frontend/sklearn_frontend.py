@@ -1,5 +1,4 @@
 from kymatio.frontend.sklearn_frontend import ScatteringTransformerMixin
-
 from kymatio.numpy import Scattering1D as ScatteringNumPy1D
 
 

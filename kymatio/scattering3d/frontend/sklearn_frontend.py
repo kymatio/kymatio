@@ -1,5 +1,4 @@
 from kymatio.frontend.sklearn_frontend import ScatteringTransformerMixin
-
 from kymatio.numpy import HarmonicScattering3D as HarmonicScatteringNumPy3D
 
 
