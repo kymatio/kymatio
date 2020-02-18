@@ -58,6 +58,6 @@ def test_scattering1d_frontend():
     scattering = Scattering1D(2, shape=(10, ))
     assert isinstance(scattering, ScatteringTorch1D), 'could not be correctly imported'
 
-    with pytest.raises(ImportError) as ve:
+    with pytest.raises(RuntimeError) as ve:
         scattering = Scattering1D(2, shape=(10,), frontend='doesnotexist')
-    assert "module named" in ve.value.args[0]
+    assert "is not valid" in ve.value.args[0]
