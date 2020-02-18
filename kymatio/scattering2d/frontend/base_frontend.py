@@ -74,9 +74,7 @@ class ScatteringBase2D(ScatteringBase):
         and $\psi^{{(2)}}_\mu$ is another family of bandpass filters. Only
         Morlet filters are used in this implementation. Convolutions are
         efficiently performed in the Fourier domain.
-
         {frontend_paragraph}
-
         Example
         -------
         ::
