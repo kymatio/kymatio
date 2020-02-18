@@ -6,8 +6,7 @@ from kymatio.sklearn import Scattering2D as ScatteringTransformer2D
 from kymatio.numpy import Scattering2D as ScatteringNumPy2D
 
 def test_sklearn_transformer():
-    test_data_dir = os.path.join(os.path.dirname(__file__), "..",
-                                 "scattering2d", "tests")
+    test_data_dir = os.path.join(os.path.dirname(__file__))
 
     with open(os.path.join(test_data_dir, 'test_data_2d.npz'), 'rb') as f:
         buf = io.BytesIO(f.read())
