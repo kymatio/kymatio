@@ -39,3 +39,7 @@ class ScatteringTorch(nn.Module):
         """
 
     _doc_sample = 'torch.randn({shape})'
+
+    _doc_has_shape = True
+
+    _doc_has_out_type = True
