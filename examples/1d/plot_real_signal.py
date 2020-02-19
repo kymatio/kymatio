@@ -12,6 +12,7 @@ displays the zeroth-, first-, and second-order scattering coefficients.
 #
 ###############################################################################
 # To handle audio file I/O, we import `os` and `scipy.io.wavfile`.
+
 import numpy as np
 import os
 import scipy.io.wavfile
