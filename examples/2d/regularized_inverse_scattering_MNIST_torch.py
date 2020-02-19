@@ -33,6 +33,8 @@ from kymatio.caching import get_cache_dir
 from kymatio.datasets import get_dataset_dir
 
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
 class Generator(nn.Module):
     def __init__(self, num_input_channels, num_hidden_channels, num_output_channels=1, filter_size=3):
         super(Generator, self).__init__()
@@ -84,7 +86,7 @@ if __name__ == '__main__':
 
     transforms_to_apply = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # Pixel values should be in [-1,1]
+        transforms.Normalize((0.5,), (0.5,))  # Pixel values should be in [-1,1]
     ])
 
     mnist_dir = get_dataset_dir("MNIST", create=True)
@@ -93,17 +95,15 @@ if __name__ == '__main__':
 
     fixed_dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
     fixed_batch = next(iter(fixed_dataloader))
-    fixed_batch = fixed_batch[0].float().cuda()
+    fixed_batch = fixed_batch[0].float().to(device)
 
-    scattering = Scattering(J=2, shape=(28, 28))
-    scattering.cuda()
+    scattering = Scattering(J=2, shape=(28, 28)).to(device)
 
     scattering_fixed_batch = scattering(fixed_batch).squeeze(1)
     num_input_channels = scattering_fixed_batch.shape[1]
     num_hidden_channels = num_input_channels
 
-    generator = Generator(num_input_channels, num_hidden_channels)
-    generator.cuda()
+    generator = Generator(num_input_channels, num_hidden_channels).to(device)
     generator.train()
 
     # Either train the network or load a trained model
@@ -119,7 +119,7 @@ if __name__ == '__main__':
             print('Training epoch {}'.format(idx_epoch))
             for _, current_batch in enumerate(dataloader):
                 generator.zero_grad()
-                batch_images = Variable(current_batch[0]).float().cuda()
+                batch_images = Variable(current_batch[0]).float().to(device)
                 batch_scattering = scattering(batch_images).squeeze(1)
                 batch_inverse_scattering = generator(batch_scattering)
                 loss = criterion(batch_inverse_scattering, batch_images)
@@ -144,7 +144,7 @@ if __name__ == '__main__':
             zt = (1 - t) * z0 + t * z1
             batch_z = np.vstack((batch_z, zt))
 
-    z = torch.from_numpy(batch_z).float().cuda()
+    z = torch.from_numpy(batch_z).float().to(device)
     path = generator(z).data.cpu().numpy().squeeze(1)
     path = (path + 1) / 2  # The pixels are now in [0, 1]
 
