@@ -44,7 +44,6 @@ jobs:
             pip install torch
             pip install torchvision
             pip install tensorflow
-            pip install keras
             pip install .
 
       - save_cache:
