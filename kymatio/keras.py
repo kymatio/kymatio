@@ -1,6 +1,6 @@
-from kymatio.scattering1d.frontend.keras_frontend \
+from .scattering1d.frontend.keras_frontend \
     import ScatteringKeras1D as Scattering1D
-from kymatio.scattering2d.frontend.keras_frontend \
+from .scattering2d.frontend.keras_frontend \
     import ScatteringKeras2D as Scattering2D
 
 Scattering1D.__module__ = 'kymatio.keras'
