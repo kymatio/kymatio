@@ -31,8 +31,8 @@ from scipy.spatial.distance import pdist
 
 
 M, N, O, J, L = 192, 128, 96, 2, 3
-integral_powers = [0.5,  1., 2., 3.]
-sigma = 2.
+integral_powers = [0.5, 1.0, 2.0, 3.0]
+sigma = 2.0
 
 batch_size = 8
 
@@ -49,6 +49,8 @@ qm7 = fetch_qm7(align=True)
 pos = qm7['positions']
 full_charges = qm7['charges'].astype('float32')
 
+n_molecules = pos.shape[0]
+
 mask = full_charges <= 2
 valence_charges = full_charges * mask
 
@@ -61,21 +63,22 @@ valence_charges += (full_charges - 10) * mask
 # normalize positions
 overlapping_precision = 1e-1
 min_dist = np.inf
-for i in range(pos.shape[0]):
+for i in range(n_molecules):
     n_atoms = np.sum(full_charges[i] != 0)
     pos_i = pos[i, :n_atoms, :]
     min_dist = min(min_dist, pdist(pos_i).min())
 delta = sigma * np.sqrt(-8 * np.log(overlapping_precision))
 pos = pos * delta / min_dist
 
-n_molecules = pos.shape[0]
 n_batches = np.ceil(n_molecules / batch_size).astype(int)
 
-scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma).to(device)
+scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma,
+                                  integral_powers=integral_powers)
+scattering.to(device)
 
 order_0, orders_1_and_2 = [], []
 print('Computing solid harmonic scattering coefficients of {} molecules '
-    'of QM7 database on {}'.format(pos.shape[0], 'GPU' if device == 'cuda' else 'CPU'))
+      'of QM7 database on {}'.format(n_molecules, {'cuda': 'GPU', 'cpu': 'CPU'}[device]))
 print('sigma: {}, L: {}, J: {}, integral powers: {}'.format(sigma, L, J, integral_powers))
 
 this_time = None
@@ -105,9 +108,6 @@ for i in range(n_batches):
     full_density_batch = full_density_batch.to(device).float()
 
     full_order_0 = compute_integrals(full_density_batch, integral_powers)
-    scattering.max_order = 2
-    scattering.method = 'integral'
-    scattering.integral_powers = integral_powers
     full_scattering = scattering(full_density_batch)
 
     val_density_batch = generate_weighted_sum_of_gaussians(grid,
@@ -134,8 +134,6 @@ for i in range(n_batches):
 order_0 = torch.cat(order_0, dim=0)
 orders_1_and_2 = torch.cat(orders_1_and_2, dim=0)
 
-n_molecules = order_0.shape[0]
-
 np_order_0 = order_0.numpy().reshape((n_molecules, -1))
 np_orders_1_and_2 = orders_1_and_2.numpy().reshape((n_molecules, -1))
 
@@ -154,8 +152,7 @@ target = qm7['energies']
 
 n_folds = 5
 
-n_datapoints = scattering_coef.shape[0]
-P = np.random.permutation(n_datapoints).reshape((n_folds, -1))
+P = np.random.permutation(n_molecules).reshape((n_folds, -1))
 cross_val_folds = []
 
 for i_fold in range(n_folds):
@@ -167,8 +164,7 @@ for i, alpha in enumerate(alphas):
     regressor = pipeline.make_pipeline(preprocessing.StandardScaler(),
                                        linear_model.Ridge(alpha=alpha))
     target_prediction = model_selection.cross_val_predict(regressor,
-            X=scattering_coef, y=target,
-                                                     cv=cross_val_folds)
+            X=scattering_coef, y=target, cv=cross_val_folds)
     MAE = np.mean(np.abs(target_prediction - target))
     RMSE = np.sqrt(np.mean((target_prediction - target) ** 2))
     print('Ridge regression, alpha: {}, MAE: {}, RMSE: {}'.format(
