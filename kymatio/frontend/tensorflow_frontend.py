@@ -1,7 +1,6 @@
 import tensorflow as tf
 from packaging import version
 
-
 class ScatteringTensorFlow(tf.Module):
     def __init__(self, name):
         super(ScatteringTensorFlow, self).__init__(name=name)

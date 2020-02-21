@@ -1,6 +1,6 @@
 import tensorflow as tf
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
-from kymatio.scattering2d.core.scattering2d import scattering2d
+from ...scattering2d.core.scattering2d import scattering2d
 from .base_frontend import ScatteringBase2D
 
 class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
