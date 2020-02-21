@@ -1,5 +1,5 @@
-from kymatio.frontend.sklearn_frontend import ScatteringTransformerMixin
-from kymatio.numpy import Scattering1D as ScatteringNumPy1D
+from ...frontend.sklearn_frontend import ScatteringTransformerMixin
+from ...numpy import Scattering1D as ScatteringNumPy1D
 
 
 # NOTE: Order in base classes matters here, since we want the sklearn-specific

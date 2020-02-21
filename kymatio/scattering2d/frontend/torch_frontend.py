@@ -1,7 +1,7 @@
 import torch
 
 from .base_frontend import ScatteringBase2D
-from kymatio.scattering2d.core.scattering2d import scattering2d
+from ...scattering2d.core.scattering2d import scattering2d
 from ...frontend.torch_frontend import ScatteringTorch
 
 
