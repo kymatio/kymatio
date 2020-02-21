@@ -21,7 +21,7 @@ import torch
 import os
 
 from sklearn import linear_model, model_selection, preprocessing, pipeline
-from kymatio.scattering3d import HarmonicScattering3D
+from kymatio.torch import HarmonicScattering3D
 from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 from kymatio.scattering3d.backend.torch_backend import compute_integrals
 from kymatio.datasets import fetch_qm7
@@ -180,7 +180,7 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
     n_molecules = pos.shape[0]
     n_batches = np.ceil(n_molecules / batch_size).astype(int)
 
-    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma, frontend='torch').to(device)
+    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma).to(device)
 
     order_0, orders_1_and_2 = [], []
     print('Computing solid harmonic scattering coefficients of {} molecules '
