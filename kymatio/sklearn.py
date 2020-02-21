@@ -1,8 +1,8 @@
-from kymatio.scattering1d.frontend.sklearn_frontend \
+from .scattering1d.frontend.sklearn_frontend \
     import ScatteringTransformer1D as Scattering1D
-from kymatio.scattering2d.frontend.sklearn_frontend \
+from .scattering2d.frontend.sklearn_frontend \
     import ScatteringTransformer2D as Scattering2D
-from kymatio.scattering3d.frontend.sklearn_frontend \
+from .scattering3d.frontend.sklearn_frontend \
     import HarmonicScatteringTransformer3D as HarmonicScattering3D
 
 Scattering1D.__module__ = 'kymatio.sklearn'

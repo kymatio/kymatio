@@ -1,5 +1,5 @@
-from kymatio.frontend.keras_frontend import ScatteringKeras
-from kymatio.scattering1d.frontend.base_frontend import ScatteringBase1D
+from ...frontend.keras_frontend import ScatteringKeras
+from ...scattering1d.frontend.base_frontend import ScatteringBase1D
 
 from kymatio.tensorflow import Scattering1D as ScatteringTensorFlow1D
 
