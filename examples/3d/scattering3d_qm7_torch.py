@@ -1,252 +1,320 @@
 """
 3D scattering quantum chemistry regression
 ==========================================
-This uses the 3D scattering on a standard dataset.
+
+Description:
+This example trains a classifier combined with a scattering transform to
+regress molecular atomization energies on the QM7 dataset. Here, we use full
+charges, valence charges and core charges. A linear regression is deployed.
+
+Remarks:
+The linear regression of the QM7 energies with the given values gives MAE
+2.75, RMSE 4.18 (kcal.mol-1)
+
+Reference:
+https://arxiv.org/abs/1805.00571
 """
 
+###############################################################################
+# Preliminaries
+# -------------
+#
+# First, we import NumPy, PyTorch, and some utility modules.
+
 import numpy as np
-import time
 import torch
+import time
 import os
 
-from sklearn import linear_model, model_selection, preprocessing, pipeline
-from kymatio.scattering3d import HarmonicScattering3D
-from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
-from kymatio.scattering3d.backend.torch_backend import compute_integrals
-from kymatio.datasets import fetch_qm7
-from kymatio.caching import get_cache_dir
+###############################################################################
+# We will use scikit-learn to construct a linear model, so we import the
+# necessary modules. In addition, we need to compute distance matrices when
+# normalizing our input features, so we import `pdist` from `scipy.spatial`.
+
+from sklearn import (linear_model, model_selection, preprocessing,
+                     pipeline)
 from scipy.spatial.distance import pdist
 
+######################################################################
+# We then import the necessary functionality from Kymatio. First, we need the
+# PyTorch frontend of the 3D solid harmonic cattering transform.
 
-def evaluate_linear_regression(X, y, n_folds=5):
-    """
-    Evaluates linear ridge regression predictions of y using X.
+from kymatio.torch import HarmonicScattering3D
 
-    Parameters
-    ----------
-    X:  numpy array
-        input features, shape (N, D)
-    y: numpy array
-        target value, shape (N, 1)
+###############################################################################
+# The 3D transform doesn't compute the zeroth-order coefficients, so we need
+# to import `compute_integrals` to do this manually.
 
-    """
-    n_datapoints = X.shape[0]
-    P = np.random.permutation(n_datapoints).reshape((n_folds, -1))
-    cross_val_folds = []
+from kymatio.scattering3d.backend.torch_backend \
+    import compute_integrals
 
-    for i_fold in range(n_folds):
-        fold = (np.concatenate(P[np.arange(n_folds) != i_fold], axis=0), P[i_fold])
-        cross_val_folds.append(fold)
+###############################################################################
+# To generate the input 3D maps, we need to calculate sums of Gaussians, so we
+# import the function `generate_weighted_sum_of_gaussians`.
 
-    alphas = 10.**(-np.arange(0, 10))
-    for i, alpha in enumerate(alphas):
-        regressor = pipeline.make_pipeline(
-            preprocessing.StandardScaler(), linear_model.Ridge(alpha=alpha))
-        y_prediction = model_selection.cross_val_predict(
-            regressor, X=X, y=y, cv=cross_val_folds)
-        MAE = np.mean(np.abs(y_prediction - y))
-        RMSE = np.sqrt(np.mean((y_prediction - y)**2))
-        print('Ridge regression, alpha: {}, MAE: {}, RMSE: {}'.format(
-            alpha, MAE, RMSE))
+from kymatio.scattering3d.utils \
+    import generate_weighted_sum_of_gaussians
 
+###############################################################################
+# Finally, we import the utility functions that let us access the QM7 dataset
+# and the cache directories to store our results.
 
-def get_valence(charges):
-    """
-        Returns the number valence electrons of a particle given the
-        nuclear charge.
+from kymatio.datasets import fetch_qm7
+from kymatio.caching import get_cache_dir
 
-        Parameters
-        ----------
-        charges: numpy array
-            array containing the nuclear charges, arbitrary size
+###############################################################################
+# Data preparation
+# ----------------
+#
+# Fetch the QM7 database and extract the atomic positions and nuclear charges
+# of each molecule. This dataset contains 7165 organic molecules with up to
+# seven non-hydrogen atoms, whose energies were computed using density
+# functional theory.
 
-        Returns
-        -------
-        valence_charges : numpy array
-            same size as the input
-    """
-    return (
-        charges * (charges <= 2) +
-        (charges - 2) * np.logical_and(charges > 2, charges <= 10) +
-        (charges - 10) * np.logical_and(charges > 10, charges <= 18))
+qm7 = fetch_qm7(align=True)
+pos = qm7['positions']
+full_charges = qm7['charges']
 
+n_molecules = pos.shape[0]
 
-def get_qm7_energies():
-    """
-        Loads the energies of the molecules of the QM7 dataset.
+###############################################################################
+# From the nuclear charges, we compute the number of valence electrons, which
+# we store as the valence charge of that atom.
 
-        Returns
-        -------
-        energies: numpy array
-            array containing the energies of the molecules
-    """
-    qm7 = fetch_qm7()
-    return qm7['energies']
+mask = full_charges <= 2
+valence_charges = full_charges * mask
 
+mask = np.logical_and(full_charges > 2, full_charges <= 10)
+valence_charges += (full_charges - 2) * mask
 
+mask = np.logical_and(full_charges > 10, full_charges <= 18)
+valence_charges += (full_charges - 10) * mask
 
-def get_qm7_positions_and_charges(sigma, overlapping_precision=1e-1):
-    """
-        Loads the positions and charges of the molecules of the QM7 dataset.
-        QM7 is a dataset of 7165 organic molecules with up to 7 non-hydrogen
-        atoms, whose energies were computed with a quantum chemistry
-        computational method named Density Functional Theory.
-        This dataset has been made available to train machine learning models
-        to predict these energies.
+###############################################################################
+# We then normalize the positions of the atoms. Specifically, the positions
+# are rescaled such that two Gaussians of width `sigma` placed at those
+# positions overlap with amplitude less than `overlapping_precision`.
 
-        Parameters
-        ----------
-        sigma : float
-            width parameter of the Gaussian that represents a particle
+overlapping_precision = 1e-1
+sigma = 2.0
+min_dist = np.inf
 
-        overlapping_precision : float, optional
-            affects the scaling of the positions. The positions are re-scaled
-            such that two Gaussian functions of width sigma centerd at the qm7
-            positions overlapp with amplitude <= the overlapping_precision
+for i in range(n_molecules):
+    n_atoms = np.sum(full_charges[i] != 0)
+    pos_i = pos[i, :n_atoms, :]
+    min_dist = min(min_dist, pdist(pos_i).min())
 
-        Returns
-        -------
-        positions, charges, valence_charges: torch arrays
-            array containing the positions, charges and valence charges
-            of the QM7 database molecules
-    """
-    qm7 = fetch_qm7(align=True)
-    positions = qm7['positions']
-    charges = qm7['charges'].astype('float32')
-    valence_charges = get_valence(charges)
+delta = sigma * np.sqrt(-8 * np.log(overlapping_precision))
+pos = pos * delta / min_dist
 
-    # normalize positions
-    min_dist = np.inf
-    for i in range(positions.shape[0]):
-        n_atoms = np.sum(charges[i] != 0)
-        pos = positions[i, :n_atoms, :]
-        min_dist = min(min_dist, pdist(pos).min())
-    delta = sigma * np.sqrt(-8 * np.log(overlapping_precision))
-    positions = positions * delta / min_dist
+###############################################################################
+# Scattering Transform
+# --------------------------------
+# Given the rescaled positions and charges, we are now ready to compute the
+# density maps by placing Gaussians at the different positions weighted by the
+# appropriate charge. These are fed into the 3D solid harmonic scattering
+# transform to obtain features that are used to regress the energies. In
+# order to do this, we must first define a grid.
 
-    return positions, charges, valence_charges
+M, N, O = 192, 128, 96
 
+grid = np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O]
+grid = np.fft.ifftshift(grid)
 
-def compute_qm7_solid_harmonic_scattering_coefficients(
-        M=192, N=128, O=96, sigma=2., J=2, L=3,
-        integral_powers=(0.5, 1., 2., 3.), batch_size=16):
-    """
-        Computes the scattering coefficients of the molecules of the
-        QM7 database. Channels used are full charges, valence charges
-        and core charges. Linear regression of the qm7 energies with
-        the given values gives MAE 2.75, RMSE 4.18 (kcal.mol-1).
+###############################################################################
+# We then define the scattering transform using the `HarmonicScattering3D`
+# class.
 
-        Parameters
-        ----------
-        M, N, O: int
-            dimensions of the numerical grid
-        sigma : float
-            width parameter of the Gaussian that represents a particle
-        J: int
-            maximal scale of the solid harmonic wavelets
-        L: int
-            maximal first order of the solid harmonic wavelets
-        integral_powers: list of int
-            powers for the integrals
-        batch_size: int
-            size of the batch for computations
+J = 2
+L = 3
+integral_powers = [0.5, 1.0, 2.0, 3.0]
 
-        Returns
-        -------
-        order_0: torch tensor
-            array containing zeroth-order scattering coefficients
-        orders_1_and_2: torch tensor
-            array containing first- and second-order scattering coefficients
-    """
+scattering = HarmonicScattering3D(J=J, shape=(M, N, O),
+                                  L=L, sigma_0=sigma,
+                                  integral_powers=integral_powers)
 
-    if torch.cuda.is_available():
-        device = 'cuda'
+###############################################################################
+# We then check whether a GPU is available, in which case we transfer our
+# scattering object there.
+
+if torch.cuda.is_available():
+    device = 'cuda'
+else:
+    device = 'cpu'
+
+scattering.to(device)
+
+###############################################################################
+# The maps computed for each molecule are quite large, so the computation has
+# to be done by batches. Here we select a small batch size to ensure that we
+# have enough memory when running on the GPU. Dividing the number of molecules
+# by the batch size then gives us the number of batches.
+
+batch_size = 8
+n_batches = int(np.ceil(n_molecules / batch_size))
+
+###############################################################################
+# We are now ready to compute the scattering transforms. In the following
+# loop, each batch of molecules is transformed into three maps using Gaussians
+# centered at the atomic positions, one for the nuclear charges, one for the
+# valence charges, and one with their difference (called the “core” charges).
+# For each map, we compute its scattering transform up to order two and store
+# the results.
+
+order_0, orders_1_and_2 = [], []
+print('Computing solid harmonic scattering coefficients of '
+      '{} molecules from the QM7 database on {}'.format(
+        n_molecules, {'cuda': 'GPU', 'cpu': 'CPU'}[device]))
+print('sigma: {}, L: {}, J: {}, integral powers: {}'.format(
+        sigma, L, J, integral_powers))
+
+this_time = None
+last_time = None
+for i in range(n_batches):
+    this_time = time.time()
+    if last_time is not None:
+        dt = this_time - last_time
+        print("Iteration {} ETA: [{:02}:{:02}:{:02}]".format(
+                    i + 1, int(((n_batches - i - 1) * dt) // 3600),
+                    int((((n_batches - i - 1) * dt) // 60) % 60),
+                    int(((n_batches - i - 1) * dt) % 60)))
     else:
-        device = 'cpu'
-    grid = np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1, 2, 3))
-    pos, full_charges, valence_charges = get_qm7_positions_and_charges(sigma)
+        print("Iteration {} ETA: {}".format(i + 1, '-'))
+    last_time = this_time
+    time.sleep(1)
 
-    n_molecules = pos.shape[0]
-    n_batches = np.ceil(n_molecules / batch_size).astype(int)
+    # Extract the current batch.
+    start = i * batch_size
+    end = min(start + batch_size, n_molecules)
 
-    scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L, sigma_0=sigma, frontend='torch').to(device)
+    pos_batch = pos[start:end]
+    full_batch = full_charges[start:end]
+    val_batch = valence_charges[start:end]
 
-    order_0, orders_1_and_2 = [], []
-    print('Computing solid harmonic scattering coefficients of {} molecules '
-        'of QM7 database on {}'.format(pos.shape[0], 'GPU' if device == 'cuda' else 'CPU'))
-    print('sigma: {}, L: {}, J: {}, integral powers: {}'.format(sigma, L, J, integral_powers))
+    # Calculate the density map for the nuclear charges and transfer
+    # to PyTorch.
+    full_density_batch = generate_weighted_sum_of_gaussians(grid,
+            pos_batch, full_batch, sigma)
+    full_density_batch = torch.from_numpy(full_density_batch)
+    full_density_batch = full_density_batch.to(device).float()
 
-    this_time = None
-    last_time = None
-    for i in range(n_batches):
-        this_time = time.time()
-        if last_time is not None:
-            dt = this_time - last_time
-            print("Iteration {} ETA: [{:02}:{:02}:{:02}]".format(
-                        i + 1, int(((n_batches - i - 1) * dt) // 3600),
-                        int((((n_batches - i - 1) * dt) // 60) % 60),
-                        int(((n_batches - i - 1) * dt) % 60)), end='\r')
-        else:
-            print("Iteration {} ETA: {}".format(i + 1,'-'),end='\r')
-        last_time = this_time
-        time.sleep(1)
+    # Compute zeroth-order, first-order, and second-order scattering
+    # coefficients of the nuclear charges.
+    full_order_0 = compute_integrals(full_density_batch,
+                                     integral_powers)
+    full_scattering = scattering(full_density_batch)
 
-        start, end = i * batch_size, min((i + 1) * batch_size, n_molecules)
+    # Compute the map for valence charges.
+    val_density_batch = generate_weighted_sum_of_gaussians(grid,
+            pos_batch, val_batch, sigma)
+    val_density_batch = torch.from_numpy(val_density_batch)
+    val_density_batch = val_density_batch.to(device).float()
 
-        pos_batch = pos[start:end]
-        full_batch = full_charges[start:end]
-        val_batch = valence_charges[start:end]
+    # Compute scattering coefficients for the valence charges.
+    val_order_0 = compute_integrals(val_density_batch,
+                                    integral_powers)
+    val_scattering = scattering(val_density_batch)
 
-        full_density_batch = torch.from_numpy(generate_weighted_sum_of_gaussians(
-                grid, pos_batch, full_batch, sigma)).to(device)
-        full_order_0 = compute_integrals(full_density_batch, integral_powers)
-        scattering.max_order = 2
-        scattering.method = 'integral'
-        scattering.integral_powers = integral_powers
-        full_scattering = scattering(full_density_batch)
+    # Take the difference between nuclear and valence charges, then
+    # compute the corresponding scattering coefficients.
+    core_density_batch = full_density_batch - val_density_batch
 
-        val_density_batch = torch.from_numpy(generate_weighted_sum_of_gaussians(
-                grid, pos_batch, val_batch, sigma)).to(device)
-        val_order_0 = compute_integrals(val_density_batch, integral_powers)
-        val_scattering= scattering(val_density_batch)
+    core_order_0 = compute_integrals(core_density_batch,
+                                     integral_powers)
+    core_scattering = scattering(core_density_batch)
 
-        core_density_batch = full_density_batch - val_density_batch
-        core_order_0 = compute_integrals(core_density_batch, integral_powers)
-        core_scattering = scattering(core_density_batch)
+    # Stack the nuclear, valence, and core coefficients into arrays
+    # and append them to the output.
+    batch_order_0 = torch.stack(
+        (full_order_0, val_order_0, core_order_0), dim=-1)
+    batch_orders_1_and_2 = torch.stack(
+        (full_scattering, val_scattering, core_scattering), dim=-1)
 
+    order_0.append(batch_order_0)
+    orders_1_and_2.append(batch_orders_1_and_2)
 
-        order_0.append(
-            torch.stack([full_order_0, val_order_0, core_order_0], dim=-1))
-        orders_1_and_2.append(
-            torch.stack(
-                [full_scattering, val_scattering, core_scattering], dim=-1))
+###############################################################################
+# Concatenate the batch outputs and transfer to NumPy.
 
-    order_0 = torch.cat(order_0, dim=0)
-    orders_1_and_2 = torch.cat(orders_1_and_2, dim=0)
+order_0 = torch.cat(order_0, dim=0)
+orders_1_and_2 = torch.cat(orders_1_and_2, dim=0)
 
-    return order_0, orders_1_and_2
+order_0 = order_0.numpy()
+orders_1_and_2 = orders_1_and_2.numpy()
 
-M, N, O, J, L = 192, 128, 96, 2, 3
-integral_powers = [0.5,  1., 2., 3.]
-sigma = 2.
+###############################################################################
+# Regression
+# ----------
+#
+# To use the scattering coefficients as features in a scikit-learn pipeline,
+# these must be of shape `(n_samples, n_features)`, so we reshape our arrays
+# accordingly.
 
-order_0, orders_1_and_2 = compute_qm7_solid_harmonic_scattering_coefficients(
-    M=M, N=N, O=O, J=J, L=L, integral_powers=integral_powers,
-    sigma=sigma, batch_size=8)
+order_0 = order_0.reshape((n_molecules, -1))
+orders_1_and_2 = orders_1_and_2.reshape((n_molecules, -1))
 
-n_molecules = order_0.size(0)
-
-np_order_0 = order_0.numpy().reshape((n_molecules, -1))
-np_orders_1_and_2 = orders_1_and_2.numpy().reshape((n_molecules, -1))
+###############################################################################
+# Since the above calculation is quite lengthy, we save the results to a cache
+# for future use.
 
 basename = 'qm7_L_{}_J_{}_sigma_{}_MNO_{}_powers_{}.npy'.format(
         L, J, sigma, (M, N, O), integral_powers)
-cachedir = get_cache_dir("qm7/experiments")
-np.save(os.path.join(cachedir, 'order_0_' + basename), np_order_0)
-np.save(os.path.join(
-    cachedir, 'orders_1_and_2_' + basename), np_orders_1_and_2)
 
-scattering_coef = np.concatenate([np_order_0, np_orders_1_and_2], axis=1)
-target = get_qm7_energies()
+cache_dir = get_cache_dir("qm7/experiments")
 
-evaluate_linear_regression(scattering_coef, target)
+filename = os.path.join(cache_dir, 'order_0_' + basename)
+np.save(filename, order_0)
+
+filename = os.path.join(cache_dir, 'orders_1_and_2' + basename)
+np.save(filename, orders_1_and_2)
+
+###############################################################################
+# We now concatenate the zeroth-order coefficients with the rest since we want
+# to use all of them as features.
+
+scattering_coef = np.concatenate([order_0, orders_1_and_2], axis=1)
+
+###############################################################################
+# Fetch the target energies from the QM7 dataset.
+
+qm7 = fetch_qm7()
+target = qm7['energies']
+
+###############################################################################
+# We evaluate the performance of the regression using five-fold
+# cross-validation. To do so, we first shuffle the molecules, then we store
+# the resulting indices in `cross_val_folds`.
+
+n_folds = 5
+
+P = np.random.permutation(n_molecules).reshape((n_folds, -1))
+
+cross_val_folds = []
+
+for i_fold in range(n_folds):
+    fold = (np.concatenate(P[np.arange(n_folds) != i_fold], axis=0),
+            P[i_fold])
+    cross_val_folds.append(fold)
+
+###############################################################################
+# Given these folds, we compute the regression error for various settings of
+# the `alpha` parameter, which controls the amount of regularization applied
+# to the regression problem (here in the form of a simple ridge regression, or
+# Tikhonov, regularization). The mean absolute error (MAE) and root mean
+# square error (RMSE) is output for each value of `alpha`.
+
+alphas = 10.0 ** (-np.arange(0, 10))
+for i, alpha in enumerate(alphas):
+    scaler = preprocessing.StandardScaler()
+    ridge = linear_model.Ridge(alpha=alpha)
+
+    regressor = pipeline.make_pipeline(scaler, ridge)
+
+    target_prediction = model_selection.cross_val_predict(regressor,
+            X=scattering_coef, y=target, cv=cross_val_folds)
+
+    MAE = np.mean(np.abs(target_prediction - target))
+    RMSE = np.sqrt(np.mean((target_prediction - target) ** 2))
+
+    print('Ridge regression, alpha: {}, MAE: {}, RMSE: {}'.format(
+        alpha, MAE, RMSE))
