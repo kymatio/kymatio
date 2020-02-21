@@ -86,7 +86,7 @@ if __name__ == '__main__':
 
     transforms_to_apply = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.5,), (0.5,))  # Pixel values should be in [-1,1]
+        transforms.Normalize((0.5,), (0.5,))  # Normalization for reproducibility issues
     ])
 
     mnist_dir = get_dataset_dir("MNIST", create=True)
