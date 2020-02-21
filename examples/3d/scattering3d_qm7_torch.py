@@ -3,11 +3,13 @@
 ==========================================
 
 Description:
-This example trains a classifier combined with a Scattering Transform to regress molecules potential on QM7 dataset.
-Here, we use full charges, valence charges and core charges. A linear regression is deployed.
+This example trains a classifier combined with a scattering transform to
+regress molecular atomization energies on the QM7 dataset. Here, we use full
+charges, valence charges and core charges. A linear regression is deployed.
 
 Remarks:
-The linear regression of the QM7 energies with the given values gives MAE 2.75, RMSE 4.18 (kcal.mol-1)
+The linear regression of the QM7 energies with the given values gives MAE
+2.75, RMSE 4.18 (kcal.mol-1)
 
 Reference:
 https://arxiv.org/abs/1805.00571
