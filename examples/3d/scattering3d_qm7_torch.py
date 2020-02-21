@@ -49,14 +49,14 @@ def evaluate_linear_regression(X, y, n_folds=5):
         fold = (np.concatenate(P[np.arange(n_folds) != i_fold], axis=0), P[i_fold])
         cross_val_folds.append(fold)
 
-    alphas = 10.**(-np.arange(0, 10))
+    alphas = 10.0 ** (-np.arange(0, 10))
     for i, alpha in enumerate(alphas):
-        regressor = pipeline.make_pipeline(
-            preprocessing.StandardScaler(), linear_model.Ridge(alpha=alpha))
-        y_prediction = model_selection.cross_val_predict(
-            regressor, X=X, y=y, cv=cross_val_folds)
+        regressor = pipeline.make_pipeline(preprocessing.StandardScaler(),
+                                           linear_model.Ridge(alpha=alpha))
+        y_prediction = model_selection.cross_val_predict(regressor, X=X, y=y,
+                                                         cv=cross_val_folds)
         MAE = np.mean(np.abs(y_prediction - y))
-        RMSE = np.sqrt(np.mean((y_prediction - y)**2))
+        RMSE = np.sqrt(np.mean((y_prediction - y) ** 2))
         print('Ridge regression, alpha: {}, MAE: {}, RMSE: {}'.format(
             alpha, MAE, RMSE))
 
@@ -76,10 +76,9 @@ def get_valence(charges):
         valence_charges : numpy array
             same size as the input
     """
-    return (
-        charges * (charges <= 2) +
-        (charges - 2) * np.logical_and(charges > 2, charges <= 10) +
-        (charges - 10) * np.logical_and(charges > 10, charges <= 18))
+    return (charges * (charges <= 2)
+            + (charges - 2) * np.logical_and(charges > 2, charges <= 10)
+            + (charges - 10) * np.logical_and(charges > 10, charges <= 18))
 
 
 def get_qm7_energies():
@@ -174,7 +173,9 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
         device = 'cuda'
     else:
         device = 'cpu'
-    grid = np.fft.ifftshift(np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O].astype('float32'), axes=(1, 2, 3))
+    grid = np.mgrid[-M//2:-M//2+M, -N//2:-N//2+N, -O//2:-O//2+O]
+    grid = grid.astype('float32')
+    grid = np.fft.ifftshift(grid, axes=(1, 2, 3))
     pos, full_charges, valence_charges = get_qm7_positions_and_charges(sigma)
 
     n_molecules = pos.shape[0]
@@ -196,9 +197,9 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
             print("Iteration {} ETA: [{:02}:{:02}:{:02}]".format(
                         i + 1, int(((n_batches - i - 1) * dt) // 3600),
                         int((((n_batches - i - 1) * dt) // 60) % 60),
-                        int(((n_batches - i - 1) * dt) % 60)), end='\r')
+                        int(((n_batches - i - 1) * dt) % 60)))
         else:
-            print("Iteration {} ETA: {}".format(i + 1,'-'),end='\r')
+            print("Iteration {} ETA: {}".format(i + 1, '-'))
         last_time = this_time
         time.sleep(1)
 
@@ -208,29 +209,37 @@ def compute_qm7_solid_harmonic_scattering_coefficients(
         full_batch = full_charges[start:end]
         val_batch = valence_charges[start:end]
 
-        full_density_batch = torch.from_numpy(generate_weighted_sum_of_gaussians(
-                grid, pos_batch, full_batch, sigma)).to(device).float()
+        full_density_batch = generate_weighted_sum_of_gaussians(grid,
+                pos_batch, full_batch, sigma)
+        full_density_batch = torch.from_numpy(full_density_batch)
+        full_density_batch = full_density_batch.to(device).float()
+
         full_order_0 = compute_integrals(full_density_batch, integral_powers)
         scattering.max_order = 2
         scattering.method = 'integral'
         scattering.integral_powers = integral_powers
         full_scattering = scattering(full_density_batch)
 
-        val_density_batch = torch.from_numpy(generate_weighted_sum_of_gaussians(
-                grid, pos_batch, val_batch, sigma)).to(device).float()
+        val_density_batch = generate_weighted_sum_of_gaussians(grid,
+                pos_batch, val_batch, sigma)
+        val_density_batch = torch.from_numpy(val_density_batch)
+        val_density_batch = val_density_batch.to(device).float()
+
         val_order_0 = compute_integrals(val_density_batch, integral_powers)
-        val_scattering= scattering(val_density_batch)
+        val_scattering = scattering(val_density_batch)
 
         core_density_batch = full_density_batch - val_density_batch
+
         core_order_0 = compute_integrals(core_density_batch, integral_powers)
         core_scattering = scattering(core_density_batch)
 
+        batch_order_0 = torch.stack((full_order_0, val_order_0, core_order_0),
+                                    dim=-1)
+        batch_orders_1_and_2 = torch.stack((full_scattering, val_scattering,
+                                            core_scattering), dim=-1)
 
-        order_0.append(
-            torch.stack([full_order_0, val_order_0, core_order_0], dim=-1))
-        orders_1_and_2.append(
-            torch.stack(
-                [full_scattering, val_scattering, core_scattering], dim=-1))
+        order_0.append(batch_order_0)
+        orders_1_and_2.append(batch_orders_1_and_2)
 
     order_0 = torch.cat(order_0, dim=0)
     orders_1_and_2 = torch.cat(orders_1_and_2, dim=0)
@@ -244,6 +253,8 @@ sigma = 2.
 order_0, orders_1_and_2 = compute_qm7_solid_harmonic_scattering_coefficients(
     M=M, N=N, O=O, J=J, L=L, integral_powers=integral_powers,
     sigma=sigma, batch_size=8)
+
+print(torch.mean(orders_1_and_2))
 
 n_molecules = order_0.size(0)
 
