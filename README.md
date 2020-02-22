@@ -102,6 +102,25 @@ from kymatio.tensorflow import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
+## Keras
+
+After installing the latest version of `tensorflow`, you can call `Scattering2D` as a Keras `Layer` via for instance:
+
+```
+from kymatio.keras import Scattering2D
+inputs = Input(shape=(3, 32, 32))
+scat = Scattering2D(J=2)(inputs)
+```
+
+## Scikit-learn
+
+After installing the latest version of `sklearn`, you can call `Scattering2D` as a `Transformer` via for instance:
+
+```
+from kymatio.sklearn import Scattering2D
+scat = Scattering2D(2, (32, 32))
+```
+
 # Installation from source
 
 Assuming the Kymatio source has been downloaded, you may install it by running
