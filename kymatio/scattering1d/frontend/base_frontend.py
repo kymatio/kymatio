@@ -259,7 +259,13 @@ class ScatteringBase1D(ScatteringBase):
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
             may be modified after object creation. Defaults to `0`.
-        {param_vectorize}
+        {param_vectorize}out_type : str, optional
+            The format of the output of a scattering transform. If set to
+            `list`, then the output is a list containing each individual
+            scattering path with meta-information. Otherwise, if set to `array`,
+            the output corresponds to the concatenation of the scattering path
+             without meta-information. Defaults to `array`.
+
         Attributes
         ----------
         J : int

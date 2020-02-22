@@ -110,6 +110,12 @@ class ScatteringBase2D(ScatteringBase):
             the signal was padded externally. Defaults to `False`.
         backend : object, optional
             Controls the backend which is combined with the frontend.
+        out_type : str, optional
+            The format of the output of a scattering transform. If set to
+            `list`, then the output is a list containing each individual
+            scattering path with meta-information. Otherwise, if set to `array`,
+            the output corresponds to the concatenation of the scattering path
+             without meta-information. Defaults to `array`.
 
         Attributes
         ----------
