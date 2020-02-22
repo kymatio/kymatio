@@ -74,35 +74,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                     n += 1
 
     def scattering(self, x):
-        """Apply the scattering transform
-
-        Given an input Tensor of size `(B, T0)`, where `B` is the batch
-        size and `T0` is the length of the individual signals, this function
-        computes its scattering transform. If the `vectorize` flag is set to
-        `True`, the output is in the form of a Tensor or size `(B, C, T1)`,
-        where `T1` is the signal length after subsampling to the scale `2**J`
-        (with the appropriate oversampling factor to reduce aliasing), and
-        `C` is the number of scattering coefficients.  If `vectorize` is set
-        `False`, however, the output is a dictionary containing `C` keys, each
-        a tuple whose length corresponds to the scattering order and whose
-        elements are the sequence of filter indices used.
-
-        Furthermore, if the `average` flag is set to `False`, these outputs
-        are not averaged, but are simply the wavelet modulus coefficients of
-        the filters.
-
-        Parameters
-        ----------
-        x : tensor
-            An input Tensor of size `(B, T0)`.
-
-        Returns
-        -------
-        S : tensor or dictionary
-            If the `vectorize` flag is `True`, the output is a Tensor
-            containing the scattering coefficients, while if `vectorize`
-            is `False`, it is a dictionary indexed by tuples of filter indices.
-        """
         # basic checking, should be improved
         if len(x.shape) < 1:
             raise ValueError(
