@@ -166,6 +166,13 @@ class ScatteringBase1D(ScatteringBase):
             (where each entry corresponds to a separate scattering
             coefficient). This parameter may be modified after object
             creation. Defaults to True.
+        out_type : str, optional
+            The format of the output of a scattering transform. If set to
+            `'list'`, then the output is a list containing each individual
+            scattering coefficient with meta information. Otherwise, if set to
+            `'array'`, the output is a large array containing the
+            concatenation of all scattering coefficients. Defaults to
+            `'array'`.
         """
 
     _doc_attr_vectorize = \
@@ -173,6 +180,13 @@ class ScatteringBase1D(ScatteringBase):
             Controls whether the output should be vectorized into a single
             Tensor or collected into a dictionary. For more details, see the
             documentation for `scattering`.
+        out_type : str
+            Specifices the output format of the transform, which is currently
+            one of `'array'` or `'list`'. If `'array'`, the output is a large
+            array containing the scattering coefficients. If `'list`', the
+            output is a list of dictionaries, each containing a scattering
+            coefficient along with meta information. For more information, see
+            the documentation for `scattering`.
         """
 
     _doc_class = \
@@ -259,13 +273,7 @@ class ScatteringBase1D(ScatteringBase):
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
             may be modified after object creation. Defaults to `0`.
-        {param_vectorize}out_type : str, optional
-            The format of the output of a scattering transform. If set to
-            `list`, then the output is a list containing each individual
-            scattering path with meta-information. Otherwise, if set to `array`,
-            the output corresponds to the concatenation of the scattering path
-             without meta-information. Defaults to `array`.
-
+        {param_vectorize}
         Attributes
         ----------
         J : int
