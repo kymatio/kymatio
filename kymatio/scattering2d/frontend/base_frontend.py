@@ -169,9 +169,16 @@ class ScatteringBase2D(ScatteringBase):
        Returns
        -------
        S : {array}
-           Scattering transform of the input, a{n} `{array}` of shape `(B, C,
-           M1, N1)` where `M1 = M // 2 ** J` and `N1 = N // 2 ** J`. The
-           `C` is the number of scattering channels calculated.
+           Scattering transform of the input. If `out_type` is set to
+           `'array'` (or if it is not availabel for this frontend), this is
+           a{n} `{array}` of shape `(B, C, M1, N1)` where `M1 = M // 2 ** J`
+           and `N1 = N // 2 ** J`. The `C` is the number of scattering
+           channels calculated. If `out_type` is `'list'`, the output is a
+           list of dictionaries, with each dictionary corresponding to a
+           scattering coefficient and its meta information. The actual
+           coefficient is contained in the `'coef'` key, while other keys hold
+           additional information, such as `'j'` (the scale of the filter
+           used), and `'theta'` (the angle index of the filter used).
     """
 
 
