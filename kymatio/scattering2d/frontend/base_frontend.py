@@ -52,6 +52,22 @@ class ScatteringBase2D(ScatteringBase):
              Spatial support of the padded input.
         """
 
+    _doc_param_out_type = \
+    r"""out_type : str, optional
+            The format of the output of a scattering transform. If set to
+            `'list'`, then the output is a list containing each individual
+            scattering path with meta information. Otherwise, if set to
+            `'array'`, the output is a large array containing the
+            concatenation of all scattering coefficients. Defaults to
+            `'array'`.
+        """
+
+    _doc_attr_out_type = \
+    r"""out_type : str
+            The format of the scattering output. See documentation for
+            `out_type` parameter above and the documentation for `scattering`.
+        """
+
     _doc_class = \
     r"""The 2D scattering transform
 
@@ -110,13 +126,7 @@ class ScatteringBase2D(ScatteringBase):
             the signal was padded externally. Defaults to `False`.
         backend : object, optional
             Controls the backend which is combined with the frontend.
-        out_type : str, optional
-            The format of the output of a scattering transform. If set to
-            `list`, then the output is a list containing each individual
-            scattering path with meta-information. Otherwise, if set to `array`,
-            the output corresponds to the concatenation of the scattering path
-             without meta-information. Defaults to `array`.
-
+        {param_out_type}
         Attributes
         ----------
         J : int
@@ -130,7 +140,7 @@ class ScatteringBase2D(ScatteringBase):
             Controls the padding: if set to False, a symmetric padding is
             applied on the signal. If set to True, the software will assume
             the signal was padded externally.
-        {attrs_shape}
+        {attrs_shape}{attr_out_type}
         Notes
         -----
         The design of the filters is optimized for the value `L = 8`.
@@ -171,6 +181,9 @@ class ScatteringBase2D(ScatteringBase):
         param_shape = cls._doc_param_shape if cls._doc_has_shape else ''
         attrs_shape = cls._doc_attrs_shape if cls._doc_has_shape else ''
 
+        param_out_type = cls._doc_param_out_type if cls._doc_has_out_type else ''
+        attr_out_type = cls._doc_attr_out_type if cls._doc_has_out_type else ''
+
         cls.__doc__ = ScatteringBase2D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
@@ -179,6 +192,8 @@ class ScatteringBase2D(ScatteringBase):
             instantiation=instantiation,
             param_shape=param_shape,
             attrs_shape=attrs_shape,
+            param_out_type=param_out_type,
+            attr_out_type=attr_out_type,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
         cls.scattering.__doc__ = ScatteringBase2D._doc_scattering.format(
