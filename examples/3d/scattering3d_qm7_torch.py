@@ -239,8 +239,8 @@ for i in range(n_batches):
 order_0 = torch.cat(order_0, dim=0)
 orders_1_and_2 = torch.cat(orders_1_and_2, dim=0)
 
-order_0 = order_0.numpy()
-orders_1_and_2 = orders_1_and_2.numpy()
+order_0 = order_0.cpu().numpy()
+orders_1_and_2 = orders_1_and_2.cpu().numpy()
 
 ###############################################################################
 # Regression
