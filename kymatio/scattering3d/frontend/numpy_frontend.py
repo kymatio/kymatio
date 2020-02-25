@@ -1,5 +1,5 @@
 from ...frontend.numpy_frontend import ScatteringNumPy
-from ..core.scattering3d import scattering3d
+from kymatio.scattering3d.core.scattering3d import scattering3d
 from .base_frontend import ScatteringBase3D
 import numpy as np
 

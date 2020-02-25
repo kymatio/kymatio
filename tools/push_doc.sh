@@ -14,7 +14,7 @@ then USERNAME="kymatio-ci";
 else USERNAME=$CIRCLE_PROJECT_USERNAME;
 fi
 
-DOC_REPO="kymatio.github.io"
+DOC_REPO=${2-"kymatio.github.io"}
 GENERATED_DOC_DIR=$1
 
 if [[ -z "$GENERATED_DOC_DIR" ]]; then
