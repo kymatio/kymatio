@@ -166,7 +166,8 @@ class ScatteringBase1D(ScatteringBase):
             (that is, a large array containing the output) or a dictionary
             (where each entry corresponds to a separate scattering
             coefficient). This parameter may be modified after object
-            creation. Defaults to True.
+            creation. Deprecated in favor of `out_type` (see below). Defaults
+            to True.
         out_type : str, optional
             The format of the output of a scattering transform. If set to
             `'list'`, then the output is a list containing each individual
@@ -179,8 +180,9 @@ class ScatteringBase1D(ScatteringBase):
     _doc_attr_vectorize = \
     r"""vectorize : boolean
             Controls whether the output should be vectorized into a single
-            Tensor or collected into a dictionary. For more details, see the
-            documentation for `scattering`.
+            Tensor or collected into a dictionary. Deprecated in favor of
+            `out_type`. For more details, see the documentation for
+            `scattering`.
         out_type : str
             Specifices the output format of the transform, which is currently
             one of `'array'` or `'list`'. If `'array'`, the output is a large
