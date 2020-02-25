@@ -156,8 +156,9 @@ class ScatteringBase1D(ScatteringBase):
             Controls whether the output should be averaged (the standard
             scattering transform) or not (resulting in wavelet modulus
             coefficients). Note that to obtain unaveraged output, the
-            `vectorize` flag must be set to `False`.
-        """
+            `vectorize` flag must be set to `False` or `out_type` must be set
+            to `'list'`.
+     """
 
     _doc_param_vectorize = \
     r"""vectorize : boolean, optional
