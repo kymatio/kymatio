@@ -52,6 +52,22 @@ class ScatteringBase2D(ScatteringBase):
              Spatial support of the padded input.
         """
 
+    _doc_param_out_type = \
+    r"""out_type : str, optional
+            The format of the output of a scattering transform. If set to
+            `'list'`, then the output is a list containing each individual
+            scattering path with meta information. Otherwise, if set to
+            `'array'`, the output is a large array containing the
+            concatenation of all scattering coefficients. Defaults to
+            `'array'`.
+        """
+
+    _doc_attr_out_type = \
+    r"""out_type : str
+            The format of the scattering output. See documentation for
+            `out_type` parameter above and the documentation for `scattering`.
+        """
+
     _doc_class = \
     r"""The 2D scattering transform
 
@@ -110,7 +126,7 @@ class ScatteringBase2D(ScatteringBase):
             the signal was padded externally. Defaults to `False`.
         backend : object, optional
             Controls the backend which is combined with the frontend.
-
+        {param_out_type}
         Attributes
         ----------
         J : int
@@ -124,7 +140,7 @@ class ScatteringBase2D(ScatteringBase):
             Controls the padding: if set to False, a symmetric padding is
             applied on the signal. If set to True, the software will assume
             the signal was padded externally.
-        {attrs_shape}
+        {attrs_shape}{attr_out_type}
         Notes
         -----
         The design of the filters is optimized for the value `L = 8`.
@@ -153,9 +169,16 @@ class ScatteringBase2D(ScatteringBase):
        Returns
        -------
        S : {array}
-           Scattering transform of the input, a{n} `{array}` of shape `(B, C,
-           M1, N1)` where `M1 = M // 2 ** J` and `N1 = N // 2 ** J`. The
-           `C` is the number of scattering channels calculated.
+           Scattering transform of the input. If `out_type` is set to
+           `'array'` (or if it is not availabel for this frontend), this is
+           a{n} `{array}` of shape `(B, C, M1, N1)` where `M1 = M // 2 ** J`
+           and `N1 = N // 2 ** J`. The `C` is the number of scattering
+           channels calculated. If `out_type` is `'list'`, the output is a
+           list of dictionaries, with each dictionary corresponding to a
+           scattering coefficient and its meta information. The actual
+           coefficient is contained in the `'coef'` key, while other keys hold
+           additional information, such as `'j'` (the scale of the filter
+           used), and `'theta'` (the angle index of the filter used).
     """
 
 
@@ -165,6 +188,9 @@ class ScatteringBase2D(ScatteringBase):
         param_shape = cls._doc_param_shape if cls._doc_has_shape else ''
         attrs_shape = cls._doc_attrs_shape if cls._doc_has_shape else ''
 
+        param_out_type = cls._doc_param_out_type if cls._doc_has_out_type else ''
+        attr_out_type = cls._doc_attr_out_type if cls._doc_has_out_type else ''
+
         cls.__doc__ = ScatteringBase2D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
@@ -173,6 +199,8 @@ class ScatteringBase2D(ScatteringBase):
             instantiation=instantiation,
             param_shape=param_shape,
             attrs_shape=attrs_shape,
+            param_out_type=param_out_type,
+            attr_out_type=attr_out_type,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
         cls.scattering.__doc__ = ScatteringBase2D._doc_scattering.format(
