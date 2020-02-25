@@ -295,14 +295,26 @@ class ScatteringBase1D(ScatteringBase):
        Given an input `{array}` of size `(B, T)`, where `B` is the batch
        size (it can be potentially an integer or a shape) and `T` is the length
        of the individual signals, this function computes its scattering
-       transform. If the `vectorize` flag is set to `True`, the output is in
-       the form of a `{array}` or size `(B, C, T1)`, where `T1` is the signal
-       length after subsampling to the scale :math:`2^J` (with the appropriate
-       oversampling factor to reduce aliasing), and `C` is the number of
-       scattering coefficients.  If `vectorize` is set `False`, however, the
-       output is a dictionary containing `C` keys, each a tuple whose length
-       corresponds to the scattering order and whose elements are the sequence
-       of filter indices used.
+       transform. If the `vectorize` flag is set to `True` (or if it is not
+       available in this frontend), the output is in the form of a `{array}`
+       or size `(B, C, T1)`, where `T1` is the signal length after subsampling
+       to the scale :math:`2^J` (with the appropriate oversampling factor to
+       reduce aliasing), and `C` is the number of scattering coefficients. If
+       `vectorize` is set `False`, however, the output is a dictionary
+       containing `C` keys, each a tuple whose length corresponds to the
+       scattering order and whose elements are the sequence of filter indices
+       used.
+
+       Note that the `vectorize` flag has been deprecated in favor of the
+       `out_type` parameter. If this is set to `'array'` (the default), the
+       `vectorize` flag is still respected, but if not, `out_type` takes
+       precedence. The two current output types are `'array'` and `'list'`.
+       The former gives the type of output described above. If set to
+       `'list'`, however, the output is a list of dictionaries, each
+       dictionary corresponding to a scattering coefficient and its associated
+       meta information. The coefficient is stored under the `'coef'` key,
+       while other keys contain additional information, such as `'j'` (the
+       scale of the filter used) and `'n`' (the filter index).
 
        Furthermore, if the `average` flag is set to `False`, these outputs
        are not averaged, but are simply the wavelet modulus coefficients of
@@ -316,10 +328,12 @@ class ScatteringBase1D(ScatteringBase):
        Returns
        -------
        S : tensor or dictionary
-           If the `vectorize` flag is `True`, the output is a{n} `{array}`
-           containing the scattering coefficients, while if `vectorize` is
-           `False`, it is a dictionary indexed by tuples of filter indices.
-       """
+           If `out_type` is `'array'` and the `vectorize` flag is `True`, the
+           output is a{n} `{array}` containing the scattering coefficients,
+           while if `vectorize` is `False`, it is a dictionary indexed by
+           tuples of filter indices. If `out_type` is `'list'`, the output is
+           a list of dictionaries as described above.
+    """
 
     @classmethod
     def _document(cls):
