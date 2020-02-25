@@ -8,6 +8,7 @@ jobs:
     branches:
       only:
         - master
+        - dev
     docker:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
@@ -24,11 +25,14 @@ jobs:
       - checkout
 
       # Download and cache dependencies
+      
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "requirements.txt" }}
+            - v6-dependencies
+            # - v1-dependencies-{{ checksum "requirements.txt" }}
             # fallback to using the latest cache if no exact match is found
-            - v1-dependencies-
+            # - v1-dependencies-
+            #
 
       - run:
           name: Install Texlive
@@ -43,13 +47,19 @@ jobs:
             pip install -r requirements_optional.txt
             pip install torch
             pip install torchvision
-            pip install tensorflow
-            pip install .
 
       - save_cache:
           paths:
             - ./venv
-          key: v1-dependencies-{{ checksum "requirements.txt" }}
+          #  - /usr
+          key: v6-dependencies
+          #v1-dependencies-{{ checksum "requirements.txt" }}
+
+      - run:
+          name: install kymatio
+          command: |
+              . venv/bin/activate
+              pip install .
 
       # run tests!
       # this example uses Django's built-in test-runner
@@ -71,9 +81,21 @@ jobs:
           command:
             find doc -name "*" -print0 | xargs -0 echo
            
+#       - add_ssh_keys:
+#           fingerprints:
+#             - "26:79:6f:23:b0:08:76:c1:dc:5d:04:25:f3:3a:6f:87"
+            
       - add_ssh_keys:
           fingerprints:
             - "37:ad:c6:65:3e:d1:b4:7a:0a:8a:9d:df:a8:36:91:6d"
 
       - run:
-          bash tools/push_doc.sh doc/build/html
+          name: push to the right place
+          command: |
+              if [[ "$(git symbolic-ref HEAD 2>/dev/null)" == *"master"* ]]; then
+                  bash tools/push_doc.sh doc/build/html
+              else
+                  echo $(git symbolic-ref HEAD 2>/dev/null)
+                  bash tools/push_doc.sh doc/build/html kymatio-dev-docs
+              fi
+
