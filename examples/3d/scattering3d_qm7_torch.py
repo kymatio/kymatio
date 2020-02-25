@@ -303,7 +303,7 @@ for i_fold in range(n_folds):
 # Tikhonov, regularization). The mean absolute error (MAE) and root mean
 # square error (RMSE) is output for each value of `alpha`.
 
-alphas = 10.0 ** (-np.arange(0, 10))
+alphas = 10.0 ** (-np.arange(1, 10))
 for i, alpha in enumerate(alphas):
     scaler = preprocessing.StandardScaler()
     ridge = linear_model.Ridge(alpha=alpha)
