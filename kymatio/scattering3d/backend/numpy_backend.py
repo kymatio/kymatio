@@ -1,5 +1,4 @@
 import numpy as np
-import warnings
 from collections import namedtuple
 from scipy.fftpack import fftn, ifftn
 
