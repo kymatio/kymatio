@@ -2,7 +2,6 @@
 
 from collections import namedtuple
 import torch
-from skcuda import cublas
 import cupy
 from string import Template
 
