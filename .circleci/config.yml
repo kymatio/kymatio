@@ -47,7 +47,6 @@ jobs:
             pip install -r requirements_optional.txt
             pip install torch
             pip install torchvision
-            #pip install tensorflow
 
       - save_cache:
           paths:
