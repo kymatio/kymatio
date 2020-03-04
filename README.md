@@ -33,7 +33,7 @@ Each algorithm comes packaged with a frontend and backend. The frontend takes ca
 interfacing with the user. The backend defines functions necessary for
 computation of the scattering transform.
 
-Currently, there are four available frontend-backends, PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU only), TensorFlow (CPU and GPU) and NumPy (CPU).
+Currently, there are six available frontend–backend pairs, NumPy (CPU), scikit-learn (CPU), pure PyTorch (CPU and GPU), PyTorch+scikit-cuda (GPU), TensorFlow (CPU and GPU), and Keras (CPU and GPU).
 
 ## Scalability
 
@@ -84,41 +84,46 @@ from kymatio.numpy import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
+## Scikit-learn
+
+After installing the latest version of scikit-learn, you can call `Scattering2D` as a `Transformer` using:
+
+```
+from kymatio.sklearn import Scattering2D
+
+scat = Scattering2D(2, (32, 32))
+```
+
 ## PyTorch
 
-After installing the latest version of `torch`, you can call `Scattering2D` as a `nn.Module` via for instance:
+After installing the latest version of PyTorch, you can call `Scattering2D` as a `torch.nn.Module` using:
 
 ```
 from kymatio.torch import Scattering2D
+
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
 ## TensorFlow
 
-After installing the latest version of `tensorflow`, you can call `Scattering2D` as a `tf.Module` via for instance:
+After installing the latest version of TensorFlow, you can call `Scattering2D` as a `tf.Module` using:
 
 ```
 from kymatio.tensorflow import Scattering2D
+
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
 ## Keras
 
-After installing the latest version of `tensorflow`, you can call `Scattering2D` as a Keras `Layer` via for instance:
+Alternatively, with TensorFlow installed, you can call `Scattering2D` as a Keras `Layer` using:
 
 ```
+from tensorflow.keras.layers import Input
 from kymatio.keras import Scattering2D
-inputs = Input(shape=(3, 32, 32))
-scat = Scattering2D(J=2)(inputs)
-```
 
-## Scikit-learn
-
-After installing the latest version of `sklearn`, you can call `Scattering2D` as a `Transformer` via for instance:
-
-```
-from kymatio.sklearn import Scattering2D
-scat = Scattering2D(2, (32, 32))
+inputs = Input(shape=(32, 32))
+scattering = Scattering2D(J=2)(inputs)
 ```
 
 # Installation from source
@@ -140,12 +145,15 @@ python setup.py develop
 
 ## GPU acceleration
 
-The available frontends are PyTorch (provided with the backends `torch`, `torch_skcuda`), TensorFlow (with the backend
-`tensorflow`), and NumPy (with the backend `numpy`).
+Certain frontends, `numpy` and `sklearn`, only allow processing on the CPU and are therefore slower. The `torch`, `tensorflow`, and `keras` frontends, however, also support GPU processing, which can significantly accelerate computations. Additionally, the `torch` backend supports an optimized `skcuda` backend which currently provides the fastest performance in computing scattering transforms. In 2D, it may be instantiated using:
 
-NumPy is the default frontend in 1D, 2D, and 3D scattering. For applications of the 2D scattering transform to large
-images (e.g. ImageNet, of size 224x224), however, we recommend the `torch_skcuda` backend, which is substantially faster
-than NumPy.
+```
+from kymatio.torch import Scattering2D
+
+scattering = Scattering2D(J=2, shape=(32, 32), backend='torch_skcuda')
+```
+
+This is particularly useful when working with large images, such as those in ImageNet, which are of size 224×224.
 
 ## PyTorch and scikit-cuda
 
