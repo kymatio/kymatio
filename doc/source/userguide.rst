@@ -243,8 +243,8 @@ alternative.
 For instance, the default backend of the ``torch`` frontend is the ``torch`` backend,
 implemented exclusively in PyTorch. This is available for 1D, 2D, and 3D. It is also
 compatible with the PyTorch automatic differentiation framework, and runs on
-both CPU and GPU. If one wants additional improved performance on GPU, it is recommended
-to use the ``torch_skcuda`` backend.
+both CPU and GPU. If one wants additional improved performance on GPU, we
+recommended to use the ``torch_skcuda`` backend.
 
 Currently, two backends exist for ``torch``:
 
@@ -267,6 +267,10 @@ This backend can be specified via::
     from kymatio.torch import Scattering2D
 
     scattering = Scattering2D(J=2, shape=(32, 32), backend='torch_skcuda')
+
+Each of the other frontends currently only has a single backend, which is the
+default. Work is currently underway, however, to extend some of these frontends
+with more powerful backends.
 
 
 Benchmarks
