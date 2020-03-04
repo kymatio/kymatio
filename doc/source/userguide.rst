@@ -117,38 +117,51 @@ size:
 Frontends
 =========
 
-You can choose a frontend via the import `from kymatio.frontend import
-Scattering2D`, where `frontend` is either `numpy`, `tensorflow`, or `torch`.
+You can choose a frontend via `from kymatio.frontend import Scattering2D`, where `frontend` is either `numpy`, `sklearn`, `torch`, `tensorflow`, or `keras`. The :class:`Scattering2D` class can of course be replaced with another scattering transform, such as :class:`Scattering1D` or :class:`HarmonicScattering3D`. The interfaces across different frontends are largely the same but enable functionality specific to each framework.
 
-Additionally, you can choose a frontend via the `frontend=` arguments available in all the `Scattering` constructors. By default, `torch`
-frontend is used.
+The frontend can also be selected dynamically by importing directly from `kymatio` and specifiying the frontend using a `frontend` argument, like in::
 
+    from kymatio import Scattering2D
 
+    scattering = Scattering2D(J=2, shape=(32, 32), frontend='torch')
+
+The default frontend is `torch`, but this will change to `numpy` in version 0.3.
 
 NumPy
 -----
 
-To call this frontend, simply do::
+To call this frontend, run::
 
     from kymatio.numpy import Scattering2D
+
     scattering = Scattering2D(J=2, shape=(32, 32))
 
 This will only use standard NumPy routines to calculate the scattering
 transform.
 
+Scikit-learn
+------------
+
+Kymatio also has a scikit-learn frontend (provided scikit-learn has been installed), which computes the scattering transform using NumPy but wraps it in a scikit-learn compatible :class:`Transformer` (or :class:`Estimator`). To use it, run::
+
+    from kymatio.sklearn import Scattering2D
+
+    scattering = Scattering2D(J=2, shape=(32, 32))
+
 PyTorch
 -------
 
-When initialized, a scattering transform object is stored on the CPU::
+If PyTorch is installed, we may also use the `torch` frontend, which is implemented as a :class:`torch.nn.Module`. When initialized, a scattering transform object is stored on the CPU::
 
-    import torch
     from kymatio.torch import Scattering2D
 
     scattering = Scattering2D(J=2, shape=(32, 32))
 
 We use this to compute scattering transforms of signals in CPU memory::
 
+    import torch
     x = torch.randn(1, 1, 32, 32)
+
     Sx = scattering(x)
 
 If a CUDA-enabled GPU is available, we may transfer the scattering transform
@@ -177,12 +190,22 @@ scattering transform object back to the CPU by calling::
 TensorFlow
 ----------
 
-To call this frontend, simply do::
+If TensorFlow is installed, you may use the `tensorflow` frontend, which is implemented as a :class:`tf.Module`. To call this frontend, run::
 
     from kymatio.tensorflow import Scattering2D
     scattering = Scattering2D(J=2, shape=(32, 32))
 
-This is a TensorFlow module that one can use directly in eager mode.
+This is a TensorFlow module that one can use directly in eager mode. Like other modules (and like the `torch` frontend), you may transfer it onto and off the GPU using the :meth:`cuda` and :meth:`cpu` methods.
+
+Keras
+-----
+
+For compatibility with the Keras framework, we also include a `keras` frontend, which wraps the TensorFlow class in a Keras :class:`Layer`, allowing us to include it in a :class:`Model` with relative ease. To call it, run::
+
+    from kymatio.keras import Scattering2D
+    scattering = Scattering2D(J=2)
+
+Note that the Keras frontend does not specify the input shape, since this will be inferred from the other layers in the :class:`Model`.
 
 Backend
 =======
