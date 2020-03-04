@@ -91,7 +91,7 @@ After installing the latest version of scikit-learn, you can call `Scattering2D`
 ```
 from kymatio.sklearn import Scattering2D
 
-scat = Scattering2D(2, (32, 32))
+scattering_transformer = Scattering2D(2, (32, 32))
 ```
 
 ## PyTorch
