@@ -117,41 +117,57 @@ size:
 Frontends
 =========
 
-You can choose a frontend via `from kymatio.frontend import Scattering2D`, where `frontend` is either `numpy`, `sklearn`, `torch`, `tensorflow`, or `keras`. The :class:`Scattering2D` class can of course be replaced with another scattering transform, such as :class:`Scattering1D` or :class:`HarmonicScattering3D`. The interfaces across different frontends are largely the same but enable functionality specific to each framework.
+The Kymatio API is divided between different frontends, which perform the same operations, but integrate in different frameworks. This integration allows the user to take advantage of different features available in certain frameworks, such as autodifferentiation and GPU processing in PyTorch and TensorFlow/Keras, while having code that runs almost identically in NumPy or scikit-learn. The available frontends are:
 
-The frontend can also be selected dynamically by importing directly from `kymatio` and specifiying the frontend using a `frontend` argument, like in::
+* ``kymatio.numpy`` for NumPy,
+* ``kymatio.sklearn`` for scikit-learn (as :class:`Transformer` and :class:`Estimator` objects),
+* ``kymatio.torch`` for PyTorch,
+* ``kymatio.tensorflow`` for TensorFlow, and
+* ``kymatio.keras`` for Keras.
+
+To instantiate a :class:`Scattering2D` object for the ``numpy`` frontend, run::
+
+    from kymatio.numpy import Scattering2D
+    S = Scattering2D(J=2, shape=(32, 32))
+
+Alternatively, the object may be instantiated in a dynamic way using the :class:`kymatio.Scattering2D` object by providing a ``frontend`` argument. This object then transforms itself to the desired frontend. Using this approach, the above example becomes::
 
     from kymatio import Scattering2D
+    S = Scattering2D(J=2, shape=(32, 32), frontend='numpy')
 
-    scattering = Scattering2D(J=2, shape=(32, 32), frontend='torch')
-
-The default frontend is `torch`, but this will change to `numpy` in version 0.3.
+In Kymatio 0.2, the default frontend is ``torch`` for backwards compatibility reasons, but this change to ``numpy`` in the next version.
 
 NumPy
 -----
 
-To call this frontend, run::
+The NumPy frontend takes :class:`ndarray`\s as input and outputs :class:`ndarray`\s. All computation is done on the CPU, which means that it will be slow for large inputs. To call this frontend, run::
 
     from kymatio.numpy import Scattering2D
 
     scattering = Scattering2D(J=2, shape=(32, 32))
 
-This will only use standard NumPy routines to calculate the scattering
-transform.
+This will only use standard NumPy routines to calculate the scattering transform.
 
 Scikit-learn
 ------------
 
-Kymatio also has a scikit-learn frontend (provided scikit-learn has been installed), which computes the scattering transform using NumPy but wraps it in a scikit-learn compatible :class:`Transformer` (or :class:`Estimator`). To use it, run::
+For scikit-learn, we have the ``sklearn`` frontend, which is both a :class:`Transformer` and an :class:`Estimator`, making it easy to integrate the object into a scikit-learn :class:`Pipeline`. For example, you can write the following::
+
+    from sklearn.pipeline import Pipeline
+    from sklearn.linear_model import LogisticRegression
 
     from kymatio.sklearn import Scattering2D
 
-    scattering = Scattering2D(J=2, shape=(32, 32))
+    S = Scattering2D(J=1, shape=(8, 8))
+    classifier = LogisticRegression()
+    pipeline = Pipeline([('scatter', S), ('clf', classifier)])
+
+which creates a :class:`Pipeline` consisting of a 2D scattering transform and a logistic regression estimator.
 
 PyTorch
 -------
 
-If PyTorch is installed, we may also use the `torch` frontend, which is implemented as a :class:`torch.nn.Module`. When initialized, a scattering transform object is stored on the CPU::
+If PyTorch is installed, we may also use the ``torch`` frontend, which is implemented as a :class:`torch.nn.Module`. As a result, it can be integrated with other PyTorch :class:`Module`\s to create a computational model. It also supports the :meth:`cuda`, :meth:`cpu`, and :meth:`to` methods, allowing the user to easily move the object from CPU to GPU and back. When initialized, a scattering transform object is stored on the CPU::
 
     from kymatio.torch import Scattering2D
 
@@ -181,7 +197,7 @@ Transferring the output back to CPU memory, we may then compare the outputs::
     print(torch.norm(Sx_gpu-Sx))
 
 These coefficients should agree up to machine precision. We may transfer the
-scattering transform object back to the CPU by calling::
+scattering transform object back to the CPU by calling :meth:`cpu`, like this::
 
     scattering.cpu()
 
@@ -190,22 +206,31 @@ scattering transform object back to the CPU by calling::
 TensorFlow
 ----------
 
-If TensorFlow is installed, you may use the `tensorflow` frontend, which is implemented as a :class:`tf.Module`. To call this frontend, run::
+If TensorFlow is installed, you may use the ``tensorflow`` frontend, which is implemented as a :class:`tf.Module`. To call this frontend, run::
 
     from kymatio.tensorflow import Scattering2D
     scattering = Scattering2D(J=2, shape=(32, 32))
 
-This is a TensorFlow module that one can use directly in eager mode. Like other modules (and like the `torch` frontend), you may transfer it onto and off the GPU using the :meth:`cuda` and :meth:`cpu` methods.
+This is a TensorFlow module that one can use directly in eager mode. Like other modules (and like the ``torch`` frontend), you may transfer it onto and off the GPU using the :meth:`cuda` and :meth:`cpu` methods.
 
 Keras
 -----
 
-For compatibility with the Keras framework, we also include a `keras` frontend, which wraps the TensorFlow class in a Keras :class:`Layer`, allowing us to include it in a :class:`Model` with relative ease. To call it, run::
+For compatibility with the Keras framework, we also include a ``keras`` frontend, which wraps the TensorFlow class in a Keras :class:`Layer`, allowing us to include it in a :class:`Model` with relative ease. Note that since Keras infers the input shape of a :class:`Layer`, we do not specify the shape when creating the scattering object. The result may look something like::
+
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Input, Flatten, Dense
 
     from kymatio.keras import Scattering2D
-    scattering = Scattering2D(J=2)
 
-Note that the Keras frontend does not specify the input shape, since this will be inferred from the other layers in the :class:`Model`.
+    in_layer = Input(shape=(28, 28))
+    sc = Scattering2D(J=3)(in_layer)
+    sc_flat = Flatten()(sc)
+    out_layer = Dense(10, activation='softmax')(sc_flat)
+
+    model = Model(in_layer, out_layer)
+
+where we feed the scattering coefficients into a dense layer with ten outputs for handwritten digit classification on MNIST.
 
 Backend
 =======
