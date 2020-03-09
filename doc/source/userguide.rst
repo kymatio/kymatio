@@ -124,7 +124,7 @@ For an input array of shape $(B, C, N_1, N_2, N_3)$, a solid harmonic scattering
 scales and $L$ angular frequencies, which applies $P$ different types of $\mathcal L_p$ 
 spatial averaging will result in an output of shape
 
-$(B, C, L, J + J(J - 1) / 2, P).$
+.. math:: (B, C, L, J + J(J - 1) / 2, P)\,.
 
 The current configuration of Solid Harmonic Scattering reflects the one in :cite:`eickenberg2017solid`
 in that second order coefficients are obtained for the same angular frequency only
