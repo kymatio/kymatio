@@ -84,7 +84,15 @@ exactly match those of ScatNet :cite:`anden2014scatnet`.
 3-D
 ---
 
-...
+The 3D scattering transform is currently limited to Solid Harmonic Wavelets,
+which are solid harmonics (spherical harmonics multiplied by a radial polynomial)
+multiplied by Gaussians of different width.
+They perform scale separation and feature extraction relevant to e.g. molecule structure
+while remaining perfectly covariant to transformations with the Euclidean group.
+
+The current implementation is very similar to the one used in :cite:`eickenberg2017solid`,
+and while it doesn't correspond exactly, it makes use of better theory on sampling
+and leads to similar performance on QM7.
 
 Output size
 ===========
