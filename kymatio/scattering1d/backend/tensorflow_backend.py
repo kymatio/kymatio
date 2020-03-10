@@ -1,6 +1,7 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
-from collections import namedtuple
 import tensorflow as tf
+from collections import namedtuple
+
 
 BACKEND_NAME = 'tensorflow'
 

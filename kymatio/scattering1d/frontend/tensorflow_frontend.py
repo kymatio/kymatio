@@ -1,12 +1,12 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
+import tensorflow as tf
+import warnings
 
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
 from ..core.scattering1d import scattering1d
 from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
-import tensorflow as tf
-import warnings
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
