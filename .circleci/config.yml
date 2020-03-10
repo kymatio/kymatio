@@ -1,0 +1,102 @@
+# Python CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-python/ for more details
+#
+version: 2
+jobs:
+  build:
+    branches:
+      only:
+        - master
+        - dev
+    docker:
+      # specify the version you desire here
+      # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
+      - image: circleci/python:3.7.1
+
+      # Specify service dependencies here if necessary
+      # CircleCI maintains a library of pre-built images
+      # documented at https://circleci.com/docs/2.0/circleci-images/
+      # - image: circleci/postgres:9.4
+
+    working_directory: ~/repo
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      
+      - restore_cache:
+          keys:
+            - v6-dependencies
+            # - v1-dependencies-{{ checksum "requirements.txt" }}
+            # fallback to using the latest cache if no exact match is found
+            # - v1-dependencies-
+            #
+
+      - run:
+          name: Install Texlive
+          command: 'sudo apt update && sudo apt install dvipng texlive texlive-xetex texlive-fonts-extra texlive-latex-extra texlive-plain-extra texlive-fonts-recommended python3-matplotlib texlive-formats-extra cm-super'
+          
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            pip install -r requirements_optional.txt
+            pip install tensorflow
+            pip install torch
+            pip install torchvision
+
+      - save_cache:
+          paths:
+            - ./venv
+          #  - /usr
+          key: v6-dependencies
+          #v1-dependencies-{{ checksum "requirements.txt" }}
+
+      - run:
+          name: install kymatio
+          command: |
+              . venv/bin/activate
+              pip install .
+
+      # run tests!
+      # this example uses Django's built-in test-runner
+      # other common Python testing frameworks include pytest and nose
+      # https://pytest.org
+      # https://nose.readthedocs.io
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            cd doc; make clean; make html
+
+      - store_artifacts:
+          path: doc/build/html/
+          destination: doc
+      
+      - run:
+          name: ls and stuff
+          command:
+            find doc -name "*" -print0 | xargs -0 echo
+           
+#       - add_ssh_keys:
+#           fingerprints:
+#             - "26:79:6f:23:b0:08:76:c1:dc:5d:04:25:f3:3a:6f:87"
+            
+      - add_ssh_keys:
+          fingerprints:
+            - "37:ad:c6:65:3e:d1:b4:7a:0a:8a:9d:df:a8:36:91:6d"
+
+      - run:
+          name: push to the right place
+          command: |
+              if [[ "$(git symbolic-ref HEAD 2>/dev/null)" == *"master"* ]]; then
+                  bash tools/push_doc.sh doc/build/html
+              else
+                  echo $(git symbolic-ref HEAD 2>/dev/null)
+                  bash tools/push_doc.sh doc/build/html kymatio-dev-docs
+              fi
+

@@ -1,3 +1,5 @@
+# Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
+# Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 import tensorflow as tf
 import warnings
 
