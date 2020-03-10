@@ -41,6 +41,7 @@ class ScatteringBase3D(ScatteringBase):
         Example
         -------
         ::
+
             # Set the parameters of the scattering transform.
             J = 3
             M, N, O = 32, 32, 32
