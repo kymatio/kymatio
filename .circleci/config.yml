@@ -12,7 +12,7 @@ jobs:
     docker:
       # specify the version you desire here
       # use `-browsers` prefix for selenium tests, e.g. `3.6.1-browsers`
-      - image: circleci/python:3.6.1
+      - image: circleci/python:3.7.1
 
       # Specify service dependencies here if necessary
       # CircleCI maintains a library of pre-built images
@@ -36,7 +36,7 @@ jobs:
 
       - run:
           name: Install Texlive
-          command: 'sudo apt update && sudo apt install dvipng texlive texlive-xetex texlive-fonts-extra texlive-latex-extra texlive-plain-extra'
+          command: 'sudo apt update && sudo apt install dvipng texlive texlive-xetex texlive-fonts-extra texlive-latex-extra texlive-plain-extra texlive-fonts-recommended python3-matplotlib texlive-formats-extra cm-super'
           
       - run:
           name: install dependencies
@@ -45,6 +45,7 @@ jobs:
             . venv/bin/activate
             pip install -r requirements.txt
             pip install -r requirements_optional.txt
+            pip install tensorflow
             pip install torch
             pip install torchvision
 
