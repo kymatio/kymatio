@@ -113,6 +113,10 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
+_fft1d = lambda x: tf.signal.fft(x, name='fft1d')
+_ifft1d = lambda x: tf.signal.ifft(x, name='ifft1d')
+_irfft1d = lambda x: tf.math.real(tf.signal.ifft(x, name='ifft1d'))
+_sanity_checks = lambda x: None
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
@@ -123,8 +127,5 @@ backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
 backend.pad_1d = pad_1d
-backend.fft = FFT(lambda x: tf.signal.fft(x, name='fft1d'),
-                  lambda x: tf.signal.ifft(x, name='ifft1d'),
-                  lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
-                  lambda x: None)
+backend.fft = FFT(_fft1d, _ifft1d, _irfft1d, _sanity_checks)
 backend.concatenate = lambda x: concatenate(x, -2)
