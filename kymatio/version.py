@@ -1,3 +1,3 @@
-short_version = '0.2'
-version = '0.2.a0'
+short_version = '0.3'
+version = '0.3.a0'
 
