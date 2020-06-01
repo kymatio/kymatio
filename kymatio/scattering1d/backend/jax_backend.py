@@ -111,8 +111,6 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
-
-
 def concatenate(arrays):
     return np.stack(arrays, axis=-2)
 

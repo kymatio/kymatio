@@ -34,10 +34,5 @@ class TestScattering1DJax:
         scattering = Scattering1D(J, T, Q, backend=backend, frontend='jax')
 
         Sx = scattering(x)
-        #print(Sx.dtype)
-        #print(Sx-Sx0)
         assert np.allclose(Sx, Sx0)
-
-#class TestScattering1DJaxSubsampleFourier:
-#    def test_subsample_fourier(self):
 
