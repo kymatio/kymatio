@@ -48,6 +48,7 @@ We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchm
 
 If you use this package, please cite our paper <a href="">Kymatio: Scattering Transforms in Python</a>:
 
+```
 @article{JMLR:v21:19-047,
   author  = {Mathieu Andreux and TomÃ¡s Angles and Georgios Exarchakis and
 Roberto Leonarduzzi and Gaspar Rochette and Louis Thiry and John Zarka and
@@ -62,6 +63,8 @@ and Sixin Zhang and Carmine Cella and Michael Eickenberg},
   pages   = {1-6},
   url     = {http://jmlr.org/papers/v21/19-047.html}
 }
+```
+
 # Installation
 
 
