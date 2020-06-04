@@ -111,6 +111,13 @@ class TestNumpyJaxMultiplication:
         d = device_put(jnp.asarray(d))
         e = d*c
         f = jnp.fft.fft(e)
+        a = np.random.rand(2**20).astype('float32')
+        y1 = np.fft.fft(a)
+        y2 = jnp.fft.fft(a)
+        y3 = scipy.fftpack.fft(a)
+        norm_1 = np.abs(y1 - y2).max() / np.abs(y1).max()
+        norm_2 = np.abs(y1 - y3).max() / np.abs(y1).max()
+        print(norm_1, norm_2)
         assert jnp.allclose(f, l)
 
     def test_jnp_fft(self):
