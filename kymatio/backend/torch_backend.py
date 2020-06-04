@@ -186,7 +186,6 @@ def cdgmm(A, B, inplace=False):
             raise RuntimeError('Tensors must be contiguous.')
 
     type_checks(A)
-
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
