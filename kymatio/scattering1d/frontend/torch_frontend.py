@@ -27,6 +27,8 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         saves those arrays as module's buffers."""
         n = 0
         # prepare for pytorch
+        # TODO: have option for different shaped filter depending on
+        # convolution primitive?
         for k in self.phi_f.keys():
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
