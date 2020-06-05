@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torch.nn.functional as F
 
 class Conv1dFFTPrimative(nn.Module):
     def __init__(self, backend):
@@ -22,6 +22,14 @@ class Conv1dFFTPrimative(nn.Module):
         else:
             return x_hat, y_r
 
-
-
+class Conv1dSpatialPrimative(nn.Module):
+    def __init__(self, backend):
+        super(Conv1dSpatialPrimative, self).__init__()
+        self.name = 'torch'
+        self.backend = backend
+    
+    def forward(self, x, direction, conv_filter, direction_inverse, sampling_factor):
+        print(x.shape, conv_filter.shape, "yes")
+        y = F.conv1d(x, conv_filter)
+        return x, y
 

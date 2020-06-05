@@ -1,11 +1,11 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
-from ..conv_primitive import Conv1dFFTPrimative 
+from ..conv_primitive import Conv1dFFTPrimative, Conv1dSpatialPrimative
 
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        vectorize=False, out_type='array', conv_prim='fft'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -147,7 +147,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
         if max_order == 2:
             # 2nd order
-            if not average:
+            if not average and conv_prim != 'fft':
                 U_1_hat = fft(U_1_m, 'R2C')
             for n2 in range(len(psi2)):
                 j2 = psi2[n2]['j']
