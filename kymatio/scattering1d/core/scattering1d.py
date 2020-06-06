@@ -81,20 +81,22 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     # Get S0
     k0 = max(J - oversampling, 0)
 
+    U_0_hat = conv.preprocess_signal(U_0)
+
     if average:
         #S_0_c = cdgmm(U_0_hat, phi[0])
         #S_0_hat = subsample_fourier(S_0_c, 2**k0)
         #S_0_r = irfft(S_0_hat)
-        U_0_hat, S_0_r = conv(U_0, phi[0], k0)
+        #U_0_hat, S_0_r = conv(U_0, phi[0], k0)
+        S_0_r = conv.convolution(U_0_hat, phi[0], k0)
+        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
         #U_0_hat = fft(U_0, 'R2C')
         #S_0_c = cdgmm(U_0_hat, phi[0])
         #S_0_hat = subsample_fourier(S_0_c, 2**k0)
         #S_0_r = fft(S_0_hat, 'C2R', inverse=True)
 
-        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         # compute the Fourier transform
-        U_0_hat = rfft(U_0)
         S_0 = x
     out_S_0.append({'coef': S_0,
                     'j': (),
@@ -111,7 +113,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         #U_1_c = cdgmm(U_0_hat, psi1[n1][0])
         #U_1_hat = subsample_fourier(U_1_c, 2**k1)
         #U_1_c = ifft(U_1_hat)
-        U_1_hat, U_1_c = conv(U_0_hat, psi1[n1][0], k1)
+        U_1_c = conv.convolution(U_0_hat, psi1[n1][0], k1)
 
         #U_1_c = cdgmm(U_0_hat, psi1[n1][0])
         #U_1_hat = subsample_fourier(U_1_c, 2**k1)
@@ -124,6 +126,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         #    U_1_hat = rfft(U_1_m)
         #if average or max_order > 1:
         #    U_1_hat = fft(U_1_m, 'R2C')
+        if average or max_order > 1:
+            U_1_hat = conv.preprocess_signal(U_1_m)
 
         if average:
             # Convolve with phi_J
@@ -131,13 +135,13 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
             #S_1_c = cdgmm(U_1_hat, phi[k1])
             #S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             #S_1_r = irfft(S_1_hat)
-            U_1_hat, S_1_r = conv(U_1_m, phi[k1], k1_J)
+            #U_1_hat, S_1_r = conv(U_1_m, phi[k1], k1_J)
 
+            S_1_r = conv.convolution(U_1_hat, phi[k1], k1_J)
+            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
             #S_1_c = cdgmm(U_1_hat, phi[k1])
             #S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             #S_1_r = fft(S_1_hat, 'C2R', inverse=True)
-
-            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
@@ -147,8 +151,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
         if max_order == 2:
             # 2nd order
-            if not average and conv_prim != 'fft':
-                U_1_hat = fft(U_1_m, 'R2C')
             for n2 in range(len(psi2)):
                 j2 = psi2[n2]['j']
 
@@ -163,7 +165,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     # take the modulus
                     #U_2_c = ifft(U_2_hat)
 
-                    U_2_hat, U_2_c = conv(U_1_hat, psi2[n2][k1], k2)
+                    U_2_c = conv.convolution(U_1_hat, psi2[n2][k1], k2)
 
                     #U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
                     #U_2_hat = subsample_fourier(U_2_c, 2**k2)
@@ -171,16 +173,14 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     #U_2_c = fft(U_2_hat, 'C2C', inverse=True)
                     U_2_m = modulus(U_2_c)
 
-                    #if average:
-                    #    U_2_hat = rfft(U_2_m)
+                    if average:
 
-#>>>>>>> MAIN fixes, todo
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
-                        S_2_hat, S_2_r = conv(U_2_m, phi[k1+k2], k2_J)
+                        U_2_hat  = conv.preprocess_signal(U_2_m)
+                        S_2_r = conv.convolution(U_2_hat, phi[k1+k2], k2_J)
+                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
 
-
-#<<<<<<< HEAD
 #                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
 #                        S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
 #                        S_2_r = irfft(S_2_hat)
@@ -189,6 +189,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                         #S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
                         #S_2_r = fft(S_2_hat, 'C2R', inverse=True)
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
+
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
