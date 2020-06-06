@@ -7,14 +7,21 @@ class Conv1dFFTPrimative(nn.Module):
         self.name = 'torch'
         self.backend = backend
 
-    def preprocess_signal(self, x, direction):
+    def preprocess_signal(self, x, direction, pad_left=None, pad_right=None):
+        if pad_left is not None:
+            x = self.backend.pad(x, pad_left=pad_left, pad_right=pad_right)
         x_hat = self.backend.fft(x, direction)
         return x_hat
 
-    def convolution(self, x_hat,  conv_filter, direction_inverse, sampling_factor):
+    def convolution(self, x_hat,  conv_filter, direction_inverse,
+            sampling_factor, ind_start=None, ind_end=None):
         y_c = self.backend.cdgmm(x_hat, conv_filter)
         y_hat = self.backend.subsample_fourier(y_c, 2**sampling_factor)
         y_r = self.backend.fft(y_hat, direction_inverse, inverse=True)
+
+        if ind_start is not None:
+            y_r = self.backend.unpad(y_r, ind_start, ind_end)
+
         return y_r
 
 
