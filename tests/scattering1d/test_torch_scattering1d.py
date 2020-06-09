@@ -392,9 +392,9 @@ def test_pad_1d(device, backend, random_state=42):
     """
     torch.manual_seed(random_state)
     N = 128
-    for pad_left in range(0, N, 16):
-        for pad_right in range(0, N, 16):
-            x = torch.randn(100, 4, N, requires_grad=True, device=device)
+    for pad_left in range(0, N - 16, 16):
+        for pad_right in [pad_left, pad_left + 16]:#range(0, N, 16):
+            x = torch.randn(2, 4, N, requires_grad=True, device=device)
             x_pad = backend.pad(x, pad_left, pad_right, mode='reflect')
             # Check the size
             x2 = x.clone()
@@ -444,12 +444,14 @@ def test_modulus(device, backend, random_state=42):
             backend.modulus(x_bad)
         assert "for CPU tensors" in re.value.args[0]
         return
+
     x_abs = backend.modulus(x)
+    assert len(x_abs.shape) == len(x.shape[:-1])
 
     # check the value
     x_abs2 = x_abs.clone()
     x2 = x.clone()
-    assert torch.allclose(x_abs2, torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
+    assert torch.allclose(x_abs2, torch.sqrt(x2[..., 0] ** 2 + x2[..., 1] ** 2))
 
     if backend.name == "torch_skcuda":
         pytest.skip("The skcuda backend does not pass differentiability"
