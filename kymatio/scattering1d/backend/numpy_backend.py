@@ -100,9 +100,9 @@ backend.subsample_fourier = subsample_fourier
 backend.unpad = unpad
 backend.pad = pad
 backend.cdgmm = cdgmm
-backend.fft = FFT(lambda x:scipy.fft.fft(x),
-                  lambda x:scipy.fft.fft(x),
-                  lambda x:scipy.fft.ifft(x),
-                  lambda x:np.real(scipy.fft.ifft(x)),
+backend.fft = FFT(lambda x:scipy.fftpack.fft(x),
+                  lambda x:scipy.fftpack.fft(x),
+                  lambda x:scipy.fftpack.ifft(x),
+                  lambda x:np.real(scipy.fftpack.ifft(x)),
                   lambda x:None, real_check, complex_check)
 backend.concatenate = concatenate

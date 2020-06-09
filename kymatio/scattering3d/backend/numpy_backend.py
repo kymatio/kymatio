@@ -1,6 +1,6 @@
 import numpy as np
 from collections import namedtuple
-import scipy.fft
+import scipy
 
 BACKEND_NAME = 'numpy'
 
@@ -77,10 +77,10 @@ backend = namedtuple('backend',
 
 backend.name = 'numpy'
 backend.cdgmm3d = cdgmm
-backend.fft = FFT(lambda x:scipy.fft.fftn(x),
-                  lambda x:scipy.fft.fftn(x),
-                  lambda x:scipy.fft.ifftn(x),
-                  lambda x:np.real(scipy.fft.ifftn(x)),
+backend.fft = FFT(lambda x:scipy.fftpack.fftn(x),
+                  lambda x:scipy.fftpack.fftn(x),
+                  lambda x:scipy.fftpack.ifftn(x),
+                  lambda x:np.real(scipy.fftpack.ifftn(x)),
                   lambda x:None, real_check, complex_check)
 backend.concatenate = concatenate
 backend.modulus = modulus

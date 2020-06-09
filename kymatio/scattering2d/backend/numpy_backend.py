@@ -2,7 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
-import scipy.fft
+import scipy
 
 BACKEND_NAME = 'numpy'
 
@@ -95,10 +95,10 @@ backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(lambda x:scipy.fft.fft2(x),
-                  lambda x:scipy.fft.fft2(x),
-                  lambda x:scipy.fft.ifft2(x),
-                  lambda x:np.real(scipy.fft.ifft2(x)),
+backend.fft = FFT(lambda x:scipy.fftpack.fft2(x),
+                  lambda x:scipy.fftpack.fft2(x),
+                  lambda x:scipy.fftpack.ifft2(x),
+                  lambda x:np.real(scipy.fftpack.ifft2(x)),
                   lambda x:None, real_check, complex_check)
 backend.Pad = Pad
 backend.unpad = unpad
