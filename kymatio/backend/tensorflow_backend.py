@@ -74,9 +74,3 @@ def cdgmm(A, B, inplace=False):
 
     return A * B
 
-
-def sanity_check(x):
-    complex_check(x)    
-    
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
