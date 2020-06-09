@@ -94,8 +94,6 @@ class TestModulus:
 
         y = modulus(x)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-        u = u.squeeze()
-        y = y.squeeze()
         assert torch.allclose(u, y)
 
         y = x[..., 0].contiguous()
