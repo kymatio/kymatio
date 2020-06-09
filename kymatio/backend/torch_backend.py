@@ -7,7 +7,7 @@ def input_checks(x):
     if x is None:
         raise TypeError('The input should be not empty.')
 
-    type_checks(x)
+    contiguous_check(x)
 
 def complex_check(x):
     if not _is_complex(x):
@@ -134,15 +134,15 @@ class Modulus():
             contains the complex modulus of x, while output[..., 1] = 0.
     """
     def __call__(self, x):
-        type_checks_complex(x)
+        complex_contiguous_check(x)
         norm = modulus(x)
         return norm
 
-def type_checks_complex(x):
+def complex_contiguous_check(x):
     complex_check(x)
-    type_checks(x)
+    contiguous_check(x)
 
-def type_checks(x):
+def contiguous_check(x):
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
 
@@ -180,12 +180,12 @@ def cdgmm(A, B, inplace=False):
 
     """
     if not _is_real(B):
-        type_checks_complex(B)
+        complex_contiguous_check(B)
     else:
         if not B.is_contiguous():
             raise RuntimeError('Tensors must be contiguous.')
 
-    type_checks(A)
+    contiguous_check(A)
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 

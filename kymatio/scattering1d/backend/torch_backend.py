@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, Modulus, concatenate, type_checks, cdgmm, complex_check
+from ...backend.torch_backend import _is_complex, Modulus, concatenate, contiguous_check, cdgmm, complex_check
 from ...backend.base_backend import FFT
 
 
@@ -103,7 +103,7 @@ fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
     lambda x: torch.rfft(x, 1, normalized=False, onesided=False),
     lambda x: torch.ifft(x, 1, normalized=False),
     lambda x: torch.irfft(x, 1, normalized=False, onesided=False),
-    type_checks, lambda x: None, complex_check)
+    contiguous_check, lambda x: None, complex_check)
 
 
 backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
