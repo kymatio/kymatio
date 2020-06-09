@@ -35,7 +35,7 @@ def subsample_fourier(x, k):
     return res
 
 
-def pad(x, pad_left, pad_right, mode='reflect', value=0.):
+def pad(x, pad_left, pad_right):
     """Pad real 1D tensors
     1D implementation of the padding function for real PyTorch tensors.
     Parameters
@@ -64,7 +64,7 @@ def pad(x, pad_left, pad_right, mode='reflect', value=0.):
         if mode == 'reflect':
             raise ValueError('Indefinite padding size (larger than tensor).')
 
-    output = np.pad(x, ((0, 0), (0, 0), (pad_left, pad_right),), mode=mode)
+    output = np.pad(x, ((0, 0), (0, 0), (pad_left, pad_right),), mode='reflect')
     return output
 
 
