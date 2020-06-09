@@ -27,7 +27,8 @@ def modulus_rotation(x, module=None):
             which is covariant to 3D translations and rotations.
     """
     if module is None:
-        module = torch.zeros_like(x)[..., 0]
+        module = torch.zeros(x.shape[:-1], dtype=x.dtype, layout=x.layout,
+                device=x.device)
     else:
         module = module ** 2
     module += (x ** 2).sum(-1)
