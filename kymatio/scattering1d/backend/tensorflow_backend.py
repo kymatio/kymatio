@@ -113,10 +113,10 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
-def _fft1d: return tf.signal.fft(x, name='fft1d')
-def _ifft1d: return tf.signal.ifft(x, name='ifft1d')
-def _irfft1d: return tf.math.real(tf.signal.ifft(x, name='irfft1d'))
-def _sanity_checks: pass
+def _fft1d(x): return tf.signal.fft(x, name='fft1d')
+def _ifft1d(x): return tf.signal.ifft(x, name='ifft1d')
+def _irfft1d(x): return tf.math.real(tf.signal.ifft(x, name='irfft1d'))
+def _sanity_checks(x): pass
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
