@@ -74,10 +74,10 @@ class SubsampleFourier(object):
         out = tf.reduce_mean(y, axis=(1, 3))
         return out
 
-_fft2d = lambda x: tf.signal.fft2d(x, name='fft2d')
-_ifft2d = lambda x: tf.signal.ifft2d(x, name='ifft2d')
-_irfft2d = lambda x: tf.math.real(tf.signal.ifft2d(x, name='irfft2d'))
-_sanity_checks = lambda x: None
+def _fft2d: return tf.signal.fft2d(x, name='fft2d')
+def _ifft2d: return tf.signal.ifft2d(x, name='ifft2d')
+def _irfft2d: return tf.math.real(tf.signal.ifft2d(x, name='irfft2d'))
+def _sanity_checks: None
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 
