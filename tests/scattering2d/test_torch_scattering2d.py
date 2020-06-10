@@ -293,39 +293,43 @@ class TestCDGMM:
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
     def test_fft(self, backend):
-        x = torch.randn(2, 2, 2)
+        import numpy as np
+        
+        x_np = np.random.rand(4, 4, 2)
 
-        y = torch.empty_like(x)
-        y[0, 0, :] = x[0, 0, :] + x[0, 1, :] + x[1, 0, :] + x[1, 1, :]
-        y[0, 1, :] = x[0, 0, :] - x[0, 1, :] + x[1, 0, :] - x[1, 1, :]
-        y[1, 0, :] = x[0, 0, :] + x[0, 1, :] - x[1, 0, :] - x[1, 1, :]
-        y[1, 1, :] = x[0, 0, :] - x[0, 1, :] - x[1, 0, :] + x[1, 1, :]
+        x = torch.from_numpy(x_np)
+        
+        x_r_np_fft = np.fft.fft2(x_np[..., 0])
+
+        x_r = torch.from_numpy(x_np[..., 0]).contiguous()
+        y_r = torch.from_numpy(np.stack((x_r_np_fft.real,
+            x_r_np_fft.imag), axis=-1))
+
+
+        x_np = x_np[...,0] + 1j*x_np[...,1]
+        x_np_fft = np.fft.fft2(x_np)
+
+        y = torch.from_numpy(np.stack((x_np_fft.real,
+            x_np_fft.imag), axis=-1))
 
         z = backend.fft(x, direction='C2C')
-
+        
         assert torch.allclose(y, z)
 
-        z = backend.fft(x, direction='C2C', inverse=True)
-
-        z = z * 4.0
-
-        assert torch.allclose(y, z)
-
-        z = backend.fft(x, direction='C2R', inverse=True)
-
-        z = z * 4.0
-
-        assert z.shape == x.shape[:-1]
-        assert torch.allclose(y[..., 0], z)
-
-        x_r = x[..., 0].contiguous()
-        y[..., 1] = 0
+        z = backend.fft(z, direction='C2C', inverse=True)
+        
+        assert torch.allclose(x, z)
 
         z = backend.fft(x_r, 'R2C')
 
-        assert torch.allclose(y, z)
+        assert torch.allclose(y_r, z)
         
+        z = backend.fft(z, direction='C2R', inverse=True)
+        
+        assert z.shape == x_r.shape
+        assert torch.allclose(x_r, z)
 
+        
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
