@@ -182,10 +182,10 @@ def cdgmm(A, B, inplace=False):
     if not _is_real(B):
         complex_contiguous_check(B)
     else:
-        if not B.is_contiguous():
-            raise RuntimeError('Tensors must be contiguous.')
-
+        contiguous_check(B)
+    
     contiguous_check(A)
+
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
