@@ -395,7 +395,7 @@ def test_pad_1d(device, backend, random_state=42):
     for pad_left in range(0, N - 16, 16):
         for pad_right in [pad_left, pad_left + 16]:#range(0, N, 16):
             x = torch.randn(2, 4, N, requires_grad=True, device=device)
-            x_pad = backend.pad(x, pad_left, pad_right, mode='reflect')
+            x_pad = backend.pad(x, pad_left, pad_right)
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
@@ -421,9 +421,9 @@ def test_pad_1d(device, backend, random_state=42):
             assert torch.allclose(x.grad, x_grad)
     # Check that the padding shows an error if we try to pad
     with pytest.raises(ValueError):
-        backend.pad(x, x.shape[-1], 0, mode='reflect')
+        backend.pad(x, x.shape[-1], 0)
     with pytest.raises(ValueError):
-        backend.pad(x, 0, x.shape[-1], mode='reflect')
+        backend.pad(x, 0, x.shape[-1])
 
 
 @pytest.mark.parametrize("device", devices)
