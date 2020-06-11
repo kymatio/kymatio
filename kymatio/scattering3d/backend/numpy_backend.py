@@ -27,10 +27,9 @@ def modulus_rotation(x, module=None):
             which is covariant to 3D translations and rotations.
     """
     if module is None:
-        module = np.zeros_like(x, x.real.dtype)
+        module = np.abs(x) ** 2
     else:
-        module = module ** 2
-    module += np.abs(x) ** 2
+        module = module ** 2 + np.abs(x) ** 2
     return np.sqrt(module)
 
 

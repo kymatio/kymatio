@@ -33,10 +33,9 @@ def modulus_rotation(x, module):
 
     """
     if module is None:
-        module = tf.zeros_like(x, tf.float32)
+        module = tf.abs(x) ** 2
     else:
-        module = module ** 2
-    module += tf.abs(x) ** 2
+        module = module ** 2 + tf.abs(x) ** 2
     return tf.sqrt(module)
 
 
