@@ -49,12 +49,6 @@ def pad(x, pad_left, pad_right):
     pad_right : int
         amount to add on the right of the tensor (at the end of the temporal
         axis).
-    mode : string, optional
-        Padding mode. Options include 'constant' and 'reflect'. See the
-        PyTorch API for other options.  Defaults to 'constant'.
-    value : float, optional
-        If mode == 'constant', value to input within the padding. Defaults to
-        0.
     Returns
     -------
     output : tensor
