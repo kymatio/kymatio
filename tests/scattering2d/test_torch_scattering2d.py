@@ -295,22 +295,39 @@ class TestFFT:
     def test_fft(self, backend):
         import numpy as np
         
-        x_np = np.random.rand(4, 4, 2)
+        def coefficent(n):
+            return np.exp(-2*np.pi*1j*n)
 
-        x = torch.from_numpy(x_np)
+        x_r = np.random.rand(4, 4)
+        x_i = np.random.rand(4, 4)
+
+        x = x_r + 1j*x_i
+
+        coefficents = np.zeros(x.shape + x.shape).astype('complex128')
         
-        x_r_np_fft = np.fft.fft2(x_np[..., 0])
+        for i in range(4):
+            for j in range(4):
+                for k in range(4):
+                    for l in range(4):
+                        coefficents[i, j, k, l] = coefficent(k*i/x.shape[0] + l*j/x.shape[1])
 
-        x_r = torch.from_numpy(x_np[..., 0]).contiguous()
-        y_r = torch.from_numpy(np.stack((x_r_np_fft.real,
-            x_r_np_fft.imag), axis=-1))
+        y = np.zeros(x.shape).astype('complex128')
+        
+        for k in range(4):
+            for l in range(4):
+                y[k, l] = (x*coefficents[..., k, l]).sum()
+
+        y_r = np.zeros(x.shape).astype('complex128')
+        
+        for k in range(4):
+            for l in range(4):
+                y_r[k, l] = (x_r*coefficents[..., k, l]).sum()
 
 
-        x_np = x_np[...,0] + 1j*x_np[...,1]
-        x_np_fft = np.fft.fft2(x_np)
-
-        y = torch.from_numpy(np.stack((x_np_fft.real,
-            x_np_fft.imag), axis=-1))
+        y = torch.from_numpy(np.stack((y.real, y.imag), axis=-1))
+        y_r = torch.from_numpy(np.stack((y_r.real, y_r.imag), axis=-1))
+        x = torch.from_numpy(np.stack((x.real, x.imag), axis=-1))
+        x_r = torch.from_numpy(x_r)
 
         z = backend.fft(x, direction='C2C')
         
