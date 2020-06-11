@@ -56,8 +56,7 @@ def pad(x, pad_left, pad_right):
         The tensor passed along the third dimension.
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-        if mode == 'reflect':
-            raise ValueError('Indefinite padding size (larger than tensor).')
+        raise ValueError('Indefinite padding size (larger than tensor).')
 
     paddings = [[0, 0]] * len(x.shape[:-1])
     paddings += [[pad_left, pad_right],]
