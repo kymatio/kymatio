@@ -60,7 +60,6 @@ def test_fft3d_error(backend, device):
 
     assert 'done with an inverse' in record.value.args[0]
 
-
     x = torch.randn(4, 4, 2)
     x = x.to(device)
     y = x[::2, ::2]

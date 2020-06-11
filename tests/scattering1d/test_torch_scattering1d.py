@@ -393,7 +393,7 @@ def test_pad_1d(device, backend, random_state=42):
     torch.manual_seed(random_state)
     N = 128
     for pad_left in range(0, N - 16, 16):
-        for pad_right in [pad_left, pad_left + 16]:#range(0, N, 16):
+        for pad_right in [pad_left, pad_left + 16]:
             x = torch.randn(2, 4, N, requires_grad=True, device=device)
             x_pad = backend.pad(x, pad_left, pad_right)
             # Check the size
