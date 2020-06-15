@@ -5,7 +5,6 @@ import scipy.fftpack
 BACKEND_NAME = 'numpy'
 
 from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
-from ...backend.base_backend import FFT
 
 
 def modulus_rotation(x, module=None):
@@ -65,6 +64,16 @@ def concatenate(arrays, L):
     return S
 
 
+def rfft(x):
+    real_check(x)
+    return scipy.fftpack.fftn(x)
+
+
+def ifft(x):
+    complex_check(x)
+    return scipy.fftpack.ifftn(x)
+
+
 backend = namedtuple('backend',
                      ['name',
                       'cdgmm3d',
@@ -76,10 +85,8 @@ backend = namedtuple('backend',
 
 backend.name = 'numpy'
 backend.cdgmm3d = cdgmm
-backend.fft = FFT(lambda x:scipy.fftpack.fftn(x),
-                  lambda x:scipy.fftpack.ifftn(x),
-                  lambda x:np.real(scipy.fftpack.ifftn(x)),
-                  lambda x:None, real_check, complex_check)
+backend.rfft = rfft
+backend.ifft = ifft
 backend.concatenate = concatenate
 backend.modulus = modulus
 backend.modulus_rotation = modulus_rotation

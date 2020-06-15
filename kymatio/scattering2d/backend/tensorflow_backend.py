@@ -7,7 +7,6 @@ BACKEND_NAME = 'tensorflow'
 
 
 from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate, complex_check, real_check
-from ...backend.base_backend import FFT
 
 class Pad(object):
     def __init__(self, pad_size, input_size, pre_pad=False):
@@ -75,6 +74,20 @@ class SubsampleFourier(object):
         return out
 
 
+def rfft(x):
+    real_check(x)
+    return tf.signal.fft2d(tf.cast(x, tf.complex64), name='rfft2d')
+
+
+def irfft(x):
+    complex_check(x)
+    return tf.math.real(tf.signal.ifft2d(x, name='irfft2d'))
+
+
+def ifft(x):
+    complex_check(x)
+    return tf.signal.ifft2d(x, name='ifft2d')
+
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 
@@ -82,11 +95,9 @@ backend.name = 'tensorflow'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(
-                  lambda x: tf.signal.fft2d(tf.cast(x, tf.complex64), name='rfft2d'),
-                  lambda x: tf.signal.ifft2d(x, name='ifft2d'),
-                  lambda x: tf.math.real(tf.signal.ifft2d(x, name='irfft2d')),
-                  lambda x: None, real_check, complex_check)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = lambda x: concatenate(x, -3)

@@ -7,7 +7,6 @@ BACKEND_NAME = 'tensorflow'
 
 
 from ...backend.tensorflow_backend import Modulus, concatenate, cdgmm, complex_check, real_check
-from ...backend.base_backend import FFT
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain

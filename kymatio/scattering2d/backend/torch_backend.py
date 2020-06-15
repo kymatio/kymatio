@@ -7,7 +7,6 @@ from collections import namedtuple
 BACKEND_NAME = 'torch'
 
 from ...backend.torch_backend import _is_complex, _is_real, cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
-from ...backend.base_backend import FFT
 
 
 class Pad(object):
@@ -144,11 +143,28 @@ class SubsampleFourier(object):
         return out
 
 
-fft = FFT(
-          lambda x: torch.rfft(x.squeeze(-1), 2, normalized=False, onesided=False),
-          lambda x: torch.ifft(x, 2, normalized=False),
-          lambda x: torch.irfft(x, 2, normalized=False, onesided=False).unsqueeze(-1),
-          contiguous_check, real_check, complex_check)
+def rfft(x):
+    contiguous_check(x)
+    real_check(x)
+
+    x = x.squeeze(-1)
+    return torch.rfft(x, 2, normalized=False, onesided=False)
+
+
+def irfft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    return torch.irfft(x, 2, normalized=False, onesided=False).unsqueeze(-1)
+
+
+def ifft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    x = x.squeeze(-1)
+    return torch.ifft(x, 2, normalized=False)
+
 
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
@@ -156,7 +172,9 @@ backend.name = 'torch'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = lambda x: concatenate(x, -3)

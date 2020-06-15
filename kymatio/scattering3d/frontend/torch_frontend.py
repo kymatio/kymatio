@@ -59,7 +59,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         batch_shape = input_array.shape[:-3]
         signal_shape = input_array.shape[-3:]
 
-        input_array = input_array.reshape((-1,) + signal_shape)
+        input_array = input_array.reshape((-1,) + signal_shape + (1,))
 
 
         buffer_dict = dict(self.named_buffers())

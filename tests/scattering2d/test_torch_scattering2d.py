@@ -333,15 +333,15 @@ class TestFFT:
 
         assert torch.allclose(y, z)
 
-        z = backend.fft(z, direction='C2C', inverse=True)
+        z = backend.ifft(z)
         
         assert torch.allclose(x, z)
 
-        z = backend.fft(x_r, 'R2C')
+        z = backend.rfft(x_r)
 
         assert torch.allclose(y_r, z)
         
-        z = backend.fft(z, direction='C2R', inverse=True)
+        z = backend.irfft(z)
         
         assert z.shape == x_r.shape
         assert torch.allclose(x_r, z)
@@ -351,18 +351,13 @@ class TestFFT:
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
 
-        with pytest.raises(RuntimeError) as record:
-            backend.fft(torch.empty(2, 2), direction='C2R',
-                        inverse=False)
-        assert 'done with an inverse' in record.value.args[0]
-
-
-        x = torch.randn(4, 4, 2)
+       
+        x = torch.randn(4, 4)
         x = x.to(device)
         y = x[::2, ::2]
 
         with pytest.raises(RuntimeError) as record:
-            backend.fft(y)
+            backend.rfft(y)
         assert 'must be contiguous' in record.value.args[0]
 
 

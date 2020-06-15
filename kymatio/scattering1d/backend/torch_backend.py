@@ -8,7 +8,6 @@ from collections import namedtuple
 BACKEND_NAME = 'torch'
 
 from ...backend.torch_backend import _is_complex, _is_real, Modulus, concatenate, contiguous_check, cdgmm, complex_check, real_check
-from ...backend.base_backend import FFT
 
 
 def subsample_fourier(x, k):

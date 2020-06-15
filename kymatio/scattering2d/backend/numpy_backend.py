@@ -8,7 +8,6 @@ BACKEND_NAME = 'numpy'
 
 
 from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
-from ...backend.base_backend import FFT
 
 
 class Pad(object):
@@ -90,16 +89,29 @@ def concatenate(arrays):
     return np.stack(arrays, axis=-3)
 
 
+def rfft(x):
+    real_check(x)
+    return scipy.fftpack.fft2(x)
+
+
+def irfft(x):
+    complex_check(x)
+    return np.real(scipy.fftpack.ifft2(x))
+
+
+def ifft(x):
+    complex_check(x)
+    return scipy.fftpack.ifft2(x)
+
+
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(
-                  lambda x:scipy.fftpack.fft2(x),
-                  lambda x:scipy.fftpack.ifft2(x),
-                  lambda x:np.real(scipy.fftpack.ifft2(x)),
-                  lambda x:None, real_check, complex_check)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate

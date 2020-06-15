@@ -46,7 +46,7 @@ def test_FFT3d_central_freq_batch(device, backend):
         if device == 'gpu':
             x = x.cuda()
         a = x.sum()
-        y = backend.fft(x, 'R2C')
+        y = backend.rfft(x)
         c = y[:, 0, 0, 0].sum()
         assert (c - a).abs().sum() < 1e-6
 
@@ -54,18 +54,12 @@ def test_FFT3d_central_freq_batch(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_fft3d_error(backend, device):
-    with pytest.raises(RuntimeError) as record:
-        backend.fft(torch.empty(2, 2), direction='C2R',
-                        inverse=False)
-
-    assert 'done with an inverse' in record.value.args[0]
-
-    x = torch.randn(4, 4, 2)
+    x = torch.randn(4, 4, 1)
     x = x.to(device)
     y = x[::2, ::2]
 
     with pytest.raises(RuntimeError) as record:
-        backend.fft(y)
+        backend.rfft(y)
     assert 'must be contiguous' in record.value.args[0]
 
 
