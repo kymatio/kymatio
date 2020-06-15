@@ -236,6 +236,10 @@ class TestCDGMM:
         assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
+            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 3))
+        assert 'should be complex' in exc.value.args[0]
+
+        with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2),
                           torch.empty(4, 5, 1).double())
         assert 'must be of the same dtype' in exc.value.args[0]
