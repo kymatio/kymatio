@@ -13,6 +13,10 @@ def complex_check(x):
     if not _is_complex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
 
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
+
 def _is_complex(x):
     return x.shape[-1] == 2
 
@@ -135,7 +139,7 @@ class Modulus():
     """
     def __call__(self, x):
         complex_contiguous_check(x)
-        norm = modulus(x)
+        norm = modulus(x).unsqueeze(-1)
         return norm
 
 def complex_contiguous_check(x):

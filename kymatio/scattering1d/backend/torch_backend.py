@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, Modulus, concatenate, contiguous_check, cdgmm, complex_check
+from ...backend.torch_backend import _is_complex, _is_real, Modulus, concatenate, contiguous_check, cdgmm, complex_check, real_check
 from ...backend.base_backend import FFT
 
 
@@ -66,7 +66,7 @@ def pad(x, pad_left, pad_right):
         raise ValueError('Indefinite padding size (larger than tensor).')
     res = F.pad(x.unsqueeze(2),
                 (pad_left, pad_right, 0, 0),
-                mode='reflect').squeeze(2)
+                mode='reflect').squeeze(2).unsqueeze(-1)
     return res
 
 def unpad(x, i0, i1):
@@ -88,14 +88,15 @@ def unpad(x, i0, i1):
     x_unpadded : tensor
         The tensor x[..., i0:i1].
     """
+    x = x.squeeze(-1)
     return x[..., i0:i1]
 
 
 fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
-    lambda x: torch.rfft(x, 1, normalized=False, onesided=False),
+    lambda x: torch.rfft(x.squeeze(-1), 1, normalized=False, onesided=False),
     lambda x: torch.ifft(x, 1, normalized=False),
-    lambda x: torch.irfft(x, 1, normalized=False, onesided=False),
-    contiguous_check, lambda x: None, complex_check)
+    lambda x: torch.irfft(x, 1, normalized=False, onesided=False).unsqueeze(-1),
+    contiguous_check, real_check, complex_check)
 
 
 backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])

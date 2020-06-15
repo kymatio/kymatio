@@ -395,7 +395,7 @@ def test_pad_1d(device, backend, random_state=42):
     for pad_left in range(0, N - 16, 16):
         for pad_right in [pad_left, pad_left + 16]:
             x = torch.randn(2, 4, N, requires_grad=True, device=device)
-            x_pad = backend.pad(x, pad_left, pad_right)
+            x_pad = backend.pad(x, pad_left, pad_right).squeeze(-1)
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
@@ -445,7 +445,7 @@ def test_modulus(device, backend, random_state=42):
         assert "for CPU tensors" in re.value.args[0]
         return
 
-    x_abs = backend.modulus(x)
+    x_abs = backend.modulus(x).squeeze(-1)
     assert len(x_abs.shape) == len(x.shape[:-1])
 
     # check the value
@@ -466,7 +466,7 @@ def test_modulus(device, backend, random_state=42):
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
-    x_abs0 = backend.modulus(x0)
+    x_abs0 = backend.modulus(x0).squeeze(-1)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
     assert torch.max(torch.abs(x0.grad)) <= 1e-7

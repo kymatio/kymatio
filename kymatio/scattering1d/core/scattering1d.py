@@ -72,7 +72,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
-
     # compute the Fourier transform
     U_0_hat = fft(U_0, 'R2C')
 
@@ -83,11 +82,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         S_0_c = cdgmm(U_0_hat, phi[0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = fft(S_0_hat, 'C2R', inverse=True)
-
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-
     out_S_0.append({'coef': S_0,
                     'j': (),
                     'n': ()})
@@ -100,7 +97,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         k1 = max(j1 - oversampling, 0)
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
-
         U_1_c = cdgmm(U_0_hat, psi1[n1][0])
         U_1_hat = subsample_fourier(U_1_c, 2**k1)
         U_1_c = fft(U_1_hat, 'C2C', inverse=True)
