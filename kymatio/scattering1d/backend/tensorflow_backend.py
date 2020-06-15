@@ -90,7 +90,7 @@ backend.subsample_fourier = subsample_fourier
 backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
-backend.fft = FFT(lambda x: tf.signal.fft(x, name='fft1d'),
+backend.fft = FFT(
                   lambda x: tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d'),
                   lambda x: tf.signal.ifft(x, name='ifft1d'),
                   lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),

@@ -77,7 +77,6 @@ backend = namedtuple('backend',
 backend.name = 'numpy'
 backend.cdgmm3d = cdgmm
 backend.fft = FFT(lambda x:scipy.fftpack.fftn(x),
-                  lambda x:scipy.fftpack.fftn(x),
                   lambda x:scipy.fftpack.ifftn(x),
                   lambda x:np.real(scipy.fftpack.ifftn(x)),
                   lambda x:None, real_check, complex_check)

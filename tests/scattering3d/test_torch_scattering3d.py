@@ -42,11 +42,11 @@ def relative_difference(a, b):
 def test_FFT3d_central_freq_batch(device, backend):
     # Checked the 0 frequency for the 3D FFT
     for device in devices:
-        x = torch.zeros(1, 32, 32, 32, 2).float()
+        x = torch.zeros(1, 32, 32, 32, 1).float()
         if device == 'gpu':
             x = x.cuda()
         a = x.sum()
-        y = backend.fft(x)
+        y = backend.fft(x, 'R2C')
         c = y[:, 0, 0, 0].sum()
         assert (c - a).abs().sum() < 1e-6
 
@@ -133,7 +133,7 @@ def test_cdgmm3d(device, backend, inplace):
 def test_complex_modulus(backend, device):
     x = torch.randn(4, 3, 2).to(device)
     xm = torch.sqrt(x[..., 0] ** 2 + x[..., 1] ** 2)
-    y = backend.modulus(x)
+    y = backend.modulus(x).squeeze(-1)
     assert (y - xm).norm() < 1e-7
 
 

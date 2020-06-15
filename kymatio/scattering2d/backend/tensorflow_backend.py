@@ -82,7 +82,7 @@ backend.name = 'tensorflow'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(lambda x: tf.signal.fft2d(x, name='fft2d'),
+backend.fft = FFT(
                   lambda x: tf.signal.fft2d(tf.cast(x, tf.complex64), name='rfft2d'),
                   lambda x: tf.signal.ifft2d(x, name='ifft2d'),
                   lambda x: tf.math.real(tf.signal.ifft2d(x, name='irfft2d')),

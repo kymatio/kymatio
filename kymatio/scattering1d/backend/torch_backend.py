@@ -92,7 +92,7 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
-fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
+fft = FFT(
     lambda x: torch.rfft(x.squeeze(-1), 1, normalized=False, onesided=False),
     lambda x: torch.ifft(x, 1, normalized=False),
     lambda x: torch.irfft(x, 1, normalized=False, onesided=False).unsqueeze(-1),

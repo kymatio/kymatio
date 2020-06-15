@@ -329,8 +329,8 @@ class TestFFT:
         x = torch.from_numpy(np.stack((x.real, x.imag), axis=-1))
         x_r = torch.from_numpy(x_r).unsqueeze(-1)
 
-        z = backend.fft(x, direction='C2C')
-        
+        z = torch.fft(x, 2)        
+
         assert torch.allclose(y, z)
 
         z = backend.fft(z, direction='C2C', inverse=True)

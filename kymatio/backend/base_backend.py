@@ -1,8 +1,7 @@
 
 
 class FFT:
-    def __init__(self, fft, rfft, ifft, irfft, type_checks, real_check, complex_check):
-        self.fft = fft
+    def __init__(self, rfft, ifft, irfft, type_checks, real_check, complex_check):
         self.rfft = rfft
         self.ifft = ifft
         self.irfft = irfft
@@ -41,6 +40,8 @@ class FFT:
             output :
                 Result of FFT or IFFT.
         """
+        self.sanity_checks(x)
+
         if direction == 'C2R':
             if not inverse:
                 raise RuntimeError('C2R mode can only be done with an inverse FFT.')
@@ -48,8 +49,10 @@ class FFT:
         if direction == 'R2C':
             if inverse:
                 raise RuntimeError('R2C mode can only be done with a FFT.')
-
-        self.sanity_checks(x)
+        
+        if direction == 'C2C':
+            if not inverse:
+                raise NotImplementedError('Complex FFT not implemented')
 
         if direction == 'C2R':
             self.complex_check(x)
@@ -58,8 +61,6 @@ class FFT:
             self.complex_check(x)
             if inverse:
                 output = self.ifft(x)
-            else:
-                output = self.fft(x)
         elif direction == 'R2C':
             self.real_check(x)
             output = self.rfft(x)

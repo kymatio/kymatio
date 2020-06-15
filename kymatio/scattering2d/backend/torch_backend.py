@@ -144,11 +144,10 @@ class SubsampleFourier(object):
         return out
 
 
-fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
+fft = FFT(
           lambda x: torch.rfft(x.squeeze(-1), 2, normalized=False, onesided=False),
           lambda x: torch.ifft(x, 2, normalized=False),
-          lambda x: torch.irfft(x, 2, normalized=False,
-              onesided=False).unsqueeze(-1),
+          lambda x: torch.irfft(x, 2, normalized=False, onesided=False).unsqueeze(-1),
           contiguous_check, real_check, complex_check)
 
 

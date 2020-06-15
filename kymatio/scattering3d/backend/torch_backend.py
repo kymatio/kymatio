@@ -66,8 +66,7 @@ def concatenate(arrays, L):
     return S
 
 
-fft = FFT(lambda x: torch.fft(x, 3, normalized=False),
-          lambda x: torch.rfft(x, 3, normalized=False, onesided=False),
+fft = FFT(lambda x: torch.rfft(x, 3, normalized=False, onesided=False),
           lambda x: torch.ifft(x, 3, normalized=False),
           lambda x: torch.irfft(x, 3, normalized=False, onesided=False),
           contiguous_check, lambda x: None, complex_check)

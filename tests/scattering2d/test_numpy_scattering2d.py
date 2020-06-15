@@ -137,9 +137,6 @@ class TestFFT:
                       [x[0, 0] + x[0, 1] - x[1, 0] - x[1, 1],
                        x[0, 0] - x[0, 1] - x[1, 0] + x[1, 1]]])
 
-        z = backend.fft(x, direction='C2C')
-
-        assert np.allclose(y, z)
 
         z = backend.fft(x, direction='C2C', inverse=True)
 
