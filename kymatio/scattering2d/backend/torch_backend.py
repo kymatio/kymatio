@@ -6,7 +6,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, cdgmm, contiguous_check, Modulus, concatenate, complex_check
+from ...backend.torch_backend import _is_complex, _is_real, cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
 from ...backend.base_backend import FFT
 
 
@@ -81,7 +81,7 @@ class Pad(object):
             if self.pad_size[2] == self.input_size[1]:
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
-        output = x.reshape(batch_shape + x.shape[-2:])
+        output = x.reshape(batch_shape + x.shape[-2:]).unsqueeze(-1)
         return output
 
 def unpad(in_):
@@ -100,6 +100,7 @@ def unpad(in_):
             Output tensor.  Unpadded input.
 
     """
+    in_ = in_.squeeze(-1)
     return in_[..., 1:-1, 1:-1]
 
 class SubsampleFourier(object):
@@ -144,10 +145,11 @@ class SubsampleFourier(object):
 
 
 fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
-          lambda x: torch.rfft(x, 2, normalized=False, onesided=False),
+          lambda x: torch.rfft(x.squeeze(-1), 2, normalized=False, onesided=False),
           lambda x: torch.ifft(x, 2, normalized=False),
-          lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
-          contiguous_check, lambda x: None, complex_check)
+          lambda x: torch.irfft(x, 2, normalized=False,
+              onesided=False).unsqueeze(-1),
+          contiguous_check, real_check, complex_check)
 
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])

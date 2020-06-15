@@ -53,7 +53,7 @@ class TestPad:
 
         z = pad(x)
 
-        assert z.shape == (1, 8, 8)
+        assert z.shape == (1, 8, 8, 1)
         assert torch.allclose(z[0, 2, 2], x[0, 0, 0])
         assert torch.allclose(z[0, 1, 0], x[0, 1, 2])
         assert torch.allclose(z[0, 1, 1], x[0, 1, 1])
@@ -65,7 +65,7 @@ class TestPad:
         x = torch.randn(1, 8, 8)
         x = x.to(device)
 
-        z = pad(x)
+        z = pad(x).squeeze(-1)
 
         assert torch.allclose(z, x)
 
@@ -92,7 +92,7 @@ class TestModulus:
         modulus = backend.modulus
         x = torch.rand(100, 10, 4, 2).to(device)
 
-        y = modulus(x)
+        y = modulus(x).squeeze(-1)
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
         assert torch.allclose(u, y)
 
@@ -327,7 +327,7 @@ class TestFFT:
         y = torch.from_numpy(np.stack((y.real, y.imag), axis=-1))
         y_r = torch.from_numpy(np.stack((y_r.real, y_r.imag), axis=-1))
         x = torch.from_numpy(np.stack((x.real, x.imag), axis=-1))
-        x_r = torch.from_numpy(x_r)
+        x_r = torch.from_numpy(x_r).unsqueeze(-1)
 
         z = backend.fft(x, direction='C2C')
         
