@@ -59,7 +59,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
-    fft = backend.fft
+    rfft = backend.rfft
+    ifft = backend.ifft
+    irfft = backend.irfft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
@@ -73,7 +75,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
     # compute the Fourier transform
-    U_0_hat = fft(U_0, 'R2C')
+    U_0_hat = rfft(U_0)
 
     # Get S0
     k0 = max(J - oversampling, 0)
@@ -81,7 +83,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     if average:
         S_0_c = cdgmm(U_0_hat, phi[0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
-        S_0_r = fft(S_0_hat, 'C2R', inverse=True)
+        S_0_r = irfft(S_0_hat)
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
@@ -99,13 +101,13 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
         U_1_c = cdgmm(U_0_hat, psi1[n1][0])
         U_1_hat = subsample_fourier(U_1_c, 2**k1)
-        U_1_c = fft(U_1_hat, 'C2C', inverse=True)
+        U_1_c = ifft(U_1_hat)
 
         # Take the modulus
         U_1_m = modulus(U_1_c)
 
         if average or max_order > 1:
-            U_1_hat = fft(U_1_m, 'R2C')
+            U_1_hat = rfft(U_1_m)
 
         if average:
             # Convolve with phi_J
@@ -113,7 +115,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
-            S_1_r = fft(S_1_hat, 'C2R', inverse=True)
+            S_1_r = irfft(S_1_hat)
 
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
@@ -137,19 +139,19 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
                     # take the modulus
-                    U_2_c = fft(U_2_hat, 'C2C', inverse=True)
+                    U_2_c = ifft(U_2_hat)
 
                     U_2_m = modulus(U_2_c)
 
                     if average:
-                        U_2_hat = fft(U_2_m, 'R2C')
+                        U_2_hat = rfft(U_2_m)
 
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
 
                         S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
-                        S_2_r = fft(S_2_hat, 'C2R', inverse=True)
+                        S_2_r = irfft(S_2_hat)
 
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:

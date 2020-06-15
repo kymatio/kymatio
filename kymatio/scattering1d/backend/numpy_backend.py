@@ -79,9 +79,23 @@ def unpad(x, i0, i1):
     """
     return x[..., i0:i1]
 
-
 def concatenate(arrays):
     return np.stack(arrays, axis=-2)
+
+
+def rfft(x):
+    real_check(x)
+    return scipy.fftpack.fft(x)
+
+
+def irfft(x):
+    complex_check(x)
+    return np.real(scipy.fftpack.ifft(x))
+
+
+def ifft(x):
+    complex_check(x)
+    return scipy.fftpack.ifft(x)
 
 
 backend = namedtuple('backend',
@@ -93,9 +107,7 @@ backend.subsample_fourier = subsample_fourier
 backend.unpad = unpad
 backend.pad = pad
 backend.cdgmm = cdgmm
-backend.fft = FFT(
-                  lambda x:scipy.fftpack.fft(x),
-                  lambda x:scipy.fftpack.ifft(x),
-                  lambda x:np.real(scipy.fftpack.ifft(x)),
-                  lambda x:None, real_check, complex_check)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.concatenate = concatenate

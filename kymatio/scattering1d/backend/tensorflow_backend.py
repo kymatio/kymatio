@@ -82,6 +82,20 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
+def rfft(x):
+    real_check(x)
+    return tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d')
+
+
+def irfft(x):
+    complex_check(x)
+    return tf.math.real(tf.signal.ifft(x, name='irfft1d'))
+
+
+def ifft(x):
+    complex_check(x)
+    return tf.signal.ifft(x, name='ifft1d')
+
 
 backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
 backend.name = 'tensorflow'
@@ -90,9 +104,7 @@ backend.subsample_fourier = subsample_fourier
 backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
-backend.fft = FFT(
-                  lambda x: tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d'),
-                  lambda x: tf.signal.ifft(x, name='ifft1d'),
-                  lambda x: tf.math.real(tf.signal.ifft(x, name='irfft1d')),
-                  lambda x: None, real_check, complex_check)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.concatenate = lambda x: concatenate(x, -2)

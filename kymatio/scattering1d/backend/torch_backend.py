@@ -92,11 +92,28 @@ def unpad(x, i0, i1):
     return x[..., i0:i1]
 
 
-fft = FFT(
-    lambda x: torch.rfft(x.squeeze(-1), 1, normalized=False, onesided=False),
-    lambda x: torch.ifft(x, 1, normalized=False),
-    lambda x: torch.irfft(x, 1, normalized=False, onesided=False).unsqueeze(-1),
-    contiguous_check, real_check, complex_check)
+def rfft(x):
+    contiguous_check(x)
+    real_check(x)
+
+    x = x.squeeze(-1)
+    return torch.rfft(x, 1, normalized=False, onesided=False)
+
+
+def irfft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    return torch.irfft(x, 1, normalized=False, onesided=False).unsqueeze(-1)
+
+
+def ifft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    x = x.squeeze(-1)
+    return torch.ifft(x, 1, normalized=False)
+
 
 
 backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
@@ -106,5 +123,7 @@ backend.subsample_fourier = subsample_fourier
 backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
-backend.fft = fft
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.concatenate = lambda x: concatenate(x, -2)
