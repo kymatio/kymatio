@@ -62,13 +62,13 @@ class Modulus(object):
         if not x.is_cuda and self.backend=='skcuda':
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
-        out = torch.empty(x.shape[:-1] + (1,), dtype=x.dtype, layout=x.layout, device=x.device)
+        out = x.new(x.shape[:-1] + (1,))
 
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
 
         if not _is_complex(x):
-            raise TypeError('The input and outputs should be complex.')
+            raise TypeError('The input should be complex.')
 
         kernel = """
         extern "C"
@@ -82,9 +82,9 @@ class Modulus(object):
         }
         """
         fabs = load_kernel('abs_complex_value', kernel, dtype=get_dtype(x))
-        fabs(grid=(self.get_blocks(int(out.nelement())//2), 1, 1),
+        fabs(grid=(self.get_blocks(int(out.nelement())), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[x.data_ptr(), out.data_ptr(), x.numel() // 2],
+             args=[x.data_ptr(), out.data_ptr(), out.numel()],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
@@ -220,12 +220,12 @@ def subsample_fourier(x, k):
     return subsamplefourier(x,k)
 
 
-from .torch_backend import  cdgmm, unpad, pad, concatenate, rfft, irfft, ifft, Modulus
+from .torch_backend import  cdgmm, unpad, pad, concatenate, rfft, irfft, ifft
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'pad', 'real', 'unpad', 'fft', 'concatenate'])
 
 backend.name = 'torch_skcuda'
-backend.modulus = Modulus()
+backend.modulus = modulus_complex
 backend.subsample_fourier = subsample_fourier
 backend.cdgmm = cdgmm
 backend.unpad = unpad

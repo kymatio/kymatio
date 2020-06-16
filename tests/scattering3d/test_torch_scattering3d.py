@@ -125,6 +125,8 @@ def test_cdgmm3d(device, backend, inplace):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_complex_modulus(backend, device):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
     x = torch.randn(4, 3, 2).to(device)
     xm = torch.sqrt(x[..., 0] ** 2 + x[..., 1] ** 2)
     y = backend.modulus(x).squeeze(-1)

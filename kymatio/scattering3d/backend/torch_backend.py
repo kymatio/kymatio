@@ -6,7 +6,6 @@ from collections import namedtuple
 
 from ...backend.torch_backend import _is_complex, _is_real, cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
 
-
 def modulus_rotation(x, module=None):
     """Used for computing rotation invariant scattering transform coefficents.
 

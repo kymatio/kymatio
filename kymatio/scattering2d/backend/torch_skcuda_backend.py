@@ -115,7 +115,7 @@ class SubsampleFourier(object):
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
-class Modulus_Complex(object):
+class Modulus(object):
     """This class implements a modulus transform for complex numbers.
 
         Usage
@@ -152,7 +152,7 @@ class Modulus_Complex(object):
         if not x.is_cuda:
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
-        out = x.new(x.shape)
+        out = x.new(x.shape[:-1] +(1,))
 
         if not _is_complex(x):
             raise TypeError('The inputs should be complex.')
@@ -167,14 +167,14 @@ class Modulus_Complex(object):
             int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= n)
             return;
-        z[i] = make_${Dtype}(normf(2, x + 2*i), 0);
+        z[i] = normf(2, x + 2*i);
 
         }
         """
         fabs = _load_kernel('abs_complex_value', kernel, Dtype=_get_dtype(x))
-        fabs(grid=(self.GET_BLOCKS(int(out.nelement()) // 2), 1, 1),
+        fabs(grid=(self.GET_BLOCKS(int(out.nelement()) ), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
+             args=[x.data_ptr(), out.data_ptr(), out.numel()],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
@@ -183,7 +183,6 @@ from .torch_backend import unpad
 from .torch_backend import Pad
 from .torch_backend import rfft, irfft, ifft
 from .torch_backend import concatenate
-from .torch_backend import Modulus
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch_skcuda'
