@@ -25,9 +25,9 @@ def modulus_rotation(x, module=None):
             which is covariant to 3D translations and rotations.
     """
     if module is None:
-        module = (x ** 2).sum(-1).unsqueeze(-1)
+        module = (x ** 2).sum(-1)[..., None]
     else:
-        module = module ** 2 + (x ** 2).sum(-1).unsqueeze(-1)
+        module = module ** 2 + (x ** 2).sum(-1)[..., None]
     return torch.sqrt(module)
 
 
@@ -68,7 +68,7 @@ def rfft(x):
     contiguous_check(x)
     real_check(x)
 
-    x = x.squeeze(-1)
+    x = x.reshape(x.shape[:-1])
     return torch.rfft(x, 3, normalized=False, onesided=False)
 
 
@@ -76,7 +76,6 @@ def ifft(x):
     contiguous_check(x)
     complex_check(x)
 
-    x = x.squeeze(-1)
     return torch.ifft(x, 3, normalized=False)
 
 

@@ -80,7 +80,7 @@ class Pad(object):
             if self.pad_size[2] == self.input_size[1]:
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
-        output = x.reshape(batch_shape + x.shape[-2:]).unsqueeze(-1)
+        output = x.reshape(batch_shape + x.shape[-2:] + (1,))
         return output
 
 def unpad(in_):
@@ -99,8 +99,7 @@ def unpad(in_):
             Output tensor.  Unpadded input.
 
     """
-    in_ = in_.squeeze(-1)
-    return in_[..., 1:-1, 1:-1]
+    return in_[..., 1:-1, 1:-1, 0]
 
 class SubsampleFourier(object):
     """Subsampling of a 2D image performed in the Fourier domain
@@ -147,7 +146,7 @@ def rfft(x):
     contiguous_check(x)
     real_check(x)
 
-    x = x.squeeze(-1)
+    x = x.reshape(x.shape[:-1])
     return torch.rfft(x, 2, normalized=False, onesided=False)
 
 
@@ -155,14 +154,13 @@ def irfft(x):
     contiguous_check(x)
     complex_check(x)
 
-    return torch.irfft(x, 2, normalized=False, onesided=False).unsqueeze(-1)
+    return torch.irfft(x, 2, normalized=False, onesided=False)[..., None]
 
 
 def ifft(x):
     contiguous_check(x)
     complex_check(x)
 
-    x = x.squeeze(-1)
     return torch.ifft(x, 2, normalized=False)
 
 

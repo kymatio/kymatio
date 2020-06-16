@@ -63,9 +63,10 @@ def pad(x, pad_left, pad_right):
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         raise ValueError('Indefinite padding size (larger than tensor).')
-    res = F.pad(x.unsqueeze(2),
+    res = F.pad(x[:, :, None],
                 (pad_left, pad_right, 0, 0),
-                mode='reflect').squeeze(2).unsqueeze(-1)
+                mode='reflect')
+    res = res[:, :, 0, ..., None]
     return res
 
 def unpad(x, i0, i1):
@@ -87,7 +88,7 @@ def unpad(x, i0, i1):
     x_unpadded : tensor
         The tensor x[..., i0:i1].
     """
-    x = x.squeeze(-1)
+    x = x.reshape(x.shape[:-1])
     return x[..., i0:i1]
 
 
@@ -95,7 +96,7 @@ def rfft(x):
     contiguous_check(x)
     real_check(x)
 
-    x = x.squeeze(-1)
+    x = x.reshape(x.shape[:-1])
     return torch.rfft(x, 1, normalized=False, onesided=False)
 
 
@@ -103,14 +104,13 @@ def irfft(x):
     contiguous_check(x)
     complex_check(x)
 
-    return torch.irfft(x, 1, normalized=False, onesided=False).unsqueeze(-1)
+    return torch.irfft(x, 1, normalized=False, onesided=False)[..., None]
 
 
 def ifft(x):
     contiguous_check(x)
     complex_check(x)
 
-    x = x.squeeze(-1)
     return torch.ifft(x, 1, normalized=False)
 
 

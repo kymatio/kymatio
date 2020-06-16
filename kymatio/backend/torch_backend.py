@@ -139,7 +139,7 @@ class Modulus():
     """
     def __call__(self, x):
         complex_contiguous_check(x)
-        norm = modulus(x).unsqueeze(-1)
+        norm = modulus(x)[..., None]
         return norm
 
 def complex_contiguous_check(x):

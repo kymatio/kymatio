@@ -73,14 +73,14 @@ class TestPad:
     def test_unpad(self, backend_device):
         backend, device = backend_device
 
-        x = torch.randn(4, 4)
+        x = torch.randn(4, 4, 1)
         x = x.to(device)
 
         y = backend.unpad(x)
 
         assert y.shape == (2, 2)
-        assert torch.allclose(y[0, 0], x[1, 1])
-        assert torch.allclose(y[0, 1], x[1, 2])
+        assert torch.allclose(y[0, 0], x[1, 1, 0])
+        assert torch.allclose(y[0, 1], x[1, 2, 0])
 
 
 # Checked the modulus
