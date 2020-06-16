@@ -34,8 +34,10 @@ class Pad(object):
         if self.pre_pad:
             return x
         else:
-            np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
-            output = np.pad(x, ((0,0), np_pad[0], np_pad[1]), mode='reflect')
+            paddings = ((0, 0),)
+            paddings += ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]),)
+
+            output = np.pad(x, paddings, mode='reflect')
             return output
 
 
