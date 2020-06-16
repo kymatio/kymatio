@@ -112,7 +112,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         if average:
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
-
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)

@@ -436,15 +436,6 @@ def test_modulus(device, backend, random_state=42):
     # Test with a random vector
     x = torch.randn(2, 4, 128, 2, requires_grad=True, device=device)
 
-    if backend.name == 'torch_skcuda' and device == 'cpu':
-        # If we are using a GPU-only backend, make sure it raises the proper
-        # errors for CPU tensors.
-        with pytest.raises(TypeError) as re:
-            x_bad = torch.randn((4, 2)).cpu()
-            backend.modulus(x_bad)
-        assert "for CPU tensors" in re.value.args[0]
-        return
-
     x_abs = backend.modulus(x).squeeze(-1)
     assert len(x_abs.shape) == len(x.shape[:-1])
 

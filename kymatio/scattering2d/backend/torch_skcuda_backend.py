@@ -115,7 +115,7 @@ class SubsampleFourier(object):
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
-class Modulus(object):
+class Modulus_Complex(object):
     """This class implements a modulus transform for complex numbers.
 
         Usage
@@ -162,12 +162,12 @@ class Modulus(object):
 
         kernel = """
         extern "C"
-        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype}2 * z, int n)
+        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype} * z, int n)
         {
             int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= n)
             return;
-        z[i] = make_${Dtype}2(normf(2, x + 2*i), 0);
+        z[i] = make_${Dtype}(normf(2, x + 2*i), 0);
 
         }
         """
@@ -181,15 +181,18 @@ class Modulus(object):
 
 from .torch_backend import unpad
 from .torch_backend import Pad
-from .torch_backend import fft
+from .torch_backend import rfft, irfft, ifft
 from .torch_backend import concatenate
+from .torch_backend import Modulus
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch_skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = lambda x: concatenate(x, -3)

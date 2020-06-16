@@ -62,7 +62,7 @@ class Modulus(object):
         if not x.is_cuda and self.backend=='skcuda':
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
-        out = x.new(x.shape)
+        out = torch.empty(x.shape[:-1] + (1,), dtype=x.dtype, layout=x.layout, device=x.device)
 
         if not x.is_contiguous():
             raise RuntimeError('Input should be contiguous.')
@@ -72,19 +72,19 @@ class Modulus(object):
 
         kernel = """
         extern "C"
-        __global__ void abs_complex_value(const ${dtype} * x, ${dtype}2 * z, int n)
+        __global__ void abs_complex_value(const ${dtype} * x, ${dtype} * z, int n)
         {
             int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= n)
             return;
-        z[i] = make_${dtype}2(normf(2, x + 2*i), 0);
+        z[i] = normf(2, x + 2*i);
 
         }
         """
         fabs = load_kernel('abs_complex_value', kernel, dtype=get_dtype(x))
         fabs(grid=(self.get_blocks(int(out.nelement())//2), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
+             args=[x.data_ptr(), out.data_ptr(), x.numel() // 2],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
@@ -108,7 +108,8 @@ def modulus_complex(x):
         A tensor with the same dimensions as x, such that norm[..., 0] contains
         the complex modulus of x, while norm[..., 1] = 0.
     """
-    return modulus(x)
+    norm = modulus(x)
+    return norm
 
 class SubsampleFourier(object):
     """Subsampling in the Fourier domain
@@ -219,16 +220,17 @@ def subsample_fourier(x, k):
     return subsamplefourier(x,k)
 
 
-from .torch_backend import real, cdgmm, unpad, pad, concatenate, fft
+from .torch_backend import  cdgmm, unpad, pad, concatenate, rfft, irfft, ifft, Modulus
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'pad', 'real', 'unpad', 'fft', 'concatenate'])
 
 backend.name = 'torch_skcuda'
-backend.modulus_complex = modulus_complex
+backend.modulus = Modulus()
 backend.subsample_fourier = subsample_fourier
-backend.real = real
 backend.cdgmm = cdgmm
 backend.unpad = unpad
 backend.pad = pad
-backend.fft = fft
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.concatenate = lambda x: concatenate(x, -2)
