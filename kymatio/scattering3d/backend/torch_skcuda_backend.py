@@ -8,7 +8,7 @@ from string import Template
 BACKEND_NAME = 'torch_skcuda'
 
 from collections import namedtuple
-from ...backend.torch_backend import _is_complex, _is_real, contiguous_check, complex_contiguous_check, complex_check, real_check
+from ...backend.torch_backend import _is_complex, _is_real, contiguous_check, complex_contiguous_check, complex_check, real_check, Modulus
 
 
 @cupy.util.memoize(for_each_device=True)
@@ -104,70 +104,6 @@ def cdgmm3d(A, B, inplace=False):
     cublas.cublasSetStream(handle, stream)
     cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
     return C
-
-
-class Modulus(object):
-    """This class implements a modulus transform for complex numbers.
-
-        Usage
-        -----
-        modulus = Modulus()
-        x_mod = modulus(x)
-
-        Parameters
-        ---------
-        x : tensor
-            Complex torch tensor.
-
-        Raises
-        ------
-        RuntimeError
-            In the event that x is not contiguous.
-        TypeError
-            In the event that x is on CPU or the input is not complex.
-
-        Returns
-        -------
-        output : tensor
-            A tensor with the same dimensions as x, such that output[..., 0]
-            contains the complex modulus of x, while output[..., 1] = 0.
-
-    """
-    def __init__(self):
-        self.CUDA_NUM_THREADS = 1024
-
-    def GET_BLOCKS(self, N):
-        return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
-
-    def __call__(self, x):
-        if not x.is_cuda:
-            raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
-
-        out = x.new(x.shape[:-1] +(1,))
-
-        if not _is_complex(x):
-            raise TypeError('The inputs should be complex.')
-
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
-
-        kernel = """
-        extern "C"
-        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype} * z, int n)
-        {
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i >= n)
-            return;
-        z[i] = normf(2, x + 2*i);
-
-        }
-        """
-        fabs = _load_kernel('abs_complex_value', kernel, Dtype=_get_dtype(x))
-        fabs(grid=(self.GET_BLOCKS(int(out.nelement()) ), 1, 1),
-             block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[x.data_ptr(), out.data_ptr(), out.numel()],
-             stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
-        return out
 
 
 
