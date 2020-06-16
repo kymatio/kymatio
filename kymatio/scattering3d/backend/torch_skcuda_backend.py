@@ -11,24 +11,6 @@ from collections import namedtuple
 from ...backend.torch_backend import _is_complex, _is_real, contiguous_check, complex_contiguous_check, complex_check, real_check, Modulus
 
 
-@cupy.util.memoize(for_each_device=True)
-def _load_kernel(kernel_name, code, **kwargs):
-    code = Template(code).substitute(**kwargs)
-    kernel_code = cupy.cuda.compile_with_cache(code)
-    return kernel_code.get_function(kernel_name)
-
-Stream = namedtuple('Stream', ['ptr'])
-
-def _get_dtype(t):
-    dtypes = {torch.float32: 'float',
-              torch.float64: 'double'}
-
-    return dtypes[t.dtype]
-
-def _is_complex(input):
-    return input.shape[-1] == 2
-
-
 def cdgmm3d(A, B, inplace=False):
     """Complex pointwise multiplication.
 
