@@ -66,12 +66,12 @@ def concatenate(arrays, L):
 
 def rfft(x):
     real_check(x)
-    return scipy.fftpack.fftn(x)
+    return scipy.fftpack.fftn(x, axes=(-3, -2, -1))
 
 
 def ifft(x):
     complex_check(x)
-    return scipy.fftpack.ifftn(x)
+    return scipy.fftpack.ifftn(x, axes=(-3, -2, -1))
 
 
 backend = namedtuple('backend',
