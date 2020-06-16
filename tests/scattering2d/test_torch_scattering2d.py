@@ -65,7 +65,8 @@ class TestPad:
         x = torch.randn(1, 8, 8)
         x = x.to(device)
 
-        z = pad(x).squeeze(-1)
+        z = pad(x)
+        z = z.reshape(z.shape[:-1])
 
         assert torch.allclose(z, x)
 

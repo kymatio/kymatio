@@ -456,13 +456,13 @@ def test_modulus(device, backend, random_state=42):
     # check the gradient
     loss = torch.sum(x_abs)
     loss.backward()
-    x_grad = x2 / x_abs2.unsqueeze(dim=-1)
+    x_grad = x2 / x_abs2[..., None]
     assert torch.allclose(x.grad, x_grad)
 
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
-    x_abs0 = backend.modulus(x0).squeeze(-1)
+    x_abs0 = backend.modulus(x0).reshape(x0.shape[:-1])
     loss0 = torch.sum(x_abs0)
     loss0.backward()
     assert torch.max(torch.abs(x0.grad)) <= 1e-7
