@@ -30,9 +30,10 @@ class TestScattering1DJax:
         Sx0 = device_put(np.asarray(data['Sx']))
 
         T = x.shape[-1]
-        print(x.dtype, J.dtype, Q.dtype, Sx0.dtype)
         scattering = Scattering1D(J, T, Q, backend=backend, frontend='jax')
 
-        Sx = scattering(x)
-        assert np.allclose(Sx, Sx0)
+        Sx = scattering(x) 
+
+        assert np.allclose(Sx, Sx0, atol=1e-6, rtol =1e-7)
+
 
