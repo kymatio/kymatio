@@ -107,6 +107,14 @@ class TestModulus:
             modulus(y)
         assert 'contiguous' in record.value.args[0]
 
+    @pytest.mark.parametrize('backend', backends)
+    def test_cuda_only(self, backend):
+        modulus = backend.modulus
+        if backend.name == 'torch_skcuda':
+            x = torch.rand(100, 10, 4, 2).cpu()
+            with pytest.raises(TypeError) as exc:
+                y = modulus(x)
+            assert 'Use the torch backend' in exc.value.args[0]
     
 # Checked the subsampling
 class TestSubsampleFourier:
