@@ -433,9 +433,11 @@ def test_modulus(device, backend, random_state=42):
     Tests the stability and differentiability of modulus
     """
     if backend.name == "torch_skcuda" and device == "cpu":
-        pytest.skip("The skcuda backend does not pass differentiability"
-            "tests, but that's ok (for now).")
-
+        with pytest.raises(TypeError) as re:
+            x_bad = torch.randn((4, 2)).cpu()
+            backend.modulus(x_bad)
+        assert "for CPU tensors" in re.value.args[0]
+        return
 
     torch.manual_seed(random_state)
     # Test with a random vector
@@ -449,9 +451,14 @@ def test_modulus(device, backend, random_state=42):
     x2 = x.clone()
     assert torch.allclose(x_abs2, torch.sqrt(x2[..., 0] ** 2 + x2[..., 1] ** 2))
 
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4).to(device)
+        backend.modulus(x_bad)
+    assert "should be complex" in te.value.args[0]
+
     if backend.name == "torch_skcuda":
         pytest.skip("The skcuda backend does not pass differentiability"
-            "tests, but that's ok (for now).")
+                "tests, but that's ok (for now).")
 
     # check the gradient
     loss = torch.sum(x_abs)
