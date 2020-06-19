@@ -129,7 +129,8 @@ def test_complex_modulus(backend, device):
         pytest.skip("The skcuda backend does not support CPU tensors.")
     x = torch.randn(4, 3, 2).to(device)
     xm = torch.sqrt(x[..., 0] ** 2 + x[..., 1] ** 2)
-    y = backend.modulus(x).squeeze(-1)
+    y = backend.modulus(x)
+    y = y.reshape(y.shape[:-1])
     assert (y - xm).norm() < 1e-7
 
 
