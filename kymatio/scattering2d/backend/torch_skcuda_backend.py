@@ -178,7 +178,7 @@ class Modulus(object):
 from .torch_backend import unpad
 from .torch_backend import Pad
 from .torch_backend import rfft, irfft, ifft
-from .torch_backend import concatenate
+from .torch_backend import concatenate_2d
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch_skcuda'
@@ -190,4 +190,4 @@ backend.irfft = irfft
 backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = lambda x: concatenate(x, -3)
+backend.concatenate = concatenate_2d

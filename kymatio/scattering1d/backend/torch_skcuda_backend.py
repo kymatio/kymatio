@@ -214,7 +214,7 @@ def subsample_fourier(x, k):
     return subsamplefourier(x,k)
 
 
-from .torch_backend import  cdgmm, unpad, pad, concatenate, rfft, irfft, ifft
+from .torch_backend import  cdgmm, unpad, pad, concatenate, rfft, irfft, ifft, concatenate_1d
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'pad', 'real', 'unpad', 'fft', 'concatenate'])
 
@@ -227,4 +227,4 @@ backend.pad = pad
 backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
-backend.concatenate = lambda x: concatenate(x, -2)
+backend.concatenate =  concatenate_1d

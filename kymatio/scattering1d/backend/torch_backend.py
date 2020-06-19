@@ -112,6 +112,9 @@ def ifft(x):
     return torch.ifft(x, 1, normalized=False)
 
 
+def concatenate_1d(x):
+    return concatenate(x, -2)
+
 
 backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
 backend.name = 'torch'
@@ -123,4 +126,4 @@ backend.pad = pad
 backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
-backend.concatenate = lambda x: concatenate(x, -2)
+backend.concatenate = concatenate_1d
