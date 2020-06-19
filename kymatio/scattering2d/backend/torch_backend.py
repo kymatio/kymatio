@@ -99,7 +99,9 @@ def unpad(in_):
             Output tensor.  Unpadded input.
 
     """
-    return in_[..., 1:-1, 1:-1, 0]
+    in_ = in_[..., 1:-1, 1:-1, :]
+    in_ = in_.reshape(in_.shape[:-1])
+    return in_
 
 class SubsampleFourier(object):
     """Subsampling of a 2D image performed in the Fourier domain

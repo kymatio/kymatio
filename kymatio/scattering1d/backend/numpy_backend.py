@@ -56,8 +56,8 @@ def pad(x, pad_left, pad_right):
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         raise ValueError('Indefinite padding size (larger than tensor).')
     
-    paddings = ((0, 0), ) * len(x.shape[:-1])
-    paddings += ((pad_left, pad_right), )
+    paddings = ((0, 0),) * len(x.shape[:-1])
+    paddings += (pad_left, pad_right), 
 
     output = np.pad(x, paddings, mode='reflect')
     return output
