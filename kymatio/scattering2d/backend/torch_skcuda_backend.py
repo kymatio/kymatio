@@ -67,10 +67,10 @@ class SubsampleFourier(object):
 
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
+
         x = x.view((-1,) + signal_shape)
 
-        out = torch.zeros((x.shape[0], x.shape[1] // k, x.shape[2] // k, 2),
-                dtype=x.dtype, layout=x.layout, device=x.device)
+        out = torch.empty_like(x[:, ::k, ::k])
 
         complex_check(x)
         contiguous_check(x) 
@@ -110,6 +110,7 @@ class SubsampleFourier(object):
                 self.GET_BLOCKS(out.shape[0], self.block[2]))
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
+
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
@@ -150,7 +151,7 @@ class Modulus(object):
         if not x.is_cuda:
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
         
-        out = torch.zeros(x.shape[:-1] +(1,), dtype=x.dtype, layout=x.layout, device=x.device)
+        out = torch.empty_like(x[..., :1]) 
 
         contiguous_check(x) 
         complex_check(x)

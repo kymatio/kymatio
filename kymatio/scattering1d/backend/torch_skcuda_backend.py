@@ -61,7 +61,7 @@ class Modulus(object):
         if not x.is_cuda and self.backend=='skcuda':
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
-        out = torch.zeros(x.shape[:-1] +(1,), dtype=x.dtype, layout=x.layout, device=x.device)
+        out = torch.empty_like(x[..., :1])
    
         contiguous_check(x)
         complex_check(x)
@@ -150,7 +150,7 @@ class SubsampleFourier(object):
         contiguous_check(x) 
         complex_check(x)
 
-        out = torch.zeros((x.shape[0], x.shape[1], x.shape[2] // k, 2), dtype=x.dtype, layout=x.layout, device=x.device)
+        out = torch.empty_like(x[:, :, ::k])
 
         kernel = '''
         #define NT ${T} / ${k}
