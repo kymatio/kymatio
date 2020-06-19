@@ -76,7 +76,7 @@ def cdgmm3d(A, B, inplace=False):
     if not A.is_cuda:
         raise RuntimeError('Use the torch backend for CPU tensors.')
 
-    C = A.new(A.shape) if not inplace else A
+    C = torch.empty_like(A) if not inplace else A
     m, n = B.nelement() // 2, A.nelement() // B.nelement()
     lda = m
     ldc = m
