@@ -4,6 +4,7 @@ import torch
 import cupy
 from collections import namedtuple
 from string import Template
+from ...backend.torch_backend import contiguous_check, complex_check, _is_complex
 
 BACKEND_NAME = 'torch_skcuda'
 
@@ -21,8 +22,6 @@ def get_dtype(t):
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-def _is_complex(input):
-    return input.shape[-1] == 2
 
 class Modulus(object):
     """Stable complex modulus
@@ -63,12 +62,10 @@ class Modulus(object):
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
         out = x.new(x.shape[:-1] + (1,))
+        
+        contiguous_check(x)
+        complex_check(x)
 
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
-
-        if not _is_complex(x):
-            raise TypeError('The input should be complex.')
 
         kernel = """
         extern "C"
