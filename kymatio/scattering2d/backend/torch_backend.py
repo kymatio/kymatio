@@ -6,7 +6,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, _is_real, cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
 
 
 class Pad(object):
@@ -124,11 +124,9 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
-        if not _is_complex(x):
-            raise TypeError('The x should be complex.')
+        complex_check(x)
+        contiguous_check(x)
 
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
         x = x.view((-1,) + signal_shape)

@@ -7,7 +7,7 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, Modulus, concatenate, contiguous_check, cdgmm, complex_check, real_check
+from ...backend.torch_backend import Modulus, concatenate, contiguous_check, cdgmm, complex_check, real_check
 
 
 def subsample_fourier(x, k):
@@ -33,9 +33,8 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    if not _is_complex(x):
-        raise TypeError('The input should be complex.')
-
+    complex_check(x)
+    
     N = x.shape[-2]
     res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
     return res
@@ -63,9 +62,8 @@ def pad(x, pad_left, pad_right):
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         raise ValueError('Indefinite padding size (larger than tensor).')
-    res = F.pad(x[:, :, None],
-                (pad_left, pad_right, 0, 0),
-                mode='reflect')
+
+    res = F.pad(x[:, :, None], (pad_left, pad_right, 0, 0), mode='reflect')
     res = res[:, :, 0, ..., None]
     return res
 

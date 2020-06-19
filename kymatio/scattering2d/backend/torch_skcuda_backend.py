@@ -8,7 +8,7 @@ from string import Template
 
 BACKEND_NAME = 'torch_skcuda'
 
-from ...backend.torch_backend import _is_complex
+from ...backend.torch_backend import contiguous_check, complex_check
 from ...backend.torch_skcuda_backend import cdgmm
 
 @cupy.util.memoize(for_each_device=True)
@@ -70,12 +70,9 @@ class SubsampleFourier(object):
         x = x.view((-1,) + signal_shape)
 
         out = x.new(size=[x.shape[0], x.shape[1] // k, x.shape[2] // k, 2])
-
-        if not _is_complex(x):
-            raise TypeError('The x should be complex.')
-
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
+        
+        complex_check(x)
+        contiguous_check(x) 
 
         kernel = '''
         #define NW ${W} / ${k}
@@ -154,11 +151,8 @@ class Modulus(object):
 
         out = x.new(x.shape[:-1] +(1,))
 
-        if not _is_complex(x):
-            raise TypeError('The inputs should be complex.')
-
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
+        contiguous_check(x) 
+        complex_check(x)
 
         kernel = """
         extern "C"

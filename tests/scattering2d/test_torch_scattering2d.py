@@ -138,7 +138,7 @@ class TestSubsampleFourier:
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
             subsample_fourier(y, k=16)
-        assert 'should be contiguous' in record.value.args[0]
+        assert 'must be contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):
