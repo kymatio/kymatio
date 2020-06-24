@@ -46,7 +46,7 @@ We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchm
 
 ## How to cite
 
-If you use this package, please cite the following paper:	If you use this package, please cite our paper <a href="">Kymatio: Scattering Transforms in Python</a>:
+If you use this package, please cite our paper <a href="">Kymatio: Scattering Transforms in Python</a>:
 
 Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J., Belilovsky E., Bruna J., Lostanlen V., Chaudhary M., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M. (2020). Kymatio: Scattering Transforms in Python. Journal of Machine Learning Research 21(60):1−6, 2020. [(paper)](http://jmlr.org/papers/v21/19-047.html) [(bibtex)](http://jmlr.org/papers/v21/19-047.bib)
 
