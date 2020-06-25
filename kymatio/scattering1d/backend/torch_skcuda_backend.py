@@ -66,7 +66,8 @@ class Modulus(object):
         contiguous_check(x)
         complex_check(x)
 
-
+        # abs_complex_value takes in a complex array and returns the real
+        # modulus of the input array
         kernel = """
         extern "C"
         __global__ void abs_complex_value(const ${dtype} * x, ${dtype} * z, int n)
@@ -105,8 +106,7 @@ def modulus_complex(x):
         A tensor with the same dimensions as x, such that norm[..., 0] contains
         the complex modulus of x, while norm[..., 1] = 0.
     """
-    norm = modulus(x)
-    return norm
+    return modulus(x)
 
 class SubsampleFourier(object):
     """Subsampling in the Fourier domain
