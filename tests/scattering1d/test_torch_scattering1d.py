@@ -470,7 +470,7 @@ def test_modulus(device, backend, random_state=42):
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
-    x_abs0 = backend.modulus(x0).reshape(x0.shape[:-1])
+    x_abs0 = backend.modulus(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
     assert torch.max(torch.abs(x0.grad)) <= 1e-7
