@@ -98,7 +98,7 @@ def rfft(x):
 
 def irfft(x):
     complex_check(x)
-    return np.real(scipy.fftpack.ifft2(x))
+    return scipy.fftpack.ifft2(x).real
 
 
 def ifft(x):
