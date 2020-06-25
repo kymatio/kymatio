@@ -308,9 +308,8 @@ class TestFFT:
 
         x = x_r + 1j*x_i
 
-        coefficents = np.zeros(x.shape + x.shape).astype('complex128')
-
-        I, J, K, L = np.ix_(np.arange(4), np.arange(4), np.arange(4), np.arange(4))
+        I, J, K, L = np.meshgrid(np.arange(4), np.arange(4), np.arange(4),
+                np.arange(4), indexing='ij')
         coefficents = coefficent(K * I / x.shape[0] + L * J / x.shape[1])
 
         y = np.zeros(x.shape).astype('complex128')
