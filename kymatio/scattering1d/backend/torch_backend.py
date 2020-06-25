@@ -1,6 +1,7 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 from collections import namedtuple
@@ -62,9 +63,8 @@ def pad(x, pad_left, pad_right):
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         raise ValueError('Indefinite padding size (larger than tensor).')
-
-    res = F.pad(x[:, :, None], (pad_left, pad_right, 0, 0), mode='reflect')
-    res = res[:, :, 0, ..., None]
+    res = F.pad(x, (pad_left, pad_right), mode='reflect')
+    res = res[..., None]
     return res
 
 def unpad(x, i0, i1):
