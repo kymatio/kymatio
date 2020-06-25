@@ -93,7 +93,8 @@ class TestModulus:
         modulus = backend.modulus
         x = torch.rand(100, 10, 4, 2).to(device)
 
-        y = modulus(x).squeeze(-1)
+        y = modulus(x)
+        y = y.reshape(y.shape[:-1])
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
         assert torch.allclose(u, y)
 
@@ -232,11 +233,11 @@ class TestCDGMM:
         assert 'not compatible' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
+            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
         assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 3))
+            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
         assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
