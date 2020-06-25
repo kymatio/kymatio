@@ -4,7 +4,7 @@ import torch
 import cupy
 from collections import namedtuple
 from string import Template
-from ...backend.torch_backend import contiguous_check, complex_check, _is_complex
+from ...backend.torch_backend import contiguous_check, complex_check
 
 BACKEND_NAME = 'torch_skcuda'
 
