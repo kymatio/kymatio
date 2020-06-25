@@ -146,15 +146,17 @@ def rfft(x):
     contiguous_check(x)
     real_check(x)
 
-    x = x.reshape(x.shape[:-1])
-    return torch.rfft(x, 2, normalized=False, onesided=False)
+    x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
+    x_r[..., 0] = x[..., 0]
+
+    return torch.fft(x_r, 2, normalized=False)
 
 
 def irfft(x):
     contiguous_check(x)
     complex_check(x)
 
-    return torch.irfft(x, 2, normalized=False, onesided=False)[..., None]
+    return torch.ifft(x, 2, normalized=False)[..., :1]
 
 
 def ifft(x):
