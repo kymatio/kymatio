@@ -149,7 +149,17 @@ class TestFFT:
         z = z * 4
 
         assert not np.iscomplexobj(z)
-        assert np.allclose(np.real(y), z)
+        assert np.allclose(y.real, z)
+
+        x = np.random.randn(2, 2)
+
+        y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
+                       x[0, 0] - x[0, 1] + x[1, 0] - x[1, 1]],
+                      [x[0, 0] + x[0, 1] - x[1, 0] - x[1, 1],
+                       x[0, 0] - x[0, 1] - x[1, 0] + x[1, 1]]])
+
+        z = backend.rfft(x)
+        assert np.allclose(y.real, z)
 
 
 class TestBackendUtils:
