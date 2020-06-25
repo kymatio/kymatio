@@ -60,8 +60,8 @@ class Modulus(object):
     def __call__(self, x):
         if not x.is_cuda and self.backend=='skcuda':
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
-
-        out = torch.empty_like(x[..., :1])
+        
+        out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
    
         contiguous_check(x)
         complex_check(x)
