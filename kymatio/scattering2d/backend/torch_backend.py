@@ -142,6 +142,8 @@ class SubsampleFourier(object):
         return out
 
 
+# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
+# inefficent.
 def rfft(x):
     contiguous_check(x)
     real_check(x)

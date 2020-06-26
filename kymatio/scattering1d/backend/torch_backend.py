@@ -88,12 +88,13 @@ def unpad(x, i0, i1):
     x = x.reshape(x.shape[:-1])
     return x[..., i0:i1]
 
-
+# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
+# inefficent.
 def rfft(x):
     contiguous_check(x)
     real_check(x)
     
-    x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
+    x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
     x_r[..., 0] = x[..., 0]
 
     return torch.fft(x_r, 1, normalized=False)
