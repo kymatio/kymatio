@@ -304,49 +304,40 @@ class TestFFT:
             return np.exp(-2 * np.pi * 1j * n)
 
         x_r = np.random.rand(4, 4)
-        x_i = np.random.rand(4, 4)
-
-        x = x_r + 1j * x_i
 
         I, J, K, L = np.meshgrid(np.arange(4), np.arange(4), np.arange(4),
                 np.arange(4), indexing='ij')
-        coefficents = coefficent(K * I / x.shape[0] + L * J / x.shape[1])
 
-        y = np.zeros(x.shape).astype('complex128')
-        
-        for k in range(4):
-            for l in range(4):
-                y[k, l] = (x * coefficents[..., k, l]).sum()
+        coefficents = coefficent(K * I / x_r.shape[0] + L * J / x_r.shape[1])
 
-        y_r = np.zeros(x.shape).astype('complex128')
+        y_r = np.zeros(x_r.shape).astype('complex128')
         
         for k in range(4):
             for l in range(4):
                 y_r[k, l] = (x_r * coefficents[..., k, l]).sum()
 
 
-        y = torch.from_numpy(np.stack((y.real, y.imag), axis=-1))
         y_r = torch.from_numpy(np.stack((y_r.real, y_r.imag), axis=-1))
-        x = torch.from_numpy(np.stack((x.real, x.imag), axis=-1))
-        x_r = torch.from_numpy(x_r).unsqueeze(-1)
+        x_r = torch.from_numpy(x_r)[..., None]
 
-        z = torch.fft(x, 2)        
-
-        assert torch.allclose(y, z)
-
-        z = backend.ifft(z)
-        
-        assert torch.allclose(x, z)
 
         z = backend.rfft(x_r)
 
         assert torch.allclose(y_r, z)
         
-        z = backend.irfft(z)
+        z_1 = backend.irfft(z)
         
-        assert z.shape == x_r.shape
-        assert torch.allclose(x_r, z)
- 
+        assert z_1.shape == x_r.shape
+        assert torch.allclose(x_r, z_1)
+
+
+        z_2 = backend.ifft(z)[..., :1]
+
+        
+        assert torch.allclose(x_r, z_2)
+
+        
+         
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
