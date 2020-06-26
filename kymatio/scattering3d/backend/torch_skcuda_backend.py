@@ -1,7 +1,6 @@
 import torch
 import warnings
 from skcuda import cublas
-import cupy
 from string import Template
 
 
