@@ -301,7 +301,7 @@ class TestFFT:
         import numpy as np
         
         def coefficent(n):
-            return np.exp(-2*np.pi*1j*n)
+            return np.exp(-2 * np.pi * 1j * n)
 
         x_r = np.random.rand(4, 4)
         x_i = np.random.rand(4, 4)
@@ -316,13 +316,13 @@ class TestFFT:
         
         for k in range(4):
             for l in range(4):
-                y[k, l] = (x*coefficents[..., k, l]).sum()
+                y[k, l] = (x * coefficents[..., k, l]).sum()
 
         y_r = np.zeros(x.shape).astype('complex128')
         
         for k in range(4):
             for l in range(4):
-                y_r[k, l] = (x_r*coefficents[..., k, l]).sum()
+                y_r[k, l] = (x_r * coefficents[..., k, l]).sum()
 
 
         y = torch.from_numpy(np.stack((y.real, y.imag), axis=-1))
