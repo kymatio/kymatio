@@ -1,7 +1,6 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from collections import namedtuple
