@@ -459,7 +459,7 @@ def test_modulus(device, backend, random_state=42):
 
     if backend.name == "torch_skcuda":
         pytest.skip("The skcuda backend does not pass differentiability"
-                "tests, but that's ok (for now).")
+            "tests, but that's ok (for now).")
 
     # check the gradient
     loss = torch.sum(x_abs)
