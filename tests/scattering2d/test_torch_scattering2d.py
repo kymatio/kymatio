@@ -369,7 +369,6 @@ class TestFFT:
             backend.irfft(x)
         assert 'complex' in record.value.args[0]
        
-       
         x = torch.randn(4, 4, 1)
         x = x.to(device)
         y = x[::2, ::2]
