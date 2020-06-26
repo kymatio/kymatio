@@ -346,8 +346,7 @@ class TestFFT:
         
         assert z.shape == x_r.shape
         assert torch.allclose(x_r, z)
-
-        
+ 
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
