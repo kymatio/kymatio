@@ -150,7 +150,7 @@ class SubsampleFourier(object):
         contiguous_check(x) 
         complex_check(x)
 
-        out = torch.empty_like(x[:, :, ::k])
+        out = torch.empty(x.shape[:-2] + (x.shape[-2] // k, x.shape[-1]), dtype=x.dtype, layout=x.layout, device=x.device)
 
         kernel = '''
         #define NT ${T} / ${k}

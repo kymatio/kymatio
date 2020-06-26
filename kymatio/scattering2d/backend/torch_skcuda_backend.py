@@ -70,7 +70,7 @@ class SubsampleFourier(object):
 
         x = x.view((-1,) + signal_shape)
 
-        out = torch.empty_like(x[:, ::k, ::k])
+        out = torch.empty(x.shape[:-3] + (x.shape[-3] // k, x.shape[-2] // k, x.shape[-1]), dtype=x.dtype, layout=x.layout, device=x.device)
 
         complex_check(x)
         contiguous_check(x) 
@@ -151,7 +151,7 @@ class Modulus(object):
         if not x.is_cuda:
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
         
-        out = torch.empty_like(x[..., :1]) 
+        out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
 
         contiguous_check(x) 
         complex_check(x)
