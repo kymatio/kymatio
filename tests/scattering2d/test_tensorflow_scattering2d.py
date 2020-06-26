@@ -126,27 +126,31 @@ class TestCDGMM:
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
     def test_fft(self, backend):
-        x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
-        x = x.astype('complex64')
+        x = np.random.randn(2, 2)         
+
         y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
                        x[0, 0] - x[0, 1] + x[1, 0] - x[1, 1]],
                       [x[0, 0] + x[0, 1] - x[1, 0] - x[1, 1],
                        x[0, 0] - x[0, 1] - x[1, 0] + x[1, 1]]])
 
-        z = backend.ifft(x)
-
-        z = z * 4
-
+        z = backend.rfft(x)
         assert np.allclose(y, z)
+        
+        z_1 = backend.irfft(z)
 
-        z = backend.irfft(x)
+        z_1 = z_1 
 
-        z = z * 4
-
-        assert not np.iscomplexobj(z)
-        assert np.allclose(np.real(y), z)
+        assert not np.iscomplexobj(z_1)
+        assert np.allclose(x, z_1)
 
 
+        z_2 = backend.ifft(z)
+
+        z_2 = z_2 
+
+        assert np.allclose(x, z_2)
+
+        
 class TestBackendUtils:
     @pytest.mark.parametrize('backend', backends)
     def test_concatenate(self, backend):
