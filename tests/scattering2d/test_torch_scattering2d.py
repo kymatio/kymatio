@@ -306,7 +306,7 @@ class TestFFT:
         x_r = np.random.rand(4, 4)
         x_i = np.random.rand(4, 4)
 
-        x = x_r + 1j*x_i
+        x = x_r + 1j * x_i
 
         I, J, K, L = np.meshgrid(np.arange(4), np.arange(4), np.arange(4),
                 np.arange(4), indexing='ij')
