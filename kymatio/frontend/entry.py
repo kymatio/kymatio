@@ -12,6 +12,7 @@ class ScatteringEntry(object):
 
         frontend_suffixes = {'torch' : 'Torch',
                              'numpy' : 'NumPy',
+                             'jax' : 'Jax',
                              'tensorflow' : 'TensorFlow',
                              'keras': 'Keras',
                              'sklearn': 'Transformer'}
