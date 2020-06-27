@@ -1,0 +1,236 @@
+import pytest
+import torch
+import numpy as np
+
+backends = []
+
+skcuda_available = False
+try:
+    if torch.cuda.is_available():
+        from skcuda import cublas
+        import cupy
+        skcuda_available = True
+except:
+    Warning('torch_skcuda backend not available.')
+
+if skcuda_available:
+    from kymatio.scattering1d.backend.torch_skcuda_backend import backend
+    backends.append(backend)
+
+from kymatio.scattering1d.backend.torch_backend import backend
+backends.append(backend)
+
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_pad_1d(device, backend, random_state=42):
+    """
+    Tests the correctness and differentiability of pad_1d
+    """
+    torch.manual_seed(random_state)
+    N = 128
+    for pad_left in range(0, N - 16, 16):
+        for pad_right in [pad_left, pad_left + 16]:
+            x = torch.randn(2, 4, N, requires_grad=True, device=device)
+            x_pad = backend.pad(x, pad_left, pad_right)
+            x_pad = x_pad.reshape(x_pad.shape[:-1])
+            # Check the size
+            x2 = x.clone()
+            x_pad2 = x_pad.clone()
+            # compare left reflected part of padded array with left side 
+            # of original array
+            for t in range(1, pad_left + 1):
+                assert torch.allclose(x_pad2[..., pad_left - t], x2[..., t])
+            # compare left part of padded array with left side of 
+            # original array
+            for t in range(x.shape[-1]):
+                assert torch.allclose(x_pad2[..., pad_left + t], x2[..., t])
+            # compare right reflected part of padded array with right side
+            # of original array
+            for t in range(1, pad_right + 1):
+                assert torch.allclose(x_pad2[..., x_pad.shape[-1] - 1 - pad_right + t], x2[..., x.shape[-1] - 1 - t])
+            # compare right part of padded array with right side of 
+            # original array
+            for t in range(1, pad_right + 1):
+                assert torch.allclose(x_pad2[..., x_pad.shape[-1] - 1 - pad_right - t], x2[..., x.shape[-1] - 1 - t])
+
+            # check the differentiability
+            loss = 0.5 * torch.sum(x_pad**2)
+            loss.backward()
+            # compute the theoretical gradient for x
+            x_grad_original = x.clone()
+            x_grad = x_grad_original.new(x_grad_original.shape).fill_(0.)
+            x_grad += x_grad_original
+
+            for t in range(1, pad_left + 1):
+                x_grad[..., t] += x_grad_original[..., t]
+
+            for t in range(1, pad_right + 1):  # it is counted twice!
+                t0 = x.shape[-1] - 1 - t
+                x_grad[..., t0] += x_grad_original[..., t0]
+
+            # get the difference
+            assert torch.allclose(x.grad, x_grad)
+
+    # Check that the padding shows an error if we try to pad
+    with pytest.raises(ValueError) as ve:
+        backend.pad(x, x.shape[-1], 0)
+    assert "padding size" in ve.value.args[0]
+    
+    with pytest.raises(ValueError) as ve:
+        backend.pad(x, 0, x.shape[-1])
+    assert "padding size" in ve.value.args[0]
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_modulus(device, backend, random_state=42):
+    """
+    Tests the stability and differentiability of modulus
+    """
+    if backend.name == "torch_skcuda" and device == "cpu":
+        with pytest.raises(TypeError) as re:
+            x_bad = torch.randn((4, 2)).cpu()
+            backend.modulus(x_bad)
+        assert "for CPU tensors" in re.value.args[0]
+        return
+
+    torch.manual_seed(random_state)
+    # Test with a random vector
+    x = torch.randn(2, 4, 128, 2, requires_grad=True, device=device)
+
+    x_abs = backend.modulus(x).squeeze(-1)
+    assert len(x_abs.shape) == len(x.shape[:-1])
+
+    # check the value
+    x_abs2 = x_abs.clone()
+    x2 = x.clone()
+    assert torch.allclose(x_abs2, torch.sqrt(x2[..., 0] ** 2 + x2[..., 1] ** 2))
+
+    with pytest.raises(TypeError) as te:
+        x_bad = torch.randn(4).to(device)
+        backend.modulus(x_bad)
+    assert "should be complex" in te.value.args[0]
+
+    if backend.name == "torch_skcuda":
+        pytest.skip("The skcuda backend does not pass differentiability"
+            "tests, but that's ok (for now).")
+
+    # check the gradient
+    loss = torch.sum(x_abs)
+    loss.backward()
+    x_grad = x2 / x_abs2[..., None]
+    assert torch.allclose(x.grad, x_grad)
+
+
+    # Test the differentiation with a vector made of zeros
+    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
+    x_abs0 = backend.modulus(x0)
+    loss0 = torch.sum(x_abs0)
+    loss0.backward()
+    assert torch.max(torch.abs(x0.grad)) <= 1e-7
+
+
+@pytest.mark.parametrize("backend", backends)
+@pytest.mark.parametrize("device", devices)
+def test_subsample_fourier(backend, device, random_state=42):
+    """
+    Tests whether the periodization in Fourier performs a good subsampling
+    in time
+    """
+    if backend.name == 'torch_skcuda' and device == 'cpu':
+        with pytest.raises(TypeError) as re:
+            x_bad = torch.randn((4, 2)).cpu()
+            backend.subsample_fourier(x_bad, 1)
+        assert "for CPU tensors" in re.value.args[0]
+        return
+    rng = np.random.RandomState(random_state)
+    J = 10
+    x = rng.randn(2, 4, 2**J) + 1j * rng.randn(2, 4, 2**J)
+    x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
+    x_f.dtype = 'float64'  # make it a vector
+    x_f_th = torch.from_numpy(x_f).to(device)
+
+    for j in range(J + 1):
+        x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
+        x_f_sub = x_f_sub_th.numpy()
+        x_f_sub.dtype = 'complex128'
+        x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
+        assert np.allclose(x[:, :, ::2**j], x_sub)
+
+    # If we are using a GPU-only backend, make sure it raises the proper
+    # errors for CPU tensors.
+    if device=='cuda':
+        with pytest.raises(TypeError) as te:
+            x_bad = torch.randn(4).cuda()
+            backend.subsample_fourier(x_bad, 1)
+        assert "should be complex" in te.value.args[0]
+
+
+def test_unpad():
+    # test unpading of a random tensor
+    x = torch.randn(8, 4, 1)
+
+    y = backend.unpad(x, 1, 3)
+
+    assert y.shape == (8, 2)
+    assert torch.allclose(y, x[:, 1:3, 0])
+
+    N = 128
+    x = torch.rand(2, 4, N)
+
+    # similar to for loop in pad test
+    for pad_left in range(0, N - 16, 16):
+        pad_right = pad_left + 16
+        x_pad = backend.pad(x, pad_left, pad_right)
+        x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right - 1)
+        assert torch.allclose(x, x_unpadded)
+
+
+def test_fft_type():
+    x = torch.randn(8, 4, 2) 
+
+    with pytest.raises(TypeError) as record:
+        y = backend.rfft(x)
+    assert 'should be real' in record.value.args[0]
+
+    x = torch.randn(8, 4, 1)
+
+    with pytest.raises(TypeError) as record:
+        y = backend.ifft(x)
+    assert 'should be complex' in record.value.args[0]
+
+    with pytest.raises(TypeError) as record:
+        y = backend.irfft(x)
+    assert 'should be complex' in record.value.args[0]
+
+
+def test_fft():
+    def coefficent(n):
+            return np.exp(-2 * np.pi * 1j * n)
+
+    x_r = np.random.rand(4)
+
+    I, K = np.meshgrid(np.arange(4), np.arange(4), indexing='ij')
+
+    coefficents = coefficent(K * I / x_r.shape[0])
+        
+    y_r = (x_r * coefficents).sum(-1)
+
+    x_r = torch.from_numpy(x_r)[..., None]
+    y_r = torch.from_numpy(np.column_stack((y_r.real, y_r.imag)))
+
+    z = backend.rfft(x_r)
+    assert torch.allclose(y_r, z)
+
+    z_1 = backend.ifft(z)
+    assert torch.allclose(x_r[..., 0], z_1[..., 0])
+
+    z_2 = backend.irfft(z)
+    assert not z_2.shape[-1] == 2
+    assert torch.allclose(x_r, z_2)
