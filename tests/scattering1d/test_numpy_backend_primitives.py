@@ -87,7 +87,6 @@ def test_fft_type():
         y = backend.irfft(x)
     assert 'should be complex' in record.value.args[0]
 
-
 def test_fft():
     x = np.random.randn(2)
 
@@ -103,7 +102,6 @@ def test_fft():
     z_2 = backend.irfft(z)
     assert not np.iscomplexobj(z_2)
     assert np.allclose(x, z_2)
-
 
     def coefficent(n):
             return np.exp(-2 * np.pi * 1j * n)
