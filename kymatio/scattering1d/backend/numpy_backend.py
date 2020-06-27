@@ -28,9 +28,11 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
+    complex_check(x)
 
-    N = x.shape[-1]
-    res = x.reshape(x.shape[:-1] + (k, N // k)).mean(axis=(-2,))
+    y = x.reshape(-1, k, x.shape[-1] // k)
+
+    res = y.mean(axis=(-2,))
     return res
 
 
