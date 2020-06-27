@@ -150,7 +150,7 @@ def contiguous_check(x):
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
 
-def cdgmm(A, B, inplace=False):
+def cdgmm(A, B):
     """Complex pointwise multiplication.
 
         Complex pointwise multiplication between (batched) tensor A and tensor B.
@@ -161,8 +161,6 @@ def cdgmm(A, B, inplace=False):
             A is a complex tensor of size (B, C, M, N, 2).
         B : tensor
             B is a complex tensor of size (M, N, 2) or real tensor of (M, N, 1).
-        inplace : boolean, optional
-            If set to True, all the operations are performed in place.
 
         Raises
         ------
@@ -208,10 +206,7 @@ def cdgmm(A, B, inplace=False):
             raise TypeError('Input must be on CPU.')
 
     if _is_real(B):
-        if inplace:
-            return A.mul_(B)
-        else:
-            return A * B
+        return A * B
     else:
         C = A.new(A.shape)
 
@@ -224,7 +219,7 @@ def cdgmm(A, B, inplace=False):
         C[..., 0].view(-1, B.nelement() // 2)[:] = A_r * B_r - A_i * B_i
         C[..., 1].view(-1, B.nelement() // 2)[:] = A_r * B_i + A_i * B_r
 
-        return C if not inplace else A.copy_(C)
+        return C 
 
 def concatenate(arrays, dim):
     return torch.stack(arrays, dim=dim)
