@@ -50,3 +50,39 @@ def test_subsample_fourier(random_state=42):
         x_bad = x.real
         backend.subsample_fourier(x_bad, 1)
     assert "should be complex" in te.value.args[0]
+
+def test_pad():
+    N = 128
+    x = np.random.rand(2, 4, N)
+    
+    for pad_left in range(0, N - 16, 16):
+        for pad_right in [pad_left, pad_left + 16]:
+            x_pad = backend.pad(x, pad_left, pad_right)
+            
+            # compare left reflected part of padded array with left side 
+            # of original array
+            for t in range(1, pad_left + 1):
+                assert np.allclose(x_pad[..., pad_left - t], x[..., t])
+            # compare left part of padded array with left side of 
+            # original array
+            for t in range(x.shape[-1]):
+                assert np.allclose(x_pad[..., pad_left + t], x[..., t])
+            # compare right reflected part of padded array with right side
+            # of original array
+            for t in range(1, pad_right + 1):
+                assert np.allclose(x_pad[..., x_pad.shape[-1] - 1 - pad_right + t], x[..., x.shape[-1] - 1 - t])
+            # compare right part of padded array with right side of 
+            # original array
+            for t in range(1, pad_right + 1):
+                assert np.allclose(x_pad[..., x_pad.shape[-1] - 1 - pad_right - t], x[..., x.shape[-1] - 1 - t])
+
+
+
+    with pytest.raises(ValueError):
+        backend.pad(x, x.shape[-1], 0)
+
+    with pytest.raises(ValueError):
+        backend.pad(x, 0, x.shape[-1])
+
+
+
