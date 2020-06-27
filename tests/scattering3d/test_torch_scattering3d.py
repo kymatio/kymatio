@@ -83,10 +83,8 @@ def test_fft3d_error(backend, device):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-@pytest.mark.parametrize("inplace", [False, True])
-def test_cdgmm3d(device, backend, inplace):
+def test_cdgmm3d(device, backend):
     if backend.name == 'torch' or device != 'cpu':
-        # Not all backends currently implement the inplace variant
         x = torch.zeros(2, 3, 4, 2).to(device)
         x[..., 0] = 2
         x[..., 1] = 3
@@ -99,12 +97,9 @@ def test_cdgmm3d(device, backend, inplace):
         prod[..., 0] = x[..., 0] * y[..., 0] - x[..., 1] * y[..., 1]
         prod[..., 1] = x[..., 0] * y[..., 1] + x[..., 1] * y[..., 0]
 
-        z = backend.cdgmm3d(x, y, inplace=inplace)
+        z = backend.cdgmm3d(x, y)
 
         assert (z - prod).norm().cpu().item() < 1e-7
-
-        if inplace:
-            assert (x - z).norm().cpu().item() < 1e-7
 
         with pytest.raises(RuntimeError) as record:
             x = torch.randn((3, 4, 3, 2), device=device)

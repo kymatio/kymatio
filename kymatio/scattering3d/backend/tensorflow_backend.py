@@ -66,7 +66,7 @@ def compute_integrals(input_array, integral_powers):
     return tf.stack(integrals, axis=-1)
 
 
-def cdgmm3d(A, B, inplace=False):
+def cdgmm3d(A, B):
     """Complex pointwise multiplication.
 
         Complex pointwise multiplication between (batched) tensor A and tensor B.
@@ -77,8 +77,6 @@ def cdgmm3d(A, B, inplace=False):
             Complex tensor.
         B : tensor
             Complex tensor of the same size as A.
-        inplace : boolean, optional
-            If set True, all the operations are performed inplace.
 
         Returns
         -------

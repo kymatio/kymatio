@@ -13,7 +13,7 @@ def _is_real(x):
     return x.shape[-1] == 1
 
 
-def cdgmm(A, B, inplace=False):
+def cdgmm(A, B):
     """Complex pointwise multiplication.
 
         Complex pointwise multiplication between (batched) tensor A and tensor
@@ -26,8 +26,6 @@ def cdgmm(A, B, inplace=False):
         B : tensor
             B is a complex tensor of size (M, N, 2) or real tensor of (M, N,
             1).
-        inplace : boolean, optional
-            If set to True, all the operations are performed in place.
 
         Raises
         ------
@@ -68,15 +66,12 @@ def cdgmm(A, B, inplace=False):
         raise TypeError('Input and filter must be on the same GPU.')
 
     if _is_real(B):
-        if inplace:
-            return A.mul_(B)
-        else:
-            return A * B
+        return A * B
     else:
         if not A.is_contiguous() or not B.is_contiguous():
             raise RuntimeError('Tensors must be contiguous.')
 
-        C = torch.empty_like(A) if not inplace else A
+        C = torch.empty_like(A) 
         m, n = B.nelement() // 2, A.nelement() // B.nelement()
         lda = m
         ldc = m
