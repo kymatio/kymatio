@@ -2,8 +2,6 @@ import tensorflow as tf
 import numpy as np
 
 
-
-
 def complex_check(x):
     if not _is_complex(x):
         raise TypeError('The input should be complex.')
@@ -45,7 +43,7 @@ def concatenate(arrays, dim):
     return tf.stack(arrays, axis=dim)
 
 
-def cdgmm(A, B, inplace=False):
+def cdgmm(A, B):
     """
         Complex pointwise multiplication between (batched) tensor A and tensor B.
         Parameters
@@ -54,8 +52,6 @@ def cdgmm(A, B, inplace=False):
             A is a complex tensor of size (B, C, M, N, 2)
         B : tensor
             B is a complex tensor of size (M, N) or real tensor of (M, N)
-        inplace : boolean, optional
-            if set to True, all the operations are performed inplace
         Returns
         -------
         C : tensor
