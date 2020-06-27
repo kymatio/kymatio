@@ -10,7 +10,7 @@ from collections import namedtuple
 from ...backend.torch_backend import _is_complex, _is_real, contiguous_check, complex_contiguous_check, complex_check, real_check, Modulus
 
 
-def cdgmm3d(A, B, inplace=False):
+def cdgmm3d(A, B):
     """Complex pointwise multiplication.
 
         Complex pointwise multiplication between (batched) tensor A and tensor B.
@@ -21,8 +21,6 @@ def cdgmm3d(A, B, inplace=False):
             Complex torch tensor.
         B : torch tensor
             Complex of the same size as A.
-        inplace : boolean, optional
-            If set True, all the operations are performed inplace.
 
         Raises
         ------
@@ -75,7 +73,7 @@ def cdgmm3d(A, B, inplace=False):
     if not A.is_cuda:
         raise RuntimeError('Use the torch backend for CPU tensors.')
 
-    C = torch.empty_like(A) if not inplace else A
+    C = torch.empty_like(A)
     m, n = B.nelement() // 2, A.nelement() // B.nelement()
     lda = m
     ldc = m
