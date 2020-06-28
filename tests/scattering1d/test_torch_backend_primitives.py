@@ -57,6 +57,7 @@ def test_pad_1d(device, backend, random_state=42):
             # original array
             for t in range(1, pad_right + 1):
                 assert torch.allclose(x_pad2[..., x_pad.shape[-1] - 1 - pad_right - t], x2[..., x.shape[-1] - 1 - t])
+
             # check the differentiability
             loss = 0.5 * torch.sum(x_pad**2)
             loss.backward()
@@ -64,11 +65,14 @@ def test_pad_1d(device, backend, random_state=42):
             x_grad_original = x.clone()
             x_grad = x_grad_original.new(x_grad_original.shape).fill_(0.)
             x_grad += x_grad_original
+
             for t in range(1, pad_left + 1):
                 x_grad[..., t] += x_grad_original[..., t]
+
             for t in range(1, pad_right + 1):  # it is counted twice!
                 t0 = x.shape[-1] - 1 - t
                 x_grad[..., t0] += x_grad_original[..., t0]
+
             # get the difference
             assert torch.allclose(x.grad, x_grad)
 
