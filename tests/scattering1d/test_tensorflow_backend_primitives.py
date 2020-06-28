@@ -71,4 +71,56 @@ def test_unpad():
         x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right)
         assert np.allclose(x, x_unpadded)
 
+def test_fft_type():
+    x = np.random.rand(8, 4) + 1j * np.random.rand(8, 4)
 
+    with pytest.raises(TypeError) as record:
+        y = backend.rfft(x)
+    assert 'should be real' in record.value.args[0]
+
+    x = np.random.rand(8, 4) 
+
+    with pytest.raises(TypeError) as record:
+        y = backend.ifft(x)
+    assert 'should be complex' in record.value.args[0]
+
+    with pytest.raises(TypeError) as record:
+        y = backend.irfft(x)
+    assert 'should be complex' in record.value.args[0]
+
+def test_fft():
+    x = np.random.randn(2)
+
+    y = np.array([[x[0] + x[1],
+                   x[0] - x[1]]])
+
+    z = backend.rfft(x)
+    assert np.allclose(y, z)
+
+    z_1 = backend.ifft(z)
+    assert np.allclose(x, z_1)
+
+    z_2 = backend.irfft(z)
+    assert not np.iscomplexobj(z_2)
+    assert np.allclose(x, z_2)
+
+    def coefficent(n):
+            return np.exp(-2 * np.pi * 1j * n)
+
+    x_r = np.random.rand(4)
+
+    I, K = np.meshgrid(np.arange(4), np.arange(4), indexing='ij')
+
+    coefficents = coefficent(K * I / x_r.shape[0])
+        
+    y_r = (x_r * coefficents).sum(-1)
+
+    z = backend.rfft(x_r)
+    assert np.allclose(y_r, z)
+
+    z_1 = backend.ifft(z)
+    assert np.allclose(x_r, z_1)
+
+    z_2 = backend.irfft(z)
+    assert not np.iscomplexobj(z_2)
+    assert np.allclose(x_r, z_2)
