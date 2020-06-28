@@ -20,6 +20,10 @@ if skcuda_available:
 from kymatio.scattering1d.backend.torch_backend import backend
 backends.append(backend)
 
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -33,18 +37,26 @@ def test_pad_1d(device, backend, random_state=42):
         for pad_right in [pad_left, pad_left + 16]:
             x = torch.randn(2, 4, N, requires_grad=True, device=device)
             x_pad = backend.pad(x, pad_left, pad_right)
-            print(x_pad.shape, x_pad.shape[:-1], pad_left, pad_right)
-
             x_pad = x_pad.reshape(x_pad.shape[:-1])
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
+            # compare left reflected part of padded array with left side 
+            # of original array
             for t in range(1, pad_left + 1):
-                assert torch.allclose(x_pad2[..., pad_left - t],x2[..., t] + 10)
-            for t in range(x2.shape[-1]):
+                assert torch.allclose(x_pad2[..., pad_left - t], x2[..., t])
+            # compare left part of padded array with left side of 
+            # original array
+            for t in range(x.shape[-1]):
                 assert torch.allclose(x_pad2[..., pad_left + t], x2[..., t])
+            # compare right reflected part of padded array with right side
+            # of original array
             for t in range(1, pad_right + 1):
                 assert torch.allclose(x_pad2[..., x_pad.shape[-1] - 1 - pad_right + t], x2[..., x.shape[-1] - 1 - t])
+            # compare right part of padded array with right side of 
+            # original array
+            for t in range(1, pad_right + 1):
+                assert torch.allclose(x_pad2[..., x_pad.shape[-1] - 1 - pad_right - t], x2[..., x.shape[-1] - 1 - t])
             # check the differentiability
             loss = 0.5 * torch.sum(x_pad**2)
             loss.backward()
@@ -59,9 +71,11 @@ def test_pad_1d(device, backend, random_state=42):
                 x_grad[..., t0] += x_grad_original[..., t0]
             # get the difference
             assert torch.allclose(x.grad, x_grad)
+
     # Check that the padding shows an error if we try to pad
     with pytest.raises(ValueError):
         backend.pad(x, x.shape[-1], 0)
+
     with pytest.raises(ValueError):
         backend.pad(x, 0, x.shape[-1])
 
@@ -132,17 +146,15 @@ def test_subsample_fourier(backend, device, random_state=42):
     J = 10
     x = rng.randn(2, 4, 2**J) + 1j * rng.randn(2, 4, 2**J)
     x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
-    print(x_f.shape, x.shape)
     x_f.dtype = 'float64'  # make it a vector
     x_f_th = torch.from_numpy(x_f).to(device)
-    print(x_f.shape, x_f_th.shape)
 
     for j in range(J + 1):
         x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
         x_f_sub = x_f_sub_th.numpy()
         x_f_sub.dtype = 'complex128'
         x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
-        assert np.allclose(x[:, :, ::2**j] + 1, x_sub)
+        assert np.allclose(x[:, :, ::2**j], x_sub)
 
     # If we are using a GPU-only backend, make sure it raises the proper
     # errors for CPU tensors.
