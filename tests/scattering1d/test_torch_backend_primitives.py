@@ -187,4 +187,58 @@ def test_unpad():
         x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right - 1)
         assert torch.allclose(x, x_unpadded)
 
+def test_fft_type():
+    x = torch.randn(8, 4, 2) 
 
+    with pytest.raises(TypeError) as record:
+        y = backend.rfft(x)
+    assert 'should be real' in record.value.args[0]
+
+    x = torch.randn(8, 4, 1)
+
+    with pytest.raises(TypeError) as record:
+        y = backend.ifft(x)
+    assert 'should be complex' in record.value.args[0]
+
+    with pytest.raises(TypeError) as record:
+        y = backend.irfft(x)
+    assert 'should be complex' in record.value.args[0]
+
+def test_fft():
+    x = torch.randn(2, 1)
+
+    y = torch.tensor([[x[0] + x[1], 0], [x[0] - x[1], 0]])
+
+    z = backend.rfft(x)
+    assert torch.allclose(y, z)
+
+    z_1 = backend.ifft(z)
+    assert torch.allclose(x[..., 0], z_1[..., 0])
+
+    z_2 = backend.irfft(z)
+    assert not z_2.shape[-1] == 2
+    assert torch.allclose(x, z_2)
+
+    def coefficent(n):
+            return np.exp(-2 * np.pi * 1j * n)
+
+    x_r = np.random.rand(4)
+
+    I, K = np.meshgrid(np.arange(4), np.arange(4), indexing='ij')
+
+    coefficents = coefficent(K * I / x_r.shape[0])
+        
+    y_r = (x_r * coefficents).sum(-1)
+
+    x_r = torch.from_numpy(x_r)[..., None]
+    y_r = torch.from_numpy(np.column_stack((y_r.real, y_r.imag)))
+
+    z = backend.rfft(x_r)
+    assert torch.allclose(y_r, z)
+
+    z_1 = backend.ifft(z)
+    assert torch.allclose(x_r[..., 0], z_1[..., 0])
+
+    z_2 = backend.irfft(z)
+    assert not z_2.shape[-1] == 2
+    assert torch.allclose(x_r, z_2)
