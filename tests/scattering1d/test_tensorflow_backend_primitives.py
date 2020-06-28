@@ -52,4 +52,23 @@ def test_pad():
     with pytest.raises(ValueError):
         backend.pad(x, 0, x.shape[-1])
 
+def test_unpad():
+    # test unpading of a random tensor
+    x = np.random.rand(8, 4)
+
+    y = backend.unpad(x, 1, 3)
+
+    assert y.shape == (8, 2)
+    assert np.allclose(y, x[:, 1:3])
+
+    N = 128
+    x = np.random.rand(2, 4, N)
+
+    # similar to for loop in pad test
+    for pad_left in range(0, N - 16, 16):
+        pad_right = pad_left + 16
+        x_pad = backend.pad(x, pad_left, pad_right)
+        x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right)
+        assert np.allclose(x, x_unpadded)
+
 
