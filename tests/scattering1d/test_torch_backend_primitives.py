@@ -167,3 +167,24 @@ def test_subsample_fourier(backend, device, random_state=42):
             x_bad = torch.randn(4).cuda()
             backend.subsample_fourier(x_bad, 1)
         assert "should be complex" in te.value.args[0]
+
+def test_unpad():
+    # test unpading of a random tensor
+    x = torch.randn(8, 4, 1)
+
+    y = backend.unpad(x, 1, 3)
+
+    assert y.shape == (8, 2)
+    assert torch.allclose(y, x[:, 1:3, 0])
+
+    N = 128
+    x = torch.rand(2, 4, N)
+
+    # similar to for loop in pad test
+    for pad_left in range(0, N - 16, 16):
+        pad_right = pad_left + 16
+        x_pad = backend.pad(x, pad_left, pad_right)
+        x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right - 1)
+        assert torch.allclose(x, x_unpadded)
+
+
