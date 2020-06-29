@@ -395,7 +395,8 @@ def test_pad_1d(device, backend, random_state=42):
     for pad_left in range(0, N - 16, 16):
         for pad_right in [pad_left, pad_left + 16]:
             x = torch.randn(2, 4, N, requires_grad=True, device=device)
-            x_pad = backend.pad_1d(x, pad_left, pad_right, mode='reflect')
+            x_pad = backend.pad(x, pad_left, pad_right)
+            x_pad = x_pad.reshape(x_pad.shape[:-1])
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
@@ -421,9 +422,9 @@ def test_pad_1d(device, backend, random_state=42):
             assert torch.allclose(x.grad, x_grad)
     # Check that the padding shows an error if we try to pad
     with pytest.raises(ValueError):
-        backend.pad_1d(x, x.shape[-1], 0, mode='reflect')
+        backend.pad(x, x.shape[-1], 0)
     with pytest.raises(ValueError):
-        backend.pad_1d(x, 0, x.shape[-1], mode='reflect')
+        backend.pad(x, 0, x.shape[-1])
 
 
 @pytest.mark.parametrize("device", devices)
@@ -432,31 +433,28 @@ def test_modulus(device, backend, random_state=42):
     """
     Tests the stability and differentiability of modulus
     """
+    if backend.name == "torch_skcuda" and device == "cpu":
+        with pytest.raises(TypeError) as re:
+            x_bad = torch.randn((4, 2)).cpu()
+            backend.modulus(x_bad)
+        assert "for CPU tensors" in re.value.args[0]
+        return
+
     torch.manual_seed(random_state)
     # Test with a random vector
     x = torch.randn(2, 4, 128, 2, requires_grad=True, device=device)
 
-    if backend.name == 'torch_skcuda' and device == 'cpu':
-        # If we are using a GPU-only backend, make sure it raises the proper
-        # errors for CPU tensors.
-        with pytest.raises(TypeError) as re:
-            x_bad = torch.randn((4, 2)).cpu()
-            backend.modulus_complex(x_bad)
-        assert "for CPU tensors" in re.value.args[0]
-        return
+    x_abs = backend.modulus(x).squeeze(-1)
+    assert len(x_abs.shape) == len(x.shape[:-1])
 
-
-    x_abs = backend.modulus_complex(x)
-
-    assert len(x_abs.shape) == len(x.shape)
     # check the value
     x_abs2 = x_abs.clone()
     x2 = x.clone()
-    assert torch.allclose(x_abs2[..., 0], torch.sqrt(x2[..., 0]**2 + x2[..., 1]**2))
+    assert torch.allclose(x_abs2, torch.sqrt(x2[..., 0] ** 2 + x2[..., 1] ** 2))
 
     with pytest.raises(TypeError) as te:
         x_bad = torch.randn(4).to(device)
-        backend.modulus_complex(x_bad)
+        backend.modulus(x_bad)
     assert "should be complex" in te.value.args[0]
 
     if backend.name == "torch_skcuda":
@@ -466,13 +464,13 @@ def test_modulus(device, backend, random_state=42):
     # check the gradient
     loss = torch.sum(x_abs)
     loss.backward()
-    x_grad = x2 / x_abs2[..., 0].unsqueeze(dim=-1)
+    x_grad = x2 / x_abs2[..., None]
     assert torch.allclose(x.grad, x_grad)
 
 
     # Test the differentiation with a vector made of zeros
     x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
-    x_abs0 = backend.modulus_complex(x0)
+    x_abs0 = backend.modulus(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
     assert torch.max(torch.abs(x0.grad)) <= 1e-7

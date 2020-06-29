@@ -76,7 +76,7 @@ def cdgmm(A, B, inplace=False):
         if not A.is_contiguous() or not B.is_contiguous():
             raise RuntimeError('Tensors must be contiguous.')
 
-        C = A.new(A.shape) if not inplace else A
+        C = torch.empty_like(A) if not inplace else A
         m, n = B.nelement() // 2, A.nelement() // B.nelement()
         lda = m
         ldc = m

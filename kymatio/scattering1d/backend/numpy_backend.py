@@ -5,8 +5,7 @@ import numpy as np
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, cdgmm, real
-from ...backend.base_backend import FFT
+from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
 
 
 def subsample_fourier(x, k):
@@ -35,43 +34,9 @@ def subsample_fourier(x, k):
     return res
 
 
-def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
+def pad(x, pad_left, pad_right):
     """Pad real 1D tensors
     1D implementation of the padding function for real PyTorch tensors.
-    Parameters
-    ----------
-    x : tensor
-        Three-dimensional input tensor with the third axis being the one to
-        be padded.
-    pad_left : int
-        Amount to add on the left of the tensor (at the beginning of the
-        temporal axis).
-    pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
-        axis).
-    mode : string, optional
-        Padding mode. Options include 'constant' and 'reflect'. See the
-        PyTorch API for other options.  Defaults to 'constant'.
-    value : float, optional
-        If mode == 'constant', value to input within the padding. Defaults to
-        0.
-    Returns
-    -------
-    res : tensor
-        The tensor passed along the third dimension.
-    """
-    if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-        if mode == 'reflect':
-            raise ValueError('Indefinite padding size (larger than tensor).')
-
-    res = np.pad(x, ((0, 0), (0, 0), (pad_left, pad_right),), mode=mode)
-    return res
-
-
-def pad(x, pad_left=0, pad_right=0):
-    """Pad real 1D tensors and map to complex
-    Padding which allows to simultaneously pad in a reflection fashion and map
-    to complex if necessary.
     Parameters
     ----------
     x : tensor
@@ -86,9 +51,15 @@ def pad(x, pad_left=0, pad_right=0):
     Returns
     -------
     output : tensor
-        A padded signal.
+        The tensor passed along the third dimension.
     """
-    output = pad_1d(x, pad_left, pad_right, mode='reflect')
+    if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
+        raise ValueError('Indefinite padding size (larger than tensor).')
+    
+    paddings = ((0, 0),) * len(x.shape[:-1])
+    paddings += (pad_left, pad_right), 
+
+    output = np.pad(x, paddings, mode='reflect')
     return output
 
 
@@ -110,26 +81,35 @@ def unpad(x, i0, i1):
     """
     return x[..., i0:i1]
 
-
-
-
 def concatenate(arrays):
     return np.stack(arrays, axis=-2)
 
 
+def rfft(x):
+    real_check(x)
+    return scipy.fftpack.fft(x)
+
+
+def irfft(x):
+    complex_check(x)
+    return scipy.fftpack.ifft(x).real
+
+
+def ifft(x):
+    complex_check(x)
+    return scipy.fftpack.ifft(x)
+
+
 backend = namedtuple('backend',
-                     ['name', 'modulus_complex', 'subsample_fourier', 'real',
+                     ['name', 'modulus', 'subsample_fourier', 
                       'unpad', 'fft', 'concatenate', 'cdgmm'])
 backend.name = 'numpy'
-backend.modulus_complex = modulus
+backend.modulus = modulus
 backend.subsample_fourier = subsample_fourier
-backend.real = real
 backend.unpad = unpad
 backend.pad = pad
-backend.pad_1d = pad_1d
 backend.cdgmm = cdgmm
-backend.fft = FFT(lambda x:scipy.fftpack.fft(x),
-                  lambda x:scipy.fftpack.ifft(x),
-                  lambda x:np.real(scipy.fftpack.ifft(x)),
-                  lambda x:None)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.concatenate = concatenate
