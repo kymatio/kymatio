@@ -141,15 +141,9 @@ class TestFFT:
         assert np.allclose(y, z)
 
         z_1 = backend.ifft(z)
-
-        z_1 = z_1 
-
         assert np.allclose(x, z_1)
 
         z_2 = backend.irfft(z)
-
-        z_2 = z_2 
-
         assert not np.iscomplexobj(z_2)
         assert np.allclose(x, z_2)
 

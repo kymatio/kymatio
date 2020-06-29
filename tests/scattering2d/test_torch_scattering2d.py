@@ -322,18 +322,14 @@ class TestFFT:
 
 
         z = backend.rfft(x_r)
-
         assert torch.allclose(y_r, z)
         
         z_1 = backend.irfft(z)
-        
         assert z_1.shape == x_r.shape
         assert torch.allclose(x_r, z_1)
 
 
         z_2 = backend.ifft(z)[..., :1]
-
-        
         assert torch.allclose(x_r, z_2)
 
         
