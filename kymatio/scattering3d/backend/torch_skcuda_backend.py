@@ -1,14 +1,13 @@
 import torch
 import warnings
 from skcuda import cublas
+from string import Template
+
 
 BACKEND_NAME = 'torch_skcuda'
 
 from collections import namedtuple
-
-
-def _is_complex(input):
-    return input.shape[-1] == 2
+from ...backend.torch_backend import _is_complex, _is_real, contiguous_check, complex_contiguous_check, complex_check, real_check, Modulus
 
 
 def cdgmm3d(A, B, inplace=False):
@@ -43,6 +42,17 @@ def cdgmm3d(A, B, inplace=False):
             elementwise complex multiplication of A with B.
 
     """
+
+    if not _is_real(B):
+        complex_contiguous_check(B)
+    else:
+        contiguous_check(B)
+    
+    complex_contiguous_check(A)
+    
+    if A.dtype is not B.dtype:
+        raise TypeError('Input and filter must be of the same dtype.')
+
     if not A.is_contiguous():
         warnings.warn("cdgmm3d: tensor A is converted to a contiguous array")
         A = A.contiguous()
@@ -65,7 +75,7 @@ def cdgmm3d(A, B, inplace=False):
     if not A.is_cuda:
         raise RuntimeError('Use the torch backend for CPU tensors.')
 
-    C = A.new(A.shape) if not inplace else A
+    C = torch.empty_like(A) if not inplace else A
     m, n = B.nelement() // 2, A.nelement() // B.nelement()
     lda = m
     ldc = m
@@ -77,8 +87,9 @@ def cdgmm3d(A, B, inplace=False):
     return C
 
 
-from .torch_backend import complex_modulus
-from .torch_backend import fft
+
+from .torch_backend import rfft
+from .torch_backend import ifft
 from .torch_backend import modulus_rotation
 from .torch_backend import compute_integrals
 from .torch_backend import concatenate
@@ -88,8 +99,9 @@ backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_r
 
 backend.name = 'torch_skcuda'
 backend.cdgmm3d = cdgmm3d
-backend.fft = fft
+backend.rfft = rfft
+backend.ifft = ifft
 backend.concatenate = concatenate
-backend.modulus = complex_modulus
+backend.modulus = Modulus()
 backend.modulus_rotation = modulus_rotation
 backend.compute_integrals = compute_integrals

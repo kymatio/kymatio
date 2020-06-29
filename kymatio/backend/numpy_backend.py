@@ -4,6 +4,14 @@ def input_checks(x):
     if x is None:
         raise TypeError('The input should be not empty.')
 
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex.')
+
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
+
 
 def modulus(x):
     """
@@ -68,19 +76,3 @@ def cdgmm(A, B, inplace=False):
         return np.multiply(A, B, out=A)
     else:
         return A * B
-
-
-def real(x):
-    """Real part of complex tensor
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
-    """
-    return np.real(x)

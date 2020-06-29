@@ -7,8 +7,8 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, Modulus, concatenate, type_checks, cdgmm, real
-from ...backend.base_backend import FFT
+from ...backend.torch_backend import Modulus, concatenate, contiguous_check, cdgmm, complex_check, real_check
+
 
 def subsample_fourier(x, k):
     """Subsampling in the Fourier domain
@@ -33,14 +33,13 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    if not _is_complex(x):
-        raise TypeError('The input should be complex.')
-
+    complex_check(x)
+    
     N = x.shape[-2]
     res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
     return res
 
-def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
+def pad(x, pad_left, pad_right):
     """Pad real 1D tensors
 
     1D implementation of the padding function for real PyTorch tensors.
@@ -56,58 +55,16 @@ def pad_1d(x, pad_left, pad_right, mode='constant', value=0.):
     pad_right : int
         amount to add on the right of the tensor (at the end of the temporal
         axis).
-    mode : string, optional
-        Padding mode. Options include 'constant' and 'reflect'. See the
-        PyTorch API for other options.  Defaults to 'constant'.
-    value : float, optional
-        If mode == 'constant', value to input within the padding. Defaults to
-        0.
-
     Returns
     -------
     res : tensor
         The tensor passed along the third dimension.
     """
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-        if mode == 'reflect':
-            raise ValueError('Indefinite padding size (larger than tensor).')
-    res = F.pad(x.unsqueeze(2),
-                (pad_left, pad_right, 0, 0),
-                mode=mode, value=value).squeeze(2)
+        raise ValueError('Indefinite padding size (larger than tensor).')
+    res = F.pad(x, (pad_left, pad_right), mode='reflect')
+    res = res[..., None]
     return res
-
-def pad(x, pad_left=0, pad_right=0, to_complex=True):
-    """Pad real 1D tensors and map to complex
-
-    Padding which allows to simultaneously pad in a reflection fashion and map
-    to complex if necessary.
-
-    Parameters
-    ----------
-    x : tensor
-        Three-dimensional input tensor with the third axis being the one to
-        be padded.
-    pad_left : int
-        Amount to add on the left of the tensor (at the beginning of the
-        temporal axis).
-    pad_right : int
-        amount to add on the right of the tensor (at the end of the temporal
-        axis).
-    to_complex : boolean, optional
-        Whether to map the resulting padded tensor to a complex type (seen
-        as a real number). Defaults to True.
-
-    Returns
-    -------
-    output : tensor
-        A padded signal, possibly transformed into a four-dimensional tensor
-        with the last axis of size 2 if to_complex is True (this axis
-        corresponds to the real and imaginary parts).
-    """
-    output = pad_1d(x, pad_left, pad_right, mode='reflect')
-    if to_complex:
-        output = torch.stack((output, torch.zeros_like(output)), dim=-1)
-    return output
 
 def unpad(x, i0, i1):
     """Unpad real 1D tensor
@@ -128,23 +85,47 @@ def unpad(x, i0, i1):
     x_unpadded : tensor
         The tensor x[..., i0:i1].
     """
+    x = x.reshape(x.shape[:-1])
     return x[..., i0:i1]
 
+# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
+# inefficent.
+def rfft(x):
+    contiguous_check(x)
+    real_check(x)
+    
+    x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
+    x_r[..., 0] = x[..., 0]
 
-fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
-    lambda x: torch.ifft(x, 1, normalized=False),
-    lambda x: torch.irfft(x, 1, normalized=False, onesided=False),
-    type_checks)
+    return torch.fft(x_r, 1, normalized=False)
 
 
-backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
+def irfft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    return torch.ifft(x, 1, normalized=False)[..., :1]
+
+
+def ifft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    return torch.ifft(x, 1, normalized=False)
+
+
+def concatenate_1d(x):
+    return concatenate(x, -2)
+
+
+backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
 backend.name = 'torch'
-backend.modulus_complex = Modulus()
+backend.modulus = Modulus()
 backend.subsample_fourier = subsample_fourier
-backend.real = real
 backend.unpad = unpad
 backend.cdgmm = cdgmm
 backend.pad = pad
-backend.pad_1d = pad_1d
-backend.fft = fft
-backend.concatenate = lambda x: concatenate(x, -2)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
+backend.concatenate = concatenate_1d
