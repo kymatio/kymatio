@@ -41,11 +41,11 @@ def relative_difference(a, b):
 def test_FFT3d_central_freq_batch(device, backend):
     # Checked the 0 frequency for the 3D FFT
     for device in devices:
-        x = torch.zeros(1, 32, 32, 32, 2).float()
+        x = torch.zeros(1, 32, 32, 32, 1).float()
         if device == 'gpu':
             x = x.cuda()
         a = x.sum()
-        y = backend.fft(x)
+        y = backend.rfft(x)
         c = y[:, 0, 0, 0].sum()
         assert (c - a).abs().sum() < 1e-6
 
@@ -53,10 +53,31 @@ def test_FFT3d_central_freq_batch(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_fft3d_error(backend, device):
-    x = torch.zeros(8, 1)
+    x = torch.randn(1, 4, 4, 4, 2)
     with pytest.raises(TypeError) as record:
-        backend.fft(x)
-    assert "should be complex" in record.value.args[0]
+        backend.rfft(x)
+    assert 'real' in record.value.args[0]
+
+    x = torch.randn(1, 4, 4, 4, 1)
+    with pytest.raises(TypeError) as record:
+        backend.ifft(x)
+    assert 'complex' in record.value.args[0]
+
+    x = torch.randn(4, 4, 4, 1)
+    x = x.to(device)
+    y = x[::2, ::2, ::2]
+
+    with pytest.raises(RuntimeError) as record:
+        backend.rfft(y)
+    assert 'must be contiguous' in record.value.args[0]
+
+    x = torch.randn(4, 4, 4, 2)
+    x = x.to(device)
+    y = x[::2, ::2, ::2]
+
+    with pytest.raises(RuntimeError) as record:
+        backend.ifft(y)
+    assert 'must be contiguous' in record.value.args[0]
 
 
 @pytest.mark.parametrize("device", devices)
@@ -84,19 +105,19 @@ def test_cdgmm3d(device, backend, inplace):
         if inplace:
             assert (x - z).norm().cpu().item() < 1e-7
 
-        with pytest.warns(UserWarning) as record:
+        with pytest.raises(RuntimeError) as record:
             x = torch.randn((3, 4, 3, 2), device=device)
             x = x[:, 0:3, ...]
             y = torch.randn((3, 3, 3, 2), device=device)
             backend.cdgmm3d(x, y)
-        assert "A is converted" in record[0].message.args[0]
+        assert "contiguous" in record.value.args[0]
 
-        with pytest.warns(UserWarning) as record:
+        with pytest.raises(RuntimeError) as record:
             x = torch.randn((3, 3, 3, 2), device=device)
             y = torch.randn((3, 4, 3, 2), device=device)
             y = y[:, 0:3, ...]
             backend.cdgmm3d(x, y)
-        assert "B is converted" in record[0].message.args[0]
+        assert "contiguous" in record.value.args[0]
 
         with pytest.raises(RuntimeError) as record:
             x = torch.randn((3, 3, 3, 2), device=device)
@@ -104,34 +125,11 @@ def test_cdgmm3d(device, backend, inplace):
             backend.cdgmm3d(x, y)
         assert "not compatible" in record.value.args[0]
 
-        x = torch.randn((2, 3, 3, 3, 2), device=device)
-        y = torch.randn((3, 3, 3, 2), device=device)
-        backend.cdgmm3d(x, y)
-
         with pytest.raises(TypeError) as record:
-            x = torch.randn((3, 3, 3, 1), device=device)
-            y = torch.randn((3, 3, 3, 1), device=device)
-            backend.cdgmm3d(x, y)
-        assert "should be complex" in record.value.args[0]
-
-        # This one is a little tricky. We can't have the number of dimensions be
-        # greater than 4 since that triggers the "not compatible" error.
-        with pytest.raises(RuntimeError) as record:
-            x = torch.randn((3, 3, 2), device=device)
-            y = torch.randn((3, 3, 2), device=device)
-            backend.cdgmm3d(x, y)
-        assert "must be simply a complex" in record.value.args[0]
-
-        # Create a tensor that behaves like `torch.Tensor` but is technically a
-        # different type.
-        class FakeTensor(torch.Tensor):
-            pass
-
-        with pytest.raises(RuntimeError) as record:
-            x = FakeTensor(3, 3, 3, 2)
+            x = torch.randn(3, 3, 3, 2).double()
             y = torch.randn(3, 3, 3, 2)
             backend.cdgmm3d(x, y)
-        assert "should be same type" in record.value.args[0]
+        assert " must be of the same dtype" in record.value.args[0]
 
     if backend.name.endswith('_skcuda'):
         x = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
@@ -144,11 +142,13 @@ def test_cdgmm3d(device, backend, inplace):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_complex_modulus(backend, device):
+    if backend.name == "torch_skcuda" and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
     x = torch.randn(4, 3, 2).to(device)
     xm = torch.sqrt(x[..., 0] ** 2 + x[..., 1] ** 2)
     y = backend.modulus(x)
-    assert (y[..., 0] - xm).norm() < 1e-7
-    assert (y[..., 1]).norm() < 1e-7
+    y = y.reshape(y.shape[:-1])
+    assert (y - xm).norm() < 1e-7
 
 
 @pytest.mark.parametrize("device", devices)

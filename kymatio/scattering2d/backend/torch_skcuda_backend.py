@@ -8,7 +8,7 @@ from string import Template
 
 BACKEND_NAME = 'torch_skcuda'
 
-from ...backend.torch_backend import _is_complex
+from ...backend.torch_backend import contiguous_check, complex_check
 from ...backend.torch_skcuda_backend import cdgmm
 
 # As of v8, cupy.util has been renamed cupy._util.
@@ -73,15 +73,13 @@ class SubsampleFourier(object):
 
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
+
         x = x.view((-1,) + signal_shape)
 
-        out = x.new(size=[x.shape[0], x.shape[1] // k, x.shape[2] // k, 2])
+        out = torch.empty(x.shape[:-3] + (x.shape[-3] // k, x.shape[-2] // k, x.shape[-1]), dtype=x.dtype, layout=x.layout, device=x.device)
 
-        if not _is_complex(x):
-            raise TypeError('The x should be complex.')
-
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
+        complex_check(x)
+        contiguous_check(x) 
 
         kernel = '''
         #define NW ${W} / ${k}
@@ -118,6 +116,7 @@ class SubsampleFourier(object):
                 self.GET_BLOCKS(out.shape[0], self.block[2]))
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
+
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
@@ -157,45 +156,44 @@ class Modulus(object):
     def __call__(self, x):
         if not x.is_cuda:
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
+        
+        out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
 
-        out = x.new(x.shape)
-
-        if not _is_complex(x):
-            raise TypeError('The inputs should be complex.')
-
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
+        contiguous_check(x) 
+        complex_check(x)
 
         kernel = """
         extern "C"
-        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype}2 * z, int n)
+        __global__ void abs_complex_value(const ${Dtype} * x, ${Dtype} * z, int n)
         {
             int i = blockIdx.x * blockDim.x + threadIdx.x;
         if (i >= n)
             return;
-        z[i] = make_${Dtype}2(normf(2, x + 2*i), 0);
+        z[i] = normf(2, x + 2*i);
 
         }
         """
         fabs = _load_kernel('abs_complex_value', kernel, Dtype=_get_dtype(x))
-        fabs(grid=(self.GET_BLOCKS(int(out.nelement()) // 2), 1, 1),
+        fabs(grid=(self.GET_BLOCKS(int(out.nelement()) ), 1, 1),
              block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[x.data_ptr(), out.data_ptr(), out.numel() // 2],
+             args=[x.data_ptr(), out.data_ptr(), out.numel()],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
 
 from .torch_backend import unpad
 from .torch_backend import Pad
-from .torch_backend import fft
-from .torch_backend import concatenate
+from .torch_backend import rfft, irfft, ifft
+from .torch_backend import concatenate_2d
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch_skcuda'
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = lambda x: concatenate(x, -3)
+backend.concatenate = concatenate_2d
