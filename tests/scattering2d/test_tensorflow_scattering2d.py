@@ -129,17 +129,17 @@ class TestFFT:
                       [x[0, 0] + x[0, 1] - x[1, 0] - x[1, 1],
                        x[0, 0] - x[0, 1] - x[1, 0] + x[1, 1]]])
 
-        z = backend.fft(x, direction='C2C')
+        z = backend.rfft(x.real)
 
-        assert np.allclose(y, z, rtol=rtol)
+        assert np.allclose(y.real, z, rtol=rtol)
 
-        z = backend.fft(x, direction='C2C', inverse=True)
+        z = backend.ifft(x)
 
         z = z * 4
 
         assert np.allclose(y, z, rtol=rtol)
 
-        z = backend.fft(x, direction='C2R', inverse=True)
+        z = backend.irfft(x)
 
         z = z * 4
 
@@ -147,14 +147,7 @@ class TestFFT:
         assert np.allclose(np.real(y), z, rtol=rtol)
 
 
-    @pytest.mark.parametrize('backend', backends)
-    def test_fft_exceptions(self, backend):
-        with pytest.raises(RuntimeError) as record:
-            backend.fft(np.empty((2, 2)), direction='C2R',
-                        inverse=False)
-        assert 'done with an inverse' in record.value.args[0]
-
-
+        
 class TestBackendUtils:
     @pytest.mark.parametrize('backend', backends)
     def test_concatenate(self, backend):

@@ -7,8 +7,15 @@ def input_checks(x):
     if x is None:
         raise TypeError('The input should be not empty.')
 
-    if not x.is_contiguous():
-        raise RuntimeError('The input must be contiguous.')
+    contiguous_check(x)
+
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex (i.e. last dimension is 2).')
+
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
 
 def _is_complex(x):
     return x.shape[-1] == 2
@@ -42,7 +49,6 @@ class ModulusStable(Function):
         to the input in a stable fashion (so gradent of the modulus at zero is
         zero).
     """
-
     @staticmethod
     def forward(ctx, x):
         """Forward pass of the modulus.
@@ -132,16 +138,15 @@ class Modulus():
             contains the complex modulus of x, while output[..., 1] = 0.
     """
     def __call__(self, x):
-        type_checks(x)
-
-        norm = torch.zeros_like(x)
-        norm[..., 0] = modulus(x)
+        complex_contiguous_check(x)
+        norm = modulus(x)[..., None]
         return norm
 
-def type_checks(x):
-    if not _is_complex(x):
-        raise TypeError('The input should be complex (i.e. last dimension is 2).')
+def complex_contiguous_check(x):
+    complex_check(x)
+    contiguous_check(x)
 
+def contiguous_check(x):
     if not x.is_contiguous():
         raise RuntimeError('Tensors must be contiguous.')
 
@@ -179,12 +184,11 @@ def cdgmm(A, B, inplace=False):
 
     """
     if not _is_real(B):
-        type_checks(B)
+        complex_contiguous_check(B)
     else:
-        if not B.is_contiguous():
-            raise RuntimeError('Tensors must be contiguous.')
-
-    type_checks(A)
+        contiguous_check(B)
+    
+    complex_contiguous_check(A)
 
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
@@ -224,22 +228,3 @@ def cdgmm(A, B, inplace=False):
 
 def concatenate(arrays, dim):
     return torch.stack(arrays, dim=dim)
-
-
-def real(x):
-    """Real part of complex tensor
-
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
-
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-
-    Returns
-    -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
-    """
-    return x[..., 0]

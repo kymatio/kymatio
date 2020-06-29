@@ -122,39 +122,24 @@ class TestCDGMM:
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
     def test_fft(self, backend):
-        x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
+        x = np.random.randn(2, 2)
 
         y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
                        x[0, 0] - x[0, 1] + x[1, 0] - x[1, 1]],
                       [x[0, 0] + x[0, 1] - x[1, 0] - x[1, 1],
                        x[0, 0] - x[0, 1] - x[1, 0] + x[1, 1]]])
 
-        z = backend.fft(x, direction='C2C')
-
+        z = backend.rfft(x)
         assert np.allclose(y, z)
 
-        z = backend.fft(x, direction='C2C', inverse=True)
+        z_1 = backend.ifft(z)
+        assert np.allclose(x, z_1)
 
-        z = z * 4
+        z_2 = backend.irfft(z)
+        assert not np.iscomplexobj(z_2)
+        assert np.allclose(x, z_2)
 
-        assert np.allclose(y, z)
-
-        z = backend.fft(x, direction='C2R', inverse=True)
-
-        z = z * 4
-
-        assert not np.iscomplexobj(z)
-        assert np.allclose(np.real(y), z)
-
-
-    @pytest.mark.parametrize('backend', backends)
-    def test_fft_exceptions(self, backend):
-        with pytest.raises(RuntimeError) as record:
-            backend.fft(np.empty((2, 2)), direction='C2R',
-                        inverse=False)
-        assert 'done with an inverse' in record.value.args[0]
-
-
+       
 class TestBackendUtils:
     @pytest.mark.parametrize('backend', backends)
     def test_concatenate(self, backend):

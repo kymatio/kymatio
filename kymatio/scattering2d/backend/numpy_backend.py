@@ -2,12 +2,12 @@
 
 import numpy as np
 from collections import namedtuple
+import scipy.fftpack
 
 BACKEND_NAME = 'numpy'
 
 
-from ...backend.numpy_backend import modulus, cdgmm
-from ...backend.base_backend import FFT
+from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
 
 
 class Pad(object):
@@ -27,7 +27,7 @@ class Pad(object):
         self.pad_size = pad_size
 
     def __call__(self, x):
-        paddings = ((0, 0),) * (x.ndim - 2)
+        paddings = ((0, 0),)
         paddings += ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
 
         output = np.pad(x, paddings, mode='reflect')
@@ -84,15 +84,29 @@ def concatenate(arrays):
     return np.stack(arrays, axis=-3)
 
 
+def rfft(x):
+    real_check(x)
+    return scipy.fftpack.fft2(x)
+
+
+def irfft(x):
+    complex_check(x)
+    return scipy.fftpack.ifft2(x).real
+
+
+def ifft(x):
+    complex_check(x)
+    return scipy.fftpack.ifft2(x)
+
+
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'numpy'
 backend.cdgmm = cdgmm
 backend.modulus = modulus
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = FFT(lambda x:np.fft.fft2(x),
-                  lambda x:np.fft.ifft2(x),
-                  lambda x:np.real(np.fft.ifft2(x)),
-                  lambda x:None)
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate

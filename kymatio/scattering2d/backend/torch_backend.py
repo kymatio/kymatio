@@ -8,8 +8,7 @@ from packaging import version
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import _is_complex, cdgmm, type_checks, Modulus, concatenate
-from ...backend.base_backend import FFT
+from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
 
 
 class Pad(object):
@@ -78,9 +77,7 @@ class Pad(object):
         if self.pad_size[2] == self.input_size[1]:
             x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
-        output = x.new_zeros(x.shape + (2,))
-        output[..., 0] = x
-        output = output.reshape(batch_shape + output.shape[-3:])
+        output = x.reshape(batch_shape + x.shape[-2:] + (1,))
         return output
 
 
@@ -100,6 +97,7 @@ def unpad(in_):
             Output tensor.  Unpadded input.
 
     """
+    in_ = in_.reshape(in_.shape[:-1])
     return in_[..., 1:-1, 1:-1]
 
 class SubsampleFourier(object):
@@ -125,11 +123,9 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
-        if not _is_complex(x):
-            raise TypeError('The x should be complex.')
+        complex_check(x)
+        contiguous_check(x)
 
-        if not x.is_contiguous():
-            raise RuntimeError('Input should be contiguous.')
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
         x = x.view((-1,) + signal_shape)
@@ -143,15 +139,43 @@ class SubsampleFourier(object):
         return out
 
 if version.parse(torch.__version__) >= version.parse('1.8'):
-    fft = FFT(lambda x: torch.view_as_real(torch.fft.fft2(torch.view_as_complex(x))),
-          lambda x: torch.view_as_real(torch.fft.ifft2(torch.view_as_complex(x))),
-          lambda x: torch.fft.ifft2(torch.view_as_complex(x)).real,
-          type_checks)
+    _fft = lambda x: torch.view_as_real(torch.fft.fft2(torch.view_as_complex(x)))
+    _ifft = lambda x: torch.view_as_real(torch.fft.ifft2(torch.view_as_complex(x)))
+    _irfft = lambda x: torch.fft.ifft2(torch.view_as_complex(x)).real[..., None]
 else:
-    fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
-              lambda x: torch.ifft(x, 2, normalized=False),
-              lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
-              type_checks)
+    _fft = lambda x: torch.fft(x, 2, normalized=False)
+    _ifft = lambda x: torch.ifft(x, 2, normalized=False)
+    _irfft = lambda x: torch.irfft(x, 2, normalized=False, onesided=False)[..., None]
+
+
+# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
+# inefficent.
+def rfft(x):
+    contiguous_check(x)
+    real_check(x)
+
+    x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
+    x_r[..., 0] = x[..., 0]
+
+    return _fft(x_r)
+
+
+def irfft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    return _irfft(x)
+
+
+def ifft(x):
+    contiguous_check(x)
+    complex_check(x)
+
+    return _ifft(x)
+
+
+def concatenate_2d(x):
+    return concatenate(x, -3)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch'
@@ -159,7 +183,9 @@ backend.version = torch.__version__
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
-backend.fft = fft
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = lambda x: concatenate(x, -3)
+backend.concatenate = concatenate_2d

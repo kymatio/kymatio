@@ -54,26 +54,25 @@ class TestPad:
 
         z = pad(x)
 
-        assert z.shape == (1, 8, 8, 2)
-        assert torch.allclose(z[0, 2, 2, 0], x[0, 0, 0])
-        assert torch.allclose(z[0, 1, 0, 0], x[0, 1, 2])
-        assert torch.allclose(z[0, 1, 1, 0], x[0, 1, 1])
-        assert torch.allclose(z[0, 1, 2, 0], x[0, 1, 0])
-        assert torch.allclose(z[0, 1, 3, 0], x[0, 1, 1])
-        assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
+        assert z.shape == (1, 8, 8, 1)
+        assert torch.allclose(z[0, 2, 2], x[0, 0, 0])
+        assert torch.allclose(z[0, 1, 0], x[0, 1, 2])
+        assert torch.allclose(z[0, 1, 1], x[0, 1, 1])
+        assert torch.allclose(z[0, 1, 2], x[0, 1, 0])
+        assert torch.allclose(z[0, 1, 3], x[0, 1, 1])
 
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_unpad(self, backend_device):
         backend, device = backend_device
 
-        x = torch.randn(4, 4)
+        x = torch.randn(4, 4, 1)
         x = x.to(device)
 
         y = backend.unpad(x)
 
         assert y.shape == (2, 2)
-        assert torch.allclose(y[0, 0], x[1, 1])
-        assert torch.allclose(y[0, 1], x[1, 2])
+        assert torch.allclose(y[0, 0], x[1, 1, 0])
+        assert torch.allclose(y[0, 1], x[1, 2, 0])
 
 
 # Checked the modulus
@@ -86,11 +85,9 @@ class TestModulus:
         x = torch.rand(100, 10, 4, 2).to(device)
 
         y = modulus(x)
+        y = y.reshape(y.shape[:-1])
         u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
-        v = y.narrow(3, 0, 1)
-        u = u.squeeze()
-        v = v.squeeze()
-        assert torch.allclose(u, v)
+        assert torch.allclose(u, y)
 
         y = x[..., 0].contiguous()
         with pytest.raises(TypeError) as record:
@@ -110,8 +107,7 @@ class TestModulus:
             with pytest.raises(TypeError) as exc:
                 y = modulus(x)
             assert 'Use the torch backend' in exc.value.args[0]
-
-
+    
 # Checked the subsampling
 class TestSubsampleFourier:
     @pytest.mark.parametrize('backend_device', backends_devices)
@@ -142,7 +138,7 @@ class TestSubsampleFourier:
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
             subsample_fourier(y, k=16)
-        assert 'should be contiguous' in record.value.args[0]
+        assert 'must be contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):
@@ -229,7 +225,7 @@ class TestCDGMM:
 
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
-        assert 'input should be complex' in exc.value.args[0]
+        assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
@@ -293,52 +289,86 @@ class TestCDGMM:
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
     def test_fft(self, backend):
-        x = torch.randn(2, 2, 2)
+        import numpy as np
+        
+        def coefficent(n):
+            return np.exp(-2 * np.pi * 1j * n)
 
-        y = torch.empty_like(x)
-        y[0, 0, :] = x[0, 0, :] + x[0, 1, :] + x[1, 0, :] + x[1, 1, :]
-        y[0, 1, :] = x[0, 0, :] - x[0, 1, :] + x[1, 0, :] - x[1, 1, :]
-        y[1, 0, :] = x[0, 0, :] + x[0, 1, :] - x[1, 0, :] - x[1, 1, :]
-        y[1, 1, :] = x[0, 0, :] - x[0, 1, :] - x[1, 0, :] + x[1, 1, :]
+        x_r = np.random.rand(4, 4)
 
-        z = backend.fft(x, direction='C2C')
+        I, J, K, L = np.meshgrid(np.arange(4), np.arange(4), np.arange(4),
+                np.arange(4), indexing='ij')
 
-        assert torch.allclose(y, z)
+        coefficents = coefficent(K * I / x_r.shape[0] + L * J / x_r.shape[1])
 
-        z = backend.fft(x, direction='C2C', inverse=True)
+        y_r = np.zeros(x_r.shape).astype('complex128')
+        
+        for k in range(4):
+            for l in range(4):
+                y_r[k, l] = (x_r * coefficents[..., k, l]).sum()
 
-        z = z * 4.0
 
-        assert torch.allclose(y, z)
+        y_r = torch.from_numpy(np.stack((y_r.real, y_r.imag), axis=-1))
+        x_r = torch.from_numpy(x_r)[..., None]
 
-        z = backend.fft(x, direction='C2R', inverse=True)
 
-        z = z * 4.0
+        z = backend.rfft(x_r)
+        assert torch.allclose(y_r, z)
+        
+        z_1 = backend.irfft(z)
+        assert z_1.shape == x_r.shape
+        assert torch.allclose(x_r, z_1)
 
-        assert z.shape == x.shape[:-1]
-        assert torch.allclose(y[..., 0], z)
 
+        z_2 = backend.ifft(z)[..., :1]
+        assert torch.allclose(x_r, z_2)
+
+        
+         
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
 
-        with pytest.raises(RuntimeError) as record:
-            backend.fft(torch.empty(2, 2), direction='C2R',
-                        inverse=False)
-        assert 'done with an inverse' in record.value.args[0]
-
-        x = torch.rand(4, 4, 1)
+        x = torch.randn(4, 4, 2)
         x = x.to(device)
         with pytest.raises(TypeError) as record:
-            backend.fft(x)
+            backend.rfft(x)
+        assert 'real' in record.value.args[0]
+
+        x = torch.randn(4, 4, 1)
+        x = x.to(device)
+        with pytest.raises(TypeError) as record:
+            backend.ifft(x)
         assert 'complex' in record.value.args[0]
+       
+        x = torch.randn(4, 4, 1)
+        x = x.to(device)
+        with pytest.raises(TypeError) as record:
+            backend.irfft(x)
+        assert 'complex' in record.value.args[0]
+       
+        x = torch.randn(4, 4, 1)
+        x = x.to(device)
+        y = x[::2, ::2]
+
+        with pytest.raises(RuntimeError) as record:
+            backend.rfft(y)
+        assert 'must be contiguous' in record.value.args[0]
+        
+        x = torch.randn(4, 4, 2)
+        x = x.to(device)
+        y = x[::2, ::2]
+
+        with pytest.raises(RuntimeError) as record:
+            backend.ifft(y)
+        assert 'must be contiguous' in record.value.args[0]
 
         x = torch.randn(4, 4, 2)
         x = x.to(device)
         y = x[::2, ::2]
 
         with pytest.raises(RuntimeError) as record:
-            backend.fft(y)
+            backend.irfft(y)
         assert 'must be contiguous' in record.value.args[0]
 
 
