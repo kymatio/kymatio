@@ -1,3 +1,7 @@
+# Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
+# Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
+
+
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
@@ -8,7 +12,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     Parameters
     ----------
     x : Tensor
-        a torch Tensor of size `(B, 1, N)` where `N` is the temporal size
+        a torch Tensor of size `(B, 1, T)` where `T` is the temporal size
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
         `j` corresponds to the downsampling factor for
@@ -80,7 +84,6 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         S_0_c = cdgmm(U_0_hat, phi[0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
-
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x

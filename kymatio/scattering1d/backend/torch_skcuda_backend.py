@@ -1,19 +1,14 @@
+# Authors: Edouard Oyallon, Joakim Anden
+
 import torch
 import cupy
 from collections import namedtuple
 from string import Template
+from ...backend.torch_backend import contiguous_check, complex_check
 
-from ...backend.torch_skcuda_backend import TorchSkcudaBackend
-from .torch_backend import TorchBackend1D
+BACKEND_NAME = 'torch_skcuda'
 
-
-# As of v8, cupy.util has been renamed cupy._util.
-if hasattr(cupy, '_util'):
-    memoize = cupy._util.memoize
-else:
-    memoize = cupy.util.memoize
-
-@memoize(for_each_device=True)
+@cupy.util.memoize(for_each_device=True)
 def load_kernel(kernel_name, code, **kwargs):
     code = Template(code).substitute(**kwargs)
     kernel_code = cupy.cuda.compile_with_cache(code)
@@ -26,6 +21,7 @@ def get_dtype(t):
         return 'float'
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
+
 
 class Modulus(object):
     """Stable complex modulus
@@ -64,8 +60,11 @@ class Modulus(object):
     def __call__(self, x):
         if not x.is_cuda and self.backend=='skcuda':
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
-
+        
         out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
+   
+        contiguous_check(x)
+        complex_check(x)
 
         # abs_complex_value takes in a complex array and returns the real
         # modulus of the input array
@@ -85,8 +84,29 @@ class Modulus(object):
              block=(self.CUDA_NUM_THREADS, 1, 1),
              args=[x.data_ptr(), out.data_ptr(), out.numel()],
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
-
         return out
+
+modulus = Modulus()
+
+def modulus_complex(x):
+    """Compute the complex modulus
+
+    Computes the modulus of x and stores the result in a complex tensor of the
+    same size, with the real part equal to the modulus and the imaginary part
+    equal to zero.
+
+    Parameters
+    ----------
+    x : tensor
+        A complex tensor (that is, whose last dimension is equal to 2).
+
+    Returns
+    -------
+    norm : tensor
+        A tensor with the same dimensions as x, such that norm[..., 0] contains
+        the complex modulus of x, while norm[..., 1] = 0.
+    """
+    return modulus(x)
 
 class SubsampleFourier(object):
     """Subsampling in the Fourier domain
@@ -127,6 +147,8 @@ class SubsampleFourier(object):
         if not x.is_cuda and self.backend == 'skcuda':
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
+        contiguous_check(x) 
+        complex_check(x)
 
         out = torch.empty(x.shape[:-2] + (x.shape[-2] // k, x.shape[-1]), dtype=x.dtype, layout=x.layout, device=x.device)
 
@@ -162,64 +184,47 @@ class SubsampleFourier(object):
                 1)
         periodize(grid=grid, block=self.block, args=[x.data_ptr(), out.data_ptr()],
                   stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
-
         return out
 
+subsamplefourier = SubsampleFourier()
 
-class TorchSkcudaBackend1D(TorchSkcudaBackend, TorchBackend1D):
-    _modulus_complex = Modulus()
-    _subsample_fourier = SubsampleFourier()
+def subsample_fourier(x, k):
+    """Subsampling in the Fourier domain
 
-    @classmethod
-    def modulus(cls, x):
-        """Compute the complex modulus
+    Subsampling in the temporal domain amounts to periodization in the Fourier
+    domain, so the input is periodized according to the subsampling factor.
 
-            Computes the modulus of x and stores the result in a complex tensor of the
-            same size, with the real part equal to the modulus and the imaginary part
-            equal to zero.
+    Parameters
+    ----------
+    x : tensor
+        Input tensor with at least 3 dimensions, where the next to last
+        corresponds to the frequency index in the standard PyTorch FFT
+        ordering. The length of this dimension should be a power of 2 to
+        avoid errors. The last dimension should represent the real and
+        imaginary parts of the Fourier transform.
+    k : int
+        The subsampling factor.
 
-            Parameters
-            ----------
-            x : tensor
-                A complex tensor (that is, whose last dimension is equal to 2).
-
-            Returns
-            -------
-            norm : tensor
-                A tensor with the same dimensions as x, such that norm[..., 0] contains
-                the complex modulus of x, while norm[..., 1] = 0.
-        """
-        cls.contiguous_check(x)
-        cls.complex_check(x)
-        return cls._modulus_complex(x)
-
-    @classmethod
-    def subsample_fourier(cls, x, k):
-        """Subsampling in the Fourier domain
-
-        Subsampling in the temporal domain amounts to periodization in the Fourier
-        domain, so the input is periodized according to the subsampling factor.
-
-        Parameters
-        ----------
-        x : tensor
-            Input tensor with at least 3 dimensions, where the next to last
-            corresponds to the frequency index in the standard PyTorch FFT
-            ordering. The length of this dimension should be a power of 2 to
-            avoid errors. The last dimension should represent the real and
-            imaginary parts of the Fourier transform.
-        k : int
-            The subsampling factor.
-
-        Returns
-        -------
-        res : tensor
-            The input tensor periodized along the next to last axis to yield a
-            tensor of size x.shape[-2] // k along that dimension.
-        """
-        cls.contiguous_check(x)
-        cls.complex_check(x)
-        return cls._subsample_fourier(x,k)
+    Returns
+    -------
+    res : tensor
+        The input tensor periodized along the next to last axis to yield a
+        tensor of size x.shape[-2] // k along that dimension.
+    """
+    return subsamplefourier(x,k)
 
 
-backend = TorchSkcudaBackend1D
+from .torch_backend import  cdgmm, unpad, pad, concatenate, rfft, irfft, ifft, concatenate_1d
+
+backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'pad', 'real', 'unpad', 'fft', 'concatenate'])
+
+backend.name = 'torch_skcuda'
+backend.modulus = modulus_complex
+backend.subsample_fourier = subsample_fourier
+backend.cdgmm = cdgmm
+backend.unpad = unpad
+backend.pad = pad
+backend.rfft = rfft
+backend.irfft = irfft
+backend.ifft = ifft
+backend.concatenate =  concatenate_1d

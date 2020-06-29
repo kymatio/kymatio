@@ -1,89 +1,78 @@
-import numpy
-import scipy.fft
+import numpy as np
+
+def input_checks(x):
+    if x is None:
+        raise TypeError('The input should be not empty.')
+
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex.')
+
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
 
 
-class NumpyBackend:
-    _np = numpy
-    _fft = scipy.fft
+def modulus(x):
+    """
+        This function implements a modulus transform for complex numbers.
 
-    name = 'numpy'
+        Usage
+        -----
+        x_mod = modulus(x)
 
-    @staticmethod
-    def input_checks(x):
-        if x is None:
-            raise TypeError('The input should be not empty.')
+        Parameters
+        ---------
+        x: input complex tensor.
 
-    @classmethod
-    def complex_check(cls, x):
-        if not cls._is_complex(x):
-            raise TypeError('The input should be complex.')
+        Returns
+        -------
+        output: a real tensor equal to the modulus of x.
 
-    @classmethod
-    def real_check(cls, x):
-        if not cls._is_real(x):
-            raise TypeError('The input should be real.')
+    """
+    return np.abs(x)
 
-    @classmethod
-    def _is_complex(cls, x):
-        return (x.dtype == cls._np.complex64) or (x.dtype == cls._np.complex128)
 
-    @classmethod
-    def _is_real(cls, x):
-        return (x.dtype == cls._np.float32) or (x.dtype == cls._np.float64)
+def _is_complex(x):
+    return (x.dtype == np.complex64) or (x.dtype == np.complex128)
 
-    @classmethod
-    def concatenate(cls, arrays):
-        return cls._np.stack(arrays, axis=1)
 
-    @classmethod
-    def modulus(cls, x):
-        """
-            This function implements a modulus transform for complex numbers.
+def _is_real(x):
+    return (x.dtype == np.float32) or (x.dtype == np.float64)
 
-            Usage
-            -----
-            x_mod = modulus(x)
 
-            Parameters
-            ---------
-            x: input complex tensor.
+def cdgmm(A, B, inplace=False):
+    """
+        Complex pointwise multiplication between (batched) tensor A and tensor B.
 
-            Returns
-            -------
-            output: a real tensor equal to the modulus of x.
+        Parameters
+        ----------
+        A : tensor
+            A is a complex tensor of size (B, C, M, N, 2)
+        B : tensor
+            B is a complex tensor of size (M, N) or real tensor of (M, N)
+        inplace : boolean, optional
+            if set to True, all the operations are performed inplace
 
-        """
-        return cls._np.abs(x)
+        Returns
+        -------
+        C : tensor
+            output tensor of size (B, C, M, N, 2) such that:
+            C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
 
-    @classmethod
-    def cdgmm(cls, A, B):
-        """
-            Complex pointwise multiplication between (batched) tensor A and tensor B.
+    """
 
-            Parameters
-            ----------
-            A : tensor
-                A is a complex tensor of size (B, C, M, N, 2)
-            B : tensor
-                B is a complex tensor of size (M, N) or real tensor of (M, N)
-            inplace : boolean, optional
-                if set to True, all the operations are performed inplace
+    if not _is_complex(A):
+        raise TypeError('The first input must be complex.')
 
-            Returns
-            -------
-            C : tensor
-                output tensor of size (B, C, M, N, 2) such that:
-                C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
+    if A.shape[-len(B.shape):] != B.shape[:]:
+        raise RuntimeError('The inputs are not compatible for '
+                           'multiplication.')
 
-        """
-        if not cls._is_complex(A):
-            raise TypeError('The first input must be complex.')
+    if not _is_complex(B) and not _is_real(B):
+        raise TypeError('The second input must be complex or real.')
 
-        if A.shape[-len(B.shape):] != B.shape[:]:
-            raise RuntimeError('The inputs are not compatible for '
-                               'multiplication.')
-
-        if not cls._is_complex(B) and not cls._is_real(B):
-            raise TypeError('The second input must be complex or real.')
-
+    if inplace:
+        return np.multiply(A, B, out=A)
+    else:
         return A * B

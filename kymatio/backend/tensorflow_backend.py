@@ -3,6 +3,15 @@ import numpy as np
 
 
 
+
+def complex_check(x):
+    if not _is_complex(x):
+        raise TypeError('The input should be complex.')
+
+def real_check(x):
+    if not _is_real(x):
+        raise TypeError('The input should be real.')
+
 def _is_complex(x):
     return (x.dtype == np.complex64) or (x.dtype == np.complex128)
 
@@ -29,23 +38,7 @@ class Modulus():
     """
     def __call__(self, x):
         norm = tf.abs(x)
-        return tf.cast(norm, tf.complex64)
-
-
-def real(x):
-    """Real part of complex tensor
-    Takes the real part of a complex tensor, where the last axis corresponds
-    to the real and imaginary parts.
-    Parameters
-    ----------
-    x : tensor
-        A complex tensor (that is, whose last dimension is equal to 2).
-    Returns
-    -------
-    x_real : tensor
-        The tensor x[..., 0] which is interpreted as the real part of x.
-    """
-    return tf.math.real(x)
+        return norm
 
 
 def concatenate(arrays, dim):
@@ -81,10 +74,3 @@ def cdgmm(A, B, inplace=False):
 
     return A * B
 
-
-def sanity_check(x):
-    if not _is_complex(x):
-        raise TypeError('The input should be complex.')
-
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
