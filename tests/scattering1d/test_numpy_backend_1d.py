@@ -45,11 +45,14 @@ def test_pad():
             for t in range(1, pad_right + 1):
                 assert np.allclose(x_pad[..., x_pad.shape[-1] - 1 - pad_right - t], x[..., x.shape[-1] - 1 - t])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         backend.pad(x, x.shape[-1], 0)
-
-    with pytest.raises(ValueError):
+    assert "padding size" in ve.value.args[0]
+    
+    with pytest.raises(ValueError) as ve:
         backend.pad(x, 0, x.shape[-1])
+    assert "padding size" in ve.value.args[0]
+
 
 def test_unpad():
     # test unpading of a random tensor
