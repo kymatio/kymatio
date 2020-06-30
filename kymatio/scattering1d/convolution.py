@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 class Conv1DFFT(nn.Module):
     def __init__(self, backend):
-        super(Conv1dFFT, self).__init__()
+        super(Conv1DFFT, self).__init__()
         self.name = 'torch'
         self.backend = backend
 
