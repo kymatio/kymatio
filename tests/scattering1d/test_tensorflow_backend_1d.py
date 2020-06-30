@@ -11,9 +11,9 @@ def test_subsample_fourier():
     x_f = np.fft.fft(x, axis=-1)
 
     for j in range(J + 1):
-        x_f_sub = backend.subsample_fourier(x_f, 2**j)
+        x_f_sub = backend.subsample_fourier(x_f, 2 ** j)
         x_sub = np.fft.ifft(x_f_sub, axis=-1)
-        assert np.allclose(x[:, ::2**j], x_sub)
+        assert np.allclose(x[:, ::2 ** j], x_sub)
 
     with pytest.raises(TypeError) as te:
         x_bad = x.real
