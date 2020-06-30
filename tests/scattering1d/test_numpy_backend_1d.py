@@ -3,6 +3,7 @@ import numpy as np
 
 from kymatio.scattering1d.backend.numpy_backend import backend
 
+
 def test_subsample_fourier(random_state=42):
     rng = np.random.RandomState(random_state)
     J = 10
