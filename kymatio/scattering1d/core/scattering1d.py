@@ -1,6 +1,6 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
-from ..conv_primitive import Conv1dFFTPrimative, Conv1dSpatialPrimative
+from ..conv_primitive import Conv1dFFTPrimative
 
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
