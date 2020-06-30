@@ -4,11 +4,10 @@ import numpy as np
 from kymatio.scattering1d.backend.numpy_backend import backend
 
 
-def test_subsample_fourier(random_state=42):
-    rng = np.random.RandomState(random_state)
+def test_subsample_fourier():
     J = 10
     # 1d signal 
-    x = rng.randn(2, 2**J) + 1j * rng.randn(2, 2**J)
+    x = np.random.randn(2, 2**J) + 1j * np.random.randn(2, 2**J)
     x_f = np.fft.fft(x, axis=-1)
 
     for j in range(J + 1):
