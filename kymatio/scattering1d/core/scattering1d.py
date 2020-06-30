@@ -78,10 +78,12 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     k0 = max(J - oversampling, 0)
 
     # pad to a dyadic size and compute the fourier transform
-    U_0_hat = conv.preprocess_signal(x, (pad_left, pad_right))
+    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
+    U_0_hat = conv.preprocess_signal(U_0)
 
     if average:
-        S_0 = conv.convolution(U_0_hat, phi[0], k0, 'real', ind_start[k0], ind_end[k0])
+        S_0_r = conv.convolution(U_0_hat, phi[0], k0, 'real')
+        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
 
@@ -110,7 +112,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             # convolution + downsampling
-            S_1 = conv.convolution(U_1_hat, phi[k1], k1_J, 'real', ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1_r = conv.convolution(U_1_hat, phi[k1], k1_J, 'real')
+            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
@@ -135,8 +138,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
                         U_2_hat  = conv.preprocess_signal(U_2_m)
-                        S_2 = conv.convolution(U_2_hat, phi[k1+k2], k2_J, 'real',
-                                ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
+                        S_2_r = conv.convolution(U_2_hat, phi[k1+k2], k2_J, 'real')
+                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
