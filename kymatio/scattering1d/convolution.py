@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Conv1dFFT(nn.Module):
     def __init__(self, backend):
         super(Conv1dFFT, self).__init__()
