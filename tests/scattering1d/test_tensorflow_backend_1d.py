@@ -93,23 +93,8 @@ def test_fft_type():
 
 
 def test_fft():
-    x = np.random.randn(2)
-
-    y = np.array([[x[0] + x[1],
-                   x[0] - x[1]]])
-
-    z = backend.rfft(x)
-    assert np.allclose(y, z)
-
-    z_1 = backend.ifft(z)
-    assert np.allclose(x, z_1)
-
-    z_2 = backend.irfft(z)
-    assert not np.iscomplexobj(z_2)
-    assert np.allclose(x, z_2)
-
     def coefficent(n):
-            return np.exp(-2 * np.pi * 1j * n)
+        return np.exp(-2 * np.pi * 1j * n)
 
     x_r = np.random.rand(4)
 
