@@ -4,11 +4,10 @@ import numpy as np
 from kymatio.scattering1d.backend.tensorflow_backend import backend
 
 
-def test_subsample_fourier(random_state=42):
-    rng = np.random.RandomState(random_state)
+def test_subsample_fourier():
     J = 10
     # 1d signal 
-    x = rng.randn(2, 2**J) + 1j * rng.randn(2, 2**J)
+    x = np.random.randn(2, 2 ** J) + 1j * np.random.randn(2, 2 ** J)
     x_f = np.fft.fft(x, axis=-1)
 
     for j in range(J + 1):
@@ -20,6 +19,7 @@ def test_subsample_fourier(random_state=42):
         x_bad = x.real
         backend.subsample_fourier(x_bad, 1)
     assert "should be complex" in te.value.args[0]
+
 
 def test_pad():
     N = 128
@@ -51,6 +51,7 @@ def test_pad():
 
     with pytest.raises(ValueError):
         backend.pad(x, 0, x.shape[-1])
+
 
 def test_unpad():
     # test unpading of a random tensor
@@ -87,6 +88,7 @@ def test_fft_type():
     with pytest.raises(TypeError) as record:
         y = backend.irfft(x)
     assert 'should be complex' in record.value.args[0]
+
 
 def test_fft():
     x = np.random.randn(2)
