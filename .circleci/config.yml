@@ -97,6 +97,6 @@ jobs:
                   bash tools/push_doc.sh doc/build/html
               else
                   echo $(git symbolic-ref HEAD 2>/dev/null)
-                  bash tools/push_doc.sh doc/build/html kymatio-dev-docs
+                  bash tools/push_doc.sh doc/build/html dev-docs
               fi
 
