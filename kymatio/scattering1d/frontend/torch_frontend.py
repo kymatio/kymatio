@@ -10,6 +10,7 @@ from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
 
+
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
             oversampling=0, vectorize=True, out_type='array', backend='torch'):
@@ -19,7 +20,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
-        self.convolution = 'fft'
         self.register_filters()
 
     def register_filters(self):
@@ -28,16 +28,10 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         saves those arrays as module's buffers."""
         n = 0
         # prepare for pytorch
-        # TODO: have option for different shaped filter depending on
-        # convolution primitive?
         for k in self.phi_f.keys():
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
-                if self.convolution == 'spatial':
-                    self.phi_f[k] = torch.from_numpy(
-                        self.phi_f[k]).float().view(1, 1, -1)
-                else:
-                    self.phi_f[k] = torch.from_numpy(
+                self.phi_f[k] = torch.from_numpy(
                         self.phi_f[k]).float().view(-1, 1)
                 self.register_buffer('tensor' + str(n), self.phi_f[k])
                 n += 1
@@ -45,11 +39,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    if self.convolution == 'spatial':
-                        psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(1, 1, -1)
-                    else:
-                        psi_f[sub_k] = torch.from_numpy(
+                    psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
@@ -57,11 +47,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    if self.convolution == 'spatial':
-                        psi_f[sub_k] = torch.from_numpy(
-                            psi_f[sub_k]).float().view(1, 1, -1)
-                    else:
-                        psi_f[sub_k] = torch.from_numpy(
+                    psi_f[sub_k] = torch.from_numpy(
                             psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
@@ -113,10 +99,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
 
-        if self.convolution == 'spatial':
-            x = x.reshape((-1, ) + signal_shape)
-        else:
-            x = x.reshape((-1, 1) + signal_shape)
+        x = x.reshape((-1, 1) + signal_shape)
 
         self.load_filters()
 
