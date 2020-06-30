@@ -7,13 +7,13 @@ from kymatio.scattering1d.backend.numpy_backend import backend
 def test_subsample_fourier():
     J = 10
     # 1d signal 
-    x = np.random.randn(2, 2**J) + 1j * np.random.randn(2, 2**J)
+    x = np.random.randn(2, 2 ** J) + 1j * np.random.randn(2, 2 ** J)
     x_f = np.fft.fft(x, axis=-1)
 
     for j in range(J + 1):
-        x_f_sub = backend.subsample_fourier(x_f, 2**j)
+        x_f_sub = backend.subsample_fourier(x_f, 2 ** j)
         x_sub = np.fft.ifft(x_f_sub, axis=-1)
-        assert np.allclose(x[:, ::2**j], x_sub)
+        assert np.allclose(x[:, ::2 ** j], x_sub)
 
     with pytest.raises(TypeError) as te:
         x_bad = x.real
