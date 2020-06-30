@@ -78,7 +78,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     k0 = max(J - oversampling, 0)
 
     # pad to a dyadic size and compute the fourier transform
-    U_0_hat = conv.preprocess_signal(x, pad_left, pad_right)
+    U_0_hat = conv.preprocess_signal(x, (pad_left, pad_right))
 
     if average:
         S_0 = conv.convolution(U_0_hat, phi[0], k0, 'real', ind_start[k0], ind_end[k0])

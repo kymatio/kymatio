@@ -7,9 +7,9 @@ class Conv1dFFT(nn.Module):
         self.name = 'torch'
         self.backend = backend
 
-    def preprocess_signal(self, x, pad_left=None, pad_right=None):
-        if pad_left is not None:
-            x = self.backend.pad(x, pad_left=pad_left, pad_right=pad_right)
+    def preprocess_signal(self, x, padding=()):
+        if len(padding) != 0:
+            x = self.backend.pad(x, pad_left=padding[0], pad_right=padding[1])
         x_hat = self.backend.rfft(x)
         return x_hat
 
