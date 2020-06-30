@@ -19,7 +19,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
-        self.conv_prim = 'fft'
+        self.convolution = 'fft'
         self.register_filters()
 
     def register_filters(self):
@@ -33,7 +33,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         for k in self.phi_f.keys():
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
-                if self.conv_prim == 'spatial':
+                if self.convolution == 'spatial':
                     self.phi_f[k] = torch.from_numpy(
                         self.phi_f[k]).float().view(1, 1, -1)
                 else:
@@ -45,7 +45,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    if self.conv_prim == 'spatial':
+                    if self.convolution == 'spatial':
                         psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).float().view(1, 1, -1)
                     else:
@@ -57,7 +57,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
-                    if self.conv_prim == 'spatial':
+                    if self.convolution == 'spatial':
                         psi_f[sub_k] = torch.from_numpy(
                             psi_f[sub_k]).float().view(1, 1, -1)
                     else:
@@ -113,7 +113,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
 
-        if self.conv_prim == 'spatial':
+        if self.convolution == 'spatial':
             x = x.reshape((-1, ) + signal_shape)
         else:
             x = x.reshape((-1, 1) + signal_shape)
@@ -136,7 +136,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                        oversampling=self.oversampling,
                        vectorize=self.vectorize,
                        size_scattering=size_scattering,
-                       out_type=self.out_type, conv_prim=self.conv_prim)
+                       out_type=self.out_type, convolution_type=self.convolution)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = S.shape[-2:]
