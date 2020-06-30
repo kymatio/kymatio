@@ -1,12 +1,13 @@
 from ...frontend.base_frontend import ScatteringBase
-from ..filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank
+from ..filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank, filter_bank
+from ..utils import compute_padding
 
 
-class ScatteringBase3D(ScatteringBase):
+class ScatteringHarmonicBase3D(ScatteringBase):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2,
                  rotation_covariant=True, method='integral', points=None,
                  integral_powers=(0.5, 1., 2.), backend=None):
-        super(ScatteringBase3D, self).__init__()
+        super(ScatteringHarmonicBase3D, self).__init__()
         self.J = J
         self.shape = shape
         self.L = L
@@ -108,16 +109,52 @@ class ScatteringBase3D(ScatteringBase):
 
     @classmethod
     def _document(cls):
-        cls.__doc__ = ScatteringBase3D._doc_class.format(
+        cls.__doc__ = ScatteringHarmonicBase3D._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
             alias_call=cls._doc_alias_call,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
-        cls.scattering.__doc__ = ScatteringBase3D._doc_scattering.format(
+        cls.scattering.__doc__ = ScatteringHarmonicBase3D._doc_scattering.format(
             array=cls._doc_array,
             n=cls._doc_array_n)
 
 
-__all__ = ['ScatteringBase3D']
+class ScatteringBase3D(ScatteringBase):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False,
+            backend='torch'):
+        super(ScatteringBase3D, self).__init__()
+        self.J = J
+        self.shape = shape
+        self.L = L
+        self.pre_pad = pre_pad
+
+        self.max_order = max_order
+        self.backend = backend
+       
+    def create_filters(self):
+        self.filters = filter_bank(self.M_padded, self.N_padded, self.P_padded,
+                self.J, orientations="cartesian")
+        self.phi, self.psi = self.filters['phi'], self.filters['psi']
+    
+    def build(self):
+        self.M, self.N, self.P = self.shape
+
+        if 2 ** self.J > self.M or 2 ** self.J > self.N or 2 ** self.J > self.M:
+            raise RuntimeError('The smallest dimension should be larger than 2^J')
+        self.M_padded, self.N_padded, self.P_padded = compute_padding(self.M, self.N, self.P, self.J)
+        # pads equally on a given side if the amount of padding to add is an
+        # even number of pixels, otherwise it adds an extra pixel
+
+        self.pad = self.backend.Pad([(self.M_padded - self.M) // 2,
+            (self.M_padded - self.M + 1) // 2, (self.N_padded - self.N) // 2,
+            (self.N_padded - self.N + 1) // 2, (self.P_padded - self.P) // 2,
+            (self.P_padded - self.P + 1) // 2], [self.M, self.N, self.P],
+            pre_pad=self.pre_pad)
+        self.unpad = self.backend.unpad
+    
+
+
+
+__all__ = ['ScatteringHarmonicBase3D', 'ScatteringBase3D']

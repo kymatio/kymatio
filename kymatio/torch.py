@@ -1,7 +1,9 @@
 from .scattering1d.frontend.torch_frontend import ScatteringTorch1D as Scattering1D
 from .scattering2d.frontend.torch_frontend import ScatteringTorch2D as Scattering2D
+from .scattering3d.frontend.torch_frontend import ScatteringTorch3D as Scattering3D
 from .scattering3d.frontend.torch_frontend \
         import HarmonicScatteringTorch3D as HarmonicScattering3D
+
 
 Scattering1D.__module__ = 'kymatio.torch'
 Scattering1D.__name__ = 'Scattering1D'
@@ -9,7 +11,11 @@ Scattering1D.__name__ = 'Scattering1D'
 Scattering2D.__module__ = 'kymatio.torch'
 Scattering2D.__name__ = 'Scattering2D'
 
+Scattering3D.__module__ = 'kymatio.torch'
+Scattering3D.__name__ = 'Scattering3D'
+
 HarmonicScattering3D.__module__ = 'kymatio.torch'
 HarmonicScattering3D.__name__ = 'HarmonicScattering3D'
 
-__all__ = ['Scattering1D', 'Scattering2D', 'HarmonicScattering3D']
+
+__all__ = ['Scattering1D', 'Scattering2D', 'Scattering3D', 'HarmonicScattering3D']

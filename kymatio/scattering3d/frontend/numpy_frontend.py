@@ -1,23 +1,23 @@
 from ...frontend.numpy_frontend import ScatteringNumPy
 from kymatio.scattering3d.core.scattering3d import scattering3d
-from .base_frontend import ScatteringBase3D
+from .base_frontend import ScatteringHarmonicBase3D
 import numpy as np
 
 
-class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringBase3D):
+class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringHarmonicBase3D):
     def __init__(self, J, shape, L=3, sigma_0=1, max_order=2, rotation_covariant=True, method='integral', points=None,
                  integral_powers=(0.5, 1., 2.), backend='numpy'):
         ScatteringNumPy.__init__(self)
-        ScatteringBase3D.__init__(self, J, shape, L, sigma_0, max_order,
+        ScatteringHarmonicBase3D.__init__(self, J, shape, L, sigma_0, max_order,
                                   rotation_covariant, method, points,
                                   integral_powers, backend)
 
         self.build()
 
     def build(self):
-        ScatteringBase3D._instantiate_backend(self, 'kymatio.scattering3d.backend.')
-        ScatteringBase3D.build(self)
-        ScatteringBase3D.create_filters(self)
+        ScatteringHarmonicBase3D._instantiate_backend(self, 'kymatio.scattering3d.backend.')
+        ScatteringHarmonicBase3D.build(self)
+        ScatteringHarmonicBase3D.create_filters(self)
 
     def scattering(self, input_array):
         if not type(input_array) is np.ndarray:
