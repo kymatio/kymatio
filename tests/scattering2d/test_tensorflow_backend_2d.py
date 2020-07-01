@@ -76,6 +76,13 @@ class TestSubsampleFourier:
 
         z = subsample_fourier(x, k=16)
         assert np.allclose(y, z)
+    
+    @pytest.mark.parametrize('backend', backends)
+    def test_SubsampleFourier_type(self, backend):
+        with pytest.raises(TypeError) as te:
+            x_bad = np.random.rand(100, 128, 128)
+            backend.subsample_fourier(x_bad, 1)
+        assert "should be complex" in te.value.args[0]
 
 
 class TestCDGMM:
