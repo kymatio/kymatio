@@ -61,6 +61,8 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
+        complex_check(x)
+
         y = tf.reshape(x, (-1, k, x.shape[1] // k, k, x.shape[2] // k))
 
         out = tf.reduce_mean(y, axis=(1, 3))
