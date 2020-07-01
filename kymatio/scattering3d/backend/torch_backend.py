@@ -167,7 +167,7 @@ class SubsampleFourier(object):
                     k, x.shape[2] // k,
                     k, x.shape[3] // k,
                     2)
-        out = y.mean((5, 3, 1), keepdim=False)#.mean(3, keepdim=False).mean(1, keepdim=False)
+        out = y.mean((5, 3, 1), keepdim=False)
         return out
 
 
