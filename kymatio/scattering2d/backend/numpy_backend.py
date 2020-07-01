@@ -71,6 +71,8 @@ class SubsampleFourier(object):
 
     """
     def __call__(self, x, k):
+        complex_check(x)
+        
         y = x.reshape(-1, k, x.shape[1] // k, k, x.shape[2] // k)
 
         out = y.mean(axis=(1, 3))
