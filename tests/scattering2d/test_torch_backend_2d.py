@@ -111,7 +111,8 @@ class TestModulus:
             with pytest.raises(TypeError) as exc:
                 y = modulus(x)
             assert 'Use the torch backend' in exc.value.args[0]
-    
+   
+
 # Checked the subsampling
 class TestSubsampleFourier:
     @pytest.mark.parametrize('backend_device', backends_devices)
@@ -326,7 +327,6 @@ class TestFFT:
 
         z_2 = backend.ifft(z)[..., :1]
         assert torch.allclose(x_r, z_2)
-
         
          
     @pytest.mark.parametrize('backend_device', backends_devices)
