@@ -55,9 +55,8 @@ class TestModulus:
 
         x = np.random.rand(100, 10, 4) + 1J * np.random.rand(100, 10, 4)
 
-        y = modulus(x)
-        u = np.squeeze(np.sqrt(np.real(x) ** 2 + np.imag(x) ** 2))
-        v = y
+        v = modulus(x)
+        u = np.sqrt(x.real ** 2 + x.imag ** 2)
         assert np.allclose(u, v)
 
 
