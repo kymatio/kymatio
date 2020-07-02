@@ -43,7 +43,7 @@ def _is_real(x):
     return (x.dtype == np.float32) or (x.dtype == np.float64)
 
 
-def cdgmm(A, B, inplace=False):
+def cdgmm(A, B):
     """
         Complex pointwise multiplication between (batched) tensor A and tensor B.
 
@@ -74,7 +74,4 @@ def cdgmm(A, B, inplace=False):
     if not _is_complex(B) and not _is_real(B):
         raise TypeError('The second input must be complex or real.')
 
-    if inplace:
-        return np.multiply(A, B, out=A)
-    else:
-        return A * B
+    return A * B
