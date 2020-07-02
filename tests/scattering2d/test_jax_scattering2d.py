@@ -18,8 +18,7 @@ class TestPad:
     def test_Pad(self, backend):
         pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
 
-        x = np.random.randn(4, 4) + 1J * np.random.randn(4, 4)
-        x = x[np.newaxis, ...]
+        x = np.random.randn(1, 4, 4) + 1J * np.random.randn(1, 4, 4)
 
         z = pad(x)
 
