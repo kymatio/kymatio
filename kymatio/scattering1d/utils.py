@@ -277,3 +277,6 @@ def compute_meta_scattering(J, Q, max_order=2):
         meta[field] = np.array(meta[field])
 
     return meta
+
+def check_hermitian_symmetric(a):
+    return np.allclose(a, a.T.conj())

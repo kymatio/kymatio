@@ -4,7 +4,8 @@
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array', conv_type='fft'):
+        vectorize=False, out_type='array', psi1_f_dict=None,
+        psi2_f_dict=None, phi_f_dict=None):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -63,7 +64,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     irfft = backend.irfft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
-    conv = conv_type
+    conv = backend.conv
 
 
     # S is simply a dictionary if we do not perform the averaging...
