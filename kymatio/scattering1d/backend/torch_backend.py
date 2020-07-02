@@ -128,10 +128,10 @@ class Conv1DFFT(nn.Module):
         x_hat = self.backend.rfft(x)
         return x_hat
 
-    def convolution(self, x_hat, conv_filter, subsampling_factor, domain=''):
+    def convolution(self, x_hat, conv_filter, subsampling_factor, hermitian_symmetric):
         y_c = self.backend.cdgmm(x_hat, conv_filter)
         y_hat = self.backend.subsample_fourier(y_c, 2 ** subsampling_factor)
-        if domain == 'real':
+        if hermitian_symmetric:
             y_r = self.backend.irfft(y_hat)
         else:
             y_r = self.backend.ifft(y_hat)

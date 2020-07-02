@@ -82,7 +82,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     U_0_hat = conv.preprocess_signal(U_0)
 
     if average:
-        S_0_r = conv.convolution(U_0_hat, phi[0], k0, 'real')
+        S_0_r = conv.convolution(U_0_hat, phi[0], k0, phi_f_dict[0])
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
@@ -100,7 +100,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
 
-        U_1_c = conv.convolution(U_0_hat, psi1[n1][0], k1)
+        U_1_c = conv.convolution(U_0_hat, psi1[n1][0], k1, psi1_f_dict[n1][0])
 
         # Take the modulus
         U_1_m = modulus(U_1_c)
@@ -112,7 +112,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             # convolution + downsampling
-            S_1_r = conv.convolution(U_1_hat, phi[k1], k1_J, 'real')
+            S_1_r = conv.convolution(U_1_hat, phi[k1], k1_J, phi_f_dict[k1])
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
@@ -130,7 +130,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
                     k2 = max(j2 - k1 - oversampling, 0)
                     # convolution + downsampling
-                    U_2_c = conv.convolution(U_1_hat, psi2[n2][k1], k2)
+                    U_2_c = conv.convolution(U_1_hat, psi2[n2][k1], k2,
+                            psi2_f_dict[n2][k1])
                     # take the modulus
                     U_2_m = modulus(U_2_c)
 
@@ -138,7 +139,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
                         U_2_hat  = conv.preprocess_signal(U_2_m)
-                        S_2_r = conv.convolution(U_2_hat, phi[k1+k2], k2_J, 'real')
+                        S_2_r = conv.convolution(U_2_hat, phi[k1 + k2], k2_J, phi_f_dict[k1 + k2])
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])

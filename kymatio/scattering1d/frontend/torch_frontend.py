@@ -32,25 +32,27 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         # prepare for pytorch
         for k in self.phi_f.keys():
             if type(k) != str:
-                self.phi_f_dict[n] = check_hermitian_symmetric(self.phi_f[k])
+                self.phi_f_dict[k] = check_hermitian_symmetric(self.phi_f[k])
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 self.phi_f[k] = torch.from_numpy(
                         self.phi_f[k]).float().view(-1, 1)
                 self.register_buffer('tensor' + str(n), self.phi_f[k])
                 n += 1
-        for psi_f in self.psi1_f:
+        for counter, psi_f in enumerate(self.psi1_f):
+            self.psi1_f_dict[counter] = dict()
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    self.psi1_f_dict[n] = check_hermitian_symmetric(psi_f[sub_k])
+                    self.psi1_f_dict[counter][sub_k] = check_hermitian_symmetric(psi_f[sub_k])
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
-        for psi_f in self.psi2_f:
+        for counter, psi_f in enumerate(self.psi2_f):
+            self.psi2_f_dict[counter] = dict()
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    self.psi2_f_dict[n] = check_hermitian_symmetric(psi_f[sub_k])
+                    self.psi2_f_dict[counter][sub_k] = check_hermitian_symmetric(psi_f[sub_k])
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                             psi_f[sub_k]).float().view(-1, 1)
