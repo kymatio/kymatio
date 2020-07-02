@@ -209,20 +209,6 @@ def test_fft_type():
 
 
 def test_fft():
-    x = torch.randn(2, 1)
-
-    y = torch.tensor([[x[0] + x[1], 0], [x[0] - x[1], 0]])
-
-    z = backend.rfft(x)
-    assert torch.allclose(y, z)
-
-    z_1 = backend.ifft(z)
-    assert torch.allclose(x[..., 0], z_1[..., 0])
-
-    z_2 = backend.irfft(z)
-    assert not z_2.shape[-1] == 2
-    assert torch.allclose(x, z_2)
-
     def coefficent(n):
             return np.exp(-2 * np.pi * 1j * n)
 
