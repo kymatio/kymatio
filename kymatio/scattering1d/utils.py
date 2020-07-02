@@ -279,4 +279,5 @@ def compute_meta_scattering(J, Q, max_order=2):
     return meta
 
 def check_hermitian_symmetric(a):
-    return np.allclose(a, a.T.conj())
+    b = np.concatenate((np.array([a[0]]), np.flip(a[1:]).conj()))
+    return np.allclose(a, b)

@@ -50,7 +50,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         for psi_f in self.psi2_f:
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    print(check_hermitian_symmetric(psi_f[sub_k]))
                     self.psi2_f_dict[n] = check_hermitian_symmetric(psi_f[sub_k])
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
