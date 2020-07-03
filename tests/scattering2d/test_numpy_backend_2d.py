@@ -12,8 +12,7 @@ class TestPad:
     def test_Pad(self, backend):
         pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
 
-        x = np.random.randn(4, 4) + 1J * np.random.randn(4, 4)
-        x = x[np.newaxis, ...]
+        x = np.random.randn(1, 4, 4) + 1J * np.random.randn(1, 4, 4)
 
         z = pad(x)
 
@@ -51,7 +50,7 @@ class TestModulus:
         x = np.random.rand(100, 10, 4) + 1J * np.random.rand(100, 10, 4)
 
         y = modulus(x)
-        u = np.squeeze(np.sqrt(np.real(x) ** 2 + np.imag(x) ** 2))
+        u = np.sqrt(np.real(x) ** 2 + np.imag(x) ** 2)
         v = y
         assert np.allclose(u, v)
 

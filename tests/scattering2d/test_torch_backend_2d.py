@@ -90,7 +90,7 @@ class TestModulus:
 
         y = modulus(x)
         y = y.reshape(y.shape[:-1])
-        u = torch.squeeze(torch.sqrt(torch.sum(x * x, 3)))
+        u = torch.sqrt(torch.sum(x * x, 3))
         assert torch.allclose(u, y)
 
         y = x[..., 0].contiguous()
