@@ -35,7 +35,7 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
 
         input = input.reshape((-1,) + signal_shape)
 
-        S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
+        S = scattering2d(input, self.pad, self.unpad, self.pre_pad, self.backend, self.J,
                 self.L, self.phi, self.psi, self.max_order, self.out_type)
 
         if self.out_type == 'array':

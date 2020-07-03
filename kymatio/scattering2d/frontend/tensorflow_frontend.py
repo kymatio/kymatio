@@ -42,7 +42,7 @@ class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
             # tf.Tensors and that would add their values.
             input = tf.reshape(input, tf.concat(((-1,), signal_shape), 0))
 
-            S = scattering2d(input, self.pad, self.unpad, self.backend, self.J, self.L, self.phi, self.psi,
+            S = scattering2d(input, self.pad, self.unpad, self.pre_pad, self.backend, self.J, self.L, self.phi, self.psi,
                              self.max_order, self.out_type)
 
             if self.out_type == 'array':

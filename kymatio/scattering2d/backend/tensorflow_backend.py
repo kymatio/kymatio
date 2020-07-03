@@ -10,7 +10,7 @@ from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate
 from ...backend.base_backend import FFT
 
 class Pad(object):
-    def __init__(self, pad_size, input_size, pre_pad=False):
+    def __init__(self, pad_size, input_size):
         """
             Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
@@ -20,19 +20,13 @@ class Pad(object):
                 size of padding to apply.
             input_size : list of 2 integers
                 size of the original signal
-            pre_pad : boolean
-                if set to true, then there is no padding, one simply adds the imaginarty part.
         """
-        self.pre_pad = pre_pad
         self.pad_size = pad_size
 
     def __call__(self, x):
-        if self.pre_pad:
-            return x
-        else:
-            paddings = [[0, 0]] * len(x.shape[:-2])
-            paddings += [[self.pad_size[0], self.pad_size[1]], [self.pad_size[2], self.pad_size[3]]]
-            return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
+        paddings = [[0, 0]] * len(x.shape[:-2])
+        paddings += [[self.pad_size[0], self.pad_size[1]], [self.pad_size[2], self.pad_size[3]]]
+        return tf.pad(x, paddings, mode="REFLECT")
 
 def unpad(in_):
     """
@@ -46,6 +40,7 @@ def unpad(in_):
         in_[..., 1:-1, 1:-1]
     """
     return in_[..., 1:-1, 1:-1]
+
 
 class SubsampleFourier(object):
     """ Subsampling of a 2D image performed in the Fourier domain.

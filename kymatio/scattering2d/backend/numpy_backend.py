@@ -11,7 +11,7 @@ from ...backend.base_backend import FFT
 
 
 class Pad(object):
-    def __init__(self, pad_size, input_size, pre_pad=False):
+    def __init__(self, pad_size, input_size):
         """
             Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
@@ -22,21 +22,16 @@ class Pad(object):
                 size of padding to apply.
             input_size : list of 2 integers
                 size of the original signal
-            pre_pad : boolean
-                if set to true, then there is no padding, one simply converts
-                from real to complex.
 
         """
-        self.pre_pad = pre_pad
         self.pad_size = pad_size
 
     def __call__(self, x):
-        if self.pre_pad:
-            return x
-        else:
-            np_pad = ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
-            output = np.pad(x, ((0,0), np_pad[0], np_pad[1]), mode='reflect')
-            return output
+        paddings = ((0, 0),) * (x.ndim - 2)
+        paddings += ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
+
+        output = np.pad(x, paddings, mode='reflect')
+        return output
 
 
 def unpad(in_):
