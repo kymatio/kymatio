@@ -97,7 +97,7 @@ def test_fft():
     complex_input = device_put(jnp.asarray(complex_input))
 
     jax_result = jnp.fft.fft(complex_input * real_filter)
-    assert np.allclose(jax_result, numpy_result, atol=1e-6, rtol=1e-4)
+    assert np.allclose(jax_result, numpy_result, atol=1e-4, rtol=1e-4)
 
 def test_jnp_fft():
     #fft jnp
@@ -111,7 +111,7 @@ def test_jnp_fft():
 
     numpy_result = np.fft.fft(complex_input * real_filter)
 
-    assert jnp.allclose(numpy_result, jax_result, atol=1e-6, rtol=1e-4)
+    assert jnp.allclose(numpy_result, jax_result, atol=1e-3, rtol=1e-4)
 
 def test_rfft():
     #rfft
@@ -121,7 +121,7 @@ def test_rfft():
     x = device_put(jnp.asarray(x))
     jax_result = jnp.fft.fft(x)
     
-    assert np.allclose(jax_result, numpy_result, atol=1e-6, rtol=1e-4)
+    assert np.allclose(jax_result, numpy_result, atol=1e-4, rtol=1e-4)
    
 def test_jnp_rfft():
     #rfft jnp
@@ -131,7 +131,7 @@ def test_jnp_rfft():
     x = np.asarray(x)
     numpy_result = np.fft.fft(x)
 
-    assert jnp.allclose(numpy_result, jax_result, atol=1e-6, rtol=1e-4)
+    assert jnp.allclose(numpy_result, jax_result, atol=1e-4, rtol=1e-4)
 
     
 def test_absolute():
