@@ -74,6 +74,7 @@ def test_unpad():
         x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right)
         assert np.allclose(x, x_unpadded)
 
+
 def test_fft_type():
     x = np.random.rand(8, 4) + 1j * np.random.rand(8, 4)
 
