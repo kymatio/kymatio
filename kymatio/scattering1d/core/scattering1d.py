@@ -1,11 +1,11 @@
 # Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
 # Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
 
-
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        vectorize=False, out_type='array', psi1_f_dict=None,
+        psi2_f_dict=None, phi_f_dict=None):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -64,6 +64,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     irfft = backend.irfft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
+    conv = backend.conv
 
 
     # S is simply a dictionary if we do not perform the averaging...
@@ -72,21 +73,20 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
-    # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
-    # compute the Fourier transform
-    U_0_hat = rfft(U_0)
 
     # Get S0
     k0 = max(J - oversampling, 0)
 
+    # pad to a dyadic size and compute the fourier transform
+    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
+    U_0_hat = conv.preprocess_signal(U_0)
+
     if average:
-        S_0_c = cdgmm(U_0_hat, phi[0])
-        S_0_hat = subsample_fourier(S_0_c, 2**k0)
-        S_0_r = irfft(S_0_hat)
+        S_0_r = conv.convolution(U_0_hat, phi[0], k0, phi_f_dict[0])
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
+
     out_S_0.append({'coef': S_0,
                     'j': (),
                     'n': ()})
@@ -99,23 +99,20 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         k1 = max(j1 - oversampling, 0)
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
-        U_1_c = cdgmm(U_0_hat, psi1[n1][0])
-        U_1_hat = subsample_fourier(U_1_c, 2**k1)
-        U_1_c = ifft(U_1_hat)
+
+        U_1_c = conv.convolution(U_0_hat, psi1[n1][0], k1, psi1_f_dict[n1][0])
 
         # Take the modulus
         U_1_m = modulus(U_1_c)
 
         if average or max_order > 1:
-            U_1_hat = rfft(U_1_m)
+            U_1_hat = conv.preprocess_signal(U_1_m)
 
         if average:
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
-            S_1_c = cdgmm(U_1_hat, phi[k1])
-            S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
-            S_1_r = irfft(S_1_hat)
-
+            # convolution + downsampling
+            S_1_r = conv.convolution(U_1_hat, phi[k1], k1_J, phi_f_dict[k1])
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
@@ -131,27 +128,18 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
                 if j2 > j1:
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
-
-                    # convolution + downsampling
                     k2 = max(j2 - k1 - oversampling, 0)
-
-                    U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
-                    U_2_hat = subsample_fourier(U_2_c, 2**k2)
+                    # convolution + downsampling
+                    U_2_c = conv.convolution(U_1_hat, psi2[n2][k1], k2,
+                            psi2_f_dict[n2][k1])
                     # take the modulus
-                    U_2_c = ifft(U_2_hat)
-
                     U_2_m = modulus(U_2_c)
 
                     if average:
-                        U_2_hat = rfft(U_2_m)
-
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
-
-                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
-                        S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
-                        S_2_r = irfft(S_2_hat)
-
+                        U_2_hat  = conv.preprocess_signal(U_2_m)
+                        S_2_r = conv.convolution(U_2_hat, phi[k1 + k2], k2_J, phi_f_dict[k1 + k2])
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])

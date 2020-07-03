@@ -68,6 +68,7 @@ class ScatteringBase1D(ScatteringBase):
         self.ind_start, self.ind_end = compute_border_indices(
             self.J, self.pad_left, self.pad_left + self.T)
 
+
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(

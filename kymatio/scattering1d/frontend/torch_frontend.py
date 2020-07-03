@@ -6,7 +6,7 @@ import warnings
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
-from ..utils import precompute_size_scattering
+from ..utils import precompute_size_scattering, check_hermitian_symmetric
 from .base_frontend import ScatteringBase1D
 
 
@@ -26,28 +26,36 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         will create the filters as numpy array, and then, it
         saves those arrays as module's buffers."""
         n = 0
+        self.phi_f_dict = dict()
+        self.psi1_f_dict = dict()
+        self.psi2_f_dict = dict()
         # prepare for pytorch
         for k in self.phi_f.keys():
             if type(k) != str:
+                self.phi_f_dict[k] = check_hermitian_symmetric(self.phi_f[k])
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 self.phi_f[k] = torch.from_numpy(
-                    self.phi_f[k]).float().view(-1, 1)
+                        self.phi_f[k]).float().view(-1, 1)
                 self.register_buffer('tensor' + str(n), self.phi_f[k])
                 n += 1
-        for psi_f in self.psi1_f:
+        for counter, psi_f in enumerate(self.psi1_f):
+            self.psi1_f_dict[counter] = dict()
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
+                    self.psi1_f_dict[counter][sub_k] = check_hermitian_symmetric(psi_f[sub_k])
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
-        for psi_f in self.psi2_f:
+        for counter, psi_f in enumerate(self.psi2_f):
+            self.psi2_f_dict[counter] = dict()
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
+                    self.psi2_f_dict[counter][sub_k] = check_hermitian_symmetric(psi_f[sub_k])
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
+                            psi_f[sub_k]).float().view(-1, 1)
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
 
@@ -118,7 +126,9 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                        oversampling=self.oversampling,
                        vectorize=self.vectorize,
                        size_scattering=size_scattering,
-                       out_type=self.out_type)
+                       out_type=self.out_type,
+                       psi1_f_dict=self.psi1_f_dict, psi2_f_dict=self.psi2_f_dict, 
+                       phi_f_dict=self.phi_f_dict)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = S.shape[-2:]

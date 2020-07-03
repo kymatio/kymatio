@@ -1,6 +1,7 @@
 # Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 from collections import namedtuple
@@ -117,6 +118,29 @@ def ifft(x):
 def concatenate_1d(x):
     return concatenate(x, -2)
 
+class Conv1DFFT(nn.Module):
+    def __init__(self, backend):
+        super(Conv1DFFT, self).__init__()
+        self.name = 'torch'
+        self.subsample_fourier = backend.subsample_fourier
+        self.rfft = backend.rfft
+        self.ifft = backend.ifft
+        self.irfft = backend.irfft
+        self.cdgmm = backend.cdgmm
+
+    def preprocess_signal(self, x):
+        x_hat = self.rfft(x)
+        return x_hat
+
+    def convolution(self, x_hat, conv_filter, subsampling_factor, hermitian_symmetric):
+        y_c = self.cdgmm(x_hat, conv_filter)
+        y_hat = self.subsample_fourier(y_c, 2 ** subsampling_factor)
+        if hermitian_symmetric:
+            y_r = self.irfft(y_hat)
+        else:
+            y_r = self.ifft(y_hat)
+        return y_r
+
 
 backend = namedtuple('backend', ['name', 'modulus', 'subsample_fourier', 'unpad', 'fft', 'concatenate'])
 backend.name = 'torch'
@@ -129,3 +153,4 @@ backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
 backend.concatenate = concatenate_1d
+backend.conv = Conv1DFFT(backend)
