@@ -47,7 +47,7 @@ class TestPad:
     def test_Pad(self, backend_device):
         backend, device = backend_device
 
-        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
+        pad = backend.Pad((2, 2, 2, 2), (4, 4))
 
         x = torch.randn(1, 4, 4)
         x = x.to(device)
@@ -60,16 +60,6 @@ class TestPad:
         assert torch.allclose(z[0, 1, 1, 0], x[0, 1, 1])
         assert torch.allclose(z[0, 1, 2, 0], x[0, 1, 0])
         assert torch.allclose(z[0, 1, 3, 0], x[0, 1, 1])
-        assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
-
-        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=True)
-
-        x = torch.randn(1, 8, 8)
-        x = x.to(device)
-
-        z = pad(x)
-
-        assert torch.allclose(z[..., 0], x)
         assert torch.allclose(z[..., 1], torch.zeros_like(z[..., 1]))
 
     @pytest.mark.parametrize('backend_device', backends_devices)

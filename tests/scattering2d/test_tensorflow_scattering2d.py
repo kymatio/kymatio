@@ -13,7 +13,7 @@ backends.append(backend)
 class TestPad:
     @pytest.mark.parametrize('backend', backends)
     def test_Pad(self, backend):
-        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=False)
+        pad = backend.Pad((2, 2, 2, 2), (4, 4))
 
         x = np.random.randn(4, 4) + 1J * np.random.randn(4, 4)
         x = x[np.newaxis, ...]
@@ -26,14 +26,6 @@ class TestPad:
         assert np.isclose(z[0, 1, 1], x[0, 1, 1])
         assert np.isclose(z[0, 1, 2], x[0, 1, 0])
         assert np.isclose(z[0, 1, 3], x[0, 1, 1])
-
-        pad = backend.Pad((2, 2, 2, 2), (4, 4), pre_pad=True)
-
-        x = np.random.randn(8, 8) + 1J * np.random.randn(8, 8)
-
-        z = pad(x)
-
-        assert np.allclose(x, z)
 
     @pytest.mark.parametrize('backend', backends)
     def test_unpad(self, backend):

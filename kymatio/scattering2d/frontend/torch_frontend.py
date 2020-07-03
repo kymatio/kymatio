@@ -13,6 +13,8 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         ScatteringBase2D._instantiate_backend(self, 'kymatio.scattering2d.backend.')
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
+        if pre_pad:
+            self.pad = lambda x: x.reshape(x.shape + (1,))
 
         self.register_filters()
 
@@ -100,7 +102,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         input = input.reshape((-1,) + signal_shape)
 
-        S = scattering2d(input, self.pad, self.unpad, self.backend, self.J,
+        S = scattering2d(input, self.pad, self.unpad, self.pre_pad, self.backend, self.J,
                             self.L, phi, psi, self.max_order, self.out_type)
 
         if self.out_type == 'array':
