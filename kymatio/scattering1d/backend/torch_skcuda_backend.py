@@ -1,5 +1,3 @@
-# Authors: Edouard Oyallon, Joakim Anden
-
 import torch
 import cupy
 from collections import namedtuple
