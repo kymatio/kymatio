@@ -121,8 +121,8 @@ class Pad(object):
         if not self.pre_pad:
             # Pytorch expects its padding as [left, right, top, bottom]
             pad_size_tmp = self.pad_size_tmp
-            x = pad(x, (pad_size_tmp[2], pad_size_tmp[3], 
-                pad_size_tmp[0], pad_size_tmp[1], pad_size_tmp[4],
+            x = pad(x, (pad_size_tmp[0], pad_size_tmp[1], 
+                pad_size_tmp[2], pad_size_tmp[3], pad_size_tmp[4],
                 pad_size_tmp[5]), mode='constant')
 
             # Note: PyTorch is not effective to pad signals of size N-1 with N
@@ -155,7 +155,7 @@ def unpad(in_):
             Output tensor. Unpadded input.
 
     """
-    return in_[..., 1:-1, 1:-1, 1:-1]
+    return in_[..., 1:-1, 1:-1, 1:-1, 0]
 
 class SubsampleFourier(object):
     def __call__(self, x, k):
@@ -180,7 +180,7 @@ def concatenate(arrays, L):
     return S
 
 def concatenate_3d(x):
-    return torch.stack(x, -3)
+    return torch.stack(x, 1)
 
 # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
 # inefficent.

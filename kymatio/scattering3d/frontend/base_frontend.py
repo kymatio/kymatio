@@ -1,5 +1,5 @@
 from ...frontend.base_frontend import ScatteringBase
-from ..filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank, filter_bank
+from ..filter_bank import solid_harmonic_filter_bank, gaussian_filter_bank, filter_bank, return_orientations
 from ..utils import compute_padding
 
 
@@ -122,20 +122,20 @@ class ScatteringHarmonicBase3D(ScatteringBase):
 
 
 class ScatteringBase3D(ScatteringBase):
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False,
+    def __init__(self, J, shape, orientations="cartesian", max_order=2, pre_pad=False,
             backend='torch'):
         super(ScatteringBase3D, self).__init__()
         self.J = J
         self.shape = shape
-        self.L = L
         self.pre_pad = pre_pad
+        self.orientations = return_orientations(orientations)
 
         self.max_order = max_order
         self.backend = backend
        
     def create_filters(self):
         self.filters = filter_bank(self.M_padded, self.N_padded, self.P_padded,
-                self.J, orientations="cartesian")
+                self.J, self.orientations)
         self.phi, self.psi = self.filters['phi'], self.filters['psi']
     
     def build(self):

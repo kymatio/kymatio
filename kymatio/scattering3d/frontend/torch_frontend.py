@@ -89,10 +89,10 @@ HarmonicScatteringTorch3D._document()
 
 
 class ScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
-    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False,
+    def __init__(self, J, shape, orientations="cartesian", max_order=2, pre_pad=False,
             backend='torch'):
         ScatteringTorch.__init__(self)
-        ScatteringBase3D.__init__(self, J, shape, L, max_order, pre_pad, backend)
+        ScatteringBase3D.__init__(self, J, shape, orientations, max_order, pre_pad, backend)
         ScatteringBase3D._instantiate_backend(self, 'kymatio.scattering3d.backend.')
         ScatteringBase3D.build(self)
         ScatteringBase3D.create_filters(self)
@@ -167,8 +167,8 @@ class ScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
 
         input = input.reshape((-1,) + signal_shape)
 
-        S = scattering3d_standard(input, self.pad, self.unpad, self.backend, self.J,
-                            self.L, phi, psi, self.max_order)
+        S = scattering3d_standard(input, self.pad, self.unpad, self.backend,
+                self.J, len(self.orientations), phi, psi, self.max_order)
 
         scattering_shape = S.shape[-4:]
         S = S.reshape(batch_shape + scattering_shape)

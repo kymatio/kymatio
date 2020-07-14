@@ -191,18 +191,23 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
 
 standard_orientations = {'cartesian' : [(1, 0, 0), (0, 1, 0), (0, 0, 1)]}
 
-def filter_bank(M, N, P, J, orientations='cartesian'):
+
+def return_orientations(orientations='cartesian'):
     if isinstance(orientations, str):
         orientations = np.array(standard_orientations[orientations])
+    return orientations
+
+
+def filter_bank(M, N, P, J, orientations='cartesian'):
     filters = {}
     filters['psi'] = []
+    orientations = return_orientations(orientations)
 
     for j in range(J):
         for orientation in orientations:
             psi = {}
             psi['j'] = j
             psi['orientation'] = orientation
-
             psi_signal = gabor_nd((M, N, P), orientation, j, sigma0=0.8,
                     slant=3/len(orientations))
                 
@@ -217,7 +222,7 @@ def filter_bank(M, N, P, J, orientations='cartesian'):
 
     filters['phi'] = {}
     phi_signal = gabor_nd((M, N, P), orientation, scale=J-1, xi0=0, sigma0=.8,
-            slant=1)
+            slant=1, remove_dc=False)
     phi_signal_fourier = np.fft.fftn(phi_signal)
     # drop the imaginary part, it is zero anyway
     phi_signal_fourier = np.real(phi_signal_fourier)
@@ -261,16 +266,10 @@ def periodize_filter_fft(x, res):
     mask[..., start_z:start_z + len_z] = 0
 
     x = np.multiply(x,mask)
-
-    for k in range(int(M / 2 ** res)):
-        for l in range(int(N / 2 ** res)):
-            for m in range(int(P / 2 ** res)):
-                for i in range(int(2 ** res)):
-                    for j in range(int(2 ** res)):
-                        for n in range(int(2 ** res)):
-                            crop[k, l, m] += x[k + i * int(M / 2 ** res), l + j * int(N / 2 ** res),
-                                    m + n * int(P / 2 ** res)]
-
+    
+    ds = 2 ** res
+    crop = x.reshape(ds, M // ds, ds, N // ds, ds, P // ds).sum(axis=(-6, -4, -2))
+    
     return crop
 
 
@@ -382,7 +381,6 @@ def gabor_nd(grid_or_shape, orientation, scale, xi0=3 * np.pi / 4, sigma0=.5,
         orientation = np.array((np.cos(orientation), np.sin(orientation)))
 
     orientation = orientation.ravel() / np.linalg.norm(orientation)
-
     _, _, VT = np.linalg.svd(orientation[np.newaxis])
     VT[0] = orientation
     transformed_grid = grid.T.dot(VT.T).T
@@ -393,6 +391,7 @@ def gabor_nd(grid_or_shape, orientation, scale, xi0=3 * np.pi / 4, sigma0=.5,
     gaussian = (np.exp(-.5 * ((squashed_grid / sigma) ** 2).sum(0)) /
             np.sqrt((2 * np.pi) ** ndim * np.prod(sigma / squash_vector)))
     gabor = gaussian * oscillation
+
     if remove_dc:
         dc = np.real(gabor.sum())
         morlet = gabor - gaussian / gaussian.sum() * dc
