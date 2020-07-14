@@ -171,9 +171,6 @@ class SubsampleFourier(object):
         return out
 
 
-
-        
-
 def concatenate(arrays, L):
     S = torch.stack(arrays, dim=1)
     S = S.reshape((S.shape[0], S.shape[1] // (L + 1), (L + 1)) + S.shape[2:])
