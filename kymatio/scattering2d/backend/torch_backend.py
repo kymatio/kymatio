@@ -4,7 +4,9 @@ from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+#from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+
+from ...backend.torch_backend import TorchBackend
 
 
 class Pad(object):
@@ -170,14 +172,21 @@ def concatenate_2d(x):
     return concatenate(x, -3)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
-backend.name = 'torch'
-backend.cdgmm = cdgmm
-backend.modulus = Modulus()
+#backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+
+backend = TorchBackend()
+#backend.name = 'torch'
+#backend.cdgmm = cdgmm
+#backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
 backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
+
+contiguous_check = backend.contiguous_check
+complex_check = backend.complex_check
+real_check = backend.real_check
+concatenate = backend.concatenate
 backend.concatenate = concatenate_2d

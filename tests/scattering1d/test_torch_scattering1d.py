@@ -103,7 +103,7 @@ def test_sample_scattering(device, backend):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = scattering(x)
-        assert "CPU" in ve.value.args[0]
+        assert "CUDA" in ve.value.args[0]
         return
 
     Sx = scattering(x)
@@ -215,7 +215,7 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_dico = scattering(x)
-            assert "CPU" in ve.value.args[0]
+            assert "CUDA" in ve.value.args[0]
         else:
             s_dico = scattering(x)
             s_dico = {k: s_dico[k].data for k in s_dico.keys()}
@@ -224,7 +224,7 @@ def test_coordinates(device, backend, random_state=42):
         if backend.name == 'torch_skcuda' and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_vec = scattering(x)
-            assert "CPU" in ve.value.args[0]
+            assert "CUDA" in ve.value.args[0]
         else:
             s_vec = scattering(x)
             s_dico = {k: s_dico[k].cpu() for k in s_dico.keys()}
@@ -350,7 +350,7 @@ def test_batch_shape_agnostic(device, backend):
     if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = S(x)
-        assert "CPU" in ve.value.args[0]
+        assert "CUDA" in ve.value.args[0]
         return
 
     Sx = S(x)

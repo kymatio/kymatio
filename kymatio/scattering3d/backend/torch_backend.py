@@ -4,7 +4,9 @@ import warnings
 BACKEND_NAME = 'torch'
 from collections import namedtuple
 
-from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+#from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+
+from ...backend.torch_backend import TorchBackend
 
 def modulus_rotation(x, module=None):
     """Used for computing rotation invariant scattering transform coefficents.
@@ -83,21 +85,26 @@ def ifft(x):
     return torch.ifft(x, 3, normalized=False)
 
 
-
-backend = namedtuple('backend',
-                     ['name',
-                      'cdgmm3d',
-                      'fft',
-                      'modulus',
-                      'modulus_rotation',
-                      'compute_integrals',
-                      'concatenate'])
-
-backend.name = 'torch'
-backend.cdgmm3d = cdgmm
+backend = TorchBackend()
+#backend = namedtuple('backend',
+#                     ['name',
+#                      'cdgmm3d',
+#                      'fft',
+#                      'modulus',
+#                      'modulus_rotation',
+#                      'compute_integrals',
+#                      'concatenate'])
+#
+#backend.name = 'torch'
+backend.cdgmm3d = backend.cdgmm
 backend.rfft = rfft
 backend.ifft = ifft
 backend.concatenate = concatenate
-backend.modulus = Modulus()
+#backend.modulus = Modulus()
 backend.modulus_rotation = modulus_rotation
 backend.compute_integrals = compute_integrals
+
+contiguous_check = backend.contiguous_check
+complex_check = backend.complex_check
+real_check = backend.real_check
+

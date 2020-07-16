@@ -1,16 +1,16 @@
 import torch
 import pytest
-from kymatio.backend.torch_backend import ModulusStable, modulus
+from kymatio.backend.torch_backend import ModulusStable, TorchBackend
 
 
 def test_modulus(random_state=42):
     """
     Tests the stability and differentiability of modulus
     """
-
+    backend = TorchBackend()
     x = torch.randn(100, 4, 128, 2, requires_grad=True)
     x_grad = x.clone()
-    x_abs = modulus(x)
+    x_abs = backend.modulus(x)[..., 0]
 
     x_grad[..., 0] = x[..., 0] / x_abs
     x_grad[..., 1] = x[..., 1] / x_abs

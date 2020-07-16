@@ -1,5 +1,6 @@
 import pytest
 import numpy as np
+import scipy.fftpack
 
 from kymatio.scattering1d.backend.numpy_backend import backend
 
@@ -58,7 +59,7 @@ def test_pad():
 def test_unpad():
     # test unpading of a random tensor
     x = np.random.rand(8, 4)
-
+    
     y = backend.unpad(x, 1, 3)
 
     assert y.shape == (8, 2)
