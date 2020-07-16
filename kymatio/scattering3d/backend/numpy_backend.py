@@ -4,7 +4,8 @@ import scipy.fftpack
 
 BACKEND_NAME = 'numpy'
 
-from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
+#from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
+from ...backend.numpy_backend import NumpyBackend
 
 
 def modulus_rotation(x, module=None):
@@ -74,20 +75,28 @@ def ifft(x):
     return scipy.fftpack.ifftn(x, axes=(-3, -2, -1))
 
 
-backend = namedtuple('backend',
-                     ['name',
-                      'cdgmm3d',
-                      'fft',
-                      'modulus',
-                      'modulus_rotation',
-                      'compute_integrals',
-                      'concatenate'])
+#backend = namedtuple('backend',
+#                     ['name',
+#                      'cdgmm3d',
+#                      'fft',
+#                      'modulus',
+#                      'modulus_rotation',
+#                      'compute_integrals',
+#                      'concatenate'])
+#
+#backend.name = 'numpy'
+#backend.cdgmm3d = cdgmm
 
-backend.name = 'numpy'
-backend.cdgmm3d = cdgmm
+backend = NumpyBackend()
+
 backend.rfft = rfft
 backend.ifft = ifft
 backend.concatenate = concatenate
-backend.modulus = modulus
+#backend.modulus = modulus
 backend.modulus_rotation = modulus_rotation
 backend.compute_integrals = compute_integrals
+backend.cdgmm3d = backend.cdgmm
+
+complex_check = backend.complex_check
+real_check = backend.real_check
+
