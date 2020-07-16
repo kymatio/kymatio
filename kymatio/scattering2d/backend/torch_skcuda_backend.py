@@ -6,8 +6,10 @@ from string import Template
 
 BACKEND_NAME = 'torch_skcuda'
 
-from ...backend.torch_backend import contiguous_check, complex_check
-from ...backend.torch_skcuda_backend import cdgmm
+from ...backend.torch_backend import TorchBackend
+from ...backend.torch_skcuda_backend import TorchSKcudaBackend
+
+from .torch_backend import rfft, ifft, irfft, Pad, unpad, concatenate_2d
 
 # As of v8, cupy.util has been renamed cupy._util.
 if hasattr(cupy, '_util'):
@@ -179,19 +181,19 @@ class Modulus(object):
         return out
 
 
-from .torch_backend import unpad
-from .torch_backend import Pad
-from .torch_backend import rfft, irfft, ifft
-from .torch_backend import concatenate_2d
+skcuda_backend = TorchSKcudaBackend()
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+backend = TorchBackend()
 backend.name = 'torch_skcuda'
-backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
+backend.cdgmm = skcuda_backend.cdgmm
 backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
 backend.concatenate = concatenate_2d
+
+contiguous_check = backend.contiguous_check
+complex_check = backend.complex_check
