@@ -7,7 +7,9 @@ from collections import namedtuple
 
 BACKEND_NAME = 'tensorflow'
 
-from ...backend.tensorflow_backend import Modulus, complex_check, real_check
+#from ...backend.tensorflow_backend import Modulus, complex_check, real_check
+from ...backend.tensorflow_backend import TensorFlowBackend
+
 
 
 def modulus_rotation(x, module):
@@ -110,13 +112,20 @@ def ifft(x):
     return tf.signal.ifft3d(x, name='ifft3d')
 
 
-backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_rotation', 'compute_integrals'])
+#backend = namedtuple('backend', ['name', 'cdgmm3d', 'fft', 'modulus', 'modulus_rotation', 'compute_integrals'])
 
-backend.name = 'tensorflow'
+#backend.name = 'tensorflow'
+
+backend = TensorFlowBackend()
+
 backend.cdgmm3d = cdgmm3d
 backend.rfft = rfft
 backend.ifft = ifft
-backend.modulus = Modulus()
+#backend.modulus = Modulus()
 backend.modulus_rotation = modulus_rotation
 backend.compute_integrals = compute_integrals
 backend.concatenate = concatenate
+
+complex_check = backend.complex_check
+real_check = backend.real_check
+

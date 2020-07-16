@@ -5,7 +5,8 @@ import scipy.fftpack
 BACKEND_NAME = 'numpy'
 
 
-from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
+#from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
+from ...backend.numpy_backend import NumpyBackend
 
 
 class Pad(object):
@@ -99,14 +100,26 @@ def ifft(x):
     return scipy.fftpack.ifft2(x)
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
-backend.name = 'numpy'
-backend.cdgmm = cdgmm
-backend.modulus = modulus
-backend.subsample_fourier = SubsampleFourier()
+#backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+#backend.name = 'numpy'
+#backend.cdgmm = cdgmm
+#backend.modulus = modulus
+#backend.subsample_fourier = SubsampleFourier()
+#backend.rfft = rfft
+#backend.irfft = irfft
+#backend.ifft = ifft
+#backend.Pad = Pad
+#backend.unpad = unpad
+#backend.concatenate = concatenate
+
+backend = NumpyBackend()
+backend.Pad = Pad
 backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
-backend.Pad = Pad
+backend.subsample_fourier = SubsampleFourier()
 backend.unpad = unpad
-backend.concatenate = concatenate
+
+real_check = backend.real_check
+complex_check = backend.complex_check
+

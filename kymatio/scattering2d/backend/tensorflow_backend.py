@@ -4,7 +4,9 @@ from collections import namedtuple
 BACKEND_NAME = 'tensorflow'
 
 
-from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate, complex_check, real_check
+#from ...backend.tensorflow_backend import Modulus, cdgmm, concatenate, complex_check, real_check
+
+from ...backend.tensorflow_backend import TensorFlowBackend
 
 class Pad(object):
     def __init__(self, pad_size, input_size):
@@ -84,15 +86,21 @@ def ifft(x):
     return tf.signal.ifft2d(x, name='ifft2d')
 
 
-backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
+#backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 
-backend.name = 'tensorflow'
-backend.cdgmm = cdgmm
-backend.modulus = Modulus()
+backend = TensorFlowBackend()
+
+#backend.name = 'tensorflow'
+#backend.cdgmm = cdgmm
+#backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()
 backend.rfft = rfft
 backend.irfft = irfft
 backend.ifft = ifft
 backend.Pad = Pad
 backend.unpad = unpad
-backend.concatenate = lambda x: concatenate(x, -3)
+#backend.concatenate = lambda x: concatenate(x, -3)
+
+real_check = backend.real_check
+complex_check = backend.complex_check
+

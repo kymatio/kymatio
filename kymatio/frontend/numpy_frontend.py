@@ -1,4 +1,4 @@
-from ..backend.numpy_backend import input_checks
+
 
 class ScatteringNumPy:
     def __init__(self):
@@ -11,7 +11,7 @@ class ScatteringNumPy:
     def __call__(self, x):
         """This method is an alias for `scattering`."""
 
-        input_checks(x)
+        self.backend.input_checks(x)
 
         return self.scattering(x)
 

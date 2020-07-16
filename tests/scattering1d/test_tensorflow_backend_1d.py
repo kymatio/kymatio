@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-
+import tensorflow as tf
 from kymatio.scattering1d.backend.tensorflow_backend import backend
 
 
