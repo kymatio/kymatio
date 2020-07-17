@@ -180,5 +180,3 @@ class TestBackendUtils:
         assert np.allclose(w[:, 0, ...], x)
         assert np.allclose(w[:, 1, ...], y)
         assert np.allclose(w[:, 2, ...], z)
-
-
