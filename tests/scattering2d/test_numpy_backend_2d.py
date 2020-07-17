@@ -102,11 +102,10 @@ class TestCDGMM:
         return x, filt, y
 
     @pytest.mark.parametrize('backend', backends)
-    @pytest.mark.parametrize('inplace', (False, True))
-    def test_cdgmm_forward(self, data, backend, inplace):
+    def test_cdgmm_forward(self, data, backend):
         x, filt, y = data
 
-        z = backend.cdgmm(x, filt, inplace=inplace)
+        z = backend.cdgmm(x, filt)
 
         assert np.allclose(y, z)
 

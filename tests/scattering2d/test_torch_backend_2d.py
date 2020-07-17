@@ -198,14 +198,13 @@ class TestCDGMM:
         return x, filt, y
 
     @pytest.mark.parametrize('backend_device', backends_devices)
-    @pytest.mark.parametrize('inplace', (False, True))
-    def test_cdgmm_forward(self, data, backend_device, inplace):
+    def test_cdgmm_forward(self, data, backend_device):
         backend, device = backend_device
 
         x, filt, y = data
         x, filt, y = x.to(device), filt.to(device), y.to(device)
 
-        z = backend.cdgmm(x, filt, inplace=inplace)
+        z = backend.cdgmm(x, filt)
 
         Warning('Tolerance has been slightly lowered here...')
         # There is a very small meaningless difference for skcuda+GPU
