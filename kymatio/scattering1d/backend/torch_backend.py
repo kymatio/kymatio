@@ -1,5 +1,3 @@
-# Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
-
 import torch
 import torch.nn.functional as F
 
