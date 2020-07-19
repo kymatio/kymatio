@@ -1,6 +1,3 @@
-# Authors: Edouard Oyallon, Muawiz Chaudhary
-# Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
-
 def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
         out_type='array'):
     subsample_fourier = backend.subsample_fourier

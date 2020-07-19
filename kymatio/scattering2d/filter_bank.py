@@ -1,8 +1,3 @@
-"""
-Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
-All rights reserved, 2017.
-"""
-
 import numpy as np
 from scipy.fftpack import fft2, ifft2
 

@@ -1,4 +1,3 @@
-"""Author: Louis Thiry"""
 import numpy as np
 import warnings
 

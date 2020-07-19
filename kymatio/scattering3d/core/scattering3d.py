@@ -1,6 +1,3 @@
-# Authors: Louis Thiry, Georgios Exarchakis
-# Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
-
 def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, averaging):
     """
     The forward pass of 3D solid harmonic scattering
