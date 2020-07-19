@@ -1,4 +1,3 @@
-# Authors: Edouard Oyallon, Joakim Anden, Mathieu Andreux
 import tensorflow as tf
 from collections import namedtuple
 

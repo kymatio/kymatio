@@ -1,5 +1,3 @@
-# Authors: Edouard Oyallon, Sergey Zagoruyko, Muawiz Chaudhary
-
 import numpy as np
 from collections import namedtuple
 import scipy.fftpack

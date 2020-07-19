@@ -1,6 +1,3 @@
-# Authors: Mathieu Andreux, Joakim Anden, Edouard Oyallon
-# Scientific Ancestry: Joakim Anden, Mathieu Andreux, Vincent Lostanlen
-
 import warnings
 
 from ...frontend.numpy_frontend import ScatteringNumPy
