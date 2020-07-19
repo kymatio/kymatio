@@ -1,5 +1,3 @@
-# Authors: Edouard Oyallon, Sergey Zagoruyko, Muawiz Chaudhary
-
 from collections import namedtuple
 import torch
 import cupy
