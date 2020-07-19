@@ -1,5 +1,3 @@
-# Authors: Edouard Oyallon, Sergey Zagoruyko, Muawiz Chaudhary
-
 import tensorflow as tf
 from collections import namedtuple
 

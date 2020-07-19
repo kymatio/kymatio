@@ -1,6 +1,3 @@
-# Authors: Louis Thiry, Georgios Exarchakis
-# Scientific Ancestry: Louis Thiry, Georgios Exarchakis, Matthew Hirn, Michael Eickenberg
-
 import torch
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering3d import scattering3d

@@ -1,8 +1,3 @@
-"""
-Authors: Louis Thiry, Georgios Exarchakis and Michael Eickenberg
-All rights reserved, 2017.
-"""
-
 __all__ = ['solid_harmonic_filter_bank']
 
 import numpy as np
