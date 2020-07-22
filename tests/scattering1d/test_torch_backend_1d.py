@@ -25,7 +25,6 @@ if torch.cuda.is_available():
 else:
     devices = ['cpu']
 
-
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_pad_1d(device, backend, random_state=42):
@@ -169,7 +168,6 @@ def test_subsample_fourier(backend, device, random_state=42):
             backend.subsample_fourier(x_bad, 1)
         assert "should be complex" in te.value.args[0]
 
-
 def test_unpad():
     # test unpading of a random tensor
     x = torch.randn(8, 4, 1)
@@ -189,7 +187,6 @@ def test_unpad():
         x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right - 1)
         assert torch.allclose(x, x_unpadded)
 
-
 def test_fft_type():
     x = torch.randn(8, 4, 2) 
 
@@ -206,7 +203,6 @@ def test_fft_type():
     with pytest.raises(TypeError) as record:
         y = backend.irfft(x)
     assert 'should be complex' in record.value.args[0]
-
 
 def test_fft():
     x = torch.randn(2, 1)
