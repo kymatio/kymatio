@@ -106,7 +106,7 @@ def test_fft():
     y_r = (x_r * coefficents).sum(-1)
 
     z = backend.rfft(x_r)
-    # increase tolerance here as tensorflow fft is slightly inaccurate due to
+    # increase tolerance here as tensorflow fft is slightly inaccruate due to
     # eigen implementation https://github.com/google/jax/issues/2952
     # (see also below)
     assert np.allclose(y_r, z, atol=1e-6, rtol=1e-7)
