@@ -1,5 +1,5 @@
 from collections import namedtuple
-import scipy.fftpack
+import scipy
 import numpy as np
 
 BACKEND_NAME = 'numpy'
