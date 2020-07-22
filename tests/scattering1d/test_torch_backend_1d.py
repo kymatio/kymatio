@@ -78,13 +78,11 @@ def test_pad_1d(device, backend, random_state=42):
             assert torch.allclose(x.grad, x_grad)
 
     # Check that the padding shows an error if we try to pad
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError):
         backend.pad(x, x.shape[-1], 0)
-    assert "padding size" in ve.value.args[0]
-    
-    with pytest.raises(ValueError) as ve:
+
+    with pytest.raises(ValueError):
         backend.pad(x, 0, x.shape[-1])
-    assert "padding size" in ve.value.args[0]
 
 
 @pytest.mark.parametrize("device", devices)
