@@ -106,11 +106,11 @@ def test_fft():
     y_r = (x_r * coefficents).sum(-1)
 
     z = backend.rfft(x_r)
-    assert np.allclose(y_r, z, atol=1e-6, rtol=1e-7)
+    assert np.allclose(y_r, z)
 
     z_1 = backend.ifft(z)
-    assert np.allclose(x_r, z_1, atol=1e-6, rtol=1e-7)
+    assert np.allclose(x_r, z_1)
 
     z_2 = backend.irfft(z)
     assert not np.iscomplexobj(z_2)
-    assert np.allclose(x_r, z_2, atol=1e-6, rtol=1e-7)
+    assert np.allclose(x_r, z_2)
