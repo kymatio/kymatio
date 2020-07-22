@@ -27,11 +27,11 @@ def subsample_fourier(x, k):
         The input tensor periodized along the next to last axis to yield a
         tensor of size x.shape[-2] // k along that dimension.
     """
-    complex_check(x)
 
-    y = tf.reshape(x, (-1, k, x.shape[-1] // k))
+    N = x.shape[-1]
+    y = tf.reshape(x, (-1, k, N // k))
 
-    return tf.reduce_mean(y, axis=(-2,))
+    return tf.reduce_mean(y, axis=(1,))
 
 
 def pad(x, pad_left, pad_right):
