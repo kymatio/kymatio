@@ -9,7 +9,13 @@ BACKEND_NAME = 'torch_skcuda'
 from ...backend.torch_backend import contiguous_check, complex_check
 from ...backend.torch_skcuda_backend import cdgmm
 
-@cupy.util.memoize(for_each_device=True)
+# As of v8, cupy.util has been renamed cupy._util.
+if hasattr(cupy, '_util'):
+    memoize = cupy._util.memoize
+else:
+    memoize = cupy.util.memoize
+
+@memoize(for_each_device=True)
 def _load_kernel(kernel_name, code, **kwargs):
     code = Template(code).substitute(**kwargs)
     kernel_code = cupy.cuda.compile_with_cache(code)
