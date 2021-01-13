@@ -18,6 +18,21 @@ RUN apt-get update && \
     apt-get autoclean -y && \
     rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
+ADD http://icl.utk.edu/projectsfiles/magma/downloads/magma-2.5.4.tar.gz /tmp/
+RUN cd /tmp && \
+    tar xzf magma-*.tar.gz && \
+    rm magma-*.tar.gz && \
+    mkdir magma && cd magma && \
+    CFLAGS=-I/usr/include/mkl CXXFLAGS=-I/usr/include/mkl cmake ../magma-* -DMKLROOT=/usr -DGPU_TARGET=sm_35 && \
+    make -j4 && make install && \
+    git clone --recursive --depth 1 -b v1.7.1 https://github.com/pytorch/pytorch /tmp/pytorch && \
+    cd /tmp/pytorch && \
+    CMAKE_INCLUDE_PATH=/usr/include/mkl TORCH_CUDA_ARCH_LIST=3.5 PYTORCH_BUILD_VERSION=1.7.1 PYTORCH_BUILD_NUMBER=1 python3 setup.py install && \
+    cd /tmp && \
+    rm -rf magma pytorch
+
+RUN pip3 install --upgrade pip
+
 RUN pip3 install \
       scipy \
       configparser \
