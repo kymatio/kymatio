@@ -34,6 +34,8 @@ RUN cd /tmp && \
     cd /tmp && \
     rm -rf magma pytorch
 
+RUN pip3 install --upgrade pip
+
 RUN pip3 install \
       scipy \
       configparser \
