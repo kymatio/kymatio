@@ -31,9 +31,10 @@ RUN cd /tmp && \
     cd /tmp && \
     rm -rf magma pytorch
 
-RUN pip3 install --upgrade pip
+RUN python3 -m pip install --upgrade pip
 
-RUN pip3 install \
+RUN python3 -m pip install \
+      'numpy>=1.16' \
       scipy \
       configparser \
       torchvision \
