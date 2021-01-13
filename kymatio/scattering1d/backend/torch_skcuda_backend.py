@@ -7,7 +7,13 @@ from string import Template
 
 BACKEND_NAME = 'torch_skcuda'
 
-@cupy.util.memoize(for_each_device=True)
+# As of v8, cupy.util has been renamed cupy._util.
+if hasattr(cupy, '_util'):
+    memoize = cupy._util.memoize
+else:
+    memoize = cupy.util.memoize
+
+@memoize(for_each_device=True)
 def load_kernel(kernel_name, code, **kwargs):
     code = Template(code).substitute(**kwargs)
     kernel_code = cupy.cuda.compile_with_cache(code)
