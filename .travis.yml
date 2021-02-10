@@ -1,5 +1,5 @@
 language: python
-dist: xenial
+dist: bionic
 python:
   - "3.5"
   - "3.6"
@@ -9,6 +9,7 @@ env:
   - CONDA=1
 install:
   - source ./tools/travis_install.sh
+  - pip install -r requirements_optional.txt
 script:
   - pytest --cov=kymatio
 after_success:

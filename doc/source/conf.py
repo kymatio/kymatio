@@ -19,14 +19,14 @@ from distutils.version import LooseVersion
 
 
 
-sys.path.insert(0, os.path.abspath('../../kymatio'))
+sys.path.insert(0, os.path.abspath('../..'))
 
 
 
 # -- Project information -----------------------------------------------------
 
 project = 'kymatio'
-copyright = '2018, The Kymatio Developers'
+copyright = '2018–2020, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
@@ -57,7 +57,8 @@ extensions = [
     'sphinxcontrib.bibtex',
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
-    'texext'
+    'texext',
+    'm2r'
 ]
 
 html_favicon = '_static/kymatio.ico'
@@ -68,8 +69,8 @@ sphinx_gallery_conf = {
     'examples_dirs': ['../../examples/1d','../../examples/2d','../../examples/3d'],
     # path where to save gallery generated examples
     'gallery_dirs': ['gallery_1d','gallery_2d','gallery_3d'],
-    'ignore_pattern':
-    '__init__.py',
+    'ignore_pattern': r'long_',
+    'filename_pattern': r'/plot_'
 }
 
 intersphinx_mapping = {'kymatio': ('../kymatio', None)}
@@ -81,8 +82,7 @@ templates_path = ['_templates']
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-# source_suffix = ['.rst', '.md']
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The master toctree document.
 master_doc = 'index'
@@ -116,18 +116,18 @@ html_theme = 'alabaster'
 #
 html_theme_options = {
     'logo': 'kymatio.jpg',
-     'touch_icon': 'kymatio.jpg',
+    'touch_icon': 'kymatio.jpg',
     'logo_name':'Kymatio',
-    'description': 'Wavelet Scattering in PyTorch',
+    'description': 'Wavelet Scattering in Python<br>'
+                   '&nbsp;&nbsp;&nbsp;<a href="https://twitter.com/KymatioWavelets"><img width="40px" src="https://avatars3.githubusercontent.com/u/50278?s=200&v=4"></a>',
     'github_button': True,
     'github_type': 'star',
-    'travis_button': True,
     'github_user': 'kymatio',
     'github_repo': 'kymatio',
+    'fixed_sidebar': False,
     'github_banner': True,
     'analytics_id': 'UA-130785726-1',
     'font_family': '"Avenir Next", Avenir, "Helvetica Neue",Helvetica,Arial,sans-serif'
-
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
@@ -143,7 +143,6 @@ html_static_path = ['_static']
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-# html_sidebars = {}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
@@ -198,13 +197,13 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'kymatio', 'kymatio Documentation',
-     author, 'kymatio', 'Wavelet Scattering in PyTorch',
+     author, 'kymatio', 'Wavelet Scattering in Python',
      'Miscellaneous'),
 ]
 
 
 # -- Extension configuration -------------------------------------------------
 
-autodoc_default_flags = ['members', 'inherited-members']
+autodoc_default_option = ['members', 'inherited-members']
 
 

@@ -3,38 +3,67 @@
 Information for developers
 **************************
 
-Something something how the code works
+(GitHub Workflow)
+=================
 
-Backend: core of the algorithm
-==============================
+Kymatio implements the scattering transform for different frontends (currently ``numpy``, ``torch``, ``tensorflow``),
+each of which have one or more corresponding backends. This way, the generic scattering algorithm can be written in an
+architecture-agnostic manner, since all low-level operations are relegated to the backend, and high-level operations
+specific to an API are relegated to the frontend.
 
-Common to the 1-2-3-D routines of the Scattering Transform, four low-level functions
-must be optimized:
+To make sure that a future pull request (PR) will pass the jenkins and travis tests, please try our package on the
+unit tests, the speed as well as the documentation. You might need to install auxiliary libraries via the
+``requirements_optional.txt``.
 
-1. FFT/iFFT
-2. SubsamplingFourier
-3. Non-linearity (e.g. modulus for 1-2D)
-4. Dotwise complex multiplication
-5. Padding/unpadding
+For development purposes, you might need to install the package via::
 
-Unit tests
-==========
+    git clone https://github.com/kymatio/kymatio.git
+    git checkout origin/dev
+    cd kymatio
+    python setup.py develop
 
-For running all the unit tests and avoiding bugs, please simply run from the
-main folder::
+Please refer to `https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow <https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow>`_ for more recommendations.
+
+Backend to frontend: core of the algorithm
+==========================================
+
+Common to the 1D, 2D and 3D scattering transform routines are four low-level functions which must be optimized:
+
+1. Fast Fourier transform (FFT) and its inverse (iFFT)
+2. Subsampling in the Fourier domain (periodization)
+3. Non-linearity (modulus in 1D and 2D, quadratic mean in 3D)
+4. Dotwise complex multiplication (``cdgmm``)
+5. Padding and unpadding
+
+Checking unit tests
+===================
+
+For running all the unit tests and avoiding bugs, please first install the latest versions of ``numpy``, ``tensorflow``,
+``torch``, ``cupy``, ``scikit-cuda``. Then, run (in the root directory)::
 
     pytest
 
-If all the tests pass, then you might be able to submit your Pull Request as explained
-in the next section!
+If all the tests pass, you may submit your pull request as explained below. A speed-test is welcome as well.
 
 Checking speed
 ==============
 
-Please check `examples/.d/compute_speed.py` to benchmark your modification of backend.
+For checking the speed of a given PR, run the ASV benchmarks on various architectures via::
 
-Proposing a Pull Request(PR)
-============================
+    cd benchmarks
+    run asv
 
-Each PR must be documented using docstings, illustrated with an example and must run the
-unit tests.
+Checking documentation
+======================
+
+For checking the documentation, please run the following commands, that will built it through sphinx::
+
+    cd doc
+    make clean
+    make html
+
+Proposing a pull request
+========================
+
+Each PR must be documented using docstrings, illustrated with an example and must pass the unit tests. Please check the
+PRs already merged on the GitHub repository if you need an example of a good PR.

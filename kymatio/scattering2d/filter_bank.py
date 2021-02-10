@@ -3,10 +3,8 @@ Authors: Eugene Belilovsky, Edouard Oyallon and Sergey Zagoruyko
 All rights reserved, 2017.
 """
 
-__all__ = ['filter_bank']
-
 import numpy as np
-from .utils import fft2
+from scipy.fftpack import fft2, ifft2
 
 
 def filter_bank(M, N, J, L=8):
@@ -46,14 +44,10 @@ def filter_bank(M, N, J, L=8):
             psi_signal_fourier = fft2(psi_signal)
             # drop the imaginary part, it is zero anyway
             psi_signal_fourier = np.real(psi_signal_fourier)
-            for res in range(min(j + 1, J - 1)):
+            for res in range(min(j + 1, max(J - 1, 1))):
                 psi_signal_fourier_res = periodize_filter_fft(
                     psi_signal_fourier, res)
-                # add a trailing singleton dimension to mark it as non-complex
-                psi_signal_fourier_res = psi_signal_fourier_res[..., np.newaxis]
                 psi[res] = psi_signal_fourier_res
-                # Normalization to avoid doing it with the FFT.
-                psi[res] /= M*N// 2**(2*j)
             filters['psi'].append(psi)
 
     filters['phi'] = {}
@@ -64,11 +58,7 @@ def filter_bank(M, N, J, L=8):
     filters['phi']['j'] = J
     for res in range(J):
         phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        # add a trailing singleton dimension to mark it as non-complex
-        phi_signal_fourier_res = phi_signal_fourier_res[..., np.newaxis]
         filters['phi'][res] = phi_signal_fourier_res
-        # Normalization to avoid doing it with the FFT.
-        filters['phi'][res] /= M*N // 2 ** (2 * J)
 
     return filters
 
@@ -193,3 +183,6 @@ def gabor_2d(M, N, sigma, theta, xi, slant=1.0, offset=0):
     gab /= norm_factor
 
     return gab
+
+
+__all__ = ['filter_bank']

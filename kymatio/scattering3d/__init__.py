@@ -1,5 +1,4 @@
-__all__ = ['HarmonicScattering3D']
+from .frontend.entry import HarmonicScatteringEntry3D
 
 
-from .scattering3d import HarmonicScattering3D
-from . import utils
+__all__ = ['HarmonicScatteringEntry3D']

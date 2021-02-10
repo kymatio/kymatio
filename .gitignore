@@ -5,6 +5,10 @@
 doc/build/*
 .pytest_cache
 .cache/
+benchmarks/envs/
+benchmarks/html/
+benchmarks/kymatio/
+benchmarks/results/
 doc/source/gallery_1d
 doc/source/gallery_2d
 doc/source/gallery_3d

@@ -1,4 +1,3 @@
-__all__ = ['Scattering1D']
+from .frontend.entry import ScatteringEntry1D
 
-
-from .scattering1d import Scattering1D
+__all__ = ['ScatteringEntry1D']

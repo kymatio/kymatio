@@ -6,45 +6,26 @@ pipeline {
     timeout(time: 1, unit: 'HOURS')
   }
   stages {
-    stage('torch') {
+    stage('main') {
       agent {
 	dockerfile {
 	  dir 'tools'
-	  args '--device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm'
+	  args '--gpus 2'
 	}
       }
       environment {
-	HOME = pwd(tmp:true)
+	HOME = "$WORKSPACE/build"
       }
       steps {
-	sh 'python3 -m venv $HOME'
+	sh 'python3 -c "import torch; torch.cuda.current_device()"'
+	sh 'python3 -c "import tensorflow as tf; tf.test.is_gpu_available()"'
+	sh 'python3 -m venv --system-site-packages --without-pip $HOME'
 	sh '''#!/bin/bash -ex
 	  source $HOME/bin/activate
-	  pip3 install -r requirements.txt pytest pytest-cov torchvision
 	  python3 setup.py develop
-	  KYMATIO_BACKEND=$STAGE_NAME pytest --cov=kymatio
-	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME
-	'''
-      }
-    }
-    stage('skcuda') {
-      agent {
-	dockerfile {
-	  dir 'tools'
-	  args '--device /dev/nvidia0:/dev/nvidia0 --device /dev/nvidiactl:/dev/nvidiactl --device /dev/nvidia-uvm:/dev/nvidia-uvm'
-	}
-      }
-      environment {
-	HOME = pwd(tmp:true)
-      }
-      steps {
-	sh 'python3 -m venv $HOME'
-	sh '''#!/bin/bash -ex
-	  source $HOME/bin/activate
-	  pip3 install -r requirements.txt pytest pytest-cov scikit-cuda cupy
-	  python3 setup.py develop
-	  KYMATIO_BACKEND=$STAGE_NAME pytest --cov=kymatio
-	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME
+	  TF_FORCE_GPU_ALLOW_GROWTH=true python3 -m pytest --cov=kymatio
+	  python3 -m coverage xml
+	  bash <(curl -s https://codecov.io/bash) -t 3941b784-370b-4e50-a162-e5018b7c2861 -F jenkins_$STAGE_NAME -s $WORKSPACE
 	'''
       }
     }
