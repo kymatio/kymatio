@@ -29,5 +29,9 @@ class ScatteringKeras2D(ScatteringKeras, ScatteringBase2D):
         output_shape = [input_shape[0], nc, m0, m1]
         return tensor_shape.TensorShape(output_shape)
 
+    def get_config(self):
+        keys = ["J", "L", "max_order", "pre_pad"]
+        return {key: self.__dict__[key] for key in keys}
+
 
 ScatteringKeras2D._document()
