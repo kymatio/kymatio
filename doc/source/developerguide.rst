@@ -48,10 +48,10 @@ If all the tests pass, you may submit your pull request as explained below. A sp
 Checking speed
 ==============
 
-For checking the speed of a given PR, run the ASV benchmarks on various architectures via::
+For checking the speed of a given PR, first install `asv` via ``pip install asv`` and run the ASV benchmarks on various architectures via::
 
     cd benchmarks
-    run asv
+    asv run
 
 Checking documentation
 ======================

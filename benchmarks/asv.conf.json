@@ -17,7 +17,7 @@
     // uninstalling the project. See asv.conf.json documentation.
     //
     "install_command": [
-        "pip install torch torchvision",
+        "conda install pytorch torchvision torchaudio",
         "in-dir={env_dir} python -mpip install {wheel_file}"],
     // "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
     // "build_command": [
@@ -45,11 +45,11 @@
 
     // The Pythons you'd like to test against.  If not provided, defaults
     // to the current version of Python used to run `asv`.
-    "pythons": ["3.7"],
+    "pythons": ["3.8"],
 
     // The list of conda channel names to be searched for benchmark
     // dependency packages in the specified order
-    // "conda_channels": ["conda-forge", "defaults"],
+    "conda_channels": ["conda-forge", "pytorch", "defaults"],
 
     // The matrix of dependencies to test.  Each key is the name of a
     // package (in PyPI) and the values are version numbers.  An empty
