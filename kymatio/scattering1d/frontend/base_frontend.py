@@ -42,9 +42,9 @@ class ScatteringBase1D(ScatteringBase):
 
         # check the shape
         if isinstance(self.shape, numbers.Integral):
-            self.T = self.shape
+            self.N = self.shape
         elif isinstance(self.shape, tuple):
-            self.T = self.shape[0]
+            self.N = self.shape[0]
             if len(self.shape) > 1:
                 raise ValueError("If shape is specified as a tuple, it must "
                                  "have exactly one element")
@@ -53,20 +53,20 @@ class ScatteringBase1D(ScatteringBase):
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
-            self.T, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
+            self.N, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
             alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize)
-        # to avoid padding more than T - 1 on the left and on the right,
+        # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
-        J_max_support = int(np.floor(np.log2(3 * self.T - 2)))
-        self.J_pad = min(int(np.ceil(np.log2(self.T + 2 * min_to_pad))),
+        J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
+        self.J_pad = min(int(np.ceil(np.log2(self.N + 2 * min_to_pad))),
                          J_max_support)
         # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.T)
+        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.J, self.pad_left, self.pad_left + self.T)
+            self.J, self.pad_left, self.pad_left + self.N)
 
     def create_filters(self):
         # Create the filters
@@ -110,9 +110,9 @@ class ScatteringBase1D(ScatteringBase):
         return precompute_size_scattering(
             self.J, self.Q, max_order=self.max_order, detail=detail)
 
-    _doc_shape = 'T'
+    _doc_shape = 'N'
 
-    _doc_instantiation_shape = {True: 'S = Scattering1D(J, T, Q)',
+    _doc_instantiation_shape = {True: 'S = Scattering1D(J, N, Q)',
                                 False: 'S = Scattering1D(J, Q)'}
 
     _doc_param_shape = \
@@ -221,12 +221,12 @@ class ScatteringBase1D(ScatteringBase):
         :math:`S_J^{{(0)}} x`, $S_J^{{(1)}} x$, and $S_J^{{(2)}} x$ or just
         $S_J^{{(0)}} x$ and $S_J^{{(1)}} x$.
         {frontend_paragraph}
-        Given an input `{array}` `x` of shape `(B, T)`, where `B` is the
-        number of signals to transform (the batch size) and `T` is the length
+        Given an input `{array}` `x` of shape `(B, N)`, where `B` is the
+        number of signals to transform (the batch size) and `N` is the length
         of the signal, we compute its scattering transform by passing it to
         the `scattering` method (or calling the alias `{alias_name}`). Note
         that `B` can be one, in which case it may be omitted, giving an input
-        of shape `(T,)`.
+        of shape `(N,)`.
 
         Example
         -------
@@ -234,7 +234,7 @@ class ScatteringBase1D(ScatteringBase):
 
             # Set the parameters of the scattering transform.
             J = 6
-            T = 2 ** 13
+            N = 2 ** 13
             Q = 8
 
             # Generate a sample signal.
@@ -249,7 +249,7 @@ class ScatteringBase1D(ScatteringBase):
             # Equivalently, use the alias.
             Sx = S{alias_call}(x)
 
-        Above, the length of the signal is :math:`T = 2^{{13}} = 8192`, while the
+        Above, the length of the signal is :math:`N = 2^{{13}} = 8192`, while the
         maximum scale of the scattering transform is set to :math:`2^J = 2^6 =
         64`. The time-frequency resolution of the first-order wavelets
         :math:`\psi_\lambda^{{(1)}}(t)` is set to `Q = 8` wavelets per octave.
@@ -295,12 +295,12 @@ class ScatteringBase1D(ScatteringBase):
     _doc_scattering = \
     """Apply the scattering transform
 
-       Given an input `{array}` of size `(B, T)`, where `B` is the batch
-       size (it can be potentially an integer or a shape) and `T` is the length
+       Given an input `{array}` of size `(B, N)`, where `B` is the batch
+       size (it can be potentially an integer or a shape) and `N` is the length
        of the individual signals, this function computes its scattering
        transform. If the `vectorize` flag is set to `True` (or if it is not
        available in this frontend), the output is in the form of a `{array}`
-       or size `(B, C, T1)`, where `T1` is the signal length after subsampling
+       or size `(B, C, N1)`, where `N1` is the signal length after subsampling
        to the scale :math:`2^J` (with the appropriate oversampling factor to
        reduce aliasing), and `C` is the number of scattering coefficients. If
        `vectorize` is set `False`, however, the output is a dictionary
@@ -326,7 +326,7 @@ class ScatteringBase1D(ScatteringBase):
        Parameters
        ----------
        x : {array}
-           An input `{array}` of size `(B, T)`.
+           An input `{array}` of size `(B, N)`.
 
        Returns
        -------
