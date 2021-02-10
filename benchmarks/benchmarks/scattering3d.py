@@ -1,6 +1,8 @@
 #import torch
 #import kymatio.scattering3d.backend as backend
-from kymatio import HarmonicScattering3D
+from kymatio.numpy import Scattering3D
+
+
 
 class BenchmarkHarmonicScattering3D:
     params = [

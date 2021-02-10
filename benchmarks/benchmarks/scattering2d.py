@@ -1,6 +1,8 @@
 #import torch
 #import kymatio.scattering2d.backend as backend
-from kymatio import Scattering2D
+from kymatio.numpy import Scattering2D
+
+
 
 class BenchmarkScattering2D:
     params = [

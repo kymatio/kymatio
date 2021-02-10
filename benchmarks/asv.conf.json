@@ -17,8 +17,10 @@
     // uninstalling the project. See asv.conf.json documentation.
     //
     "install_command": [
+
        // "conda install pytorch torchvision torchaudio",
-        "in-dir={env_dir} python -mpip install {wheel_file}"],
+        "in-dir={env_dir} python -mpip install {wheel_file}",
+    "pip install kymatio"],
     // "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
     // "build_command": [
     //     "python setup.py build",
@@ -49,7 +51,7 @@
 
     // The list of conda channel names to be searched for benchmark
     // dependency packages in the specified order
-    "conda_channels": ["conda-forge", "pytorch", "defaults"],
+    "conda_channels": ["conda-forge", "defaults"],
 
     // The matrix of dependencies to test.  Each key is the name of a
     // package (in PyPI) and the values are version numbers.  An empty
@@ -64,6 +66,7 @@
     "matrix": {
         "numpy": [],
         "scipy": [],
+        "kymatio": [],
         //"torch": []
     },
 
