@@ -1,5 +1,6 @@
 import torch
 from torch.nn import ReflectionPad2d
+import torch.fft
 from collections import namedtuple
 
 BACKEND_NAME = 'torch'
@@ -110,8 +111,7 @@ class SubsampleFourier(object):
         Parameters
         ----------
         x : tensor
-            Input tensor with at least 5 dimensions, the last being the real
-            and imaginary parts.
+            Input tensor with at least 4 dimensions.
         k : int
             Integer such that x is subsampled by k along the spatial variables.
 
@@ -127,43 +127,46 @@ class SubsampleFourier(object):
         complex_check(x)
         contiguous_check(x)
 
-        batch_shape = x.shape[:-3]
-        signal_shape = x.shape[-3:]
+        batch_shape = x.shape[:-2]
+        signal_shape = x.shape[-2:]
         x = x.view((-1,) + signal_shape)
         y = x.view(-1,
                        k, x.shape[1] // k,
-                       k, x.shape[2] // k,
-                       2)
+                       k, x.shape[2] // k)
 
         out = y.mean(3, keepdim=False).mean(1, keepdim=False)
-        out = out.reshape(batch_shape + out.shape[-3:])
+        out = out.reshape(batch_shape + out.shape[-2:])
         return out
 
 
 # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
 # inefficent.
 def rfft(x):
-    contiguous_check(x)
+    #contiguous_check(x)
     real_check(x)
 
-    x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
-    x_r[..., 0] = x[..., 0]
 
-    return torch.fft(x_r, 2, normalized=False)
+
+    x_r = torch.zeros((x.shape + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
+    x_r[..., 0] = x#[..., 0]
+    x = torch.view_as_complex(x_r)
+
+
+    return torch.fft.fftn(x, dim=(-1,-2))
 
 
 def irfft(x):
-    contiguous_check(x)
+    #contiguous_check(x)
     complex_check(x)
 
-    return torch.ifft(x, 2, normalized=False)[..., :1]
+    return torch.fft.ifftn(x, dim=(-1,-2)).real
 
 
 def ifft(x):
-    contiguous_check(x)
+    #contiguous_check(x)
     complex_check(x)
 
-    return torch.ifft(x, 2, normalized=False)
+    return torch.fft.ifftn(x, dim=(-1,-2))
 
 
 def concatenate_2d(x):

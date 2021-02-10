@@ -183,10 +183,10 @@ def cdgmm(A, B):
     
     complex_check(A)
 
-    if A.shape[-len(B.shape):-1] != B.shape[:-1]:
+    if A.shape[-len(B.shape):] != B.shape:
         raise RuntimeError('The filters are not compatible for multiplication.')
 
-    if A.dtype is not B.dtype:
+    if (torch.view_as_real(A).dtype is not B.dtype) and (A.dtype is not B.dtype):
         raise TypeError('Input and filter must be of the same dtype.')
 
     if B.device.type == 'cuda':

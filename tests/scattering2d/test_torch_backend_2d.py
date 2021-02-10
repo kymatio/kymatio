@@ -86,22 +86,24 @@ class TestModulus:
         backend, device = backend_device
 
         modulus = backend.modulus
-        x = torch.rand(100, 10, 4, 2).to(device)
+        x = torch.rand(100, 10, 4, dtype=torch.cfloat).to(device)
 
         y = modulus(x)
-        y = y.reshape(y.shape[:-1])
-        u = torch.sqrt(torch.sum(x * x, 3))
+        #y = y.reshape(y.shape[:-1])
+        x_ = torch.view_as_real(x)
+        u = torch.sqrt(torch.sum(x_ * x_, 3))
         assert torch.allclose(u, y)
 
-        y = x[..., 0].contiguous()
+        y = x.real
         with pytest.raises(TypeError) as record:
             modulus(y)
         assert 'should be complex' in record.value.args[0]
-
+        """
         y = x[::2, ::2]
         with pytest.raises(RuntimeError) as record:
             modulus(y)
         assert 'contiguous' in record.value.args[0]
+        """
 
     @pytest.mark.parametrize('backend', backends)
     def test_cuda_only(self, backend):
@@ -120,22 +122,22 @@ class TestSubsampleFourier:
         backend, device = backend_device
         subsample_fourier = backend.subsample_fourier
 
-        x = torch.rand(100, 1, 128, 128, 2).to(device)
+        x = torch.rand(100, 1, 128, 128, dtype=torch.cfloat).to(device)
 
-        y = torch.zeros(100, 1, 8, 8, 2).to(device)
+        y = torch.zeros(100, 1, 8, 8, dtype=torch.cfloat).to(device)
 
         for i in range(8):
             for j in range(8):
                 for m in range(16):
                     for n in range(16):
-                        y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
+                        y[...,i,j] += x[...,i+m*8,j+n*8]
 
         y = y / (16*16)
 
         z = subsample_fourier(x, k=16)
         assert torch.allclose(y, z)
 
-        y = x[..., 0]
+        y = x.real
         with pytest.raises(TypeError) as record:
             subsample_fourier(y, k=16)
         assert 'should be complex' in record.value.args[0]
@@ -150,7 +152,7 @@ class TestSubsampleFourier:
         subsample_fourier = backend.subsample_fourier
 
         if backend.name == 'torch_skcuda':
-            x = torch.rand(100, 1, 128, 128, 2).cpu()
+            x = torch.rand(100, 1, 128, 128, dtype=torch.cfloat).cpu()
             with pytest.raises(TypeError) as exc:
                 z = subsample_fourier(x, k=16)
             assert 'Use the torch backend' in exc.value.args[0]
@@ -160,15 +162,15 @@ class TestSubsampleFourier:
         backend, device = backend_device
         subsample_fourier = backend.subsample_fourier
 
-        x = torch.rand(100, 1, 8, 128, 128, 2).to(device)
+        x = torch.rand(100, 1, 8, 128, 128, dtype=torch.cfloat).to(device)
 
-        y = torch.zeros(100, 1, 8, 8, 8, 2).to(device)
+        y = torch.zeros(100, 1, 8, 8, 8, dtype=torch.cfloat).to(device)
 
         for i in range(8):
             for j in range(8):
                 for m in range(16):
                     for n in range(16):
-                        y[...,i,j,:] += x[...,i+m*8,j+n*8,:]
+                        y[...,i,j] += x[...,i+m*8,j+n*8]
 
         y = y / (16*16)
 
@@ -182,18 +184,20 @@ class TestCDGMM:
     def data(self, request):
         real_filter = request.param
 
-        x = torch.rand(100, 128, 128, 2).float()
-        filt = torch.rand(128, 128, 2).float()
-        y = torch.ones(100, 128, 128, 2).float()
+        x = torch.rand(100, 128, 128, dtype=torch.cfloat)
+        filt = torch.rand(128, 128, dtype=torch.cfloat)
+        y = torch.ones(100, 128, 128, dtype=torch.cfloat)
 
         if real_filter:
-            filt[..., 1] = 0
+            filt = filt.real
 
-        y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
-        y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
 
-        if real_filter:
-            filt = filt[..., :1].contiguous()
+        y = x*filt
+        #y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
+        #y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
+
+        #if real_filter:
+            #filt = filt[..., :1].contiguous()
 
         return x, filt, y
 
@@ -203,7 +207,6 @@ class TestCDGMM:
 
         x, filt, y = data
         x, filt, y = x.to(device), filt.to(device), y.to(device)
-
         z = backend.cdgmm(x, filt)
 
         Warning('Tolerance has been slightly lowered here...')
@@ -224,45 +227,47 @@ class TestCDGMM:
     @pytest.mark.parametrize('backend', backends)
     def test_cdgmm_exceptions(self, backend):
         with pytest.raises(RuntimeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 3, 2))
+            backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat), torch.empty(4, 3, 2, dtype=torch.cfloat))
         assert 'not compatible' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 1), torch.empty(4, 5, 1))
+            backend.cdgmm(torch.empty(3, 4, 5), torch.empty(4, 5))
         assert 'should be complex' in exc.value.args[0]
 
-        with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2), torch.empty(4, 5, 3))
-        assert 'should be complex' in exc.value.args[0]
+        #with pytest.raises(TypeError) as exc:
+        #    backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat), torch.empty(4, 5, 3))
+        #assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
-            backend.cdgmm(torch.empty(3, 4, 5, 2),
-                          torch.empty(4, 5, 1).double())
+            backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat),
+                          torch.empty(4, 5).double())
         assert 'must be of the same dtype' in exc.value.args[0]
 
         if 'cuda' in devices:
             if backend.name=='torch_skcuda':
                 with pytest.raises(TypeError) as exc:
-                    backend.cdgmm(torch.empty(3, 4, 5, 2),
-                                  torch.empty(4, 5, 1).cuda())
+                    backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat),
+                                  torch.empty(4, 5).cuda())
                 assert 'must be cuda tensors' in exc.value.args[0].lower()
             elif backend.name=='torch':
                 with pytest.raises(TypeError) as exc:
-                    backend.cdgmm(torch.empty(3, 4, 5, 2),
-                                  torch.empty(4, 5, 1).cuda())
+                    backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat),
+                                  torch.empty(4, 5).cuda())
                 assert 'input must be on gpu' in exc.value.args[0].lower()
 
                 with pytest.raises(TypeError) as exc:
-                    backend.cdgmm(torch.empty(3, 4, 5, 2).cuda(),
-                                  torch.empty(4, 5, 1))
+                    backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat).cuda(),
+                                  torch.empty(4, 5))
                 assert 'input must be on cpu' in exc.value.args[0].lower()
 
+
+    """
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_contiguity_exception(self, backend_device):
         backend, device = backend_device
 
-        x = torch.empty(3, 4, 5, 3).to(device)[..., :2]
-        y = torch.empty(4, 5, 3).to(device)[..., :2]
+        x = torch.empty(3, 4, 5, 3, dtype=torch.cfloat).to(device)[..., :2]
+        y = torch.empty(4, 5, 3, dtype=torch.cfloat).to(device)[..., :2]
 
         with pytest.raises(RuntimeError) as exc:
             backend.cdgmm(x.contiguous(), y)
@@ -271,6 +276,7 @@ class TestCDGMM:
         with pytest.raises(RuntimeError) as exc:
             backend.cdgmm(x, y.contiguous())
         assert 'be contiguous' in exc.value.args[0]
+    """
 
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_device_mismatch(self, backend_device):
@@ -313,66 +319,66 @@ class TestFFT:
 
 
         y_r = torch.from_numpy(np.stack((y_r.real, y_r.imag), axis=-1))
-        x_r = torch.from_numpy(x_r)[..., None]
+        x_r = torch.from_numpy(x_r)#[..., None]
 
 
         z = backend.rfft(x_r)
-        assert torch.allclose(y_r, z)
+        assert torch.allclose(y_r, torch.view_as_real(z))
         
         z_1 = backend.irfft(z)
         assert z_1.shape == x_r.shape
-        assert torch.allclose(x_r, z_1)
+        assert torch.allclose(x_r,  z_1)
 
 
-        z_2 = backend.ifft(z)[..., :1]
-        assert torch.allclose(x_r, z_2)
+        z_2 = backend.ifft(z)
+        assert torch.allclose(x_r,  z_2.real)
         
          
     @pytest.mark.parametrize('backend_device', backends_devices)
     def test_fft_exceptions(self, backend_device):
         backend, device = backend_device
 
-        x = torch.randn(4, 4, 2)
+        x = torch.randn(4, 4, dtype=torch.cfloat)
         x = x.to(device)
         with pytest.raises(TypeError) as record:
             backend.rfft(x)
         assert 'real' in record.value.args[0]
 
-        x = torch.randn(4, 4, 1)
+        x = torch.randn(4, 4)
         x = x.to(device)
         with pytest.raises(TypeError) as record:
             backend.ifft(x)
         assert 'complex' in record.value.args[0]
        
-        x = torch.randn(4, 4, 1)
+        x = torch.randn(4, 4)
         x = x.to(device)
         with pytest.raises(TypeError) as record:
             backend.irfft(x)
         assert 'complex' in record.value.args[0]
        
-        x = torch.randn(4, 4, 1)
+        x = torch.randn(4, 4)
         x = x.to(device)
         y = x[::2, ::2]
 
-        with pytest.raises(RuntimeError) as record:
-            backend.rfft(y)
-        assert 'must be contiguous' in record.value.args[0]
-        
-        x = torch.randn(4, 4, 2)
+        #with pytest.raises(RuntimeError) as record:
+        #    backend.rfft(y)
+        #assert 'must be contiguous' in record.value.args[0]
+
+        x = torch.randn(4, 4, dtype=torch.cfloat)
         x = x.to(device)
         y = x[::2, ::2]
 
-        with pytest.raises(RuntimeError) as record:
-            backend.ifft(y)
-        assert 'must be contiguous' in record.value.args[0]
+        #with pytest.raises(RuntimeError) as record:
+        #    backend.ifft(y)
+        #assert 'must be contiguous' in record.value.args[0]
 
-        x = torch.randn(4, 4, 2)
+        x = torch.randn(4, 4, dtype=torch.cfloat)
         x = x.to(device)
         y = x[::2, ::2]
 
-        with pytest.raises(RuntimeError) as record:
-            backend.irfft(y)
-        assert 'must be contiguous' in record.value.args[0]
+        #with pytest.raises(RuntimeError) as record:
+        #    backend.irfft(y)
+        #assert 'must be contiguous' in record.value.args[0]
 
 
 class TestBackendUtils:
