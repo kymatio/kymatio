@@ -21,7 +21,7 @@ def test_Scattering2D():
     N = x.shape[3]
 
     inputs = Input(shape=(3, M, N))
-    scat = Scattering2D(J=J)(inputs)
+    sc = Scattering2D(J=J)(inputs)
 
     model = Model(inputs, scat)
     model.compile(optimizer='adam',
@@ -32,3 +32,7 @@ def test_Scattering2D():
     S = S
     Sg = model.predict(x)
     assert np.allclose(Sg, S)
+
+    config = sc.get_config()
+    assert config["J"] == J
+    assert Scattering2D.from_config(config).J == J
