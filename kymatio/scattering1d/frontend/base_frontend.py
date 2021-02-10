@@ -53,8 +53,8 @@ class ScatteringBase1D(ScatteringBase):
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
-            self.N, self.J, self.Q, Q2=self.Q2, r_psi=self.r_psi,
-            sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
+            self.N, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
+            alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize)
         # to avoid padding more than N - 1 on the left and on the right,
@@ -368,17 +368,4 @@ class ScatteringBase1D(ScatteringBase):
             n=cls._doc_array_n)
 
 
-class TimeFrequencyScatteringBase(ScatteringBase1D):
-    def get_J_fr(self):
-        return int(math.log2(self.Q * self.J))
-
-    def get_shape_fr(self):
-        return 2**math.ceil(1 + np.log2(self.Q * self.J))
-
-    @classmethod
-    def _document(cls):
-        # TODO documentation
-        cls.__doc__ = """Joint time-frequency scattering"""
-
-
-__all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
+__all__ = ['ScatteringBase1D']
