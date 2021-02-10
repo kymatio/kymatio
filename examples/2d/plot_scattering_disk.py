@@ -74,7 +74,7 @@ nb_coeffs, window_rows, window_columns = scattering_coefficients.shape
 
 fig,ax = plt.subplots()
 
-plt.imshow(1-src_img,cmap='gray',interpolation='nearest', aspect='auto')
+plt.imshow(src_img,cmap='gray',interpolation='nearest', aspect='auto')
 ax.axis('off')
 offset = 0.1
 for row in range(window_rows):
