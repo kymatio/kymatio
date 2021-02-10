@@ -2,10 +2,8 @@ from ...backend.numpy_backend import NumpyBackend
 
 
 class NumpyBackend1D(NumpyBackend):
-    def __init__(self):
-        super(NumpyBackend1D, self).__init__()
-
-    def subsample_fourier(self, x, k):
+    @classmethod
+    def subsample_fourier(cls, x, k):
         """Subsampling in the Fourier domain
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
@@ -25,15 +23,16 @@ class NumpyBackend1D(NumpyBackend):
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
-        self.complex_check(x)
-    
+        cls.complex_check(x)
+
         y = x.reshape(-1, k, x.shape[-1] // k)
-    
+
         res = y.mean(axis=-2)
 
         return res
-    
-    def pad(self, x, pad_left, pad_right):
+
+    @classmethod
+    def pad(cls, x, pad_left, pad_right):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -54,15 +53,16 @@ class NumpyBackend1D(NumpyBackend):
         """
         if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
             raise ValueError('Indefinite padding size (larger than tensor).')
-        
+
         paddings = ((0, 0),) * len(x.shape[:-1])
-        paddings += (pad_left, pad_right), 
-    
-        output = self.np.pad(x, paddings, mode='reflect')
+        paddings += (pad_left, pad_right),
+
+        output = cls._np.pad(x, paddings, mode='reflect')
 
         return output
 
-    def unpad(self, x, i0, i1):
+    @staticmethod
+    def unpad(x, i0, i1):
         """Unpad real 1D tensor
         Slices the input tensor at indices between i0 and i1 along the last axis.
         Parameters
@@ -80,19 +80,22 @@ class NumpyBackend1D(NumpyBackend):
         """
         return x[..., i0:i1]
 
-    def rfft(self, x):
-        self.real_check(x)
+    @classmethod
+    def rfft(cls, x):
+        cls.real_check(x)
 
-        return self.np.fft.fft(x)
-    
-    def irfft(self, x):
-        self.complex_check(x)
+        return cls._np.fft.fft(x)
 
-        return self.fft.ifft(x).real
-    
-    def ifft(self, x):
-        self.complex_check(x)
+    @classmethod
+    def irfft(cls, x):
+        cls.complex_check(x)
 
-        return self.fft.ifft(x)
+        return cls._fft.ifft(x).real
 
-backend = NumpyBackend1D()
+    @classmethod
+    def ifft(cls, x):
+        cls.complex_check(x)
+
+        return cls._fft.ifft(x)
+
+backend = NumpyBackend1D
