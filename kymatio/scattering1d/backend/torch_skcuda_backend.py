@@ -2,7 +2,8 @@ import torch
 import cupy
 from collections import namedtuple
 from string import Template
-from ...backend.torch_skcuda_backend import TorchSKcudaBackend
+
+from ...backend.torch_skcuda_backend import TorchSkcudaBackend
 from .torch_backend import TorchBackend1D
 
 
@@ -65,7 +66,7 @@ class Modulus(object):
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
 
         out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
-   
+
         # abs_complex_value takes in a complex array and returns the real
         # modulus of the input array
         kernel = """
@@ -164,41 +165,41 @@ class SubsampleFourier(object):
 
         return out
 
-class TorchSKcudaBackend1D(TorchSKcudaBackend, TorchBackend1D):
-    def __init__(self):
-        TorchBackend1D.__init__(self)
-        TorchSKcudaBackend.__init__(self)
-        self.modulus_complex = Modulus()
-        self.subsamplefourier = SubsampleFourier()
 
-    def modulus(self, x):
+class TorchSkcudaBackend1D(TorchSkcudaBackend, TorchBackend1D):
+    _modulus_complex = Modulus()
+    _subsample_fourier = SubsampleFourier()
+
+    @classmethod
+    def modulus(cls, x):
         """Compute the complex modulus
-        
+
             Computes the modulus of x and stores the result in a complex tensor of the
             same size, with the real part equal to the modulus and the imaginary part
             equal to zero.
-        
+
             Parameters
             ----------
             x : tensor
                 A complex tensor (that is, whose last dimension is equal to 2).
-        
+
             Returns
             -------
             norm : tensor
                 A tensor with the same dimensions as x, such that norm[..., 0] contains
                 the complex modulus of x, while norm[..., 1] = 0.
         """
-        self.contiguous_check(x) 
-        self.complex_check(x)
-        return self.modulus_complex(x)
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+        return cls._modulus_complex(x)
 
-    def subsample_fourier(self, x, k):
+    @classmethod
+    def subsample_fourier(cls, x, k):
         """Subsampling in the Fourier domain
-    
+
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
-    
+
         Parameters
         ----------
         x : tensor
@@ -209,15 +210,16 @@ class TorchSKcudaBackend1D(TorchSKcudaBackend, TorchBackend1D):
             imaginary parts of the Fourier transform.
         k : int
             The subsampling factor.
-    
+
         Returns
         -------
         res : tensor
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
-        self.contiguous_check(x) 
-        self.complex_check(x)
-        return self.subsamplefourier(x,k)
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+        return cls._subsample_fourier(x,k)
 
-backend = TorchSKcudaBackend1D()
+
+backend = TorchSkcudaBackend1D

@@ -246,6 +246,9 @@ def test_fft(backend, device):
     z_1 = backend.ifft(z)
     assert torch.allclose(x_r[..., 0], z_1[..., 0])
 
+    print(z.shape)
+
     z_2 = backend.irfft(z)
+    print(z_2.shape)
     assert not z_2.shape[-1] == 2
     assert torch.allclose(x_r, z_2)
