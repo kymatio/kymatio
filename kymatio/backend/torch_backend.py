@@ -18,7 +18,7 @@ def real_check(x):
         raise TypeError('The input should be real.')
 
 def _is_complex(x):
-    return x.shape[-1] == 2
+    return x.dtype==torch.cfloat or x.dtype==torch.cdouble
 
 def _is_real(x):
     return x.shape[-1] == 1
