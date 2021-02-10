@@ -65,7 +65,7 @@
     "matrix": {
         "numpy": [],
         "scipy": [],
-        "kymatio": [],
+        // "kymatio": [],
         //"torch": []
     },
 
