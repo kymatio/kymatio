@@ -19,8 +19,7 @@
     "install_command": [
 
        // "conda install pytorch torchvision torchaudio",
-        "in-dir={env_dir} python -mpip install {wheel_file}",
-    "pip install kymatio"],
+        "in-dir={env_dir} python -mpip install {wheel_file}"],
     // "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
     // "build_command": [
     //     "python setup.py build",
