@@ -258,20 +258,20 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     Computes the (half) temporal support of a family of centered,
     symmetric filters h provided in the Fourier domain
 
-    This function computes the support T which is the smallest integer
+    This function computes the support N which is the smallest integer
     such that for all signals x and all filters h,
 
-    \\| x \\conv h - x \\conv h_{[-T, T]} \\|_{\\infty} \\leq \\epsilon
+    \\| x \\conv h - x \\conv h_{[-N, N]} \\|_{\\infty} \\leq \\epsilon
         \\| x \\|_{\\infty}  (1)
 
-    where 0<\\epsilon<1 is an acceptable error, and h_{[-T, T]} denotes the
-    filter h whose support is restricted in the interval [-T, T]
+    where 0<\\epsilon<1 is an acceptable error, and h_{[-N, N]} denotes the
+    filter h whose support is restricted in the interval [-N, N]
 
-    The resulting value T used to pad the signals to avoid boundary effects
+    The resulting value N used to pad the signals to avoid boundary effects
     and numerical errors.
 
-    If the support is too small, no such T might exist.
-    In this case, T is defined as the half of the support of h, and a
+    If the support is too small, no such N might exist.
+    In this case, N is defined as the half of the support of h, and a
     UserWarning is raised.
 
     Parameters
@@ -293,21 +293,21 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     """
     h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
-    # compute ||h - h_[-T, T]||_1
+    # compute ||h - h_[-N, N]||_1
     l1_residual = np.fliplr(
         np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
     # find the first point above criterion_amplitude
     if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
         # if it is possible
-        T = np.min(
+        N = np.min(
             np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
             + 1
     else:
         # if there is none:
-        T = half_support
+        N = half_support
         # Raise a warning to say that there will be border effects
         warnings.warn('Signal support is too small to avoid border effects')
-    return T
+    return N
 
 
 def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
@@ -670,11 +670,11 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         else:
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
-        T = 2**J_support
+        N = 2**J_support
 
         psi_f = {}
         psi_f[0] = morlet_1d(
-            T, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
+            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
             eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
@@ -685,11 +685,11 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         psi2_f.append(psi_f)
 
     # for the 1st order filters, the input is not subsampled so we
-    # can only compute them with T=2**J_support
+    # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
-        T = 2**J_support
+        N = 2**J_support
         psi1_f.append({0: morlet_1d(
-            T, xi1[n1], sigma1[n1], normalize=normalize,
+            N, xi1[n1], sigma1[n1], normalize=normalize,
             P_max=P_max, eps=eps)})
 
     # compute the low-pass filters phi
@@ -704,7 +704,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(T, sigma_low, P_max=P_max, eps=eps)
+    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter

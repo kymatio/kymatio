@@ -8,7 +8,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     Parameters
     ----------
     x : Tensor
-        a torch Tensor of size `(B, 1, T)` where `T` is the temporal size
+        a torch Tensor of size `(B, 1, N)` where `N` is the temporal size
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
         `j` corresponds to the downsampling factor for
