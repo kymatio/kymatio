@@ -38,7 +38,7 @@ def test_pad_1d(device, backend, random_state=42):
         for pad_right in [pad_left, pad_left + 16]:
             x = torch.randn(2, 4, N, requires_grad=True, device=device)
             x_pad = backend.pad(x, pad_left, pad_right)
-            x_pad = x_pad.reshape(x_pad.shape[:-1])
+            #x_pad = x_pad.reshape(x_pad.shape[:-1])
             # Check the size
             x2 = x.clone()
             x_pad2 = x_pad.clone()
@@ -102,14 +102,14 @@ def test_modulus(device, backend, random_state=42):
 
     torch.manual_seed(random_state)
     # Test with a random vector
-    x = torch.randn(2, 4, 128, 2, requires_grad=True, device=device)
+    x = torch.randn(2, 4, 128, dtype=torch.cfloat, requires_grad=True, device=device)
 
-    x_abs = backend.modulus(x).squeeze(-1)
-    assert len(x_abs.shape) == len(x.shape[:-1])
+    x_abs = backend.modulus(x)
+    assert len(x_abs.shape) == len(x.shape)
 
     # check the value
     x_abs2 = x_abs.clone()
-    x2 = x.clone()
+    x2 = torch.view_as_real(x)
     assert torch.allclose(x_abs2, torch.sqrt(x2[..., 0] ** 2 + x2[..., 1] ** 2))
 
     with pytest.raises(TypeError) as te:
@@ -124,12 +124,12 @@ def test_modulus(device, backend, random_state=42):
     # check the gradient
     loss = torch.sum(x_abs)
     loss.backward()
-    x_grad = x2 / x_abs2[..., None]
+    x_grad = x / x_abs
     assert torch.allclose(x.grad, x_grad)
 
 
     # Test the differentiation with a vector made of zeros
-    x0 = torch.zeros(100, 4, 128, 2, requires_grad=True, device=device)
+    x0 = torch.zeros(100, 4, 128, dtype=torch.cfloat, requires_grad=True, device=device)
     x_abs0 = backend.modulus(x0)
     loss0 = torch.sum(x_abs0)
     loss0.backward()
@@ -152,15 +152,15 @@ def test_subsample_fourier(backend, device, random_state=42):
     rng = np.random.RandomState(random_state)
     J = 10
     x = rng.randn(2, 4, 2**J) + 1j * rng.randn(2, 4, 2**J)
-    x_f = np.fft.fft(x, axis=-1)[..., np.newaxis]
-    x_f.dtype = 'float64'  # make it a vector
+    x_f = np.fft.fft(x, axis=-1)#[..., np.newaxis]
+    #x_f.dtype = 'float64'  # make it a vector
     x_f_th = torch.from_numpy(x_f).to(device)
 
     for j in range(J + 1):
         x_f_sub_th = backend.subsample_fourier(x_f_th, 2**j).cpu()
         x_f_sub = x_f_sub_th.numpy()
         x_f_sub.dtype = 'complex128'
-        x_sub = np.fft.ifft(x_f_sub[..., 0], axis=-1)
+        x_sub = np.fft.ifft(x_f_sub, axis=-1)
         assert np.allclose(x[:, :, ::2**j], x_sub)
 
     # If we are using a GPU-only backend, make sure it raises the proper
@@ -188,18 +188,18 @@ def test_unpad():
     for pad_left in range(0, N - 16, 16):
         pad_right = pad_left + 16
         x_pad = backend.pad(x, pad_left, pad_right)
-        x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right - 1)
+        x_unpadded = backend.unpad(x_pad, pad_left, x_pad.shape[-1] - pad_right )#- 1)
         assert torch.allclose(x, x_unpadded)
 
 
 def test_fft_type():
-    x = torch.randn(8, 4, 2) 
+    x = torch.randn(8, 4, dtype=torch.cfloat)
 
     with pytest.raises(TypeError) as record:
         y = backend.rfft(x)
     assert 'should be real' in record.value.args[0]
 
-    x = torch.randn(8, 4, 1)
+    x = torch.randn(8, 4)
 
     with pytest.raises(TypeError) as record:
         y = backend.ifft(x)
@@ -222,14 +222,14 @@ def test_fft():
         
     y_r = (x_r * coefficents).sum(-1)
 
-    x_r = torch.from_numpy(x_r)[..., None]
+    x_r = torch.from_numpy(x_r)
     y_r = torch.from_numpy(np.column_stack((y_r.real, y_r.imag)))
 
     z = backend.rfft(x_r)
-    assert torch.allclose(y_r, z)
+    assert torch.allclose(y_r, torch.view_as_real(z))
 
     z_1 = backend.ifft(z)
-    assert torch.allclose(x_r[..., 0], z_1[..., 0])
+    assert torch.allclose(x_r, z_1.real)
 
     z_2 = backend.irfft(z)
     assert not z_2.shape[-1] == 2

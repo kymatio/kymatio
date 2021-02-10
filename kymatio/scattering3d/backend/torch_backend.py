@@ -1,4 +1,5 @@
 import torch
+import torch.fft
 import warnings
 
 BACKEND_NAME = 'torch'
@@ -25,9 +26,9 @@ def modulus_rotation(x, module=None):
             which is covariant to 3D translations and rotations.
     """
     if module is None:
-        module = (x ** 2).sum(-1, keepdim=True)
+        module = x.abs()**2#(x ** 2).sum(-1, keepdim=True)
     else:
-        module = module ** 2 + (x ** 2).sum(-1, keepdim=True)
+        module = module ** 2 + x.abs()**2#(x ** 2).sum(-1, keepdim=True)
     return torch.sqrt(module)
 
 
@@ -67,20 +68,20 @@ def concatenate(arrays, L):
 # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
 # inefficent.
 def rfft(x):
-    contiguous_check(x)
     real_check(x)
 
-    x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
-    x_r[..., 0] = x[..., 0]
+    #x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
+    #x_r[..., 0] = x[..., 0]
+    x_r = x + 1j*0
 
-    return torch.fft(x_r, 3, normalized=False)
+    return torch.fft.fftn(x_r, dim=(-1,-2,-3))
 
 
 def ifft(x):
-    contiguous_check(x)
+    #contiguous_check(x)
     complex_check(x)
 
-    return torch.ifft(x, 3, normalized=False)
+    return torch.fft.ifftn(x, dim=(-1,-2,-3))
 
 
 

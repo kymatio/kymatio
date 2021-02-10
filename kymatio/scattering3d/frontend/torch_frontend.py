@@ -24,14 +24,14 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
     def register_filters(self):
         # transfer the filters from numpy to torch
         for k in range(len(self.filters)):
-            filt = torch.zeros(self.filters[k].shape + (2,))
-            filt[..., 0] = torch.from_numpy(self.filters[k].real).reshape(self.filters[k].shape)
-            filt[..., 1] = torch.from_numpy(self.filters[k].imag).reshape(self.filters[k].shape)
+            #filt = torch.zeros(self.filters[k].shape + (2,))
+            filt = torch.from_numpy(self.filters[k]).reshape(self.filters[k].shape)
+            #filt[..., 1] = torch.from_numpy(self.filters[k].imag).reshape(self.filters[k].shape)
             self.filters[k] = filt
             self.register_buffer('tensor' + str(k), self.filters[k])
 
-        g = torch.zeros(self.gaussian_filters.shape + (2,))
-        g[..., 0] = torch.from_numpy(self.gaussian_filters.real)
+        #g = torch.zeros(self.gaussian_filters.shape + (2,))
+        g = torch.from_numpy(self.gaussian_filters.real)
         self.gaussian_filters = g
         self.register_buffer('tensor_gaussian_filter', self.gaussian_filters)
 
@@ -56,7 +56,7 @@ class HarmonicScatteringTorch3D(ScatteringTorch, ScatteringBase3D):
         batch_shape = input_array.shape[:-3]
         signal_shape = input_array.shape[-3:]
 
-        input_array = input_array.reshape((-1,) + signal_shape + (1,))
+        input_array = input_array.reshape((-1,) + signal_shape)
 
 
         buffer_dict = dict(self.named_buffers())

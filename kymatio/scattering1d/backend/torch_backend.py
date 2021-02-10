@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.fft
 
 from collections import namedtuple
 
@@ -34,7 +35,8 @@ def subsample_fourier(x, k):
     complex_check(x)
     
     N = x.shape[-1]
-    res = x.view(x.shape[:-1] + (k, N // k)).mean(dim=-2)
+    x = x.view(x.shape[:-1] + (k, N // k))
+    res = x.real.mean(dim=-2) + 1j * x.imag.mean(dim=-2)
     return res
 
 def pad(x, pad_left, pad_right):
@@ -82,33 +84,28 @@ def unpad(x, i0, i1):
     x_unpadded : tensor
         The tensor x[..., i0:i1].
     """
-    x = x.reshape(x.shape[:-1])
     return x[..., i0:i1]
 
 # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
 # inefficent.
 def rfft(x):
-    contiguous_check(x)
     real_check(x)
-    
-    x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
-    x_r[..., 0] = x[..., 0]
 
-    return torch.fft(x_r, 1, normalized=False)
+    x_r = x + 1j * 0
+
+    return torch.fft.fft(x_r)
 
 
 def irfft(x):
-    contiguous_check(x)
     complex_check(x)
 
-    return torch.ifft(x, 1, normalized=False)[..., :1]
+    return torch.fft.ifft(x).real
 
 
 def ifft(x):
-    contiguous_check(x)
     complex_check(x)
 
-    return torch.ifft(x, 1, normalized=False)
+    return torch.fft.ifft(x)
 
 
 def concatenate_1d(x):
