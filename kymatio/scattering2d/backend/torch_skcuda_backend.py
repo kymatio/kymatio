@@ -3,13 +3,10 @@ import torch
 import cupy
 from string import Template
 
+from ...backend.torch_skcuda_backend import TorchSkcudaBackend
 
-BACKEND_NAME = 'torch_skcuda'
+from .torch_backend import TorchBackend2D
 
-from ...backend.torch_backend import TorchBackend
-from ...backend.torch_skcuda_backend import TorchSKcudaBackend
-
-from .torch_backend import rfft, ifft, irfft, Pad, unpad, concatenate_2d
 
 # As of v8, cupy.util has been renamed cupy._util.
 if hasattr(cupy, '_util'):
@@ -77,9 +74,6 @@ class SubsampleFourier(object):
         x = x.view((-1,) + signal_shape)
 
         out = torch.empty(x.shape[:-3] + (x.shape[-3] // k, x.shape[-2] // k, x.shape[-1]), dtype=x.dtype, layout=x.layout, device=x.device)
-
-        complex_check(x)
-        contiguous_check(x) 
 
         kernel = '''
         #define NW ${W} / ${k}
@@ -156,11 +150,8 @@ class Modulus(object):
     def __call__(self, x):
         if not x.is_cuda:
             raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
-        
-        out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
 
-        contiguous_check(x) 
-        complex_check(x)
+        out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
 
         kernel = """
         extern "C"
@@ -180,20 +171,21 @@ class Modulus(object):
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
+class TorchSkcudaBackend2D(TorchSkcudaBackend, TorchBackend2D):
+    _modulus_complex = Modulus()
+    _subsample_fourier = SubsampleFourier()
 
-skcuda_backend = TorchSKcudaBackend()
+    @classmethod
+    def modulus(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+        return cls._modulus_complex(x)
 
-backend = TorchBackend()
-backend.name = 'torch_skcuda'
-backend.modulus = Modulus()
-backend.subsample_fourier = SubsampleFourier()
-backend.cdgmm = skcuda_backend.cdgmm
-backend.rfft = rfft
-backend.irfft = irfft
-backend.ifft = ifft
-backend.Pad = Pad
-backend.unpad = unpad
-backend.concatenate = concatenate_2d
+    @classmethod
+    def subsample_fourier(cls, x, k):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+        return cls._subsample_fourier(x, k)
 
-contiguous_check = backend.contiguous_check
-complex_check = backend.complex_check
+
+backend = TorchSkcudaBackend2D

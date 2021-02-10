@@ -125,7 +125,8 @@ class TestSubsampleFourier:
         z = subsample_fourier(x, k=16)
         assert torch.allclose(y, z)
 
-        y = x[..., 0]
+        # Must clone to make sure result is contiguous.
+        y = x[..., 0].clone()
         with pytest.raises(TypeError) as record:
             subsample_fourier(y, k=16)
         assert 'should be complex' in record.value.args[0]

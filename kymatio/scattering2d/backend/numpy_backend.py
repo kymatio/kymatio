@@ -1,16 +1,7 @@
-import numpy as np
-from collections import namedtuple
-import scipy.fftpack
-
-BACKEND_NAME = 'numpy'
-
-
-#from ...backend.numpy_backend import modulus, cdgmm, complex_check, real_check
 from ...backend.numpy_backend import NumpyBackend
 
-
 class Pad(object):
-    def __init__(self, pad_size, input_size):
+    def __init__(self, np, pad_size, input_size):
         """
             Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
@@ -23,35 +14,40 @@ class Pad(object):
                 size of the original signal
 
         """
+        self.np = np
         self.pad_size = pad_size
 
     def __call__(self, x):
         paddings = ((0, 0),)
         paddings += ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
 
-        output = np.pad(x, paddings, mode='reflect')
+        output = self.np.pad(x, paddings, mode='reflect')
         return output
 
 
-def unpad(in_):
-    """
-        Slices the input tensor at indices between 1::-1
+class NumpyBackend2D(NumpyBackend):
+    _Pad = Pad
 
-        Parameters
-        ----------
-        in_ : tensor_like
-            input tensor
+    @staticmethod
+    def unpad(in_):
+        """
+            Slices the input tensor at indices between 1::-1
 
-        Returns
-        -------
-        in_[..., 1:-1, 1:-1]
+            Parameters
+            ----------
+            in_ : tensor_like
+                input tensor
 
-    """
-    return in_[..., 1:-1, 1:-1]
+            Returns
+            -------
+            in_[..., 1:-1, 1:-1]
 
+        """
+        return in_[..., 1:-1, 1:-1]
 
-class SubsampleFourier(object):
-    """ Subsampling of a 2D image performed in the Fourier domain.
+    @classmethod
+    def subsample_fourier(cls, x, k):
+        """ Subsampling of a 2D image performed in the Fourier domain.
 
         Subsampling in the spatial domain amounts to periodization
         in the Fourier domain, hence the formula.
@@ -70,56 +66,37 @@ class SubsampleFourier(object):
             transform of a subsampled version of x, i.e. in
             F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k]
 
-    """
-    def __call__(self, x, k):
-        complex_check(x)
-        
+        """
+        cls.complex_check(x)
+
         y = x.reshape(-1, k, x.shape[1] // k, k, x.shape[2] // k)
 
         out = y.mean(axis=(1, 3))
 
         return out
 
+    @classmethod
+    def Pad(cls, pad_size, input_size):
+        return cls._Pad(cls._np, pad_size, input_size)
 
-def concatenate(arrays):
-    return np.stack(arrays, axis=-3)
+    @classmethod
+    def concatenate(cls, arrays):
+        return cls._np.stack(arrays, axis=-3)
+
+    @classmethod
+    def rfft(cls, x):
+        cls.real_check(x)
+        return cls._fft.fft2(x)
+
+    @classmethod
+    def irfft(cls, x):
+        cls.complex_check(x)
+        return cls._fft.ifft2(x).real
+
+    @classmethod
+    def ifft(cls, x):
+        cls.complex_check(x)
+        return cls._fft.ifft2(x)
 
 
-def rfft(x):
-    real_check(x)
-    return scipy.fftpack.fft2(x)
-
-
-def irfft(x):
-    complex_check(x)
-    return scipy.fftpack.ifft2(x).real
-
-
-def ifft(x):
-    complex_check(x)
-    return scipy.fftpack.ifft2(x)
-
-
-#backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
-#backend.name = 'numpy'
-#backend.cdgmm = cdgmm
-#backend.modulus = modulus
-#backend.subsample_fourier = SubsampleFourier()
-#backend.rfft = rfft
-#backend.irfft = irfft
-#backend.ifft = ifft
-#backend.Pad = Pad
-#backend.unpad = unpad
-#backend.concatenate = concatenate
-
-backend = NumpyBackend()
-backend.Pad = Pad
-backend.rfft = rfft
-backend.irfft = irfft
-backend.ifft = ifft
-backend.subsample_fourier = SubsampleFourier()
-backend.unpad = unpad
-
-real_check = backend.real_check
-complex_check = backend.complex_check
-
+backend = NumpyBackend2D
