@@ -1,5 +1,5 @@
-import torch
-import kymatio.scattering3d.backend as backend
+#import torch
+#import kymatio.scattering3d.backend as backend
 from kymatio import HarmonicScattering3D
 
 class BenchmarkHarmonicScattering3D:

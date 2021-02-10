@@ -17,7 +17,7 @@
     // uninstalling the project. See asv.conf.json documentation.
     //
     "install_command": [
-        "conda install pytorch torchvision torchaudio",
+       // "conda install pytorch torchvision torchaudio",
         "in-dir={env_dir} python -mpip install {wheel_file}"],
     // "uninstall_command": ["return-code=any python -mpip uninstall -y {project}"],
     // "build_command": [
@@ -64,7 +64,7 @@
     "matrix": {
         "numpy": [],
         "scipy": [],
-        "torch": []
+        //"torch": []
     },
 
     // Combinations of libraries/python versions can be excluded/included

@@ -1,5 +1,5 @@
-import torch
-import kymatio.scattering1d.backend as backend
+#import torch
+#import kymatio.scattering1d.backend as backend
 from kymatio import Scattering1D
 
 class BenchmarkScattering1D:
