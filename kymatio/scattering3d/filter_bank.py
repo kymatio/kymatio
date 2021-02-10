@@ -3,6 +3,7 @@ __all__ = ['solid_harmonic_filter_bank']
 import numpy as np
 from scipy.special import sph_harm, factorial
 from .utils import get_3d_angles, double_factorial, sqrt
+import numbers
 
 
 def solid_harmonic_filter_bank(M, N, O, J, L, sigma_0, fourier=True):
@@ -182,3 +183,218 @@ def solid_harmonic_3d(M, N, O, sigma, l, fourier=True):
     solid_harm *= norm_factor
 
     return solid_harm
+
+standard_orientations = {'cartesian' : [(1, 0, 0), (0, 1, 0), (0, 0, 1)]}
+
+
+def return_orientations(orientations='cartesian'):
+    if isinstance(orientations, str):
+        orientations = np.array(standard_orientations[orientations])
+    return orientations
+
+
+def filter_bank(M, N, P, J, orientations='cartesian'):
+    filters = {}
+    filters['psi'] = []
+    orientations = return_orientations(orientations)
+
+    for j in range(J):
+        for orientation in orientations:
+            psi = {}
+            psi['j'] = j
+            psi['orientation'] = orientation
+            psi_signal = gabor_nd((M, N, P), orientation, j, sigma0=0.8,
+                    slant=3/len(orientations))
+                
+            psi_signal_fourier = np.fft.fftn(psi_signal)
+            # drop the imaginary part, it is zero anyway
+            psi_signal_fourier = np.real(psi_signal_fourier)
+            for res in range(min(j + 1, max(J - 1, 1))):
+                psi_signal_fourier_res = periodize_filter_fft(
+                    psi_signal_fourier, res)
+                psi[res] = psi_signal_fourier_res
+            filters['psi'].append(psi)
+
+    filters['phi'] = {}
+    phi_signal = gabor_nd((M, N, P), orientation, scale=J-1, xi0=0, sigma0=.8,
+            slant=1, remove_dc=False)
+    phi_signal_fourier = np.fft.fftn(phi_signal)
+    # drop the imaginary part, it is zero anyway
+    phi_signal_fourier = np.real(phi_signal_fourier)
+    filters['phi']['j'] = J
+    for res in range(J):
+        phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
+        filters['phi'][res] = phi_signal_fourier_res
+
+    return filters
+
+def periodize_filter_fft(x, res):
+    """
+        Parameters
+        ----------
+        x : numpy array
+            signal to periodize in Fourier
+        res :
+            resolution to which the signal is cropped.
+
+        Returns
+        -------
+        crop : numpy array
+            It returns a crop version of the filter, assuming that
+             the convolutions will be done via compactly supported signals.
+    """
+    M = x.shape[0]
+    N = x.shape[1]
+    P = x.shape[2]
+
+    crop = np.zeros((M // 2 ** res, N // 2 ** res, P // 2 ** res), x.dtype)
+
+    mask = np.ones(x.shape, np.float32)
+    len_x = int(M * (1 - 2 ** (-res)))
+    start_x = int(M * 2 ** (-res - 1))
+    len_y = int(N * (1 - 2 ** (-res)))
+    start_y = int(N * 2 ** (-res - 1))
+    len_z = int(P * (1 - 2 ** (-res)))
+    start_z = int(P * 2 ** (-res - 1))
+    mask[start_x:start_x + len_x,:, :] = 0
+    mask[:, start_y:start_y + len_y, :] = 0
+    mask[..., start_z:start_z + len_z] = 0
+
+    x = np.multiply(x,mask)
+    
+    ds = 2 ** res
+    crop = x.reshape(ds, M // ds, ds, N // ds, ds, P // ds).sum(axis=(-6, -4, -2))
+    
+    return crop
+
+
+
+def check_grid(grid_or_shape):
+    """Performs some verifications on the grid_or_shape variable passed
+    as an argument.
+    
+    Parameters
+    ==========
+    
+    grid_or_shape: ndarray or iterable
+        specifies either the shape of a grid or is a grid array itself.
+        A shape is an iterable of no more than 3 integer entries.
+        A grid is an ndarray of dimension at most 4, where the first axis
+        counts the number of dimensions
+
+    Returns
+    =======
+    grid: ndarray."""
+
+    grid_or_shape_ = np.atleast_1d(grid_or_shape)
+
+    if grid_or_shape_.dtype == int:
+        if grid_or_shape_.ndim <= 1:
+            if len(grid_or_shape_) <= 3:
+                # under these three conditions we interpret it as a shape
+                shape = grid_or_shape_
+                starts = -(shape // 2)
+                stops = starts + shape
+                slices = [slice(start, stop) for start, stop in
+                        zip(starts, stops)]
+                grid = np.mgrid[slices]
+                return grid
+    # Otherwise we interpret is a grid and do some dimensionality verifications
+    grid = grid_or_shape_
+    if grid.ndim > 4:
+        raise ValueError("Grid dimension must not exceed 4")
+    if grid.ndim > 1:
+        if grid.shape[0] > 3:
+            raise ValueError("For a more than 1D array grid, the first axis "
+                            "size must correspond to the dimensionality of "
+                            "the grid, which can only be 1, 2 or 3.")
+    return grid
+
+
+
+def gabor_nd(grid_or_shape, orientation, scale, xi0=3 * np.pi / 4, sigma0=.5,
+            slant=.5, remove_dc=True, ifftshift=True):
+    """Computes one n-dimensional Gabor wavelets given orientation and scale.
+
+    Parameters
+    ==========
+    grid_or_shape, ndarray-like
+        either a (short) list of integers providing grid dimensions
+        or a grid of shape (ndim, axis1, axis2[, axis3, ..., axis_ndim]).
+        If grid shape is specified, then grid step is integer
+
+    orientation: float or array-like
+        Specifies the orientation of the main oscillation of the wavelet.
+        If desired wavelets are two-dimensional, then a float value is taken to
+        specify the 2D angle. A float value can only be used in 2D.
+        If orientation is a n-dimensional vector it is taken to mean the wave
+        vector direction of the wavelet.
+
+    scale: float, usually integer
+        Specifies the octave scale at which the Gabor is to be generated. This
+        value is used to modify xi0 and sigma0 to xi0 / 2 ** scale, and
+        sigma0 * 2 ** scale.
+    
+    xi0: float,
+        Specifies the center spatial frequency of the fastest-oscillating
+        wavelet. (Modified by scale, see gabor_derivative docstring)
+
+    sigma0: float,
+        Specifies the width of the Gaussian envelope at the finest scale
+        (Modified by scale parameter)
+
+    slant: float, around 1.
+        Determines the ratio between Gaussian width in wave direction versus
+        all the other directions. Typically set to <= 1. to yield wide edges
+        more selective to orientations.
+
+    remove_dc: boolean, default True
+        By default, Gabor filters are not zero-sum in the real part, since the
+        integral of a Gaussian times a cosine is not 0. If set to True, a
+        Gaussian envelope is subtracted from the real part of the Gabor filter
+        to obtain exact zero-sum property. The result is also called Morlet
+        wavelet.
+
+    ifftshift: boolean, default True
+        When set to True, then the 0-frequency is placed in the top front left
+        corner of the grid. When set to False, the 0-frequency is placed in the
+        middle of the grid, which is more convenient for visualization.
+
+
+    Returns
+    =======
+    wavelet, array, dtype complex128
+        The shape is the same as that of the grid."""
+
+    
+    grid = check_grid(grid_or_shape)
+    ndim = grid.shape[0]
+    if isinstance(orientation, numbers.Number):
+        if ndim != 2:
+            raise ValueError("If specifying orientation as a number, then Gabor "
+                                "must be 2D, given {}.".format(ndim))
+        orientation = np.array((np.cos(orientation), np.sin(orientation)))
+
+    orientation = orientation.ravel() / np.linalg.norm(orientation)
+    _, _, VT = np.linalg.svd(orientation[np.newaxis])
+    VT[0] = orientation
+    transformed_grid = grid.T.dot(VT.T).T
+    sigma, xi = sigma0 * 2. ** scale, xi0 / 2. ** scale
+    oscillation = np.exp(1j * xi * transformed_grid[0])
+    squash_vector = np.array((1. / slant,) + (1,) * (ndim - 1))
+    squashed_grid = (transformed_grid.T * squash_vector).T
+    gaussian = (np.exp(-.5 * ((squashed_grid / sigma) ** 2).sum(0)) /
+            np.sqrt((2 * np.pi) ** ndim * np.prod(sigma / squash_vector)))
+    gabor = gaussian * oscillation
+
+    if remove_dc:
+        dc = np.real(gabor.sum())
+        morlet = gabor - gaussian / gaussian.sum() * dc
+        wavelet = morlet
+    else:
+        wavelet = gabor
+    if ifftshift:
+        wavelet = np.fft.ifftshift(wavelet)
+    return wavelet
+
+
