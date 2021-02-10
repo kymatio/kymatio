@@ -18,10 +18,10 @@ def real_check(x):
         raise TypeError('The input should be real.')
 
 def _is_complex(x):
-    return x.dtype==torch.cfloat or x.dtype==torch.cdouble
+    return x.dtype == torch.cfloat or x.dtype == torch.cdouble
 
 def _is_real(x):
-    return x.shape[-1] == 1
+    return x.dtype == torch.float or x.dtype == torch.double
 
 class ModulusStable(Function):
     """Stable complex modulus
@@ -75,7 +75,7 @@ class ModulusStable(Function):
         ctx.dim = -1
         ctx.keepdim = False
 
-        output = (x[...,0] * x[...,0] + x[...,1] * x[...,1]).sqrt()
+        output = x.abs()
 
         ctx.save_for_backward(x, output)
 
@@ -138,9 +138,8 @@ class Modulus():
             contains the complex modulus of x, while output[..., 1] = 0.
     """
     def __call__(self, x):
-        complex_contiguous_check(x)
-        norm = modulus(x)[..., None]
-        return norm
+        complex_check(x)
+        return x.abs()
 
 def complex_contiguous_check(x):
     complex_check(x)
@@ -181,12 +180,8 @@ def cdgmm(A, B):
             C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
     """
-    if not _is_real(B):
-        complex_contiguous_check(B)
-    else:
-        contiguous_check(B)
     
-    complex_contiguous_check(A)
+    complex_check(A)
 
     if A.shape[-len(B.shape):-1] != B.shape[:-1]:
         raise RuntimeError('The filters are not compatible for multiplication.')
@@ -205,21 +200,7 @@ def cdgmm(A, B):
         if A.device.type == 'cuda':
             raise TypeError('Input must be on CPU.')
 
-    if _is_real(B):
-        return A * B
-    else:
-        C = A.new(A.shape)
-
-        A_r = A[..., 0].view(-1, B.nelement() // 2)
-        A_i = A[..., 1].view(-1, B.nelement() // 2)
-
-        B_r = B[..., 0].view(-1).unsqueeze(0).expand_as(A_r)
-        B_i = B[..., 1].view(-1).unsqueeze(0).expand_as(A_i)
-
-        C[..., 0].view(-1, B.nelement() // 2)[:] = A_r * B_r - A_i * B_i
-        C[..., 1].view(-1, B.nelement() // 2)[:] = A_r * B_i + A_i * B_r
-
-        return C 
+    return A*B
 
 def concatenate(arrays, dim):
     return torch.stack(arrays, dim=dim)
