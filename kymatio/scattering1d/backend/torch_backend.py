@@ -33,8 +33,8 @@ def subsample_fourier(x, k):
     """
     complex_check(x)
     
-    N = x.shape[-2]
-    res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+    N = x.shape[-1]
+    res = x.view(x.shape[:-1] + (k, N // k)).mean(dim=-2)
     return res
 
 def pad(x, pad_left, pad_right):
@@ -61,7 +61,6 @@ def pad(x, pad_left, pad_right):
     if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
         raise ValueError('Indefinite padding size (larger than tensor).')
     res = F.pad(x, (pad_left, pad_right), mode='reflect')
-    res = res[..., None]
     return res
 
 def unpad(x, i0, i1):

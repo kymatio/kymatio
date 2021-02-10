@@ -104,10 +104,6 @@ class ModulusStable(Function):
             The gradient with respect to the input.
         """
         x, output = ctx.saved_tensors
-        if ctx.dim is not None and ctx.keepdim is False and x.dim() != 1:
-            grad_output = grad_output.unsqueeze(ctx.dim)
-            output = output.unsqueeze(ctx.dim)
-
         grad_input = x.mul(grad_output).div(output)
 
         # Special case at 0 where we return a subgradient containing 0

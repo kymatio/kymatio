@@ -17,7 +17,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         self.register_filters()
 
     def register_single_filter(self, v, n):
-        current_filter = torch.from_numpy(v).unsqueeze(-1)
+        current_filter = torch.from_numpy(v).contiguous()
         self.register_buffer('tensor' + str(n), current_filter)
         return current_filter
 

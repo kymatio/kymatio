@@ -174,12 +174,12 @@ def test_subsample_fourier(backend, device, random_state=42):
 
 def test_unpad():
     # test unpading of a random tensor
-    x = torch.randn(8, 4, 1)
+    x = torch.randn(8, 4)
 
     y = backend.unpad(x, 1, 3)
 
     assert y.shape == (8, 2)
-    assert torch.allclose(y, x[:, 1:3, 0])
+    assert torch.allclose(y, x[:, 1:3])
 
     N = 128
     x = torch.rand(2, 4, N)

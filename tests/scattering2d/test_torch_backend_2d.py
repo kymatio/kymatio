@@ -48,7 +48,7 @@ class TestPad:
 
         z = pad(x)
 
-        assert z.shape == (1, 8, 8, 1)
+        assert z.shape == (1, 8, 8)
         assert torch.allclose(z[0, 2, 2], x[0, 0, 0])
         assert torch.allclose(z[0, 1, 0], x[0, 1, 2])
         assert torch.allclose(z[0, 1, 1], x[0, 1, 1])
@@ -61,7 +61,6 @@ class TestPad:
         x = x.to(device)
 
         z = pad(x)
-        z = z.reshape(z.shape[:-1])
 
         assert torch.allclose(z, x)
 
@@ -69,14 +68,14 @@ class TestPad:
     def test_unpad(self, backend_device):
         backend, device = backend_device
 
-        x = torch.randn(4, 4, 1)
+        x = torch.randn(4, 4)
         x = x.to(device)
 
         y = backend.unpad(x)
 
         assert y.shape == (2, 2)
-        assert torch.allclose(y[0, 0], x[1, 1, 0])
-        assert torch.allclose(y[0, 1], x[1, 2, 0])
+        assert torch.allclose(y[0, 0], x[1, 1])
+        assert torch.allclose(y[0, 1], x[1, 2])
 
 
 # Checked the modulus
@@ -142,10 +141,10 @@ class TestSubsampleFourier:
             subsample_fourier(y, k=16)
         assert 'should be complex' in record.value.args[0]
 
-        y = x[::2, ::2]
-        with pytest.raises(RuntimeError) as record:
-            subsample_fourier(y, k=16)
-        assert 'must be contiguous' in record.value.args[0]
+        #y = x[::2, ::2]
+        #with pytest.raises(RuntimeError) as record:
+        #    subsample_fourier(y, k=16)
+        #assert 'must be contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):

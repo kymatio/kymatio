@@ -79,8 +79,8 @@ class Pad(object):
             if self.pad_size[2] == self.input_size[1]:
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
-        output = x.reshape(batch_shape + x.shape[-2:] + (1,))
-        return output
+        output = x.reshape(batch_shape + x.shape[-2:])
+        return output#.contiguous()
 
 def unpad(in_):
     """Unpads input.
@@ -98,8 +98,8 @@ def unpad(in_):
             Output tensor.  Unpadded input.
 
     """
-    in_ = in_[..., 1:-1, 1:-1, :]
-    in_ = in_.reshape(in_.shape[:-1])
+    in_ = in_[..., 1:-1, 1:-1]
+    #in_ = in_.reshape(in_.shape[:-1])
     return in_
 
 class SubsampleFourier(object):
@@ -125,7 +125,7 @@ class SubsampleFourier(object):
     """
     def __call__(self, x, k):
         complex_check(x)
-        contiguous_check(x)
+        #contiguous_check(x)
 
         batch_shape = x.shape[:-2]
         signal_shape = x.shape[-2:]
@@ -134,7 +134,8 @@ class SubsampleFourier(object):
                        k, x.shape[1] // k,
                        k, x.shape[2] // k)
 
-        out = y.mean(3, keepdim=False).mean(1, keepdim=False)
+
+        out = y.real.mean(3, keepdim=False).mean(1, keepdim=False)+1j*y.imag.mean(3, keepdim=False).mean(1, keepdim=False)
         out = out.reshape(batch_shape + out.shape[-2:])
         return out
 
@@ -142,28 +143,19 @@ class SubsampleFourier(object):
 # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
 # inefficent.
 def rfft(x):
-    #contiguous_check(x)
     real_check(x)
-
-
-
-    x_r = torch.zeros((x.shape + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
-    x_r[..., 0] = x#[..., 0]
-    x = torch.view_as_complex(x_r)
-
+    x = x+1j*0
 
     return torch.fft.fftn(x, dim=(-1,-2))
 
 
 def irfft(x):
-    #contiguous_check(x)
     complex_check(x)
 
     return torch.fft.ifftn(x, dim=(-1,-2)).real
 
 
 def ifft(x):
-    #contiguous_check(x)
     complex_check(x)
 
     return torch.fft.ifftn(x, dim=(-1,-2))
