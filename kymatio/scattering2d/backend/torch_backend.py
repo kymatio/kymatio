@@ -2,10 +2,6 @@ import torch
 from torch.nn import ReflectionPad2d
 from collections import namedtuple
 
-BACKEND_NAME = 'torch'
-
-#from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
-
 from ...backend.torch_backend import TorchBackend
 
 
@@ -83,51 +79,35 @@ class Pad(object):
         output = x.reshape(batch_shape + x.shape[-2:] + (1,))
         return output
 
-def unpad(in_):
-    """Unpads input.
 
-        Slices the input tensor at indices between 1:-1.
+class TorchBackend2D(TorchBackend):
+    Pad = Pad
 
-        Parameters
-        ----------
-        in_ : tensor
-            Input tensor.
+    @classmethod
+    def subsample_fourier(cls, x, k):
+        """Subsampling of a 2D image performed in the Fourier domain
 
-        Returns
-        -------
-        in_[..., 1:-1, 1:-1] : tensor
-            Output tensor.  Unpadded input.
+            Subsampling in the spatial domain amounts to periodization
+            in the Fourier domain, hence the formula.
 
-    """
-    in_ = in_[..., 1:-1, 1:-1, :]
-    in_ = in_.reshape(in_.shape[:-1])
-    return in_
+            Parameters
+            ----------
+            x : tensor
+                Input tensor with at least 5 dimensions, the last being the real
+                and imaginary parts.
+            k : int
+                Integer such that x is subsampled by k along the spatial variables.
 
-class SubsampleFourier(object):
-    """Subsampling of a 2D image performed in the Fourier domain
+            Returns
+            -------
+            out : tensor
+                Tensor such that its Fourier transform is the Fourier
+                transform of a subsampled version of x, i.e. in
+                F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k].
 
-        Subsampling in the spatial domain amounts to periodization
-        in the Fourier domain, hence the formula.
-
-        Parameters
-        ----------
-        x : tensor
-            Input tensor with at least 5 dimensions, the last being the real
-            and imaginary parts.
-        k : int
-            Integer such that x is subsampled by k along the spatial variables.
-
-        Returns
-        -------
-        out : tensor
-            Tensor such that its Fourier transform is the Fourier
-            transform of a subsampled version of x, i.e. in
-            F^{-1}(out)[u1, u2] = F^{-1}(x)[u1 * k, u2 * k].
-
-    """
-    def __call__(self, x, k):
-        complex_check(x)
-        contiguous_check(x)
+        """
+        cls.contiguous_check(x)
+        cls.complex_check(x)
 
         batch_shape = x.shape[:-3]
         signal_shape = x.shape[-3:]
@@ -139,54 +119,61 @@ class SubsampleFourier(object):
 
         out = y.mean(3, keepdim=False).mean(1, keepdim=False)
         out = out.reshape(batch_shape + out.shape[-3:])
+
         return out
 
 
-# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
-# inefficent.
-def rfft(x):
-    contiguous_check(x)
-    real_check(x)
+    # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
+    # inefficent.
+    @classmethod
+    def rfft(cls, x):
+        cls.contiguous_check(x)
+        cls.real_check(x)
 
-    x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
-    x_r[..., 0] = x[..., 0]
+        x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
+        x_r[..., 0] = x[..., 0]
 
-    return torch.fft(x_r, 2, normalized=False)
+        return torch.fft(x_r, 2, normalized=False)
 
+    @classmethod
+    def irfft(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
 
-def irfft(x):
-    contiguous_check(x)
-    complex_check(x)
-
-    return torch.ifft(x, 2, normalized=False)[..., :1]
-
-
-def ifft(x):
-    contiguous_check(x)
-    complex_check(x)
-
-    return torch.ifft(x, 2, normalized=False)
+        return torch.ifft(x, 2, normalized=False)[..., :1]
 
 
-def concatenate_2d(x):
-    return concatenate(x, -3)
+    @classmethod
+    def ifft(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+
+        return torch.ifft(x, 2, normalized=False)
+
+    @staticmethod
+    def unpad(in_):
+        """Unpads input.
+
+            Slices the input tensor at indices between 1:-1.
+
+            Parameters
+            ----------
+            in_ : tensor
+                Input tensor.
+
+            Returns
+            -------
+            in_[..., 1:-1, 1:-1] : tensor
+                Output tensor.  Unpadded input.
+
+        """
+        in_ = in_[..., 1:-1, 1:-1, :]
+        in_ = in_.reshape(in_.shape[:-1])
+        return in_
+
+    @staticmethod
+    def concatenate(arrays):
+        return TorchBackend.concatenate(arrays, -3)
 
 
-#backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
-
-backend = TorchBackend()
-#backend.name = 'torch'
-#backend.cdgmm = cdgmm
-#backend.modulus = Modulus()
-backend.subsample_fourier = SubsampleFourier()
-backend.rfft = rfft
-backend.irfft = irfft
-backend.ifft = ifft
-backend.Pad = Pad
-backend.unpad = unpad
-
-contiguous_check = backend.contiguous_check
-complex_check = backend.complex_check
-real_check = backend.real_check
-concatenate = backend.concatenate
-backend.concatenate = concatenate_2d
+backend = TorchBackend2D

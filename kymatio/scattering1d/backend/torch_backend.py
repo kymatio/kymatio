@@ -4,15 +4,13 @@ from ...backend.torch_backend import TorchBackend
 
 
 class TorchBackend1D(TorchBackend):
-    def __init__(self):
-        super(TorchBackend1D, self).__init__()
-
-    def subsample_fourier(self, x, k):
+    @classmethod
+    def subsample_fourier(cls, x, k):
         """Subsampling in the Fourier domain
-    
+
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
-    
+
         Parameters
         ----------
         x : tensor
@@ -23,26 +21,27 @@ class TorchBackend1D(TorchBackend):
             imaginary parts of the Fourier transform.
         k : int
             The subsampling factor.
-    
+
         Returns
         -------
         res : tensor
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
-        self.complex_check(x)
-        
+        cls.complex_check(x)
+
         N = x.shape[-2]
 
         res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
 
         return res
-    
-    def pad(self, x, pad_left, pad_right):
+
+    @staticmethod
+    def pad(x, pad_left, pad_right):
         """Pad real 1D tensors
-    
+
         1D implementation of the padding function for real PyTorch tensors.
-    
+
         Parameters
         ----------
         x : tensor
@@ -66,12 +65,13 @@ class TorchBackend1D(TorchBackend):
         res = res[..., None]
 
         return res
-    
-    def unpad(self, x, i0, i1):
+
+    @staticmethod
+    def unpad(x, i0, i1):
         """Unpad real 1D tensor
-    
+
         Slices the input tensor at indices between i0 and i1 along the last axis.
-    
+
         Parameters
         ----------
         x : tensor
@@ -80,7 +80,7 @@ class TorchBackend1D(TorchBackend):
             Start of original signal before padding.
         i1 : int
             End of original signal before padding.
-    
+
         Returns
         -------
         x_unpadded : tensor
@@ -89,28 +89,32 @@ class TorchBackend1D(TorchBackend):
         x = x.reshape(x.shape[:-1])
 
         return x[..., i0:i1]
-    
+
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
-    def rfft(self, x):
-        self.contiguous_check(x)
-        self.real_check(x)
-        
+    @classmethod
+    def rfft(cls, x):
+        cls.contiguous_check(x)
+        cls.real_check(x)
+
         x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
         x_r[..., 0] = x[..., 0]
-    
+
         return torch.fft(x_r, 1, normalized=False)
-    
-    def irfft(self, x):
-        self.contiguous_check(x)
-        self.complex_check(x)
-    
+
+    @classmethod
+    def irfft(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+
         return torch.ifft(x, 1, normalized=False)[..., :1]
-    
-    def ifft(self, x):
-        self.contiguous_check(x)
-        self.complex_check(x)
-    
+
+    @classmethod
+    def ifft(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+
         return torch.ifft(x, 1, normalized=False)
-    
-backend = TorchBackend1D()
+
+
+backend = TorchBackend1D
