@@ -1,12 +1,13 @@
 import torch
 import torch.nn.functional as F
 import torch.fft
+import warnings
 
 from collections import namedtuple
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import Modulus, concatenate, contiguous_check, cdgmm, complex_check, real_check
+from ...backend.torch_backend import Modulus, concatenate, cdgmm, complex_check, real_check
 
 
 def subsample_fourier(x, k):
@@ -37,6 +38,9 @@ def subsample_fourier(x, k):
     N = x.shape[-1]
     x = x.view(x.shape[:-1] + (k, N // k))
     res = x.real.mean(dim=-2) + 1j * x.imag.mean(dim=-2)
+    if x.is_contiguous():
+        warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
+        res = res.contiguous()
     return res
 
 def pad(x, pad_left, pad_right):
@@ -84,29 +88,25 @@ def unpad(x, i0, i1):
     x_unpadded : tensor
         The tensor x[..., i0:i1].
     """
-    return x[..., i0:i1]
+    output = x[..., i0:i1]
+    if x.is_contiguous():
+        warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
+        output = output.contiguous()
+    return output
 
-# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
-# inefficent.
+# We cast to complex here then fft rather than use torch.rfft.
 def rfft(x):
     real_check(x)
-
     x_r = x + 1j * 0
-
     return torch.fft.fft(x_r)
-
 
 def irfft(x):
     complex_check(x)
-
     return torch.fft.ifft(x).real
-
 
 def ifft(x):
     complex_check(x)
-
     return torch.fft.ifft(x)
-
 
 def concatenate_1d(x):
     return concatenate(x, -2)

@@ -5,7 +5,7 @@ import warnings
 BACKEND_NAME = 'torch'
 from collections import namedtuple
 
-from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+from ...backend.torch_backend import cdgmm, Modulus, complex_check, real_check
 
 def modulus_rotation(x, module=None):
     """Used for computing rotation invariant scattering transform coefficents.
@@ -26,9 +26,9 @@ def modulus_rotation(x, module=None):
             which is covariant to 3D translations and rotations.
     """
     if module is None:
-        module = x.abs()**2#(x ** 2).sum(-1, keepdim=True)
+        module = x.abs()**2
     else:
-        module = module ** 2 + x.abs()**2#(x ** 2).sum(-1, keepdim=True)
+        module = module ** 2 + x.abs()**2
     return torch.sqrt(module)
 
 
@@ -51,8 +51,7 @@ def compute_integrals(input_array, integral_powers):
             Tensor of size (B, P) containing the integrals of the input_array
             to the powers p (l_p norms).
     """
-    integrals = torch.zeros((input_array.shape[0], len(integral_powers)),
-            device=input_array.device)
+    integrals = torch.zeros((input_array.shape[0], len(integral_powers)), device=input_array.device)
     for i_q, q in enumerate(integral_powers):
         integrals[:, i_q] = (input_array ** q).view(
             input_array.shape[0], -1).sum(1)
@@ -65,22 +64,15 @@ def concatenate(arrays, L):
     return S
 
 
-# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
-# inefficent.
+# we cast to complex here then fft rather than use torch.rfft.
 def rfft(x):
     real_check(x)
-
-    #x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
-    #x_r[..., 0] = x[..., 0]
     x_r = x + 1j*0
-
     return torch.fft.fftn(x_r, dim=(-1,-2,-3))
 
 
 def ifft(x):
-    #contiguous_check(x)
     complex_check(x)
-
     return torch.fft.ifftn(x, dim=(-1,-2,-3))
 
 

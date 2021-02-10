@@ -129,7 +129,7 @@ class TestSubsampleFourier:
             for j in range(8):
                 for m in range(16):
                     for n in range(16):
-                        y[...,i,j] += x[...,i+m*8,j+n*8]
+                        y[..., i, j] += x[..., i+m*8, j+n*8]
 
         y = y / (16*16)
 
@@ -140,11 +140,6 @@ class TestSubsampleFourier:
         with pytest.raises(TypeError) as record:
             subsample_fourier(y, k=16)
         assert 'should be complex' in record.value.args[0]
-
-        #y = x[::2, ::2]
-        #with pytest.raises(RuntimeError) as record:
-        #    subsample_fourier(y, k=16)
-        #assert 'must be contiguous' in record.value.args[0]
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):
@@ -185,18 +180,10 @@ class TestCDGMM:
 
         x = torch.rand(100, 128, 128, dtype=torch.cfloat)
         filt = torch.rand(128, 128, dtype=torch.cfloat)
-        y = torch.ones(100, 128, 128, dtype=torch.cfloat)
 
         if real_filter:
             filt = filt.real
-
-
         y = x*filt
-        #y[..., 0] = x[..., 0] * filt[..., 0] - x[..., 1] * filt[..., 1]
-        #y[..., 1] = x[..., 1] * filt[..., 0] + x[..., 0] * filt[..., 1]
-
-        #if real_filter:
-            #filt = filt[..., :1].contiguous()
 
         return x, filt, y
 
@@ -232,10 +219,6 @@ class TestCDGMM:
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5), torch.empty(4, 5))
         assert 'should be complex' in exc.value.args[0]
-
-        #with pytest.raises(TypeError) as exc:
-        #    backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat), torch.empty(4, 5, 3))
-        #assert 'should be complex' in exc.value.args[0]
 
         with pytest.raises(TypeError) as exc:
             backend.cdgmm(torch.empty(3, 4, 5, dtype=torch.cfloat),
@@ -318,7 +301,7 @@ class TestFFT:
 
 
         y_r = torch.from_numpy(np.stack((y_r.real, y_r.imag), axis=-1))
-        x_r = torch.from_numpy(x_r)#[..., None]
+        x_r = torch.from_numpy(x_r)
 
 
         z = backend.rfft(x_r)
@@ -354,30 +337,6 @@ class TestFFT:
         with pytest.raises(TypeError) as record:
             backend.irfft(x)
         assert 'complex' in record.value.args[0]
-       
-        x = torch.randn(4, 4)
-        x = x.to(device)
-        y = x[::2, ::2]
-
-        #with pytest.raises(RuntimeError) as record:
-        #    backend.rfft(y)
-        #assert 'must be contiguous' in record.value.args[0]
-
-        x = torch.randn(4, 4, dtype=torch.cfloat)
-        x = x.to(device)
-        y = x[::2, ::2]
-
-        #with pytest.raises(RuntimeError) as record:
-        #    backend.ifft(y)
-        #assert 'must be contiguous' in record.value.args[0]
-
-        x = torch.randn(4, 4, dtype=torch.cfloat)
-        x = x.to(device)
-        y = x[::2, ::2]
-
-        #with pytest.raises(RuntimeError) as record:
-        #    backend.irfft(y)
-        #assert 'must be contiguous' in record.value.args[0]
 
 
 class TestBackendUtils:

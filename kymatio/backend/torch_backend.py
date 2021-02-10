@@ -7,8 +7,6 @@ def input_checks(x):
     if x is None:
         raise TypeError('The input should be not empty.')
 
-    contiguous_check(x)
-
 def complex_check(x):
     if not _is_complex(x):
         raise TypeError('The input should be complex (i.e. last dimension is 2).')
@@ -137,13 +135,6 @@ class Modulus():
         complex_check(x)
         return x.abs()
 
-def complex_contiguous_check(x):
-    complex_check(x)
-    contiguous_check(x)
-
-def contiguous_check(x):
-    if not x.is_contiguous():
-        raise RuntimeError('Tensors must be contiguous.')
 
 def cdgmm(A, B):
     """Complex pointwise multiplication.

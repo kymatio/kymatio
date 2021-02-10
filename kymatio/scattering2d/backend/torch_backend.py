@@ -2,10 +2,11 @@ import torch
 from torch.nn import ReflectionPad2d
 import torch.fft
 from collections import namedtuple
+import warnings
 
 BACKEND_NAME = 'torch'
 
-from ...backend.torch_backend import cdgmm, contiguous_check, Modulus, concatenate, complex_check, real_check
+from ...backend.torch_backend import cdgmm, Modulus, concatenate, complex_check, real_check
 
 
 class Pad(object):
@@ -63,7 +64,8 @@ class Pad(object):
             Returns
             -------
             output : tensor
-                Complex torch tensor that has been padded.
+                Complex torch tensor that has been padded. If the input tensor was contiguous, the output will be
+                 contiguous and a Warning is gently displayed.
 
         """
         batch_shape = x.shape[:-2]
@@ -80,9 +82,14 @@ class Pad(object):
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
         output = x.reshape(batch_shape + x.shape[-2:])
-        return output#.contiguous()
 
-def unpad(in_):
+        if x.is_contiguous():
+            warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
+            output = output.contiguous()
+
+        return output
+
+def unpad(x):
     """Unpads input.
 
         Slices the input tensor at indices between 1:-1.
@@ -95,11 +102,16 @@ def unpad(in_):
         Returns
         -------
         in_[..., 1:-1, 1:-1] : tensor
-            Output tensor.  Unpadded input.
+            Output tensor.  Unpadded input.  If the input tensor was contiguous, the output will be
+                 contiguous and a Warning is gently displayed.
 
     """
-    in_ = in_[..., 1:-1, 1:-1]
-    #in_ = in_.reshape(in_.shape[:-1])
+    in_ = x[..., 1:-1, 1:-1]
+
+    if x.is_contiguous():
+        warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
+        in_ = in_.contiguous()
+
     return in_
 
 class SubsampleFourier(object):
@@ -125,39 +137,35 @@ class SubsampleFourier(object):
     """
     def __call__(self, x, k):
         complex_check(x)
-        #contiguous_check(x)
 
         batch_shape = x.shape[:-2]
         signal_shape = x.shape[-2:]
-        x = x.view((-1,) + signal_shape)
-        y = x.view(-1,
-                       k, x.shape[1] // k,
-                       k, x.shape[2] // k)
-
-
+        x_ = x.view((-1,) + signal_shape)
+        y = x_.view(-1, k, x_.shape[1] // k, k, x_.shape[2] // k)
         out = y.real.mean(3, keepdim=False).mean(1, keepdim=False)+1j*y.imag.mean(3, keepdim=False).mean(1, keepdim=False)
         out = out.reshape(batch_shape + out.shape[-2:])
+
+        if x.is_contiguous():
+            warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
+            out = out.contiguous()
+
         return out
 
 
-# we cast to complex here then fft rather than use torch.rfft as torch.rfft is
-# inefficent.
+# We cast to complex here then fft rather than use torch.rfft.
 def rfft(x):
     real_check(x)
     x = x+1j*0
-
     return torch.fft.fftn(x, dim=(-1,-2))
 
 
 def irfft(x):
     complex_check(x)
-
     return torch.fft.ifftn(x, dim=(-1,-2)).real
 
 
 def ifft(x):
     complex_check(x)
-
     return torch.fft.ifftn(x, dim=(-1,-2))
 
 
