@@ -1,6 +1,5 @@
-import torch
-import kymatio.scattering3d.backend as backend
-from kymatio import HarmonicScattering3D
+from kymatio.numpy import HarmonicScattering3D
+import numpy as np
 
 class BenchmarkHarmonicScattering3D:
     params = [
@@ -14,16 +13,6 @@ class BenchmarkHarmonicScattering3D:
                 "J": 2,
                 "shape": (128, 128, 128),
                 "L": 2,
-            },
-            { # A case with many scales (J=6) and few harmonics (L=1)
-                "J": 6,
-                "shape": (128, 128, 128),
-                "L": 1,
-            },
-            { # A case with few scales (J=2) and many harmonics (L=6)
-                "J": 2,
-                "shape": (32, 32, 32),
-                "L": 4,
             }
         ],
         [
@@ -34,12 +23,11 @@ class BenchmarkHarmonicScattering3D:
 
     def setup(self, sc_params, batch_size):
         scattering = HarmonicScattering3D(**sc_params)
-        scattering.cpu()
-        x = torch.randn(
+        x = np.random.randn(
             batch_size,
-            sc_params["shape"][0], sc_params["shape"][1], sc_params["shape"][2],
-            dtype=torch.float32)
-        x.cpu()
+            sc_params["shape"][0],
+            sc_params["shape"][1],
+            sc_params["shape"][2]).astype("float32")
         self.scattering = scattering
         self.x = x
 
@@ -47,4 +35,4 @@ class BenchmarkHarmonicScattering3D:
         HarmonicScattering3D(**sc_params)
 
     def time_forward(self, sc_params, batch_size):
-        (self.scattering).forward(self.x)
+        (self.scattering).__call__(self.x)

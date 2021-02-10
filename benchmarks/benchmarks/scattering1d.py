@@ -1,6 +1,5 @@
-import torch
-import kymatio.scattering1d.backend as backend
-from kymatio import Scattering1D
+from kymatio.numpy import Scattering1D
+import numpy as np
 
 class BenchmarkScattering1D:
     params = [
@@ -19,13 +18,13 @@ class BenchmarkScattering1D:
             },
             { # Typical of music.
               # See Andén et al.
-                "J": 16,
+                "J": 13,
                 "Q": 12,
-                "shape": 131072,
+                "shape": 65536,
             },
         ],
         [
-            32,
+            1,
         ]
     ]
     param_names = ["sc_params", "batch_size"]
@@ -33,13 +32,10 @@ class BenchmarkScattering1D:
     def setup(self, sc_params, batch_size):
         n_channels = 1
         scattering = Scattering1D(**sc_params)
-        scattering.cpu()
-        x = torch.randn(
+        x = np.random.randn(
             batch_size,
             n_channels,
-            sc_params["shape"],
-            dtype=torch.float32)
-        x.cpu()
+            sc_params["shape"]).astype("float32")
         self.scattering = scattering
         self.x = x
 
@@ -47,4 +43,4 @@ class BenchmarkScattering1D:
         Scattering1D(**sc_params)
 
     def time_forward(self, sc_params, batch_size):
-        (self.scattering).forward(self.x)
+        (self.scattering).__call__(self.x)
