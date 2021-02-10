@@ -10,7 +10,7 @@ pipeline {
       agent {
 	dockerfile {
 	  dir 'tools'
-	  args '--gpus 2'
+	  args '--gpus 1'
 	}
       }
       environment {
