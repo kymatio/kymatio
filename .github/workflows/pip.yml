@@ -22,7 +22,16 @@ jobs:
               run: |
                   python3 -m pip install --upgrade pip
                   python3 -m pip install pytest pytest-cov
-                  python3 -m pip install torch==1.7.1+cpu torchvision==0.8.2+cpu -f https://download.pytorch.org/whl/torch_stable.html
+
+                  if [ "${{ matrix.python-version }}" = "3.5" ]; then
+                      torch_version="1.5.1+cpu"
+                      torchvision_version="0.6.1+cpu"
+                  else
+                      torch_version="1.7.1+cpu"
+                      torchvision_version="0.8.2+cpu"
+                  fi
+
+                  python3 -m pip install torch==${torch_version} torchvision==${torchvision_version} -f https://download.pytorch.org/whl/torch_stable.html
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
 
