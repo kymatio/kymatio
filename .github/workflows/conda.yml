@@ -5,7 +5,7 @@ on:
     - pull_request
 
 jobs:
-    build:
+    build-conda:
         runs-on: ubuntu-20.04
 
         strategy:
