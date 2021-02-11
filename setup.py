@@ -41,7 +41,7 @@ setup_info = dict(
     author_email=('edouard.oyallon@lip6.fr, belilove@iro.umontreal.ca, '
                   'sergey.zagoruyko@inria.fr, michael.eickenberg@berkeley.edu, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
-                  'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@flatironinstitute.org, '
+                  'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@kth.se, '
                   'tomas.angles@ens.fr, gabriel.huang@umontreal.ca, roberto.leonarduzzi@ens.fr'),
     url=URL,
     download_url='https://github.com/kymatio/kymatio/releases',
