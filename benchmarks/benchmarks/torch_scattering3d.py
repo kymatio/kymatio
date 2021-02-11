@@ -15,10 +15,10 @@ except:
     Warning('torch_skcuda backend not available.')
 
 if skcuda_available:
-    from kymatio.scattering1d.backend.torch_skcuda_backend import backend
+    from kymatio.scattering3d.backend.torch_skcuda_backend import backend
     backends.append(backend)
 
-from kymatio.scattering1d.backend.torch_backend import backend
+from kymatio.scattering3d.backend.torch_backend import backend
 backends.append(backend)
 
 if torch.cuda.is_available():
@@ -51,11 +51,11 @@ class BenchmarkHarmonicScattering3D:
 
     def setup(self, sc_params, batch_size, backend, device):
         scattering = HarmonicScattering3D(backend=backend, **sc_params)
-        x = np.random.randn(
+        x = torch.randn(
             batch_size,
             sc_params["shape"][0],
             sc_params["shape"][1],
-            sc_params["shape"][2]).astype("float32")
+            sc_params["shape"][2]).float()
         self.scattering = scattering
         self.x = x
 
