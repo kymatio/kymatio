@@ -41,7 +41,10 @@ jobs:
 
                   conda run -n test-env python3 -m pip install --upgrade pip
 
-                  conda run -n test-env python3 -m pip install "tensorflow>=2.0.0a"
+                  if [ "${{ matrix.python-version }}" != "3.9" ]; then
+                      conda run -n test-env python3 -m pip install "tensorflow>=2.0.0a"
+                  fi
+
                   conda run -n test-env python3 -m pip install scikit-learn
 
                   conda run -n test-env python3 -m pip install -r requirements.txt
