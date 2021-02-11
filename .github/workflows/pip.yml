@@ -32,7 +32,11 @@ jobs:
                   fi
 
                   python3 -m pip install torch==${torch_version} torchvision==${torchvision_version} -f https://download.pytorch.org/whl/torch_stable.html
-                  python3 -m pip install "tensorflow>=2.0.0a"
+
+                  if [ "${{ matrix.python-version }}" != "3.9" ]; then
+                      python3 -m pip install "tensorflow>=2.0.0a"
+                  fi
+
                   python3 -m pip install scikit-learn
 
                   python3 -m pip install -r requirements.txt
