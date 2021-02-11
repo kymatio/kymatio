@@ -28,7 +28,16 @@ jobs:
             - name: Install dependencies
               run: |
                   conda install -n test-env numpy scipy pytest pytest-cov
-                  conda install -n test-env pytorch torchvision cpuonly -c pytorch
+
+                  if [ "${{ matrix.python-version }}" = "3.9" ]; then
+                      # For py39, we need to override some standard conda
+                      # packages (see https://pytorch.org/get-started/locally/)
+                      channel="-c conda-forge"
+                  else
+                      channel=""
+                  fi
+
+                  conda install -n test-env pytorch torchvision cpuonly -c pytorch ${channel}
 
                   conda run -n test-env python3 -m pip install --upgrade pip
 
