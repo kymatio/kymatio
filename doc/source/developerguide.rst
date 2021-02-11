@@ -48,10 +48,21 @@ If all the tests pass, you may submit your pull request as explained below. A sp
 Checking speed
 ==============
 
-For checking the speed of a given PR, run the ASV benchmarks on various architectures via::
+For checking the speed of the actual HEAD of the repository, install first ASV and then you can run the ASV benchmarks
+on various architectures via::
 
     cd benchmarks
-    run asv
+    asv run
+
+For trying a specific commit XXXXXXXXX, you can also do::
+
+    cd benchmarks
+    asv run XXXXXXXXX
+
+It is also possible to run a specific benchmark via (e.g.,)::
+
+    cd benchmarks
+    asv run --bench torch_scattering1d
 
 Checking documentation
 ======================
