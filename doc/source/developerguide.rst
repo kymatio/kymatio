@@ -64,6 +64,12 @@ It is also possible to run a specific benchmark via (e.g.,)::
     cd benchmarks
     asv run --bench torch_scattering1d
 
+In order to run the CUDA benchmarks, use::
+
+    cd benchmarks
+    asv run
+    asv run --config asv_cuda.conf.json
+
 Checking documentation
 ======================
 
