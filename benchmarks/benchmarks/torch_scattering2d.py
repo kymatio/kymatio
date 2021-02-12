@@ -52,15 +52,12 @@ class BenchmarkScattering2D:
 
             },
         ],
-        [
-
-        ],
         backends,
         devices
     ]
     param_names = ["sc_params", "batch_size"]
 
-    def setup(self, sc_params, batch_size, backend, device):
+    def setup(self, sc_params, backend, device):
         n_channels = 3
         scattering = Scattering2D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         x = torch.randn(
@@ -71,10 +68,10 @@ class BenchmarkScattering2D:
         self.scattering = scattering.to(device)
         self.x = x
 
-    def time_constructor(self, sc_params, batch_size, backend, device):
+    def time_constructor(self, sc_params,  backend, device):
         Scattering2D(backend=backend, **sc_params)
 
-    def time_forward(self, sc_params, batch_size, backend, device):
+    def time_forward(self, sc_params, backend, device):
         for i in range(10):
             y =self.scattering(self.x)
 
