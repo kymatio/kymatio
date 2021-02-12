@@ -38,13 +38,13 @@ class BenchmarkHarmonicScattering3D:
                 "J": 2,
                 "shape": (32, 32, 32),
                 "L": 2,
-                "batch_size": 16
+                "batch_size": 4
             },
             { # Large. 128x128x128, 2 scales, 2 harmonics
                 "J": 2,
                 "shape": (128, 128, 128),
                 "L": 2,
-                "batch_size": 8
+                "batch_size": 2
             }
         ],
         backends,
