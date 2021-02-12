@@ -2,9 +2,13 @@ import torch
 import cupy
 from collections import namedtuple
 from string import Template
-from ...backend.torch_backend import contiguous_check, complex_check
+from ...backend.torch_backend import complex_check
 
 BACKEND_NAME = 'torch_skcuda'
+
+def contiguous_check(x):
+    if not x.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous.')
 
 # As of v8, cupy.util has been renamed cupy._util.
 if hasattr(cupy, '_util'):

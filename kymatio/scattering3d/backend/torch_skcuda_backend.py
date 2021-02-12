@@ -7,8 +7,16 @@ from string import Template
 BACKEND_NAME = 'torch_skcuda'
 
 from collections import namedtuple
-from ...backend.torch_backend import _is_complex, _is_real, contiguous_check, complex_contiguous_check, complex_check, real_check, Modulus
+from ...backend.torch_backend import _is_complex, _is_real, complex_check, real_check, Modulus
 
+
+def contiguous_check(x):
+    if not x.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous.')
+
+def complex_contiguous_check(x):
+    complex_check(x)
+    contiguous_check(x)
 
 def cdgmm3d(A, B):
     """Complex pointwise multiplication.
