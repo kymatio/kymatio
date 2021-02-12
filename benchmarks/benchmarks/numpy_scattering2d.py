@@ -7,16 +7,16 @@ class BenchmarkScattering2D:
             { # MNIST-like. 32x32, 2 scales, 4 orientations
                 "J": 2,
                 "shape": (32, 32),
-                "L": 4,
+                "L": 8,
             },
             { # ImageNet-like. 224x224, 3 scales, 4 orientations
                 "J": 3,
                 "shape": (224, 224),
-                "L": 4,
+                "L": 8,
             },
             { # A case with many scales (J=6) and few orientations (L=2)
                 "J": 6,
-                "shape": (224, 224),
+                "shape": (64, 64),
                 "L": 2,
             },
         ],

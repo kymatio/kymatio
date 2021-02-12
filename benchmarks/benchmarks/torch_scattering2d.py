@@ -1,9 +1,13 @@
 from kymatio.torch import Scattering2D
-import numpy as np
 import torch
 
 
 backends = []
+
+if torch.cuda.is_available():
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
 
 skcuda_available = False
 try:
@@ -17,14 +21,12 @@ except:
 if skcuda_available:
     from kymatio.scattering2d.backend.torch_skcuda_backend import backend
     backends.append(backend)
+    devices = ['cuda']
 
 from kymatio.scattering2d.backend.torch_backend import backend
 backends.append(backend)
 
-if torch.cuda.is_available():
-    devices = ['cuda', 'cpu']
-else:
-    devices = ['cpu']
+
 
 
 class BenchmarkScattering2D:
@@ -33,21 +35,25 @@ class BenchmarkScattering2D:
             { # MNIST-like. 32x32, 2 scales, 4 orientations
                 "J": 2,
                 "shape": (32, 32),
-                "L": 4,
+                "L": 8,
+                "batch_size":128
             },
             { # ImageNet-like. 224x224, 3 scales, 4 orientations
                 "J": 3,
                 "shape": (224, 224),
-                "L": 4,
+                "L": 8,
+                "batch_size": 256
             },
             { # A case with many scales (J=6) and few orientations (L=2)
                 "J": 6,
-                "shape": (224, 224),
+                "shape": (64, 64),
                 "L": 2,
+                "batch_size": 4
+
             },
         ],
         [
-            1,
+
         ],
         backends,
         devices
@@ -55,19 +61,20 @@ class BenchmarkScattering2D:
     param_names = ["sc_params", "batch_size"]
 
     def setup(self, sc_params, batch_size, backend, device):
-        n_channels = 1
-        scattering = Scattering2D(backend=backend, **sc_params)
+        n_channels = 3
+        scattering = Scattering2D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         x = torch.randn(
-            batch_size,
+            sc_params["batch_size"],
             n_channels,
             sc_params["shape"][0],
-            sc_params["shape"][1]).float()
-        self.scattering = scattering
+            sc_params["shape"][1]).float().to(device)
+        self.scattering = scattering.to(device)
         self.x = x
 
     def time_constructor(self, sc_params, batch_size, backend, device):
         Scattering2D(backend=backend, **sc_params)
 
     def time_forward(self, sc_params, batch_size, backend, device):
-        (self.scattering)=(self.scattering).to(device)
-        (self.scattering).__call__(self.x.to(device))
+        for i in range(10):
+            y =self.scattering(self.x)
+
