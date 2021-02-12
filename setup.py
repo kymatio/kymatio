@@ -39,7 +39,7 @@ setup_info = dict(
             'Louis Thiry, Vincent Lostanlen, Joakim Andén, '
             'Tomás Angles, Gabriel Huang, Roberto Leonarduzzi'),
     author_email=('edouard.oyallon@lip6.fr, belilove@iro.umontreal.ca, '
-                  'sergey.zagoruyko@inria.fr, michael.eickenberg@berkeley.edu, '
+                  'sergey.zagoruyko@inria.fr, michael.eickenberg@flatironinstitute.org, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
                   'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@kth.se, '
                   'tomas.angles@ens.fr, gabriel.huang@umontreal.ca, roberto.leonarduzzi@ens.fr'),
