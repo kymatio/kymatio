@@ -64,8 +64,7 @@ class Pad(object):
             Returns
             -------
             output : tensor
-                Complex torch tensor that has been padded. If the input tensor was contiguous, the output will be
-                 contiguous and a Warning is gently displayed.
+                Complex torch tensor that has been padded.
 
         """
         batch_shape = x.shape[:-2]
@@ -82,11 +81,6 @@ class Pad(object):
                 x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
         output = x.reshape(batch_shape + x.shape[-2:])
-
-        if x.is_contiguous():
-            warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
-            output = output.contiguous()
-
         return output
 
 def unpad(x):
@@ -102,16 +96,10 @@ def unpad(x):
         Returns
         -------
         in_[..., 1:-1, 1:-1] : tensor
-            Output tensor.  Unpadded input.  If the input tensor was contiguous, the output will be
-                 contiguous and a Warning is gently displayed.
+            Output tensor.  Unpadded input.
 
     """
     in_ = x[..., 1:-1, 1:-1]
-
-    if x.is_contiguous():
-        warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
-        in_ = in_.contiguous()
-
     return in_
 
 class SubsampleFourier(object):
@@ -144,11 +132,6 @@ class SubsampleFourier(object):
         y = x_.view(-1, k, x_.shape[1] // k, k, x_.shape[2] // k)
         out = y.real.mean(3, keepdim=False).mean(1, keepdim=False)+1j*y.imag.mean(3, keepdim=False).mean(1, keepdim=False)
         out = out.reshape(batch_shape + out.shape[-2:])
-
-        if x.is_contiguous():
-            warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
-            out = out.contiguous()
-
         return out
 
 

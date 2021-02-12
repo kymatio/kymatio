@@ -38,9 +38,6 @@ def subsample_fourier(x, k):
     N = x.shape[-1]
     x = x.view(x.shape[:-1] + (k, N // k))
     res = x.real.mean(dim=-2) + 1j * x.imag.mean(dim=-2)
-    if x.is_contiguous():
-        warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
-        res = res.contiguous()
     return res
 
 def pad(x, pad_left, pad_right):
@@ -89,9 +86,6 @@ def unpad(x, i0, i1):
         The tensor x[..., i0:i1].
     """
     output = x[..., i0:i1]
-    if x.is_contiguous():
-        warnings.warn("Tensor was made contiguous.", Warning, stacklevel=3)
-        output = output.contiguous()
     return output
 
 # We cast to complex here then fft rather than use torch.rfft.
