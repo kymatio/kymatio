@@ -30,7 +30,7 @@ backends.append(backend)
 
 
 class BenchmarkScattering2D:
-    timeout = 300 # in seconds
+    timeout = 400 # in seconds
     params = [
         [
             { # MNIST-like. 32x32, 2 scales, 4 orientations
@@ -81,7 +81,7 @@ class BenchmarkScattering2D:
         n_iter = 2
         if device=='cuda':
             torch.cuda.synchronize()
-            n_iter = 20
+            n_iter = 10
         for i in range(n_iter):
             y =self.scattering(self.x)
         if device == 'cuda':
