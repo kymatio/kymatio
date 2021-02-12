@@ -54,6 +54,11 @@ on various architectures and for various config files (one config file per backe
     cd benchmarks
     asv fun --config asv_torch.conf.json
 
+You can visualize the results via (one can use either `show`, `publish` or `preview`)::
+
+    cd benchmarks
+    asv show --config asv_torch.conf.json
+
 For trying a specific range of commits from XXXXXXXXX to YYYYYYYYY, you can also do::
 
     cd benchmarks
