@@ -10,13 +10,13 @@ class BenchmarkScattering2D:
                 "J": 2,
                 "shape": (32, 32),
                 "L": 8,
-                "batch_size":128
+                "batch_size": 32
             },
             { # ImageNet-like. 224x224, 3 scales, 4 orientations
                 "J": 3,
                 "shape": (224, 224),
                 "L": 8,
-                "batch_size": 256
+                "batch_size": 32
             },
             { # A case with many scales (J=6) and few orientations (L=2)
                 "J": 6,

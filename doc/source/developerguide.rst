@@ -49,25 +49,25 @@ Checking speed
 ==============
 
 For checking the speed of the actual HEAD of the repository, install first ASV and then you can run the ASV benchmarks
-on various architectures via::
+on various architectures and for various config files (one config file per backend and device) via::
 
     cd benchmarks
-    asv run
+    asv fun --config asv_torch.conf.json
 
 For trying a specific range of commits from XXXXXXXXX to YYYYYYYYY, you can also do::
 
     cd benchmarks
-    asv run YYYYYYYYY..XXXXXXXXX
+    asv run YYYYYYYYY..XXXXXXXXX  --config asv_numpy.conf.json
 
 It is also possible to run a specific benchmark via (e.g.,)::
 
     cd benchmarks
-    asv run --bench torch_scattering1d
+    asv run --bench torch_scattering1d --config asv_torch.conf.json
 
-In order to run the CUDA benchmarks, use::
+In order to run the CUDA benchmarks, for (e.g., torch) use::
 
     cd benchmarks
-    asv run --config asv_cuda.conf.json --launch-method spawn
+    asv run --config asv_torch_cuda.conf.json --launch-method spawn
 
 Note that here the attribute `spawn` is necessary because several packages (e.g., `pytorch` do not supported `forked`
 subprocess methods. Use `-e` to display potential errors.

@@ -17,7 +17,7 @@ class BenchmarkHarmonicScattering3D:
                 "J": 2,
                 "shape": (128, 128, 128),
                 "L": 2,
-                "batch_size": 16
+                "batch_size": 8
             }
         ],
     ]

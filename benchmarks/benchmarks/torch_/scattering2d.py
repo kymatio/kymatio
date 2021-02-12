@@ -37,13 +37,13 @@ class BenchmarkScattering2D:
                 "J": 2,
                 "shape": (32, 32),
                 "L": 8,
-                "batch_size":128
+                "batch_size": 32
             },
             { # ImageNet-like. 224x224, 3 scales, 4 orientations
                 "J": 3,
                 "shape": (224, 224),
                 "L": 8,
-                "batch_size": 256
+                "batch_size": 32
             },
             { # A case with many scales (J=6) and few orientations (L=2)
                 "J": 6,
@@ -59,8 +59,11 @@ class BenchmarkScattering2D:
     def setup(self, sc_params, backend, device):
         n_channels = 3
         scattering = Scattering2D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
+        bs = sc_params["batch_size"]
+        if device == cuda:
+            bs *= 8
         x = torch.randn(
-            sc_params["batch_size"],
+            bs,
             n_channels,
             sc_params["shape"][0],
             sc_params["shape"][1]).float().to(device)

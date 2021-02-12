@@ -40,21 +40,21 @@ class BenchmarkScattering1D:
                 "J": 8,
                 "Q": 1,
                 "shape": 1024,
-                "batch_size": 256
+                "batch_size": 32
             },
             {  # Typical of speech.
                 # See Andén and Mallat TASLP 2014
                 "J": 8,
                 "Q": 8,
                 "shape": 4096,
-                "batch_size": 256
+                "batch_size": 32
             },
             {  # Typical of music.
                 # See Andén et al.
                 "J": 13,
                 "Q": 12,
                 "shape": 65536,
-                "batch_size": 256
+                "batch_size": 32
             },
         ],
         backends,
@@ -63,8 +63,11 @@ class BenchmarkScattering1D:
     def setup(self, sc_params,  backend, device):
         n_channels = 1
         scattering = Scattering1D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
+        bs = sc_params["batch_size"]
+        if device==cuda:
+            bs *= 8
         x = torch.randn(
-            sc_params["batch_size"],
+            bs,
             n_channels,
             sc_params["shape"][0],
             sc_params["shape"][1]).float().to(device)

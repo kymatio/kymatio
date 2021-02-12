@@ -73,6 +73,8 @@ jobs:
           command: |
             . venv/bin/activate
             cd doc; make clean; make html
+            asv run
+            asv publish
 
       - store_artifacts:
           path: doc/build/html/
