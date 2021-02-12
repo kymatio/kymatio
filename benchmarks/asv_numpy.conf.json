@@ -22,8 +22,8 @@
     //     "in-dir={env_dir} python -mpip install {wheel_file}"],
     // "uninstall_command": [
     //     "return-code=any python -mpip uninstall -y {project}"],
-    "build_command": [
-         "in-dir={env_dir} python setup.py install",],
+    //"build_command": [
+     //    "in-dir={env_dir} python ../../setup.py develop",],
     // "build_command": [
     //     "python setup.py build",
     //     "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}"
@@ -105,7 +105,7 @@
 
     // The directory (relative to the current directory) that benchmarks are
     // stored in.  If not provided, defaults to "benchmarks"
-    "benchmark_dir": "benchmarks/numpy",
+    "benchmark_dir": "benchmarks/numpy_",
 
     // The directory (relative to the current directory) to cache the Python
     // environments in.  If not provided, defaults to "env"
