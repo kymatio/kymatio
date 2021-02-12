@@ -6,8 +6,12 @@ from string import Template
 
 BACKEND_NAME = 'torch_skcuda'
 
-from ...backend.torch_backend import contiguous_check, complex_check
+from ...backend.torch_backend import  complex_check
 from ...backend.torch_skcuda_backend import cdgmm
+
+def contiguous_check(x):
+    if not x.is_contiguous():
+        raise RuntimeError('Tensors must be contiguous.')
 
 # As of v8, cupy.util has been renamed cupy._util.
 if hasattr(cupy, '_util'):
