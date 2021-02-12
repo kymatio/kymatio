@@ -71,7 +71,7 @@ class BenchmarkScattering1D:
             n_channels,
             sc_params["shape"]).float().to(device)
         self.scattering = scattering.to(device)
-        self.x = x
+        self.x = x.to(device)
         y = self.scattering(self.x) # always perform an initial forward before using it next because initialization
         # can take some time
 

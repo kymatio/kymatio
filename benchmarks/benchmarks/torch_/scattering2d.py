@@ -68,7 +68,7 @@ class BenchmarkScattering2D:
             sc_params["shape"][0],
             sc_params["shape"][1]).float().to(device)
         self.scattering = scattering.to(device)
-        self.x = x
+        self.x = x.to(device)
         y = self.scattering(self.x) # always perform an initial forward before using it next because initialization
         # can take some time
 
