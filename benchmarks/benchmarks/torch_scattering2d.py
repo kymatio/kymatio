@@ -77,9 +77,11 @@ class BenchmarkScattering2D:
             torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
+        n_iter = 2
         if device=='cuda':
             torch.cuda.synchronize()
-        for i in range(100):
+            n_iter = 20
+        for i in range(n_iter):
             y =self.scattering(self.x)
         if device == 'cuda':
             torch.cuda.synchronize()
