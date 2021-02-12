@@ -54,10 +54,10 @@ on various architectures via::
     cd benchmarks
     asv run
 
-For trying a specific commit XXXXXXXXX, you can also do::
+For trying a specific range of commits from XXXXXXXXX to YYYYYYYYY, you can also do::
 
     cd benchmarks
-    asv run XXXXXXXXX
+    asv run YYYYYYYYY..XXXXXXXXX
 
 It is also possible to run a specific benchmark via (e.g.,)::
 
