@@ -72,6 +72,7 @@ class BenchmarkScattering2D:
         Scattering2D(backend=backend, **sc_params)
 
     def time_forward(self, sc_params, backend, device):
+        torch.multiprocessing.set_start_method('spawn')  # good solution !!!!
         for i in range(10):
             print(i)
             y =self.scattering(self.x)
