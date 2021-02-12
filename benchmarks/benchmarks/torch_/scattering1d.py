@@ -69,8 +69,7 @@ class BenchmarkScattering1D:
         x = torch.randn(
             bs,
             n_channels,
-            sc_params["shape"][0],
-            sc_params["shape"][1]).float().to(device)
+            sc_params["shape"]).float().to(device)
         self.scattering = scattering.to(device)
         self.x = x
         y = self.scattering(self.x) # always perform an initial forward before using it next because initialization

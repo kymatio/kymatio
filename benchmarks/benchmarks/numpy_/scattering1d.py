@@ -36,8 +36,7 @@ class BenchmarkScattering1D:
         x = np.random.randn(
             sc_params["batch_size"],
             n_channels,
-            sc_params["shape"][0],
-            sc_params["shape"][1]).astype("float32")
+            sc_params["shape"]).astype("float32")
         self.scattering = scattering
         self.x = x
         y = self.scattering(self.x)  # always perform an initial forward before using it next because initialization
