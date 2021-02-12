@@ -69,6 +69,9 @@
         "pytorch": [],
         "torchvision" :[],
         "torchaudio":[],
+        "cudatoolkit":["10.2"],
+        "pip+scikit-cuda":[],
+        "pip+cupy-cuda102":[],
     },
 
     // Combinations of libraries/python versions can be excluded/included
@@ -106,7 +109,7 @@
 
     // The directory (relative to the current directory) that benchmarks are
     // stored in.  If not provided, defaults to "benchmarks"
-    "benchmark_dir": "benchmarks",
+    "benchmark_dir": "benchmarks/torch",
 
     // The directory (relative to the current directory) to cache the Python
     // environments in.  If not provided, defaults to "env"

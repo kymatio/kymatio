@@ -1,5 +1,6 @@
-from kymatio.torch import Scattering1D
 import torch
+from kymatio.torch import Scattering1D
+
 
 
 backends = []
