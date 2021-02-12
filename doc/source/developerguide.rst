@@ -68,7 +68,11 @@ In order to run the CUDA benchmarks, use::
 
     cd benchmarks
     asv run
-    asv run --config asv_cuda.conf.json
+    asv run --config asv_cuda.conf.json --launch-method spawn
+
+Note that here the attribute `spawn` is necessary because several packages (e.g., `pytorch` do not supported `forked`
+subprocess methods.
+
 
 Checking documentation
 ======================

@@ -30,6 +30,7 @@ backends.append(backend)
 
 
 class BenchmarkScattering2D:
+    timeout = 300
     params = [
         [
             { # MNIST-like. 32x32, 2 scales, 4 orientations
