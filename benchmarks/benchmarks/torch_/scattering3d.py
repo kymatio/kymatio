@@ -54,7 +54,7 @@ class BenchmarkHarmonicScattering3D:
     def setup(self, sc_params,  backend, device):
         scattering = HarmonicScattering3D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         bs = sc_params["batch_size"]
-        if device == cuda:
+        if device == 'cuda':
             bs *= 2
         x = torch.randn(
             bs,

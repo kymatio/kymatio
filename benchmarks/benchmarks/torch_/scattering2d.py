@@ -60,7 +60,7 @@ class BenchmarkScattering2D:
         n_channels = 3
         scattering = Scattering2D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         bs = sc_params["batch_size"]
-        if device == cuda:
+        if device == 'cuda':
             bs *= 8
         x = torch.randn(
             bs,

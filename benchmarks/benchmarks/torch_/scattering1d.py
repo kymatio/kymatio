@@ -64,7 +64,7 @@ class BenchmarkScattering1D:
         n_channels = 1
         scattering = Scattering1D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
         bs = sc_params["batch_size"]
-        if device==cuda:
+        if device == 'cuda':
             bs *= 8
         x = torch.randn(
             bs,
