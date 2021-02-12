@@ -27,7 +27,7 @@ class BenchmarkScattering2D:
         ],
     ]
 
-    def setup(self, sc_params, backend, device):
+    def setup(self, sc_params):
         n_channels = 3
         scattering = Scattering2D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         x = np.random.randn(
@@ -41,7 +41,7 @@ class BenchmarkScattering2D:
         # can take some time
 
     def time_constructor(self, sc_params):
-        Scattering2D(**sc_params)
+        Scattering2D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
 
     def time_forward(self, sc_params):
         n_iter = 2

@@ -44,7 +44,7 @@ class BenchmarkScattering1D:
         # can take some time
 
     def time_constructor(self, sc_params):
-        Scattering1D(**sc_params)
+        Scattering1D(J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
 
     def time_forward(self, sc_params):
         n_iter = 2

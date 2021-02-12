@@ -52,7 +52,7 @@ class BenchmarkHarmonicScattering3D:
     ]
 
     def setup(self, sc_params,  backend, device):
-        scattering = HarmonicScattering3D(backend=backend, **sc_params)
+        scattering = HarmonicScattering3D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         x = torch.randn(
             sc_params["batch_size"],
             sc_params["shape"][0],
@@ -64,7 +64,7 @@ class BenchmarkHarmonicScattering3D:
     def time_constructor(self, sc_params,  backend, device):
         if device == 'cuda':
             torch.cuda.synchronize()
-        HarmonicScattering3D(backend=backend, **sc_params)
+        HarmonicScattering3D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         if device == 'cuda':
             torch.cuda.synchronize()
 

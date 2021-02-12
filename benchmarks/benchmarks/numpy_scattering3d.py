@@ -23,7 +23,7 @@ class BenchmarkHarmonicScattering3D:
     ]
 
     def setup(self, sc_params):
-        scattering = HarmonicScattering3D(**sc_params)
+        scattering = HarmonicScattering3D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         x = np.random.randn(
             sc_params["batch_size"],
             sc_params["shape"][0],
@@ -33,7 +33,7 @@ class BenchmarkHarmonicScattering3D:
         self.x = x
 
     def time_constructor(self, sc_params):
-        HarmonicScattering3D(**sc_params)
+        HarmonicScattering3D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
 
     def time_forward(self, sc_params):
         n_iter = 2
