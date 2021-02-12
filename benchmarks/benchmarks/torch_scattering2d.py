@@ -49,7 +49,6 @@ class BenchmarkScattering2D:
                 "shape": (64, 64),
                 "L": 2,
                 "batch_size": 4
-
             },
         ],
         backends,
@@ -67,13 +66,21 @@ class BenchmarkScattering2D:
             sc_params["shape"][1]).float().to(device)
         self.scattering = scattering.to(device)
         self.x = x
+        y = self.scattering(self.x) # always perform an initial forward before using it next because initialization
+        # can take some time
 
     def time_constructor(self, sc_params,  backend, device):
+        if device == 'cuda':
+            torch.cuda.synchronize()
         Scattering2D(backend=backend, **sc_params)
+        if device == 'cuda':
+            torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
-        torch.multiprocessing.set_start_method('spawn')  # good solution !!!!
-        for i in range(10):
-            print(i)
+        if device=='cuda':
+            torch.cuda.synchronize()
+        for i in range(100):
             y =self.scattering(self.x)
+        if device == 'cuda':
+            torch.cuda.synchronize()
 
