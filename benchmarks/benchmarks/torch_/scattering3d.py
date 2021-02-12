@@ -61,7 +61,7 @@ class BenchmarkHarmonicScattering3D:
             sc_params["shape"][0],
             sc_params["shape"][1],
             sc_params["shape"][2]).float()
-        self.scattering = scattering
+        self.scattering = scattering.to(device)
         self.x = x.to(device)
 
     def time_constructor(self, sc_params,  backend, device):
