@@ -50,7 +50,6 @@ class BenchmarkHarmonicScattering3D:
         backends,
         devices
     ]
-    param_names = ["sc_params", "batch_size"]
 
     def setup(self, sc_params,  backend, device):
         scattering = HarmonicScattering3D(backend=backend, **sc_params)
