@@ -28,9 +28,9 @@ backends.append(backend)
 
 
 
-
 class BenchmarkScattering2D:
     timeout = 400 # in seconds
+    param_names = ["sc_params", "backend", "device"]
     params = [
         [
             { # MNIST-like. 32x32, 2 scales, 4 orientations
@@ -55,7 +55,6 @@ class BenchmarkScattering2D:
         backends,
         devices
     ]
-    param_names = ["sc_params", "backend", "device"]
 
     def setup(self, sc_params, backend, device):
         n_channels = 3
