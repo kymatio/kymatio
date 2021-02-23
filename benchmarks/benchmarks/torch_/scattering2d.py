@@ -18,10 +18,15 @@ try:
 except:
     Warning('torch_skcuda backend not available.')
 
+BATCH_SIZE = 32
+N_ITER = 2
+
 if skcuda_available:
     from kymatio.scattering2d.backend.torch_skcuda_backend import backend
     backends.append(backend)
     devices = ['cuda']
+    BATCH_SIZE = 256
+    N_ITER = 10
 
 from kymatio.scattering2d.backend.torch_backend import backend
 backends.append(backend)
@@ -37,19 +42,22 @@ class BenchmarkScattering2D:
                 "J": 2,
                 "shape": (32, 32),
                 "L": 8,
-                "batch_size": 32
+                "batch_size": BATCH_SIZE,
+                "n_iter": N_ITER
             },
             { # ImageNet-like. 224x224, 3 scales, 4 orientations
                 "J": 3,
                 "shape": (224, 224),
                 "L": 8,
-                "batch_size": 32
+                "batch_size": BATCH_SIZE,
+                "n_iter": N_ITER
             },
             { # A case with many scales (J=6) and few orientations (L=2)
                 "J": 6,
                 "shape": (64, 64),
                 "L": 2,
-                "batch_size": 4
+                "batch_size": BATCH_SIZE//8,
+                "n_iter": N_ITER
             },
         ],
         backends,
@@ -60,8 +68,7 @@ class BenchmarkScattering2D:
         n_channels = 3
         scattering = Scattering2D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         bs = sc_params["batch_size"]
-        if device == 'cuda':
-            bs *= 8
+
         x = torch.randn(
             bs,
             n_channels,
@@ -80,12 +87,9 @@ class BenchmarkScattering2D:
             torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
-        n_iter = 2
-        if device=='cuda':
+        if device == 'cuda':
             torch.cuda.synchronize()
-            n_iter = 10
-        for i in range(n_iter):
+        for i in range(sc_params["n_iter"]):
             y =self.scattering(self.x)
         if device == 'cuda':
             torch.cuda.synchronize()
-

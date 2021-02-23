@@ -19,10 +19,15 @@ try:
 except:
     Warning('torch_skcuda backend not available.')
 
+BATCH_SIZE = 32
+N_ITER = 2
+
 if skcuda_available:
     from kymatio.scattering1d.backend.torch_skcuda_backend import backend
     backends.append(backend)
     devices = ['cuda']
+    BATCH_SIZE = 256
+    N_ITER = 10
 
 from kymatio.scattering1d.backend.torch_backend import backend
 backends.append(backend)
@@ -40,21 +45,24 @@ class BenchmarkScattering1D:
                 "J": 8,
                 "Q": 1,
                 "shape": 1024,
-                "batch_size": 32
+                "batch_size": BATCH_SIZE,
+                "n_iter": N_ITER
             },
             {  # Typical of speech.
                 # See Andén and Mallat TASLP 2014
                 "J": 8,
                 "Q": 8,
                 "shape": 4096,
-                "batch_size": 32
+                "batch_size": BATCH_SIZE,
+                "n_iter": N_ITER
             },
             {  # Typical of music.
                 # See Andén et al.
                 "J": 13,
                 "Q": 12,
                 "shape": 65536,
-                "batch_size": 32
+                "batch_size": BATCH_SIZE,
+                "n_iter": N_ITER
             },
         ],
         backends,
@@ -64,8 +72,7 @@ class BenchmarkScattering1D:
         n_channels = 1
         scattering = Scattering1D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
         bs = sc_params["batch_size"]
-        if device == 'cuda':
-            bs *= 8
+
         x = torch.randn(
             bs,
             n_channels,
@@ -83,11 +90,9 @@ class BenchmarkScattering1D:
             torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
-        n_iter = 2
         if device=='cuda':
             torch.cuda.synchronize()
-            n_iter = 10
-        for i in range(n_iter):
+        for i in range(sc_params["n_iter"]):
             y =self.scattering(self.x)
         if device == 'cuda':
             torch.cuda.synchronize()

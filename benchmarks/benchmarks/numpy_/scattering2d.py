@@ -10,19 +10,22 @@ class BenchmarkScattering2D:
                 "J": 2,
                 "shape": (32, 32),
                 "L": 8,
-                "batch_size": 32
+                "batch_size": 32,
+                "n_iter": 2
             },
             { # ImageNet-like. 224x224, 3 scales, 4 orientations
                 "J": 3,
                 "shape": (224, 224),
                 "L": 8,
-                "batch_size": 32
+                "batch_size": 32,
+                "n_iter": 2
             },
             { # A case with many scales (J=6) and few orientations (L=2)
                 "J": 6,
                 "shape": (64, 64),
                 "L": 2,
-                "batch_size": 4
+                "batch_size": 4,
+                "n_iter": 2
             },
         ],
     ]
@@ -44,6 +47,5 @@ class BenchmarkScattering2D:
         Scattering2D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
 
     def time_forward(self, sc_params):
-        n_iter = 2
-        for i in range(n_iter):
+        for i in range(sc_params["n_iter"]):
             y =self.scattering(self.x)

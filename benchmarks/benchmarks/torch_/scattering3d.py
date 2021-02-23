@@ -18,10 +18,15 @@ try:
 except:
     Warning('torch_skcuda backend not available.')
 
+BATCH_SIZE = 4
+N_ITER = 2
+
 if skcuda_available:
     from kymatio.scattering3d.backend.torch_skcuda_backend import backend
     backends.append(backend)
     devices = ['cuda']
+    BATCH_SIZE = 8
+    N_ITER = 10
 
 from kymatio.scattering3d.backend.torch_backend import backend
 backends.append(backend)
@@ -38,13 +43,15 @@ class BenchmarkHarmonicScattering3D:
                 "J": 2,
                 "shape": (32, 32, 32),
                 "L": 2,
-                "batch_size": 4
+                "batch_size": BATCH_SIZE,
+                "n_iter": N_ITER
             },
             { # Large. 128x128x128, 2 scales, 2 harmonics
                 "J": 2,
                 "shape": (128, 128, 128),
                 "L": 2,
-                "batch_size": 2
+                "batch_size": BATCH_SIZE//2,
+                "n_iter": N_ITER
             }
         ],
         backends,
@@ -54,8 +61,6 @@ class BenchmarkHarmonicScattering3D:
     def setup(self, sc_params,  backend, device):
         scattering = HarmonicScattering3D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
         bs = sc_params["batch_size"]
-        if device == 'cuda':
-            bs *= 2
         x = torch.randn(
             bs,
             sc_params["shape"][0],
@@ -72,12 +77,9 @@ class BenchmarkHarmonicScattering3D:
             torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
-        n_iter = 2
         if device=='cuda':
             torch.cuda.synchronize()
-            n_iter = 10
-        for i in range(n_iter):
+        for i in range(sc_params["n_iter"]):
             y =self.scattering(self.x)
         if device == 'cuda':
             torch.cuda.synchronize()
-

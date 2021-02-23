@@ -11,13 +11,15 @@ class BenchmarkHarmonicScattering3D:
                 "J": 2,
                 "shape": (32, 32, 32),
                 "L": 2,
-                "batch_size": 4
+                "batch_size": 4,
+                "n_iter": 2
             },
             {  # Large. 128x128x128, 2 scales, 2 harmonics
                 "J": 2,
                 "shape": (128, 128, 128),
                 "L": 2,
-                "batch_size": 2
+                "batch_size": 2,
+                "n_iter": 2
             }
         ],
     ]
@@ -36,6 +38,5 @@ class BenchmarkHarmonicScattering3D:
         HarmonicScattering3D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
 
     def time_forward(self, sc_params):
-        n_iter = 2
-        for i in range(n_iter):
+        for i in range(sc_params["n_iter"]):
             y = self.scattering(self.x)

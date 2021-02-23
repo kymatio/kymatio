@@ -12,21 +12,24 @@ class BenchmarkScattering1D:
                 "J": 8,
                 "Q": 1,
                 "shape": 1024,
-                "batch_size": 32
+                "batch_size": 32,
+                "n_iter": 2
             },
             {  # Typical of speech.
                 # See Andén and Mallat TASLP 2014
                 "J": 8,
                 "Q": 8,
                 "shape": 4096,
-                "batch_size": 32
+                "batch_size": 32,
+                "n_iter": 2
             },
             {  # Typical of music.
                 # See Andén et al.
                 "J": 13,
                 "Q": 12,
                 "shape": 65536,
-                "batch_size": 32
+                "batch_size": 32,
+                "n_iter": 2
             },
         ],
     ]
@@ -46,6 +49,5 @@ class BenchmarkScattering1D:
         Scattering1D(J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
 
     def time_forward(self, sc_params):
-        n_iter = 2
-        for i in range(n_iter):
+        for i in range(sc_params["n_iter"]):
             y = self.scattering(self.x)
