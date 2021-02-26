@@ -1,0 +1,43 @@
+name: Kymatio Conda CI
+
+on:
+    - push
+    - pull_request
+
+jobs:
+    build:
+        runs-on: ubuntu-20.04
+
+        strategy:
+            matrix:
+                python-version: [3.5, 3.6, 3.7]
+
+        steps:
+            - uses: actions/checkout@v1
+            - name: Add Conda to path
+              run: echo $CONDA >> $GITHUB_PATH
+            - name: Set up Conda
+              run: |
+                  conda config --set always_yes yes --set changeps1 no
+
+                  conda update -q conda
+
+                  conda info -a
+
+                  conda create -q -n test-env python=${{ matrix.python-version }}
+            - name: Install dependencies
+              run: |
+                  conda install -n test-env numpy scipy pytest pytest-cov
+                  conda install -n test-env pytorch torchvision cpuonly -c pytorch
+
+                  conda run -n test-env python3 -m pip install --upgrade pip
+
+                  conda run -n test-env python3 -m pip install "tensorflow>=2.0.0a"
+                  conda run -n test-env python3 -m pip install scikit-learn
+
+                  conda run -n test-env python3 -m pip install -r requirements.txt
+                  conda run -n test-env python3 -m pip install -r requirements_optional.txt
+            - name: Set up Kymatio
+              run: conda run -n test-env python3 setup.py develop
+            - name: Test
+              run: conda run -n test-env pytest --cov=kymatio
