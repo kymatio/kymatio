@@ -65,15 +65,15 @@ len_order_1 = J*L
 scat_coeffs_order_1 = scat_coeffs[1:1+len_order_1, :, :]
 norm_order_1 = mpl.colors.Normalize(scat_coeffs_order_1.min(), scat_coeffs_order_1.max(), clip=True)
 mapper_order_1 = cm.ScalarMappable(norm=norm_order_1, cmap="gray")
-# mapper of coefficient amplitude to a grayscale color for visualisation
+# Mapper of coefficient amplitude to a grayscale color for visualisation.
 
 len_order_2 = (J*(J-1)//2)*(L**2)
 scat_coeffs_order_2 = scat_coeffs[1+len_order_1:, :, :]
 norm_order_2 = mpl.colors.Normalize(scat_coeffs_order_2.min(), scat_coeffs_order_2.max(), clip=True)
 mapper_order_2 = cm.ScalarMappable(norm=norm_order_2, cmap="gray")
-# mapper of coefficient amplitude to a grayscale color for visualisation
+# Mapper of coefficient amplitude to a grayscale color for visualisation.
 
-# retrieve spatial size
+# Retrieve spatial size
 window_rows, window_columns = scat_coeffs.shape[1:]
 print("nb of (order 1, order 2) coefficients: ", (len_order_1, len_order_2))
 
