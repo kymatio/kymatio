@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, T=None, vectorize=True, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -19,6 +19,7 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
+        self.T = T
         self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
@@ -50,10 +51,13 @@ class ScatteringBase1D(ScatteringBase):
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+        
+        if self.T is None:
+            self.T = 2**(self.J)
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
-            self.N, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
+            self.N, self.J, self.Q, self.T, r_psi=self.r_psi, sigma0=self.sigma0,
             alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize)
@@ -71,7 +75,7 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, normalize=self.normalize,
+            self.J_pad, self.J, self.Q, self.T, normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
@@ -87,7 +91,7 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, max_order=self.max_order)
+        return compute_meta_scattering(self.J, self.Q, self.T, max_order=self.max_order)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
