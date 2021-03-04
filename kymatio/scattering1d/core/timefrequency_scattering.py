@@ -1,3 +1,5 @@
+import math
+
 def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None, oversampling=0,
@@ -95,9 +97,14 @@ def timefrequency_scattering(
             Y_2_hat = subsample_fourier(Y_2_c, 2**k2)
             Y_2_list.append(ifft(Y_2_hat))
 
+        # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
+        total_height = 2 ** math.ceil(1+math.log2(len(psi1)))
+        padding_row = 0 * Y_2_hat
+        for n1 in range(total_height - len(Y_2_list)):
+            Y_2_list.append(padding_row)
+
         # Concatenate along the frequency axis
         Y_2 = concatenate(Y_2_list)
-        print(Y_2.shape)
 
 
     out_S = []
