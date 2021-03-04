@@ -3,7 +3,6 @@ import warnings
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
-from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
@@ -77,11 +76,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
-
-        if not self.average and self.out_type == 'array':
-            raise ValueError("Options average=False and out_type='array'"
-                             "are mutually incompatible. "
-                             "Please set out_type='list'.")
 
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
@@ -162,7 +156,7 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D):
         # First-order scattering object for the frequency variable
         max_order_fr = 1
         shape_fr = (Q * J)
-        J_fr = self.get_J_fr()
+        J_fr = int(math.log2(Q * J)) - 1
         Q_fr = 1
         self.sc_freq = ScatteringTorch1D(
             J, shape, Q, max_order_fr, average,
@@ -175,14 +169,9 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if not self.average and self.out_type == 'array':
-            raise ValueError("Options average=False and out_type='array'"
-                             "are mutually incompatible. "
-                             "Please set out_type='list'.")
-
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
-
+        
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
@@ -192,7 +181,8 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D):
         self.sc_freq.load_filters()
 
         # Precompute output size
-        size_scattering = 1 + self.J * (2*self.get_J_fr() + 1)
+        J_fr = int(math.log2(self.Q * self.J)) - 1
+        size_scattering = self.J * (2*self.J_fr + 1)
 
         S = timefrequency_scattering(
             x,
