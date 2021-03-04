@@ -368,4 +368,11 @@ class ScatteringBase1D(ScatteringBase):
             n=cls._doc_array_n)
 
 
-__all__ = ['ScatteringBase1D']
+class TimeFrequencyScatteringBase(ScatteringBase1D):
+    @classmethod
+    def _document(cls):
+        # TODO documentation
+        cls.__doc__ = """Joint time-frequency scattering"""
+
+
+__all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
