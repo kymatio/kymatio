@@ -409,14 +409,13 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
+def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
     This family is defined by constant ratios between the frequencies and
     width of adjacent filters, up to a minimum frequency where the frequencies
-    are translated.
-    This ensures that the low-pass filter has the largest temporal support
+    are translated. sigma_min specifies the smallest frequential width
     among all filters, while preserving the coverage of the whole frequency
     axis.
 
@@ -426,11 +425,9 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
 
     Parameters
     ----------
-    sigma_low : float
-        frequential width of the low-pass filter. This acts as a
-        lower-bound on the frequential widths of the band-pass filters,
-        so as to ensure that the low-pass filter has the largest temporal
-        support among all filters.
+    sigma_min : float
+        This acts as a lower-bound on the frequential widths of the band-pass 
+        filters
     Q : int
         number of wavelets per octave.
     r_psi : float, optional
@@ -462,14 +459,14 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     sigma = []
     j = []
 
-    if sigma_max <= sigma_low:
+    if sigma_max <= sigma_min:
         # in this exceptional case, we will not go through the loop, so
         # we directly assign
         last_xi = sigma_max
     else:
         # fill all the dyadic wavelets as long as possible
         current = {'key': 0, 'j': 0, 'xi': xi_max, 'sigma': sigma_max}
-        while current['sigma'] > sigma_low:  # while we can attribute something
+        while current['sigma'] > sigma_min:  # while we can attribute something
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
@@ -481,7 +478,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     for q in range(1, num_intermediate + 1):
         factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
         new_xi = factor * last_xi
-        new_sigma = sigma_low
+        new_sigma = sigma_min
         xi.append(new_xi)
         sigma.append(new_sigma)
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
@@ -544,15 +541,18 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     """
     if Q < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
-    sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_low, Q, r_psi=r_psi,
+    
+    # lower bound of band-pass filter frequential widths:
+    # for default T = 2**(J), this coincides with sigma_low
+    sigma_min = sigma0 / math.pow(2, J)  
+    
+    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q, r_psi=r_psi,
                                             alpha=alpha)
-    xi2, sigma2, j2 = compute_params_filterbank(sigma_low, 1, r_psi=r_psi,
+    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, 1, r_psi=r_psi,
                                             alpha=alpha)
-    ## PAW
-    #sigma_low = sigma_low * math.pow(2, 5)
-    sigma_low = sigma0/T
-    ## PAW
+    
+    # width of the low-pass filter
+    sigma_low = sigma0 / T 
     return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
 
 
