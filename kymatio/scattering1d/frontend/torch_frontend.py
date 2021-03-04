@@ -160,7 +160,7 @@ class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1
         J_fr = self.get_J_fr()
         Q_fr = 1
         self.sc_freq = ScatteringTorch1D(
-            J, shape, Q, max_order_fr, average,
+            J_fr, shape_fr, Q, max_order_fr, average,
             oversampling, vectorize, out_type, backend)
 
 
