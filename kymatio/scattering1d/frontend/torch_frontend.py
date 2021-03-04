@@ -4,7 +4,7 @@ import warnings
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D
+from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
@@ -142,7 +142,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 ScatteringTorch1D._document()
 
 
-class TimeFrequencyScatteringTorch(ScatteringTorch1D):
+class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1D):
     def __init__(self, J, shape, Q, average=True, oversampling=0,
             out_type="array", backend="torch"):
         vectorize = True # for compatibility, will be removed in 0.3
@@ -201,4 +201,6 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D):
         # TODO switch-case out_type array vs list
         return S
 
-__all__ = ['ScatteringTorch1D']
+TimeFrequencyScatteringTorch._document()
+
+__all__ = ['ScatteringTorch1D', 'TimeFrequencyScatteringTorch']
