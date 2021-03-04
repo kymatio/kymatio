@@ -370,7 +370,10 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
     def get_J_fr(self):
-        return int(math.log2(self.Q * self.J)) - 1
+        return int(math.log2(self.Q * self.J)) - 3
+
+    def get_shape_fr(self):
+        return (2 * self.Q * self.J)
 
     @classmethod
     def _document(cls):
