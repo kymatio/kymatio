@@ -373,7 +373,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         return int(math.log2(self.Q * self.J))
 
     def get_shape_fr(self):
-        return 2**math.floor(1+np.log2(self.Q * self.J))
+        return 2**math.ceil(1 + np.log2(self.Q * self.J))
 
     @classmethod
     def _document(cls):
