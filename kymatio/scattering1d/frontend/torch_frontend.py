@@ -5,7 +5,7 @@ from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
+from .base_frontend import ScatteringBase1D
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
@@ -79,11 +79,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if not self.average and self.out_type == 'array':
-            raise ValueError("Options average=False and out_type='array'"
-                             "are mutually incompatible. "
-                             "Please set out_type='list'.")
-
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
 
@@ -149,25 +144,31 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 ScatteringTorch1D._document()
 
 
-class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1D):
+class TimeFrequencyScatteringTorch(ScatteringTorch1D):
     def __init__(self, J, shape, Q, average=True, oversampling=0,
             out_type="array", backend="torch"):
         vectorize = True # for compatibility, will be removed in 0.3
 
         # Second-order scattering object for the time variable
         max_order_tm = 2
+        max_subsampling_tm = J
         ScatteringTorch1D.__init__(
-            self, J, shape, Q, max_order_tm, average,
-            oversampling, vectorize, out_type, backend)
+            self, J=J, shape=shape, Q=Q, average=average,
+            max_order=max_order_tm, max_subsampling=max_subsampling_tm,
+            oversampling=oversampling, vectorize=vectorize,
+            out_type=out_type, backend=backend)
 
         # First-order scattering object for the frequency variable
         max_order_fr = 1
-        shape_fr = (Q * J)
+        max_subsampling_fr = None
+        shape_fr = self.get_shape_fr()
         J_fr = self.get_J_fr()
         Q_fr = 1
         self.sc_freq = ScatteringTorch1D(
-            J_fr, shape_fr, Q, max_order_fr, average,
-            oversampling, vectorize, out_type, backend)
+            J=J_fr, shape=shape_fr, Q=Q_fr, average=average,
+            max_order=max_order_fr, max_subsampling=max_subsampling_fr,
+            oversampling=oversampling, vectorize=vectorize,
+            out_type=out_type, backend=backend)
 
 
     def scattering(self, x):
@@ -175,11 +176,6 @@ class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
-
-        if not self.average and self.out_type == 'array':
-            raise ValueError("Options average=False and out_type='array'"
-                             "are mutually incompatible. "
-                             "Please set out_type='list'.")
 
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
@@ -212,6 +208,4 @@ class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1
         # TODO switch-case out_type array vs list
         return S
 
-TimeFrequencyScatteringTorch._document()
-
-__all__ = ['ScatteringTorch1D', 'TimeFrequencyScatteringTorch']
+__all__ = ['ScatteringTorch1D']
