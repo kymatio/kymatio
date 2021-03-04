@@ -151,18 +151,24 @@ class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1
 
         # Second-order scattering object for the time variable
         max_order_tm = 2
+        max_subsampling_tm = J
         ScatteringTorch1D.__init__(
-            self, J, shape, Q, max_order_tm, average,
-            oversampling, vectorize, out_type, backend)
+            self, J=J, shape=shape, Q=Q, average=average,
+            max_order=max_order_tm, max_subsampling=max_subsampling_tm,
+            oversampling=oversampling, vectorize=vectorize,
+            out_type=out_type, backend=backend)
 
         # First-order scattering object for the frequency variable
         max_order_fr = 1
-        shape_fr = (Q * J)
+        max_subsampling_fr = None
+        shape_fr = self.get_shape_fr()
         J_fr = self.get_J_fr()
         Q_fr = 1
         self.sc_freq = ScatteringTorch1D(
-            J, shape, Q, max_order_fr, average,
-            oversampling, vectorize, out_type, backend)
+            J=J_fr, shape=shape_fr, Q=Q_fr, average=average,
+            max_order=max_order_fr, max_subsampling=max_subsampling_fr,
+            oversampling=oversampling, vectorize=vectorize,
+            out_type=out_type, backend=backend)
 
 
     def scattering(self, x):
