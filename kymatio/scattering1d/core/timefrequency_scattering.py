@@ -131,6 +131,22 @@ def timefrequency_scattering(
             S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
             S_2_fr = irfft(S_2_fr_hat)
 
+            # TODO unpad frequency domain
+
+            # Swap time and frequency subscripts again
+            S_2_fr = backend.transpose(S_2_fr)
+
+            # Low-pass filtering over time
+            k2_J = max(J - j2 - oversampling, 0)
+            U_2_hat = rfft(S_2_fr)
+            S_2_c = cdgmm(U_2_hat, phi[j2])
+            S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
+            S_2_r = irfft(S_2_hat)
+
+            # TODO unpad time domain
+
+            S_2_list.append(S_2_r)
+
     out_S = []
     out_S.extend(out_S_0)
     out_S.extend(out_S_1)
@@ -144,7 +160,7 @@ def timefrequency_scattering(
         for x in out_S:
             x.pop('n')
 
-    out_S = Y_2
+    out_S = S_2_list
     return out_S
 
 __all__ = ['timefrequency_scattering']
