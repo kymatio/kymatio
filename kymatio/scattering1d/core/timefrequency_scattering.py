@@ -3,8 +3,7 @@ import math
 def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        max_order=2, average=True, size_scattering=(0, 0, 0), out_type='array'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
@@ -137,7 +136,7 @@ def timefrequency_scattering(
             S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
             S_2_fr = irfft(S_2_fr_hat)
 
-            # TODO unpad frequency domain
+            # TODO unpad frequency domain iff out_type == "list"
 
             # Swap time and frequency subscripts again
             S_2_fr = backend.transpose(S_2_fr)
@@ -157,10 +156,8 @@ def timefrequency_scattering(
     out_S.extend(out_S_1)
     #out_S.extend(out_S_2)
 
-    if out_type == 'array' and vectorize:
+    if out_type == 'array':
         out_S = concatenate([x['coef'] for x in out_S])
-    elif out_type == 'array' and not vectorize:
-        out_S = {x['n']: x['coef'] for x in out_S}
     elif out_type == 'list':
         for x in out_S:
             x.pop('n')
