@@ -170,6 +170,11 @@ class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
+        if not self.average and self.out_type == 'array':
+            raise ValueError("Options average=False and out_type='array'"
+                             "are mutually incompatible. "
+                             "Please set out_type='list'.")
+
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
 
