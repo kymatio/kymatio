@@ -113,12 +113,11 @@ def timefrequency_scattering(
         Y_2 = concatenate(Y_2_list)
 
         # Swap time and frequency subscripts to prepare for frequency scattering
-        # TODO implement backend.permute
-        Y_2 = backend.transpose(Y_2)
+        Y_2_T = backend.transpose(Y_2)
 
         # Complex FFT is not implemented in the backend, only RFFT and IFFT
         # so we use IFFT which is equivalent up to conjugation.
-        Y_2_hat = ifft(Y_2)
+        Y_2_hat = ifft(Y_2_T)
 
         for n_fr in range(len(sc_freq.psi1_f)):
             # Wavelet transform over frequency
