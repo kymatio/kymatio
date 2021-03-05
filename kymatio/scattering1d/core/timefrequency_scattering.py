@@ -121,6 +121,9 @@ def timefrequency_scattering(
             Y_fr_c = cdgmm(Y_2_hat, sc_freq.psi1_f[n_fr][0])
             Y_fr_hat = subsample_fourier(Y_fr_c, 2**k_fr)
 
+            # Modulus
+            U_2_m = modulus(Y_fr_hat)
+
     out_S = []
     out_S.extend(out_S_0)
     out_S.extend(out_S_1)
