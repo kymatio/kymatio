@@ -124,6 +124,13 @@ def timefrequency_scattering(
             # Modulus
             U_2_m = modulus(Y_fr_hat)
 
+            # Low-pass filtering over frequency
+            k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
+            U_2_hat = rfft(U_2_m)
+            S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k_fr])
+            S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
+            S_2_fr = irfft(S_2_fr_hat)
+
     out_S = []
     out_S.extend(out_S_0)
     out_S.extend(out_S_1)
