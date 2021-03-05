@@ -27,6 +27,7 @@ def timefrequency_scattering(
 
     # First order:
     U_1_hat_list = []
+    S_1_list = []
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
@@ -135,7 +136,6 @@ def timefrequency_scattering(
         for x in out_S:
             x.pop('n')
 
-    out_S = S_2_list
     return out_S
 
 __all__ = ['timefrequency_scattering']
