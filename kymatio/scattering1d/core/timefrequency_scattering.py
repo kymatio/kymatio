@@ -77,7 +77,7 @@ def timefrequency_scattering(
         S_1_fr_T_hat = subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
         S_1_fr_T = irfft(S_1_fr_T_hat)
         S_1_fr = backend.transpose(S_1_fr_T)
-        out_S_1.append({'coef': S_1, 'j': (), 'n': ()})
+        out_S_1.append({'coef': S_1_fr, 'j': (), 'n': ()})
         # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
 
