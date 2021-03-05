@@ -65,7 +65,6 @@ def timefrequency_scattering(
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
-
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
