@@ -27,20 +27,6 @@ def timefrequency_scattering(
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
-    # Get S0
-    k0 = max(J - oversampling, 0)
-
-    if average:
-        S_0_c = cdgmm(U_0_hat, phi[0])
-        S_0_hat = subsample_fourier(S_0_c, 2**k0)
-        S_0_r = irfft(S_0_hat)
-        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
-    else:
-        S_0 = x
-    out_S_0.append({'coef': S_0,
-                    'j': (),
-                    'n': ()})
-
     # First order:
     U_1_hat_list = []
     for n1 in range(len(psi1)):
@@ -148,7 +134,6 @@ def timefrequency_scattering(
             S_2_list.append(S_2_r)
 
     out_S = []
-    out_S.extend(out_S_0)
     out_S.extend(out_S_1)
     #out_S.extend(out_S_2)
 
