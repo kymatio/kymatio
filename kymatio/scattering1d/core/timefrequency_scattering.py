@@ -44,20 +44,42 @@ def timefrequency_scattering(
         U_1_hat = rfft(U_1_m)
         U_1_hat_list.append(U_1_hat)
 
-        # Apply low-pass filtering phi (optional) and unpad
+        # Apply low-pass filtering over time (optional) and unpad
         if average:
-            # Convolve with phi_J
+            # Low-pass filtering over time
             k1_J = max(J - k1 - oversampling, 0)
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
-            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
-        else:
-            S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
-        out_S_1.append({'coef': S_1,
-                        'j': (j1,),
-                        'n': (n1,)})
+            # Unpad
+            S_1_tm = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1_list.append(S_1_tm)
+        else:
+            # Unpad
+            S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
+            out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
+
+    # Apply low-pass filtering over frequency (optional) and unpad
+    if average:
+        # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
+        total_height = 2 ** math.ceil(1+math.log2(len(psi1)))
+        padding_row = 0 * S_1_tm
+        for n1 in range(total_height - len(S_1_list)):
+            S_1_list.append(padding_row)
+        S_1_tm = concatenate(S_1_list)
+
+        # Low-pass filtering over frequency
+        k_fr_J = max(sc_freq.J - oversampling, 0)
+        S_1_tm_T = backend.transpose(S_1_tm)
+        S_1_tm_T_hat = rfft(S_1_tm_T)
+        S_1_fr_T_c = cdgmm(S_1_tm_T_hat, sc_freq.phi_f[k_fr_J])
+        S_1_fr_T_hat = subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
+        S_1_fr_T = irfft(S_1_fr_T_hat)
+        S_1_fr = backend.transpose(S_1_fr_T)
+        out_S_1.append({'coef': S_1, 'j': (), 'n': ()})
+        # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
+
 
     # Second order:
     S_2_list = []
@@ -84,8 +106,6 @@ def timefrequency_scattering(
             Y_2_list.append(ifft(Y_2_hat))
 
         # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
-        total_height = 2 ** math.ceil(1+math.log2(len(psi1)))
-        padding_row = 0 * Y_2_hat
         for n1 in range(total_height - len(Y_2_list)):
             Y_2_list.append(padding_row)
 
