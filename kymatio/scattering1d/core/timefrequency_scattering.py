@@ -92,6 +92,9 @@ def timefrequency_scattering(
         # Concatenate along the frequency axis
         Y_2 = concatenate(Y_2_list)
 
+        # Swap time and frequency subscripts to prepare for frequency scattering
+        # TODO implement backend.permute
+        Y_2 = backend.transpose(Y_2)
 
         # Complex FFT is not implemented in the backend, only RFFT and IFFT
         # so we use IFFT which is equivalent up to conjugation.
