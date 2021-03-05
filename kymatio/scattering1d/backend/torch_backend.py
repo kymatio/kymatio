@@ -116,5 +116,10 @@ class TorchBackend1D(TorchBackend):
 
         return torch.ifft(x, 1, normalized=False)
 
+    @classmethod
+    def transpose(cls, x):
+        """Permute time and frequency dimension for time-frequency scattering"""
+        return x.transpose(-2, -3).contiguous()
+
 
 backend = TorchBackend1D
