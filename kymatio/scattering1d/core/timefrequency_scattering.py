@@ -74,6 +74,7 @@ def timefrequency_scattering(
                         'n': (n1,)})
 
     # Second order:
+    S_2_list = []
     for n2 in range(len(psi2)):
         j2 = psi2[n2]['j']
 
@@ -108,6 +109,17 @@ def timefrequency_scattering(
         # Swap time and frequency subscripts to prepare for frequency scattering
         # TODO implement backend.permute
         Y_2 = backend.transpose(Y_2)
+
+        # Complex FFT is not implemented in the backend, only RFFT and IFFT
+        # so we use IFFT which is equivalent up to conjugation.
+        Y_2_hat = ifft(Y_2)
+
+        for n_fr in range(len(sc_freq.psi1_f)):
+            # Wavelet transform over frequency
+            j_fr = sc_freq.psi1_f[n_fr]['j']
+            k_fr = max(j_fr - oversampling, 0)
+            Y_fr_c = cdgmm(Y_2_hat, sc_freq.psi1_f[n_fr][0])
+            Y_fr_hat = subsample_fourier(Y_fr_c, 2**k_fr)
 
     out_S = []
     out_S.extend(out_S_0)
