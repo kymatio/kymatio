@@ -6,7 +6,7 @@ on:
 
 jobs:
     build:
-        runs-on: gpu
+        runs-on: [self-hosted, gpu]
 
         strategy:
             matrix:
