@@ -28,7 +28,7 @@ jobs:
             - name: Install dependencies
               run: |
                   conda install -n test-env numpy scipy pytest pytest-cov
-                  conda install -n test-env pytorch=1.7.1 torchvision -c pytorch
+                  conda install -n test-env pytorch==1.7.0 torchvision==0.8.0 torchaudio==0.7.0 cudatoolkit=10.2 -c pytorch
 
                   conda run -n test-env python3 -m pip install --upgrade pip
 
