@@ -123,8 +123,8 @@ def fft(input, inverse=False):
     if not _is_complex(input):
         raise TypeError('The input should be complex (e.g. last dimension is 2)')
     if inverse:
-        return torch.ifft(input, 3)
-    return torch.fft(input, 3)
+        return torch.view_as_real(torch.fft.ifftn(torch.view_as_complex(input), dim=[-1, -2, -3]))
+    return torch.view_as_real(torch.fft.fftn(torch.view_as_complex(input), dim=[-1, -2, -3]))
 
 
 def cdgmm3d(A, B, inplace=False):

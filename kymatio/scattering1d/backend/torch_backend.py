@@ -133,7 +133,7 @@ def unpad(x, i0, i1):
 
 fft = FFT(lambda x: torch.view_as_real(torch.fft.fft(torch.view_as_complex(x))),
     lambda x: torch.view_as_real(torch.fft.ifft(torch.view_as_complex(x))),
-    lambda x: torch.irfft(torch.view_as_complex(x)).real,
+    lambda x: torch.fft.ifft(torch.view_as_complex(x)).real,
     type_checks)
 
 
