@@ -9,6 +9,7 @@ from kymatio import Scattering2D
 from torch.autograd import gradcheck
 from collections import namedtuple
 
+from packaging import version
 
 devices = ['cpu']
 if torch.cuda.is_available():
@@ -27,7 +28,7 @@ try:
 except:
     Warning('torch_skcuda backend not available.')
 
-if torch.__version__ > '1.7':
+if version.parse(torch.__version__) > version.parse('1.7'):
     if skcuda_available:
         from kymatio.scattering2d.backend.torch_skcuda_backend import backend
         backends.append(backend)
