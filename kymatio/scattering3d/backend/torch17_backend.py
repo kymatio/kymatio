@@ -4,7 +4,7 @@ import torch
 
 BACKEND_NAME = 'torch17'
 
-from .torch_backend import backend
+from .torch_backend import backend, _is_complex
 
 
 def fft(input, inverse=False):
