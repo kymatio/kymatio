@@ -19,13 +19,23 @@ try:
 except:
     Warning('torch_skcuda backend not available.')
 
-if skcuda_available:
-    from kymatio.scattering3d.backend.torch_skcuda_backend import backend
+if torch.__version__ > '1.7':
+    if skcuda_available:
+        from kymatio.scattering3d.backend.torch_skcuda_backend import backend
+        backends.append(backend)
+
+
+    from kymatio.scattering3d.backend.torch_backend import backend
     backends.append(backend)
+else:
+    if skcuda_available:
+        from kymatio.scattering3d.backend.torch17_skcuda_backend import backend
 
+        backends.append(backend)
 
-from kymatio.scattering3d.backend.torch_backend import backend
-backends.append(backend)
+    from kymatio.scattering3d.backend.torch17_backend import backend
+
+    backends.append(backend)
 
 if torch.cuda.is_available():
     devices = ['cuda', 'cpu']
