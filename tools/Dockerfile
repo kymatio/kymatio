@@ -20,7 +20,7 @@ RUN pip3 install \
       'numpy>=1.16' \
       scipy \
       configparser \
-      'torch<1.3' \
+      'torch==1.7' \
       torchvision \
       scikit-cuda \
       cupy \
