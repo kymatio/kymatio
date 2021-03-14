@@ -145,9 +145,9 @@ class SubsampleFourier(object):
         return out
 
 
-fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
-          lambda x: torch.ifft(x, 2, normalized=False),
-          lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
+fft = FFT(lambda x: torch.view_as_real(torch.fft.fft2(torch.view_as_complex(x))),
+          lambda x: torch.view_as_real(torch.fft.ifft2(torch.view_as_complex(x))),
+          lambda x: torch.fft.ifft2(torch.view_as_complex(x)).real,
           type_checks)
 
 

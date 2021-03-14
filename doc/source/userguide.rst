@@ -267,6 +267,8 @@ Currently, two backends exist for ``torch``:
 - ``torch``: A PyTorch-only implementation which is differentiable with respect
   to its inputs. However, it relies on general-purpose CUDA kernels for GPU
   computation which reduces performance.
+- ``torch17``: Same as above, except it is compatible with the version <=1.7.1 of
+  PyTorch.
 - ``torch_skcuda``: An implementation using custom CUDA kernels (through ``cupy``) and
   ``scikit-cuda``. This implementation only runs on the GPU (that is, you must
   call :meth:`cuda` prior to applying it). Since it uses kernels optimized for
@@ -274,6 +276,8 @@ Currently, two backends exist for ``torch``:
   compared to the default ``torch`` backend (see benchmarks below). This
   improvement is currently small in 1D and 3D, but work is underway to further
   optimize this backend.
+- ``torch17_skcuda``: Same as above, except it is compatible with the version <=1.7.1
+  of PyTorch.
 
 
 
