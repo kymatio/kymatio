@@ -40,4 +40,4 @@ jobs:
             - name: Set up Kymatio
               run: conda run -n test-env python3 setup.py develop
             - name: Test Torch
-              run: pytest tests/scattering*d/*torch*.py
+              run: conda run -n test-env pytest tests/scattering*d/*torch*.py
