@@ -20,7 +20,7 @@ try:
 except:
     Warning('torch_skcuda backend not available.')
 
-if version.parse(torch.__version__) > version.parse('1.7'):
+if version.parse(torch.__version__) >= version.parse('1.8'):
     if skcuda_available:
         from kymatio.scattering3d.backend.torch_skcuda_backend import backend
         backends.append(backend)
