@@ -31,6 +31,15 @@ jobs:
               run: python3 setup.py develop
             - name: Generate documentation
               run: |
-                  cd doc
+                  pushd doc
                   make clean
                   make html
+                  popd
+            - name: Upload to GitHub pages
+              env:
+                  GITHUB_ACTOR: ${{ github.actor }}
+                  GITHUB_REPOSITORY: ${{ github.repository }}
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  DOC_REPO: kymatio-dev-docs.github.io
+                  DOC_ROOT: docs/build/html
+              run: "tools/push_docs.sh"
