@@ -126,6 +126,10 @@ class TestCDGMM:
 class TestFFT:
     @pytest.mark.parametrize('backend', backends)
     def test_fft(self, backend):
+        # NOTE: The CPU implementation used by TF is not very accurate, so we
+        # have to relax the tolerances a little here (default rtol is 1e-5).
+        rtol = 1e-4
+
         x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
         x = x.astype('complex64')
         y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
@@ -135,20 +139,20 @@ class TestFFT:
 
         z = backend.fft(x, direction='C2C')
 
-        assert np.allclose(y, z)
+        assert np.allclose(y, z, rtol=rtol)
 
         z = backend.fft(x, direction='C2C', inverse=True)
 
         z = z * 4
 
-        assert np.allclose(y, z)
+        assert np.allclose(y, z, rtol=rtol)
 
         z = backend.fft(x, direction='C2R', inverse=True)
 
         z = z * 4
 
         assert not np.iscomplexobj(z)
-        assert np.allclose(np.real(y), z)
+        assert np.allclose(np.real(y), z, rtol=rtol)
 
 
     @pytest.mark.parametrize('backend', backends)
