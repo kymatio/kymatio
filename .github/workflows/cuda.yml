@@ -15,8 +15,6 @@ jobs:
 
         steps:
             - uses: actions/checkout@v1
-            - name: Add Conda to path
-              run: echo $CONDA >> $GITHUB_PATH
             - name: Set up Conda
               run: |
                   conda config --set always_yes yes --set changeps1 no
