@@ -41,7 +41,7 @@ jobs:
               env:
                   GITHUB_ACTOR: ${{ github.actor }}
                   GITHUB_REPOSITORY: ${{ github.repository }}
-                  GITHUB_TOKEN: ${{ secrets.TOKEN }}
+                  TOKEN: ${{ secrets.TOKEN }}
                   DOC_REPO: kymatio/dev-docs
                   DOC_ROOT: doc/build/html
               run: "tools/push_doc.sh"
