@@ -13,6 +13,9 @@ jobs:
                 python-version: [3.6, 3.7]
                 pytorch-version: [1.7.0, 1.8]
 
+        env:
+            CONDA_ENV: test-env-py${{ matrix.python-version }}-torch${{ matrix.pytorch-version }}
+
         steps:
             - uses: actions/checkout@v1
             - name: Set up Conda
@@ -23,20 +26,20 @@ jobs:
 
                   conda info -a
 
-                  conda create -q -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python=${{ matrix.python-version }}
+                  conda create -q -n ${CONDA_ENV} python=${{ matrix.python-version }}
             - name: Install dependencies
               run: |
-                  conda install -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} numpy scipy pytest pytest-cov
-                  conda install -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} pytorch==${{ matrix.pytorch-version }} torchvision torchaudio cudatoolkit=10.2 -c pytorch
+                  conda install -n ${CONDA_ENV} numpy scipy pytest pytest-cov
+                  conda install -n ${CONDA_ENV} pytorch==${{ matrix.pytorch-version }} torchvision torchaudio cudatoolkit=10.2 -c pytorch
 
-                  conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python3 -m pip install --upgrade pip
+                  conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip
 
-                  conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python3 -m pip install "tensorflow>=2.0.0a"
-                  conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python3 -m pip install scikit-learn
+                  conda run -n ${CONDA_ENV} python3 -m pip install "tensorflow>=2.0.0a"
+                  conda run -n ${CONDA_ENV} python3 -m pip install scikit-learn
 
-                  conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python3 -m pip install -r requirements.txt
-                  conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python3 -m pip install -r requirements_optional.txt
+                  conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
+                  conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt
             - name: Set up Kymatio
-              run: conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} python3 setup.py develop
+              run: conda run -n ${CONDA_ENV} python3 setup.py develop
             - name: Test Torch
-              run: conda run -n test-env-${{ matrix.python-version }}-${{ matrix.pytorch-version }} pytest tests/scattering*d/*torch*.py
+              run: conda run -n ${CONDA_ENV} pytest tests/scattering*d/*torch*.py
