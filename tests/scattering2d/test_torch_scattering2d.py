@@ -127,7 +127,7 @@ class TestModulus:
     @pytest.mark.parametrize('backend', backends)
     def test_cuda_only(self, backend):
         modulus = backend.modulus
-        if backend.name == 'torch_skcuda':
+        if backend.name.endswith('_skcuda'):
             x = torch.rand(100, 10, 4, 2).cpu()
             with pytest.raises(TypeError) as exc:
                 y = modulus(x)
@@ -170,7 +170,7 @@ class TestSubsampleFourier:
     def test_gpu_only(self, backend):
         subsample_fourier = backend.subsample_fourier
 
-        if backend.name == 'torch_skcuda':
+        if backend.name.endswith('_skcuda'):
             x = torch.rand(100, 1, 128, 128, 2).cpu()
             with pytest.raises(TypeError) as exc:
                 z = subsample_fourier(x, k=16)
@@ -235,7 +235,7 @@ class TestCDGMM:
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, data, backend):
         x, filt, y = data
-        if backend.name == 'torch_skcuda':
+        if backend.name.endswith('_skcuda'):
             x = x.cpu()
             filt = filt.cpu()
 
@@ -263,12 +263,12 @@ class TestCDGMM:
         assert 'must be of the same dtype' in exc.value.args[0]
 
         if 'cuda' in devices:
-            if backend.name=='torch_skcuda':
+            if backend.name.endswith('_skcuda'):
                 with pytest.raises(TypeError) as exc:
                     backend.cdgmm(torch.empty(3, 4, 5, 2),
                                   torch.empty(4, 5, 1).cuda())
                 assert 'must be cuda tensors' in exc.value.args[0].lower()
-            elif backend.name=='torch':
+            elif not backend.name.endswith('_skcuda'):
                 with pytest.raises(TypeError) as exc:
                     backend.cdgmm(torch.empty(3, 4, 5, 2),
                                   torch.empty(4, 5, 1).cuda())
@@ -416,7 +416,7 @@ class TestScatteringTorch2D:
 
     @pytest.mark.parametrize('backend', backends)
     def test_gpu_only(self, backend):
-        if backend.name == 'torch_skcuda':
+        if backend.name.endswith('_skcuda'):
             scattering = Scattering2D(3, shape=(32, 32), backend=backend,
                                       frontend='torch')
 
@@ -510,7 +510,7 @@ class TestScatteringTorch2D:
 
         x = x.to(device)
         S = S.to(device)
-        if not (device == 'cpu' and backend.name == 'torch_skcuda'):
+        if not (device == 'cpu' and backend.name.endswith('_skcuda')):
             y = S(x)
             assert x.device == y.device
 
@@ -576,7 +576,7 @@ class TestScatteringTorch2D:
     def test_gradients(self, backend_device):
         backend, device = backend_device
 
-        if backend.name == 'torch_skcuda':
+        if backend.name.endswith('_skcuda'):
             pytest.skip('The gradients are currently not implemented with '
                         'the skcuda backend.')
         else:

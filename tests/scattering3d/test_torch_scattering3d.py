@@ -75,7 +75,7 @@ def test_fft3d_error(backend, device):
 @pytest.mark.parametrize("backend", backends)
 @pytest.mark.parametrize("inplace", [False, True])
 def test_cdgmm3d(device, backend, inplace):
-    if backend.name == 'torch' or device != 'cpu':
+    if not backend.name.endswith('_skcuda') or device != 'cpu':
         # Not all backends currently implement the inplace variant
         x = torch.zeros(2, 3, 4, 2).to(device)
         x[..., 0] = 2
@@ -145,7 +145,7 @@ def test_cdgmm3d(device, backend, inplace):
             backend.cdgmm3d(x, y)
         assert "should be same type" in record.value.args[0]
 
-    if backend.name == 'torch_skcuda':
+    if backend.name.endswith('_skcuda'):
         x = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
         y = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
         with pytest.raises(RuntimeError) as record:
@@ -166,7 +166,7 @@ def test_complex_modulus(backend, device):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_against_standard_computations(device, backend):
-    if backend.name == "torch_skcuda" and device == "cpu":
+    if backend.name.endswith('_skcuda') and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
     file_path = os.path.abspath(os.path.dirname(__file__))
@@ -220,7 +220,7 @@ def test_against_standard_computations(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_solid_harmonic_scattering(device, backend):
-    if backend.name == "torch_skcuda" and device == "cpu":
+    if backend.name.endswith('_skcuda') and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
     # Compare value to analytical formula in the case of a single Gaussian
@@ -255,7 +255,7 @@ def test_solid_harmonic_scattering(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_larger_scales(device, backend):
-    if backend.name == "torch_skcuda" and device == "cpu":
+    if backend.name.endswith('_skcuda') and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
     shape = (32, 32, 32)
@@ -273,7 +273,7 @@ def test_larger_scales(device, backend):
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
 def test_scattering_batch_shape_agnostic(device, backend):
-    if backend.name == "torch_skcuda" and device == "cpu":
+    if backend.name.endswith('_skcuda') and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")
 
     J = 2
