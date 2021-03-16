@@ -6,7 +6,7 @@ git config --global user.name "${GITHUB_ACTOR}"
 git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
 repo_root=$(mktemp -d)
-rsync -av "${DOC_ROOT}" "${repo_root}"
+rsync -av "${DOC_ROOT}/" "${repo_root}/"
 
 pushd "${repo_root}"
 
