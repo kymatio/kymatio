@@ -19,9 +19,6 @@ from distutils.version import LooseVersion
 
 
 
-sys.path.insert(0, os.path.abspath('../..'))
-
-
 
 # -- Project information -----------------------------------------------------
 
