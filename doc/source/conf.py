@@ -56,7 +56,7 @@ extensions = [
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
     'texext',
-    'm2r'
+    'm2r2'
 ]
 
 html_favicon = '_static/kymatio.ico'
