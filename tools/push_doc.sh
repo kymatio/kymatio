@@ -22,7 +22,7 @@ msg="Pushing the docs for commit ${GITHUB_SHA} made on from ${GITHUB_REF} by ${G
 
 git commit -am "${msg}"
 
-git push deploy gg-pages --force
+git push deploy gh-pages --force
 
 popd
 
