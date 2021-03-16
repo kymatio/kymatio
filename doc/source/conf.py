@@ -19,6 +19,7 @@ from distutils.version import LooseVersion
 
 
 
+autodoc_mock_imports = ['torch', 'tensorflow', 'sklearn']
 
 # -- Project information -----------------------------------------------------
 
