@@ -59,6 +59,8 @@ extensions = [
     'm2r2'
 ]
 
+bibtex_bibfiles = ["_static/bibtex.bib"]
+
 html_favicon = '_static/kymatio.ico'
 
 # Add path to sphynx gallery
