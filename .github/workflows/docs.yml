@@ -33,7 +33,9 @@ jobs:
               run: |
                   pushd doc
                   make clean
-                  make html
+                  #make html
+                  mkdir -p build/html
+                  echo "haha" > build/html/index.html
                   popd
             - name: Upload to GitHub pages
               env:
