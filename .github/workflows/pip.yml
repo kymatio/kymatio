@@ -11,6 +11,7 @@ jobs:
         strategy:
             matrix:
                 python-version: [3.6, 3.7]
+                pytorch-version: [1.7, 1.8]
 
         steps:
             - uses: actions/checkout@v1
@@ -22,7 +23,18 @@ jobs:
               run: |
                   python3 -m pip install --upgrade pip
                   python3 -m pip install pytest pytest-cov
-                  pip install torch==1.7.1+cpu torchvision==0.8.2+cpu torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
+
+                  if [ ${{ matrix.pytorch-version }} == '1.7' ]; then
+                      pip install torch==1.7.1+cpu \
+                                  torchvision==0.8.2+cpu \
+                                  torchaudio==0.7.2 \
+                                  -f https://download.pytorch.org/whl/torch_stable.html
+                  elif [ ${{ matrix.pytorch-version }} == '1.8' ]; then
+                      pip install torch==1.8.0+cpu \
+                                  torchvision==0.9.0+cpu \
+                                  torchaudio==0.8.0 \
+                                  -f https://download.pytorch.org/whl/torch_stable.html
+                  fi
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
 
