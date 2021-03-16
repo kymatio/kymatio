@@ -2,8 +2,6 @@
 
 set -ex
 
-echo "${TOKEN}" | tr 'A-Za-z' 'N-ZA-Mn-za-m'
-
 git config --global user.name "${GITHUB_ACTOR}"
 git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
