@@ -43,5 +43,5 @@ jobs:
                   GITHUB_REPOSITORY: ${{ github.repository }}
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   DOC_REPO: kymatio-dev-docs.github.io
-                  DOC_ROOT: docs/build/html
+                  DOC_ROOT: doc/build/html
               run: "tools/push_doc.sh"
