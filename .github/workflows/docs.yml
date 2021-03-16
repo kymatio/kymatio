@@ -16,7 +16,7 @@ jobs:
                   python-version: 3.7
             - name: Set up TeX Live
               run: |
-                  sudo apt install update
+                  sudo apt update
                   sudo apt install texlive cm-super-minimal dvipng
             - name: Install Python dependencies
               run: |
