@@ -58,7 +58,7 @@ def test_simple_scatterings(device, backend, random_state=42):
     # zero signal
     x0 = torch.zeros(2, T).to(device)
 
-    if backend.name == 'torch_skcuda' and device == 'cpu':
+    if backend.name.endswith('_skcuda') and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             s = scattering(x0)
         assert "CPU" in ve.value.args[0]
@@ -70,7 +70,7 @@ def test_simple_scatterings(device, backend, random_state=42):
 
     # constant signal
     x1 = rng.randn(1)[0] * torch.ones(1, T).to(device)
-    if backend.name != 'torch_skcuda' or device != 'cpu':
+    if not backend.name.endswith('_skcuda') or device != 'cpu':
         s1 = scattering(x1)
 
         # check that all orders above 1 are 0
@@ -82,7 +82,7 @@ def test_simple_scatterings(device, backend, random_state=42):
         k = rng.randint(1, T // 2, 1)[0]
         x2 = torch.cos(2 * math.pi * float(k) * torch.arange(0, T, dtype=torch.float32) / float(T))
         x2 = x2.unsqueeze(0).to(device)
-        if backend.name != 'torch_skcuda' or device != 'cpu':
+        if not backend.name.endswith('_skcuda') or device != 'cpu':
             s2 = scattering(x2)
 
             assert(s2[:,torch.from_numpy(meta['order']) != 1,:].abs().max() < 1e-2)
@@ -111,7 +111,7 @@ def test_sample_scattering(device, backend):
 
     scattering = Scattering1D(J, T, Q, backend=backend, frontend='torch').to(device)
 
-    if backend.name == 'torch_skcuda' and device == 'cpu':
+    if backend.name.endswith('_skcuda') and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = scattering(x)
         assert "CPU" in ve.value.args[0]
@@ -136,7 +136,7 @@ def test_computation_Ux(backend, device, random_state=42):
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float().to(device)
 
-    if backend.name != 'torch_skcuda' or device != 'cpu':
+    if not backend.name.endswith('skcuda') or device != 'cpu':
         s = scattering(x)
 
         # check that the keys in s correspond to the order 0 and second order
@@ -176,7 +176,7 @@ def test_scattering_GPU_CPU(backend, random_state=42):
     This function tests whether the CPU computations are equivalent to
     the GPU ones
     """
-    if torch.cuda.is_available() and backend.name != 'torch_skcuda':
+    if torch.cuda.is_available() and not backend.name.endswith('_skcuda'):
         torch.manual_seed(random_state)
 
         J = 6
@@ -223,7 +223,7 @@ def test_coordinates(device, backend, random_state=42):
 
         scattering.vectorize = False
 
-        if backend.name == 'torch_skcuda' and device == 'cpu':
+        if backend.name.endswith('skcuda') and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_dico = scattering(x)
             assert "CPU" in ve.value.args[0]
@@ -232,7 +232,7 @@ def test_coordinates(device, backend, random_state=42):
             s_dico = {k: s_dico[k].data for k in s_dico.keys()}
         scattering.vectorize = True
 
-        if backend.name == 'torch_skcuda' and device == 'cpu':
+        if backend.name.endswith('_skcuda') and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_vec = scattering(x)
             assert "CPU" in ve.value.args[0]
@@ -243,7 +243,7 @@ def test_coordinates(device, backend, random_state=42):
 
         meta = scattering.meta()
 
-        if backend.name != 'torch_skcuda' or device != 'cpu':
+        if not backend.name.endswith('_skcuda') or device != 'cpu':
             assert len(s_dico) == s_vec.shape[1]
 
             for cc in range(s_vec.shape[1]):
@@ -270,7 +270,7 @@ def test_precompute_size_scattering(device, backend, random_state=42):
 
     scattering.to(device)
     x = x.to(device)
-    if backend.name != 'torch_skcuda' or device != 'cpu':
+    if not backend.name.endswith('_skcuda') or device != 'cpu':
         for max_order in [1, 2]:
             scattering.max_order = max_order
             s_dico = scattering(x)
@@ -303,7 +303,7 @@ def test_differentiability_scattering(device, backend, random_state=42):
     This does NOT test whether the gradients are correct.
     """
 
-    if backend.name == "torch_skcuda":
+    if backend.name.endswith("_skcuda"):
         pytest.skip("The skcuda backend does not pass differentiability"
             "tests, but that's ok (for now).")
 
@@ -358,7 +358,7 @@ def test_batch_shape_agnostic(device, backend):
 
     x = torch.zeros(shape).to(device)
 
-    if backend.name == 'torch_skcuda' and device == 'cpu':
+    if backend.name.endswith('_skcuda') and device == 'cpu':
         with pytest.raises(TypeError) as ve:
             Sx = S(x)
         assert "CPU" in ve.value.args[0]
@@ -446,7 +446,7 @@ def test_modulus(device, backend, random_state=42):
     # Test with a random vector
     x = torch.randn(2, 4, 128, 2, requires_grad=True, device=device)
 
-    if backend.name == 'torch_skcuda' and device == 'cpu':
+    if backend.name.endswith('_skcuda') and device == 'cpu':
         # If we are using a GPU-only backend, make sure it raises the proper
         # errors for CPU tensors.
         with pytest.raises(TypeError) as re:
@@ -469,7 +469,7 @@ def test_modulus(device, backend, random_state=42):
         backend.modulus_complex(x_bad)
     assert "should be complex" in te.value.args[0]
 
-    if backend.name == "torch_skcuda":
+    if backend.name.endswith("_skcuda"):
         pytest.skip("The skcuda backend does not pass differentiability"
             "tests, but that's ok (for now).")
 
@@ -495,7 +495,7 @@ def test_subsample_fourier(backend, device, random_state=42):
     Tests whether the periodization in Fourier performs a good subsampling
     in time
     """
-    if backend.name == 'torch_skcuda' and device == 'cpu':
+    if backend.name.endswith('_skcuda') and device == 'cpu':
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
