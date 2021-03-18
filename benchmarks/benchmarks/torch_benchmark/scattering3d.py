@@ -1,6 +1,7 @@
 from kymatio.torch import HarmonicScattering3D
 import torch
 
+torch.manual_seed(42)
 
 backends = []
 

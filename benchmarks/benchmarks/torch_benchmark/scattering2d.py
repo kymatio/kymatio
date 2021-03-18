@@ -1,6 +1,7 @@
 from kymatio.torch import Scattering2D
 import torch
 
+torch.manual_seed(42)
 
 backends = []
 

@@ -1,6 +1,8 @@
 from kymatio.numpy import Scattering2D
 import numpy as np
 
+rng = np.random.RandomState(42)
+
 class BenchmarkScattering2D:
     timeout = 400 # in seconds
     param_names = ["sc_params"]
@@ -33,7 +35,7 @@ class BenchmarkScattering2D:
     def setup(self, sc_params):
         n_channels = 3
         scattering = Scattering2D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
-        x = np.random.randn(
+        x = rng.randn(
             sc_params["batch_size"],
             n_channels,
             sc_params["shape"][0],

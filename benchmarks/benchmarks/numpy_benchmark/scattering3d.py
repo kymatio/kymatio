@@ -1,6 +1,8 @@
 from kymatio.numpy import HarmonicScattering3D
 import numpy as np
 
+rng = np.random.RandomState(42)
+
 class BenchmarkHarmonicScattering3D:
     param_names = ["sc_params"]
     timeout = 400  # in seconds
@@ -26,7 +28,7 @@ class BenchmarkHarmonicScattering3D:
 
     def setup(self, sc_params):
         scattering = HarmonicScattering3D(J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
-        x = np.random.randn(
+        x = rng.randn(
             sc_params["batch_size"],
             sc_params["shape"][0],
             sc_params["shape"][1],
