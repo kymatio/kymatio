@@ -5,7 +5,7 @@
 doc/build/*
 .pytest_cache
 .cache/
-benchmarks/env/
+benchmarks/envs/
 benchmarks/html/
 benchmarks/kymatio/
 benchmarks/results/
