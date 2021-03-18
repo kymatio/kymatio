@@ -29,6 +29,6 @@ class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
 
     def get_config(self):
         keys = ["J", "Q", "max_order", "oversampling"]
-        return {key: self.__dict__[key] for key in keys}
+        return {key: self.getattr(key) for key in keys}
 
 ScatteringKeras1D._document()

@@ -31,6 +31,6 @@ class ScatteringKeras2D(ScatteringKeras, ScatteringBase2D):
 
     def get_config(self):
         keys = ["J", "L", "max_order", "pre_pad"]
-        return {key: self.__dict__[key] for key in keys}
+        return {key: self.getattr(key) for key in keys}
 
 ScatteringKeras2D._document()
