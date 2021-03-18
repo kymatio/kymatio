@@ -6,7 +6,7 @@ on:
 
 jobs:
     docs:
-        if: github.ref == 'refs/head/master'
+        if: github.ref == 'refs/heads/master'
         runs-on: ubuntu-20.04
 
         steps:
