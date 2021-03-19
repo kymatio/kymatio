@@ -15,6 +15,7 @@ git remote add deploy "https://token:${TOKEN}@github.com/${DOC_REPO}.git"
 git checkout -b gh-pages
 
 touch .nojekyll
+echo "www.kymat.io" > CNAME
 
 git add .
 
