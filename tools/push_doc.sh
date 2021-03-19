@@ -12,7 +12,6 @@ pushd "${repo_root}"
 
 git init
 git remote add deploy "https://token:${TOKEN}@github.com/${DOC_REPO}.git"
-git checkout -b gh-pages
 
 touch .nojekyll
 echo "www.kymat.io" > CNAME
@@ -23,7 +22,7 @@ msg="Pushing the docs for commit ${GITHUB_SHA} made on from ${GITHUB_REF} by ${G
 
 git commit -am "${msg}"
 
-git push deploy gh-pages --force
+git push deploy master --force
 
 popd
 
