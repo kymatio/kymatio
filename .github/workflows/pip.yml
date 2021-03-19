@@ -12,6 +12,9 @@ jobs:
             matrix:
                 python-version: [3.6, 3.7]
                 pytorch-version: [1.7, 1.8]
+                include:
+                    - python-version: 3.5
+                      pytorch-version: 1.5
 
         steps:
             - uses: actions/checkout@v1
@@ -24,7 +27,11 @@ jobs:
                   python3 -m pip install --upgrade pip
                   python3 -m pip install pytest pytest-cov
 
-                  if [ ${{ matrix.pytorch-version }} == '1.7' ]; then
+                  if [ ${{ matrix.pytorch-version }} == '1.5' ]; then
+                      pip install torch==1.5.1+cpu \
+                                  torchvision==0.6.1+cpu \
+                                  -f https://download.pytorch.org/whl/torch_stable.html
+                  elif [ ${{ matrix.pytorch-version }} == '1.7' ]; then
                       pip install torch==1.7.1+cpu \
                                   torchvision==0.8.2+cpu \
                                   torchaudio==0.7.2 \
