@@ -6,8 +6,6 @@ import os
 import io
 import numpy as np
 
-from packaging import version
-
 
 backends = []
 skcuda_available = False
@@ -18,22 +16,14 @@ try:
         skcuda_available = True
 except:
     Warning('torch_skcuda backend not available.')
-if version.parse(torch.__version__) >= version.parse('1.8'):
-    if skcuda_available:
-        from kymatio.scattering1d.backend.torch_skcuda_backend import backend
-        backends.append(backend)
 
-    from kymatio.scattering1d.backend.torch_backend import backend
+if skcuda_available:
+    from kymatio.scattering1d.backend.torch_skcuda_backend import backend
     backends.append(backend)
-else:
-    if skcuda_available:
-        from kymatio.scattering1d.backend.torch17_skcuda_backend import backend
-        backends.append(backend)
 
-    print('coucoubibi')
+from kymatio.scattering1d.backend.torch_backend import backend
+backends.append(backend)
 
-    from kymatio.scattering1d.backend.torch17_backend import backend
-    backends.append(backend)
 
 if torch.cuda.is_available():
     devices = ['cuda', 'cpu']
