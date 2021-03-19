@@ -3,6 +3,8 @@
 import torch
 from torch.nn import ReflectionPad2d
 from collections import namedtuple
+from packaging import version
+
 
 BACKEND_NAME = 'torch'
 
@@ -144,15 +146,20 @@ class SubsampleFourier(object):
         out = out.reshape(batch_shape + out.shape[-3:])
         return out
 
-
-fft = FFT(lambda x: torch.view_as_real(torch.fft.fft2(torch.view_as_complex(x))),
+if version.parse(torch.__version__) >= version.parse('1.8'):
+    fft = FFT(lambda x: torch.view_as_real(torch.fft.fft2(torch.view_as_complex(x))),
           lambda x: torch.view_as_real(torch.fft.ifft2(torch.view_as_complex(x))),
           lambda x: torch.fft.ifft2(torch.view_as_complex(x)).real,
           type_checks)
-
+else:
+    fft = FFT(lambda x: torch.fft(x, 2, normalized=False),
+              lambda x: torch.ifft(x, 2, normalized=False),
+              lambda x: torch.irfft(x, 2, normalized=False, onesided=False),
+              type_checks)
 
 backend = namedtuple('backend', ['name', 'cdgmm', 'modulus', 'subsample_fourier', 'fft', 'Pad', 'unpad', 'concatenate'])
 backend.name = 'torch'
+backend.version = torch.__version__
 backend.cdgmm = cdgmm
 backend.modulus = Modulus()
 backend.subsample_fourier = SubsampleFourier()

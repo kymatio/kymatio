@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 
 from collections import namedtuple
+from packaging import version
 
 BACKEND_NAME = 'torch'
 
@@ -130,15 +131,20 @@ def unpad(x, i0, i1):
     """
     return x[..., i0:i1]
 
-
-fft = FFT(lambda x: torch.view_as_real(torch.fft.fft(torch.view_as_complex(x))),
-    lambda x: torch.view_as_real(torch.fft.ifft(torch.view_as_complex(x))),
-    lambda x: torch.fft.ifft(torch.view_as_complex(x)).real,
-    type_checks)
+if version.parse(torch.__version__) >= version.parse('1.8'):
+    fft = FFT(lambda x: torch.view_as_real(torch.fft.fft(torch.view_as_complex(x))),
+              lambda x: torch.view_as_real(torch.fft.ifft(torch.view_as_complex(x))),
+              lambda x: torch.fft.ifft(torch.view_as_complex(x)).real, type_checks)
+else:
+    fft = FFT(lambda x: torch.fft(x, 1, normalized=False),
+              lambda x: torch.ifft(x, 1, normalized=False),
+              lambda x: torch.irfft(x, 1, normalized=False, onesided=False),
+              type_checks)
 
 
 backend = namedtuple('backend', ['name', 'modulus_complex', 'subsample_fourier', 'real', 'unpad', 'fft', 'concatenate'])
 backend.name = 'torch'
+backend.version = torch.__version__
 backend.modulus_complex = Modulus()
 backend.subsample_fourier = subsample_fourier
 backend.real = real
