@@ -20,7 +20,7 @@ class Pad(object):
     def __call__(self, x):
         paddings = [[0, 0]] * len(x.shape[:-2])
         paddings += [[self.pad_size[0], self.pad_size[1]], [self.pad_size[2], self.pad_size[3]]]
-        return tf.pad(x, paddings, mode="REFLECT")
+        return tf.cast(tf.pad(x, paddings, mode="REFLECT"), tf.complex64)
 
 
 class TensorFlowBackend2D(TensorFlowBackend):
