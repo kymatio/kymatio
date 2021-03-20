@@ -24,7 +24,7 @@ autodoc_mock_imports = ['torch', 'tensorflow', 'sklearn']
 # -- Project information -----------------------------------------------------
 
 project = 'kymatio'
-copyright = '2018–2020, The Kymatio Developers'
+copyright = '2018–2021, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
