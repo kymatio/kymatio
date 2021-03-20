@@ -1,7 +1,7 @@
 # Authors: Edouard Oyallon, Muawiz Chaudhary
 # Scientific Ancestry: Edouard Oyallon, Laurent Sifre, Joan Bruna
 
-def scattering2d(x, pad, unpad, pre_pad, backend, J, L, phi, psi, max_order,
+def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
         out_type='array'):
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
@@ -9,10 +9,9 @@ def scattering2d(x, pad, unpad, pre_pad, backend, J, L, phi, psi, max_order,
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
-
     # Define lists for output.
     out_S_0, out_S_1, out_S_2 = [], [], []
-    
+
     U_r = pad(x)
 
     U_0_c = fft(U_r, 'C2C')
