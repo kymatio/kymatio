@@ -1,6 +1,6 @@
 import numpy as np
 from collections import namedtuple
-from scipy.fftpack import fftn, ifftn
+from scipy.fft import fftn, ifftn
 
 
 BACKEND_NAME = 'numpy'

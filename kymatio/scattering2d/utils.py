@@ -1,4 +1,4 @@
-import scipy.fftpack
+import scipy.fft
 import warnings
 
 def compute_padding(M, N, J):
@@ -26,4 +26,4 @@ def compute_padding(M, N, J):
 def fft2(x):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore', FutureWarning)
-        return scipy.fftpack.fft2(x)
+        return scipy.fft.fft2(x)

@@ -128,8 +128,8 @@ backend.unpad = unpad
 backend.pad = pad
 backend.pad_1d = pad_1d
 backend.cdgmm = cdgmm
-backend.fft = FFT(lambda x:scipy.fftpack.fft(x),
-                  lambda x:scipy.fftpack.ifft(x),
-                  lambda x:np.real(scipy.fftpack.ifft(x)),
+backend.fft = FFT(lambda x:scipy.fft.fft(x),
+                  lambda x:scipy.fft.ifft(x),
+                  lambda x:np.real(scipy.fft.ifft(x)),
                   lambda x:None)
 backend.concatenate = concatenate
