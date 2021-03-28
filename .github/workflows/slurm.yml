@@ -19,8 +19,15 @@ jobs:
                   cat kymatio-${{ steps.getshortsha.outputs.job_id }}.err
                   echo "Output message"
                   cat kymatio-${{ steps.getshortsha.outputs.job_id }}.out
-            - name: If the job has failed
+            - name: If the job got cancelled
               if: ${{ cancelled() }}
               run: |
                   scancel ${{ steps.getshortsha.outputs.job_id }}
                   conda env remove --name ${{ steps.getshortsha.outputs.job_id }}
+            - name: If the job has failed
+              if: ${{ failure() }}
+              run: |
+                  echo "Error message"
+                  cat kymatio-${{ steps.getshortsha.outputs.job_id }}.err
+                  echo "Output message"
+                  cat kymatio-${{ steps.getshortsha.outputs.job_id }}.out
