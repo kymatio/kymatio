@@ -14,4 +14,3 @@ jobs:
             - name: Run scripts on slurm
               run: |
                   sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }}
-
