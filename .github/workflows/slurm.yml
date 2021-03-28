@@ -31,3 +31,4 @@ jobs:
                   cat kymatio-${{ steps.getshortsha.outputs.job_id }}.err
                   echo "Output message"
                   cat kymatio-${{ steps.getshortsha.outputs.job_id }}.out
+                  conda env remove --name ${{ steps.getshortsha.outputs.job_id }}
