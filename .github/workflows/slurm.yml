@@ -4,10 +4,9 @@ on:
     - push
     - pull_request
 jobs:
-    build:
+    enqueue:
         runs-on: [self-hosted, slurm] #enqueue:
-
-        enqueue:
+        steps:
             - uses: actions/checkout@v1
             - name: Get a short version of the GIT commit SHA to use in naming files
               id: getshortsha
