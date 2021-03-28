@@ -7,7 +7,7 @@ jobs:
     build:
         runs-on: [self-hosted, slurm] #enqueue:
 
-        steps:
+        enqueue:
             - uses: actions/checkout@v1
             - name: Get a short version of the GIT commit SHA to use in naming files
               id: getshortsha
