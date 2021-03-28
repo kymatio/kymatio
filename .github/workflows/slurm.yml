@@ -5,7 +5,7 @@ on:
     - pull_request
 jobs:
     enqueue:
-        runs-on: [self-hosted, slurm] #enqueue:
+        runs-on: [self-hosted, slurm]
         steps:
             - uses: actions/checkout@v1
             - name: Get a short version of the GIT commit SHA to use in naming files
@@ -13,5 +13,5 @@ jobs:
               run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
             - name: Run scripts on slurm
               run: |
-                  sbatch .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }}
+                  sbatch .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }} --wait
 
