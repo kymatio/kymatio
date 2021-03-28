@@ -13,9 +13,13 @@ jobs:
               run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
             - name: Run scripts on slurm
               run: |
-                  JOB_MSG=$(sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }})
-                  JOB_ID=${JOB_MSG##* }
+                  echo "::set-output name=job_id::${$(sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }})##* }"
                   echo "Error message"
-                  cat kymatio-${JOB_ID}.err
+                  cat kymatio-${{ steps.getshortsha.outputs.job_id }}.err
                   echo "Output message"
-                  cat kymatio-${JOB_ID}.out
+                  cat kymatio-${{ steps.getshortsha.outputs.job_id }}.out
+            - name: If the job has failed
+              if: ${{ cancelled() }}
+              run: |
+                  scancel ${{ steps.getshortsha.outputs.job_id }}
+                  conda env remove --name ${{ steps.getshortsha.outputs.job_id }}
