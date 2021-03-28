@@ -14,6 +14,5 @@ jobs:
               run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
             - name: Run scripts on slurm
               run: |
-                  pwd
-                  sbatch slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }}
+                  sbatch .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }}
 
