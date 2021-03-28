@@ -25,4 +25,3 @@ conda run -n $1 python3 setup.py develop
 conda run -n $1 pytest --cov=kymatio
 
 conda env remove --name $1
-dnsqkdnsqjkn

@@ -13,4 +13,9 @@ jobs:
               run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
             - name: Run scripts on slurm
               run: |
-                  sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }}
+                  JOB_MSG=$(sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }})
+                  JOB_ID=${JOB_MSG##* }
+                  echo "Error message"
+                  cat kymatio-${JOB_ID}.err
+                  echo "Output message"
+                  cat kymatio-${JOB_ID}.out
