@@ -11,10 +11,12 @@ jobs:
             - name: Get a short version of the GIT commit SHA to use in naming files
               id: getshortsha
               run: echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-            - name: Run scripts on slurm
-              run: export JOB_MSG=$(sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }})
+            - name: Run scripts on slurm and extract its PID
               id: jobid
+              run: |
+                  export JOB_MSG=$(sbatch --wait .github/workflows/slurm_conda.sh ${{ steps.getshortsha.outputs.sha_short }})
                   echo "::set-output name=job_id::${JOB_MSG##* }"
+            - name: Display messages
               run: |
                   echo "Error message"
                   cat kymatio-${{ steps.jobid.outputs.job_id }}.err
