@@ -145,7 +145,7 @@ ScatteringTorch1D._document()
 
 class TimeFrequencyScatteringTorch(TimeFrequencyScatteringBase, ScatteringTorch1D):
     def __init__(self, J, shape, Q, average=True, oversampling=0,
-            out_type="array", backend="torch"):
+                 out_type="array", backend="torch"):
         vectorize = True # for compatibility, will be removed in 0.3
 
         # Second-order scattering object for the time variable

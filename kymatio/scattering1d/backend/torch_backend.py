@@ -1,4 +1,5 @@
 import torch
+import torch.fft
 import torch.nn.functional as F
 from ...backend.torch_backend import TorchBackend
 
@@ -100,21 +101,21 @@ class TorchBackend1D(TorchBackend):
         x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
         x_r[..., 0] = x[..., 0]
 
-        return torch.fft(x_r, 1, normalized=False)
+        return torch.fft.fft(x_r, 1)
 
     @classmethod
     def irfft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.ifft(x, 1, normalized=False)[..., :1]
+        return torch.fft.ifft(x, 1, norm='forward')[..., :1]
 
     @classmethod
     def ifft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.ifft(x, 1, normalized=False)
+        return torch.fft.ifft(x, 1, norm='forward')
 
     @classmethod
     def transpose(cls, x):

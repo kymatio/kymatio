@@ -79,9 +79,9 @@ class NumpyBackend:
         if not cls._is_complex(A):
             raise TypeError('The first input must be complex.')
 
-        if A.shape[-len(B.shape):] != B.shape[:]:
-            raise RuntimeError('The inputs are not compatible for '
-                               'multiplication.')
+        # if A.shape[-len(B.shape):] != B.shape[:]:  # TODO
+        #     raise RuntimeError('The inputs are not compatible for '
+        #                        'multiplication.')
 
         if not cls._is_complex(B) and not cls._is_real(B):
             raise TypeError('The second input must be complex or real.')

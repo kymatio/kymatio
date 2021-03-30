@@ -1,4 +1,5 @@
 import math
+import torch
 
 def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
@@ -60,10 +61,12 @@ def timefrequency_scattering(
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
             out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
 
+    # For padding later
+    total_height = 2 ** math.ceil(1 + math.log2(len(psi1)))
+
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
         # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
-        total_height = 2 ** math.ceil(1+math.log2(len(psi1)))
         padding_row = 0 * S_1_tm
         for n1 in range(total_height - len(S_1_list)):
             S_1_list.append(padding_row)
@@ -73,7 +76,7 @@ def timefrequency_scattering(
         k_fr_J = max(sc_freq.J - oversampling, 0)
         S_1_tm_T = backend.transpose(S_1_tm)
         S_1_tm_T_hat = rfft(S_1_tm_T)
-        S_1_fr_T_c = cdgmm(S_1_tm_T_hat, sc_freq.phi_f[k_fr_J])
+        S_1_fr_T_c = cdgmm(S_1_tm_T_hat, sc_freq.phi_f[k_fr_J][:, None])
         S_1_fr_T_hat = subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
         S_1_fr_T = irfft(S_1_fr_T_hat)
         S_1_fr = backend.transpose(S_1_fr_T)
@@ -119,15 +122,17 @@ def timefrequency_scattering(
         # so we use IFFT which is equivalent up to conjugation.
         Y_2_hat = ifft(Y_2_T)
 
+        # Wavelet transform over frequency
         for n_fr in range(len(sc_freq.psi1_f)):
-            # Wavelet transform over frequency
             j_fr = sc_freq.psi1_f[n_fr]['j']
             k_fr = max(j_fr - oversampling, 0)
             Y_fr_c = cdgmm(Y_2_hat, sc_freq.psi1_f[n_fr][0])
             Y_fr_hat = subsample_fourier(Y_fr_c, 2**k_fr)
 
+            Y_fr_c = ifft(Y_fr_hat)
+
             # Modulus
-            U_2_m = modulus(Y_fr_hat)
+            U_2_m = modulus(Y_fr_c)
 
             # Low-pass filtering over frequency
             k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
@@ -149,12 +154,16 @@ def timefrequency_scattering(
             S_2_r = irfft(S_2_hat)
 
             # TODO unpad time domain
+            S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
+            S_2_list.append(S_2)
 
-            S_2_list.append(S_2_r)
+            out_S_2.append({'coef': S_2,
+                            'j': (j2, j_fr),
+                            'n': (n2, n_fr)})
 
     out_S = []
     out_S.extend(out_S_1)
-    #out_S.extend(out_S_2)
+    out_S.extend(out_S_2)
 
     if out_type == 'array':
         out_S = concatenate([x['coef'] for x in out_S])
