@@ -10,6 +10,7 @@ def timefrequency_scattering(
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
+    fft = backend.fft
     rfft = backend.rfft
     ifft = backend.ifft
     irfft = backend.irfft
@@ -63,11 +64,11 @@ def timefrequency_scattering(
 
     # For padding later
     total_height = 2 ** math.ceil(1 + math.log2(len(psi1)))
+    padding_row = 0 * S_1_tm
 
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
         # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
-        padding_row = 0 * S_1_tm
         for n1 in range(total_height - len(S_1_list)):
             S_1_list.append(padding_row)
         S_1_tm = concatenate(S_1_list)
@@ -76,7 +77,8 @@ def timefrequency_scattering(
         k_fr_J = max(sc_freq.J - oversampling, 0)
         S_1_tm_T = backend.transpose(S_1_tm)
         S_1_tm_T_hat = rfft(S_1_tm_T)
-        S_1_fr_T_c = cdgmm(S_1_tm_T_hat, sc_freq.phi_f[k_fr_J][:, None])
+        # TODO phi_f[0] was phi_f[k_fr_J]
+        S_1_fr_T_c = cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
         S_1_fr_T_hat = subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
         S_1_fr_T = irfft(S_1_fr_T_hat)
         S_1_fr = backend.transpose(S_1_fr_T)
@@ -110,7 +112,8 @@ def timefrequency_scattering(
 
         # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
         for n1 in range(total_height - len(Y_2_list)):
-            Y_2_list.append(padding_row)
+            Y_2_list.append(0 * Y_2_list[-1])  # TODO
+            # Y_2_list.append(padding_row)
 
         # Concatenate along the frequency axis
         Y_2 = concatenate(Y_2_list)
@@ -120,7 +123,7 @@ def timefrequency_scattering(
 
         # Complex FFT is not implemented in the backend, only RFFT and IFFT
         # so we use IFFT which is equivalent up to conjugation.
-        Y_2_hat = ifft(Y_2_T)
+        Y_2_hat = fft(Y_2_T)  # TODO added this to backend
 
         # Wavelet transform over frequency
         for n_fr in range(len(sc_freq.psi1_f)):
@@ -148,8 +151,9 @@ def timefrequency_scattering(
 
             # Low-pass filtering over time
             k2_J = max(J - j2 - oversampling, 0)
+            k2_r = max(j2 - oversampling, 0)  # TODO is this correct?
             U_2_hat = rfft(S_2_fr)
-            S_2_c = cdgmm(U_2_hat, phi[j2])
+            S_2_c = cdgmm(U_2_hat, phi[k2_r])  # was j2
             S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
             S_2_r = irfft(S_2_hat)
 

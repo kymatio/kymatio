@@ -81,6 +81,10 @@ class NumpyBackend1D(NumpyBackend):
         return x[..., i0:i1]
 
     @classmethod
+    def fft(cls, x):
+        return cls._np.fft.fft(x)
+
+    @classmethod
     def rfft(cls, x):
         cls.real_check(x)
 
@@ -101,7 +105,7 @@ class NumpyBackend1D(NumpyBackend):
     @classmethod
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
-        return x.transpose(*list(range(x.ndim - 2)), -2, -1)
+        return x.transpose(*list(range(x.ndim - 2)), -1, -2)
 
 
 backend = NumpyBackend1D
