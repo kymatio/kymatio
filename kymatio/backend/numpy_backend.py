@@ -1,10 +1,10 @@
 import numpy
-import scipy.fftpack
+import scipy.fft
 
 
 class NumpyBackend:
     _np = numpy
-    _fft = scipy.fftpack
+    _fft = scipy.fft
 
     name = 'numpy'
 
