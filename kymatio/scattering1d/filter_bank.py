@@ -426,8 +426,9 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
     Parameters
     ----------
     sigma_min : float
-        This acts as a lower-bound on the frequential widths of the band-pass 
-        filters
+        This acts as a lower-bound on the frequential widths of the band-pass
+        filters. The low-pass filter may be wider (if T < 2**J_scattering), making
+        invariants over shorter time scales than longest band-pass filter.
     Q : int
         number of wavelets per octave.
     r_psi : float, optional
@@ -508,7 +509,8 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     Q : int
         number of wavelets per octave for the first order
     T : int
-        temporal support of low-pass filter for subsampling.
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -541,18 +543,18 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     """
     if Q < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
-    
+
     # lower bound of band-pass filter frequential widths:
     # for default T = 2**(J), this coincides with sigma_low
-    sigma_min = sigma0 / math.pow(2, J)  
-    
+    sigma_min = sigma0 / math.pow(2, J)
+
     xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q, r_psi=r_psi,
                                             alpha=alpha)
     xi2, sigma2, j2 = compute_params_filterbank(sigma_min, 1, r_psi=r_psi,
                                             alpha=alpha)
-    
+
     # width of the low-pass filter
-    sigma_low = sigma0 / T 
+    sigma_low = sigma0 / T
     return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
 
 
@@ -579,12 +581,13 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         2**J_support is the desired support size of the filters
     J_scattering : int
         parameter for the scattering transform (2**J_scattering
-        corresponds to the averaging support of the low-pass filter)
+        corresponds to maximal temporal support of any filter)
     Q : int
         number of wavelets per octave at the first order. For audio signals,
         a value Q >= 12 is recommended in order to separate partials.
     T : int
-        temporal support of low-pass filter for subsampling.
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -733,7 +736,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     phi_f['j'] = 0
 
     # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
+    # at the finest resolution  # TODO
     t_max_phi = compute_temporal_support(
         phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
 
