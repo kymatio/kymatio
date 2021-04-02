@@ -51,9 +51,13 @@ class ScatteringBase1D(ScatteringBase):
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
-        
+
         if self.T is None:
             self.T = 2**(self.J)
+        elif self.T > 2**(self.J):
+            raise ValueError("The temporal support T of the low-pass filter "
+                             "cannot exceed 2**J (got {} > {})".format(
+                                 self.T, 2**(self.J)))
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
