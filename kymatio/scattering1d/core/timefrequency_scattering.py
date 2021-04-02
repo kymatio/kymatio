@@ -62,15 +62,18 @@ def timefrequency_scattering(
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
             out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
 
-    # For padding later
-    total_height = 2 ** math.ceil(1 + math.log2(len(psi1)))
-    padding_row = 0 * S_1_tm
-
+    # For padding later; this enables convolving with longer lowpass filter
+    total_height = 2 ** sc_freq.J_pad
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
         # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
+        # TODO: above isn't correct
+        padding_row = 0 * S_1_tm
         for n1 in range(total_height - len(S_1_list)):
-            S_1_list.append(padding_row)
+            if n1 % 2 == 0:
+                S_1_list.insert(0, padding_row)
+            else:
+                S_1_list.append(padding_row)
         S_1_tm = concatenate(S_1_list)
 
         # Low-pass filtering over frequency
@@ -111,9 +114,12 @@ def timefrequency_scattering(
             Y_2_list.append(ifft(Y_2_hat))
 
         # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
+        padding_row = Y_2_hat * 0
         for n1 in range(total_height - len(Y_2_list)):
-            Y_2_list.append(0 * Y_2_list[-1])  # TODO
-            # Y_2_list.append(padding_row)
+            if n1 % 2 == 0:
+                Y_2_list.insert(0, padding_row)  # TODO
+            else:
+                Y_2_list.append(0 * padding_row)
 
         # Concatenate along the frequency axis
         Y_2 = concatenate(Y_2_list)
@@ -137,29 +143,34 @@ def timefrequency_scattering(
             # Modulus
             U_2_m = modulus(Y_fr_c)
 
-            # Low-pass filtering over frequency
-            k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
-            U_2_hat = rfft(U_2_m)
-            S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k_fr])
-            S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
-            S_2_fr = irfft(S_2_fr_hat)
+            if average:
+                # Low-pass filtering over frequency
+                k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
+                U_2_hat = rfft(U_2_m)
+                S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k_fr])
+                S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
+                S_2_fr = irfft(S_2_fr_hat)
 
-            # TODO unpad frequency domain iff out_type == "list"
+                # TODO unpad frequency domain iff out_type == "list"
 
-            # Swap time and frequency subscripts again
-            S_2_fr = backend.transpose(S_2_fr)
+                # Swap time and frequency subscripts again
+                S_2_fr = backend.transpose(S_2_fr)
 
-            # Low-pass filtering over time
-            k2_J = max(J - j2 - oversampling, 0)
-            k2_r = max(j2 - oversampling, 0)  # TODO is this correct?
-            U_2_hat = rfft(S_2_fr)
-            S_2_c = cdgmm(U_2_hat, phi[k2_r])  # was j2
-            S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
-            S_2_r = irfft(S_2_hat)
+                # Low-pass filtering over time
+                k2_J = max(J - j2 - oversampling, 0)
+                k2_r = max(j2 - oversampling, 0)  # TODO is this correct?
+                U_2_hat = rfft(S_2_fr)
+                S_2_c = cdgmm(U_2_hat, phi[k2_r])  # was j2
+                S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
+                S_2_r = irfft(S_2_hat)
 
-            # TODO unpad time domain
-            S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
-            S_2_list.append(S_2)
+                S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J],
+                            ind_end[k1 + k2 + k2_J])
+                S_2_list.append(S_2)
+            else:
+                S_2_r = backend.transpose(U_2_m)
+                S_2 = unpad(S_2_r, ind_start[k1 + k2],
+                            ind_end[k1 + k2])
 
             out_S_2.append({'coef': S_2,
                             'j': (j2, j_fr),

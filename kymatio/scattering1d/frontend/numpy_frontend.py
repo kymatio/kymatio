@@ -111,7 +111,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
                     len(x.shape)))
 
         if not self.average and self.out_type == 'array':
-            raise ValueError("Options average=False and out_type='array'"
+            raise ValueError("Options average=False and out_type='array' "
                              "are mutually incompatible. "
                              "Please set out_type='list'.")
 
