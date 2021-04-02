@@ -82,7 +82,8 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     Q : int
         number of wavelets per octave
     T : int
-        temporal support of low-pass filter for subsampling.
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
     normalize : string, optional
         normalization type for the wavelets.
         Only `'l2'` or `'l1'` normalizations are supported.
@@ -148,7 +149,8 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
         The number of first-order wavelets per octave.
         Second-order wavelets are fixed to one wavelet per octave.
     T : int
-        temporal support of low-pass filter for subsampling.        
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
@@ -200,7 +202,8 @@ def compute_meta_scattering(J, Q, T, max_order=2):
         The number of first-order wavelets per octave.
         Second-order wavelets are fixed to one wavelet per octave.
     T : int
-        temporal support of low-pass filter for subsampling.
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
 
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
