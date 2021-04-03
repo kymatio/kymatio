@@ -62,33 +62,40 @@ def timefrequency_scattering(
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
             out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
 
-    # For padding later; this enables convolving with longer lowpass filter
-    total_height = 2 ** sc_freq.J_pad
+
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
-        # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
-        # TODO: above isn't correct
+        # zero-pad along frequency; enables convolving with longer low-pass
+        total_height = 2 ** sc_freq.J_pad
         padding_row = 0 * S_1_tm
-        for n1 in range(total_height - len(S_1_list)):
-            if n1 % 2 == 0:
+        for i in range(total_height - len(S_1_list)):
+            if i % 2 == 0:
                 S_1_list.insert(0, padding_row)
             else:
                 S_1_list.append(padding_row)
         S_1_tm = concatenate(S_1_list)
 
+        # swap dims to convolve along frequency
+        S_1_tm_T = backend.transpose(S_1_tm)
+
         # Low-pass filtering over frequency
         k_fr_J = max(sc_freq.J - oversampling, 0)
-        S_1_tm_T = backend.transpose(S_1_tm)
         S_1_tm_T_hat = rfft(S_1_tm_T)
-        # TODO phi_f[0] was phi_f[k_fr_J]
         S_1_fr_T_c = cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
+        # TODO if `total_height` here disagrees with later's, must change k_fr_J
         S_1_fr_T_hat = subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
         S_1_fr_T = irfft(S_1_fr_T_hat)
+
+        # unpad + transpose, append to out
+        if out_type == 'list':  # TODO
+            S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start[k_fr_J],
+                             sc_freq.ind_end[k_fr_J])
         S_1_fr = backend.transpose(S_1_fr_T)
         out_S_1.append({'coef': S_1_fr, 'j': (), 'n': ()})
         # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
 
+    total_height = 2 ** sc_freq.J_pad
     # Second order:
     S_2_list = []
     for n2 in range(len(psi2)):
@@ -113,13 +120,13 @@ def timefrequency_scattering(
             Y_2_hat = subsample_fourier(Y_2_c, 2**k2)
             Y_2_list.append(ifft(Y_2_hat))
 
-        # Pad low-j1 region with zeros so that it has height 2 * Q1 * J
+        # zero-pad along frequency; enables convolving with longer low-pass
         padding_row = Y_2_hat * 0
-        for n1 in range(total_height - len(Y_2_list)):
-            if n1 % 2 == 0:
-                Y_2_list.insert(0, padding_row)  # TODO
+        for i in range(total_height - len(Y_2_list)):
+            if i % 2 == 0:
+                Y_2_list.insert(0, padding_row)
             else:
-                Y_2_list.append(0 * padding_row)
+                Y_2_list.append(padding_row)
 
         # Concatenate along the frequency axis
         Y_2 = concatenate(Y_2_list)

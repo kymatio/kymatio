@@ -370,11 +370,20 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
     def get_J_fr(self):
-        return int(math.log2(self.Q))
-        # return int(math.log2(self.Q * self.J))  # TODO
+        return int(math.log2(self.Q) + 1)  # TODO +1 or no +1
 
     def get_shape_fr(self):
-        return 2**math.ceil(1 + np.log2(self.Q * self.J))
+        """This is equivalent to `len(x)` along frequency, which varies across
+        `psi2`; we set this to the longest among them to support all subsamplings
+        and enable concatenation.
+        """
+        # highest j2 wavelet convolves with the most psi1 wavelets
+        j2_max = self.psi2_f[-1]['j']
+        max_freq_nrows= 0
+        for n1 in range(len(self.psi1_f)):
+            if j2_max > self.psi1_f[n1]['j']:
+                max_freq_nrows += 1
+        return max_freq_nrows
 
     @classmethod
     def _document(cls):

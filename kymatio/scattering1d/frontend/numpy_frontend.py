@@ -85,7 +85,7 @@ ScatteringNumPy1D._document()
 
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
-    def __init__(self, J, shape, Q, average=True, oversampling=0,
+    def __init__(self, J, shape, Q, J_fr=None, average=True, oversampling=0,
                  out_type="array", backend="numpy"):
         vectorize = True # for compatibility, will be removed in 0.3
 
@@ -96,13 +96,13 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             oversampling, vectorize, out_type, backend)
 
         # First-order scattering object for the frequency variable
-        max_order_fr = 1
-        shape_fr = (Q * J)
-        J_fr = self.get_J_fr()
-        Q_fr = 1
+        self.max_order_fr = 1
+        self.shape_fr = self.get_shape_fr()
+        self.J_fr = J_fr if J_fr is not None else self.get_J_fr()
+        self.Q_fr = Q  # TODO this was =1, but also unused
         self.sc_freq = ScatteringNumPy1D(
-            J_fr, shape_fr, Q, max_order_fr, average,
-            oversampling, vectorize, out_type, backend)
+            self.J_fr, self.shape_fr, self.Q_fr, self.max_order_fr, self.average,
+            self.oversampling, self.vectorize, self.out_type, self.backend)
 
     def scattering(self, x):
         if len(x.shape) < 1:
