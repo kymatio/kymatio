@@ -152,6 +152,10 @@ def timefrequency_scattering(
                 S_2_fr = irfft(S_2_fr_hat)
 
                 # TODO unpad frequency domain iff out_type == "list"
+                # TODO shouldn't we *always* unpad?
+                if out_type == 'list':
+                    S_2_fr = unpad(S_2_fr, sc_freq.ind_start[k_J_fr + k_fr],
+                                   sc_freq.ind_end[k_J_fr + k_fr])
 
                 # Swap time and frequency subscripts again
                 S_2_fr = backend.transpose(S_2_fr)
