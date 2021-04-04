@@ -113,7 +113,7 @@ def timefrequency_scattering(
 
             # Convolution and downsampling
             k1 = max(j1 - oversampling, 0)       # what we subsampled in 1st-order
-            k2 = max(j2 - j1 - oversampling, 0)  # what we subsample now in 2nd
+            k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
             Y_2_c = cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = subsample_fourier(Y_2_c, 2**k2)
             Y_2_list.append(ifft(Y_2_hat))
@@ -170,7 +170,7 @@ def timefrequency_scattering(
                     S_2_fr = backend.transpose(S_2_fr)
 
                     # Low-pass filtering over time
-                    k2_tm_J = max(J - j2 - oversampling, 0)
+                    k2_tm_J = max(J - k1_plus_k2 - oversampling, 0)
                     U_2_hat = rfft(S_2_fr)
                     S_2_c = cdgmm(U_2_hat, phi[k1_plus_k2])
                     S_2_hat = subsample_fourier(S_2_c, 2**k2_tm_J)
