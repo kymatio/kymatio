@@ -277,3 +277,13 @@ def compute_meta_scattering(J, Q, max_order=2):
         meta[field] = np.array(meta[field])
 
     return meta
+
+
+def compute_spin_down_filters(psi_up, backend):
+    """Copy all of `psi_up`'s dicts but conjugate arrays."""
+    psi_down = []
+    for psi in psi_up:
+        psi = psi.copy()
+        psi[0] = backend.conj_fr(psi[0])
+        psi_down.append(psi)
+    return psi_down

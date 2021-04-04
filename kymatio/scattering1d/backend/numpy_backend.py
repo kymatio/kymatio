@@ -107,5 +107,19 @@ class NumpyBackend1D(NumpyBackend):
         """Permute time and frequency dimension for time-frequency scattering"""
         return x.transpose(*list(range(x.ndim - 2)), -1, -2)
 
+    @classmethod
+    def conj_fr(cls, x, copy=True):
+        """Conjugate in frequency domain by swapping all bins (except dc);
+        assumes frequency along last axis.
+        """
+        if copy:
+            out = cls._np.zeros(x.shape, dtype=x.dtype)
+            out[..., 0] = x[..., 0]
+            out[..., 1:] = x[..., 1:][..., ::-1]
+            return out
+        else:
+            x[..., 1:] = x[..., 1:][..., ::-1]
+            return x
+
 
 backend = NumpyBackend1D

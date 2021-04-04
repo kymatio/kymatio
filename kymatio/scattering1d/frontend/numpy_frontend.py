@@ -3,7 +3,7 @@ import warnings
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
-from ..utils import precompute_size_scattering
+from ..utils import precompute_size_scattering, compute_spin_down_filters
 from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 
@@ -103,6 +103,12 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         self.sc_freq = ScatteringNumPy1D(
             self.J_fr, self.shape_fr, self.Q_fr, self.max_order_fr, self.average,
             self.oversampling, self.vectorize, self.out_type, self.backend)
+
+        # build spin up & down wavelets
+        self.sc_freq.psi1_f_up = self.sc_freq.psi1_f
+        self.sc_freq.psi1_f_down = compute_spin_down_filters(
+            self.sc_freq.psi1_f_up, self.backend)
+        del self.sc_freq.psi1_f
 
     def scattering(self, x):
         if len(x.shape) < 1:

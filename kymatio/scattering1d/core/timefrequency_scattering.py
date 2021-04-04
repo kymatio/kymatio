@@ -20,7 +20,7 @@ def timefrequency_scattering(
     batch_size = x.shape[0]
     kJ = max(J - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
-    out_S_0, out_S_1, out_S_2 = [], [], []
+    out_S_0, out_S_1, out_S_2 = [], [], [[], []]
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
@@ -61,7 +61,6 @@ def timefrequency_scattering(
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
             out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
-
 
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
@@ -138,58 +137,63 @@ def timefrequency_scattering(
         # so we use IFFT which is equivalent up to conjugation.
         Y_2_hat = fft(Y_2_T)  # TODO added this to backend
 
-        # Wavelet transform over frequency
-        for n_fr in range(len(sc_freq.psi1_f)):
-            j_fr = sc_freq.psi1_f[n_fr]['j']
-            k_fr = max(j_fr - oversampling, 0)
-            Y_fr_c = cdgmm(Y_2_hat, sc_freq.psi1_f[n_fr][0])
-            Y_fr_hat = subsample_fourier(Y_fr_c, 2**k_fr)
+        # Wavelet transform over frequency, for both spins
+        for s_fr, psi1_f in enumerate([sc_freq.psi1_f_up, sc_freq.psi1_f_down]):
+            for n_fr in range(len(psi1_f)):
+                j_fr = psi1_f[n_fr]['j']
+                k_fr = max(j_fr - oversampling, 0)
+                Y_fr_c = cdgmm(Y_2_hat, psi1_f[n_fr][0])
+                Y_fr_hat = subsample_fourier(Y_fr_c, 2**k_fr)
 
-            Y_fr_c = ifft(Y_fr_hat)
+                Y_fr_c = ifft(Y_fr_hat)
 
-            # Modulus
-            U_2_m = modulus(Y_fr_c)
+                # Modulus
+                U_2_m = modulus(Y_fr_c)
 
-            if average:
-                # Low-pass filtering over frequency
-                k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
-                U_2_hat = rfft(U_2_m)
-                S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k_fr])
-                S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
-                S_2_fr = irfft(S_2_fr_hat)
+                if average:
+                    # Low-pass filtering over frequency
+                    k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
+                    U_2_hat = rfft(U_2_m)
+                    S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k_fr])
+                    S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
+                    S_2_fr = irfft(S_2_fr_hat)
 
-                # TODO unpad frequency domain iff out_type == "list"
-                # TODO shouldn't we *always* unpad?
-                if out_type == 'list':
-                    S_2_fr = unpad(S_2_fr, sc_freq.ind_start[k_J_fr + k_fr],
-                                   sc_freq.ind_end[k_J_fr + k_fr])
 
-                # Swap time and frequency subscripts again
-                S_2_fr = backend.transpose(S_2_fr)
+                    # TODO unpad frequency domain iff out_type == "list"
+                    # TODO shouldn't we *always* unpad?
+                    # if out_type == 'list':
+                    #     S_2_fr = unpad(S_2_fr, sc_freq.ind_start[k_J_fr + k_fr],
+                    #                    sc_freq.ind_end[k_J_fr + k_fr])
 
-                # Low-pass filtering over time
-                k2_J = max(J - j2 - oversampling, 0)
-                k2_r = max(j2 - oversampling, 0)  # TODO is this correct?
-                U_2_hat = rfft(S_2_fr)
-                S_2_c = cdgmm(U_2_hat, phi[k2_r])  # was j2
-                S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
-                S_2_r = irfft(S_2_hat)
+                    # Swap time and frequency subscripts again
+                    S_2_fr = backend.transpose(S_2_fr)
 
-                S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J],
-                            ind_end[k1 + k2 + k2_J])
-                S_2_list.append(S_2)
-            else:
-                S_2_r = backend.transpose(U_2_m)
-                S_2 = unpad(S_2_r, ind_start[k1 + k2],
-                            ind_end[k1 + k2])
+                    # Low-pass filtering over time
+                    k2_J = max(J - j2 - oversampling, 0)
+                    k2_r = max(j2 - oversampling, 0)  # TODO is this correct?
+                    U_2_hat = rfft(S_2_fr)
+                    S_2_c = cdgmm(U_2_hat, phi[k2_r])  # was j2
+                    S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
+                    S_2_r = irfft(S_2_hat)
 
-            out_S_2.append({'coef': S_2,
-                            'j': (j2, j_fr),
-                            'n': (n2, n_fr)})
+                    S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J],
+                                ind_end[k1 + k2 + k2_J])
+                    S_2_list.append(S_2)
+                else:
+                    S_2_r = backend.transpose(U_2_m)
+                    S_2 = unpad(S_2_r, ind_start[k1 + k2],
+                                ind_end[k1 + k2])
+
+                spin = (1, -1)[s_fr]
+                out_S_2[s_fr].append({'coef': S_2,
+                                      'j': (j2, j_fr),
+                                      'n': (n2, n_fr),
+                                      's': spin})
 
     out_S = []
     out_S.extend(out_S_1)
-    out_S.extend(out_S_2)
+    for o in out_S_2:
+        out_S.extend(o)
 
     if out_type == 'array':
         out_S = concatenate([x['coef'] for x in out_S])
