@@ -99,7 +99,6 @@ def timefrequency_scattering(
     S_2_list = []
     for n2 in range(len(psi2)):
         j2 = psi2[n2]['j']
-
         if j2 == 0:
             continue
 
@@ -113,11 +112,14 @@ def timefrequency_scattering(
             U_1_hat = U_1_hat_list[n1]
 
             # Convolution and downsampling
-            k1 = max(j1 - oversampling, 0)
-            k2 = max(j2 - j1 - oversampling, 0)
+            k1 = max(j1 - oversampling, 0)       # what we subsampled in 1st-order
+            k2 = max(j2 - j1 - oversampling, 0)  # what we subsample now in 2nd
             Y_2_c = cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = subsample_fourier(Y_2_c, 2**k2)
             Y_2_list.append(ifft(Y_2_hat))
+
+        # sum is same for all `n1`, just take last
+        k1_plus_k2 = k1 + k2
 
         # zero-pad along frequency; enables convolving with longer low-pass
         padding_row = Y_2_hat * 0
@@ -139,11 +141,11 @@ def timefrequency_scattering(
 
         # Wavelet transform over frequency, for both spins
         for s_fr, psi1_f in enumerate([sc_freq.psi1_f_up, sc_freq.psi1_f_down]):
-            for n_fr in range(len(psi1_f)):
-                j_fr = psi1_f[n_fr]['j']
-                k_fr = max(j_fr - oversampling, 0)
-                Y_fr_c = cdgmm(Y_2_hat, psi1_f[n_fr][0])
-                Y_fr_hat = subsample_fourier(Y_fr_c, 2**k_fr)
+            for n1_fr in range(len(psi1_f)):
+                j1_fr = psi1_f[n1_fr]['j']
+                k1_fr = max(j1_fr - oversampling, 0)
+                Y_fr_c = cdgmm(Y_2_hat, psi1_f[n1_fr][0])
+                Y_fr_hat = subsample_fourier(Y_fr_c, 2**k1_fr)
 
                 Y_fr_c = ifft(Y_fr_hat)
 
@@ -152,42 +154,40 @@ def timefrequency_scattering(
 
                 if average:
                     # Low-pass filtering over frequency
-                    k_J_fr = max(sc_freq.J - k_fr - oversampling, 0)
+                    k1_fr_J = max(sc_freq.J - k1_fr - oversampling, 0)
                     U_2_hat = rfft(U_2_m)
-                    S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k_fr])
-                    S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k_J_fr)
+                    S_2_fr_c = cdgmm(U_2_hat, sc_freq.phi_f[k1_fr])
+                    S_2_fr_hat = subsample_fourier(S_2_fr_c, 2**k1_fr_J)
                     S_2_fr = irfft(S_2_fr_hat)
-
 
                     # TODO unpad frequency domain iff out_type == "list"
                     # TODO shouldn't we *always* unpad?
                     if out_type == 'list':
-                        S_2_fr = unpad(S_2_fr, sc_freq.ind_start[k_J_fr + k_fr],
-                                        sc_freq.ind_end[k_J_fr + k_fr])
+                        S_2_fr = unpad(S_2_fr, sc_freq.ind_start[k1_fr_J + k1_fr],
+                                       sc_freq.ind_end[k1_fr_J + k1_fr])
 
                     # Swap time and frequency subscripts again
                     S_2_fr = backend.transpose(S_2_fr)
 
                     # Low-pass filtering over time
-                    k2_J = max(J - j2 - oversampling, 0)
-                    k2_r = max(j2 - oversampling, 0)  # TODO is this correct?
+                    k2_tm_J = max(J - j2 - oversampling, 0)
                     U_2_hat = rfft(S_2_fr)
-                    S_2_c = cdgmm(U_2_hat, phi[k2_r])  # was j2
-                    S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
+                    S_2_c = cdgmm(U_2_hat, phi[k1_plus_k2])
+                    S_2_hat = subsample_fourier(S_2_c, 2**k2_tm_J)
                     S_2_r = irfft(S_2_hat)
 
-                    S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J],
-                                ind_end[k1 + k2 + k2_J])
+                    S_2 = unpad(S_2_r, ind_start[k1_plus_k2 + k2_tm_J],
+                                ind_end[k1_plus_k2 + k2_tm_J])
                     S_2_list.append(S_2)
                 else:
                     S_2_r = backend.transpose(U_2_m)
-                    S_2 = unpad(S_2_r, ind_start[k1 + k2],
-                                ind_end[k1 + k2])
+                    S_2 = unpad(S_2_r, ind_start[k1_plus_k2],
+                                ind_end[k1_plus_k2])
 
                 spin = (1, -1)[s_fr]
                 out_S_2[s_fr].append({'coef': S_2,
-                                      'j': (j2, j_fr),
-                                      'n': (n2, n_fr),
+                                      'j': (j2, j1_fr),
+                                      'n': (n2, n1_fr),
                                       's': spin})
 
     out_S = []
