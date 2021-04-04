@@ -1,5 +1,3 @@
-import math
-import torch
 
 def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
@@ -8,6 +6,7 @@ def timefrequency_scattering(
     """
     Main function implementing the joint time-frequency scattering transform.
     """
+    transpose = backend.transpose
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
     fft = backend.fft
@@ -20,7 +19,7 @@ def timefrequency_scattering(
     batch_size = x.shape[0]
     kJ = max(J - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
-    out_S_0, out_S_1, out_S_2 = [], [], [[], []]
+    out_S_1, out_S_2 = [], [[], []]
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
@@ -75,7 +74,7 @@ def timefrequency_scattering(
         S_1_tm = concatenate(S_1_list)
 
         # swap dims to convolve along frequency
-        S_1_tm_T = backend.transpose(S_1_tm)
+        S_1_tm_T = transpose(S_1_tm)
 
         # Low-pass filtering over frequency
         k_fr_J = max(sc_freq.J - oversampling, 0)
@@ -89,14 +88,13 @@ def timefrequency_scattering(
         if out_type == 'list':  # TODO
             S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start[k_fr_J],
                              sc_freq.ind_end[k_fr_J])
-        S_1_fr = backend.transpose(S_1_fr_T)
+        S_1_fr = transpose(S_1_fr_T)
         out_S_1.append({'coef': S_1_fr, 'j': (), 'n': ()})
         # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
 
     total_height = 2 ** sc_freq.J_pad
-    # Second order:
-    S_2_list = []
+    # Second order: separable convolutions (along time & freq), and low-pass
     for n2 in range(len(psi2)):
         j2 = psi2[n2]['j']
         if j2 == 0:
@@ -133,25 +131,26 @@ def timefrequency_scattering(
         Y_2 = concatenate(Y_2_list)
 
         # Swap time and frequency subscripts to prepare for frequency scattering
-        Y_2_T = backend.transpose(Y_2)
+        Y_2_T = transpose(Y_2)
 
         # Complex FFT is not implemented in the backend, only RFFT and IFFT
         # so we use IFFT which is equivalent up to conjugation.
-        Y_2_hat = fft(Y_2_T)  # TODO added this to backend
+        Y_2_hat = fft(Y_2_T)
 
-        # Wavelet transform over frequency, for both spins
-        for s_fr, psi1_f in enumerate([sc_freq.psi1_f_up, sc_freq.psi1_f_down]):
+        # Transform over frequency + low-pass, for both spins
+        for s1_fr, psi1_f in enumerate([sc_freq.psi1_f_up, sc_freq.psi1_f_down]):
             for n1_fr in range(len(psi1_f)):
+                # Wavelet transform over frequency
                 j1_fr = psi1_f[n1_fr]['j']
                 k1_fr = max(j1_fr - oversampling, 0)
                 Y_fr_c = cdgmm(Y_2_hat, psi1_f[n1_fr][0])
                 Y_fr_hat = subsample_fourier(Y_fr_c, 2**k1_fr)
-
                 Y_fr_c = ifft(Y_fr_hat)
 
                 # Modulus
                 U_2_m = modulus(Y_fr_c)
 
+                # convolve by Phi = phi_t * phi_f
                 if average:
                     # Low-pass filtering over frequency
                     k1_fr_J = max(sc_freq.J - k1_fr - oversampling, 0)
@@ -167,7 +166,7 @@ def timefrequency_scattering(
                                        sc_freq.ind_end[k1_fr_J + k1_fr])
 
                     # Swap time and frequency subscripts again
-                    S_2_fr = backend.transpose(S_2_fr)
+                    S_2_fr = transpose(S_2_fr)
 
                     # Low-pass filtering over time
                     k2_tm_J = max(J - k1_plus_k2 - oversampling, 0)
@@ -178,17 +177,16 @@ def timefrequency_scattering(
 
                     S_2 = unpad(S_2_r, ind_start[k1_plus_k2 + k2_tm_J],
                                 ind_end[k1_plus_k2 + k2_tm_J])
-                    S_2_list.append(S_2)
                 else:
-                    S_2_r = backend.transpose(U_2_m)
+                    S_2_r = transpose(U_2_m)
                     S_2 = unpad(S_2_r, ind_start[k1_plus_k2],
                                 ind_end[k1_plus_k2])
 
-                spin = (1, -1)[s_fr]
-                out_S_2[s_fr].append({'coef': S_2,
-                                      'j': (j2, j1_fr),
-                                      'n': (n2, n1_fr),
-                                      's': spin})
+                spin = (1, -1)[s1_fr]
+                out_S_2[s1_fr].append({'coef': S_2,
+                                       'j': (j2, j1_fr),
+                                       'n': (n2, n1_fr),
+                                       's': spin})
 
     out_S = []
     out_S.extend(out_S_1)
@@ -202,5 +200,6 @@ def timefrequency_scattering(
             x.pop('n')
 
     return out_S
+
 
 __all__ = ['timefrequency_scattering']
