@@ -17,7 +17,7 @@ def timefrequency_scattering(
     out_S_1 = []
     out_S_2 = {'psi_t * psi_f': [[], []],
                'psi_t * phi_f': [],
-               'phi_t * psi_f': [[], []]}
+               'phi_t * psi_f': [[]]}
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
@@ -26,8 +26,7 @@ def timefrequency_scattering(
     U_0_hat = B.rfft(U_0)
 
     # First order:
-    U_1_hat_list = []
-    S_1_list = []
+    U_1_hat_list, S_1_list, S_1_c_list = [], [], []
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
@@ -48,6 +47,7 @@ def timefrequency_scattering(
             # Low-pass filtering over time
             k1_J = max(J - k1 - oversampling, 0)
             S_1_c = B.cdgmm(U_1_hat, phi[k1])
+            S_1_c_list.append(S_1_c)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
 
@@ -123,21 +123,19 @@ def timefrequency_scattering(
     ##########################################################################
     # Second order: `X * (phi_t * psi_f)`
     # take largest subsampling factor
-    j2 = psi2[-1]['j']
+    j2 = J - 1
 
     # Low-pass filtering over time, with filter length matching first-order's
     Y_2_list = []
     for n1 in range(len(psi1)):
-        # Retrieve first-order coefficient in the list
         j1 = psi1[n1]['j']
         if j1 >= j2:
             continue
-        U_1_hat = U_1_hat_list[n1]
 
         # Convolution and downsampling
         k1 = max(j1 - oversampling, 0)       # what we subsampled in 1st-order
         k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
-        Y_2_c = B.cdgmm(U_1_hat, phi[k1])
+        Y_2_c = S_1_c_list[n1]               # reuse 1st-order U_1_hat * phi[k1]
         Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
         Y_2_list.append(B.ifft(Y_2_hat))
 

@@ -85,8 +85,8 @@ ScatteringNumPy1D._document()
 
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
-    def __init__(self, J, shape, Q, J_fr=None, average=True, oversampling=0,
-                 out_type="array", backend="numpy"):
+    def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
+                 oversampling=0, out_type="array", backend="numpy"):
         vectorize = True # for compatibility, will be removed in 0.3
 
         # Second-order scattering object for the time variable
@@ -99,7 +99,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         self.max_order_fr = 1
         self.shape_fr = self.get_shape_fr()
         self.J_fr = J_fr if J_fr is not None else self.get_J_fr()
-        self.Q_fr = Q  # TODO this was =1, but also unused
+        self.Q_fr = Q_fr
         self.sc_freq = ScatteringNumPy1D(
             self.J_fr, self.shape_fr, self.Q_fr, self.max_order_fr, self.average,
             self.oversampling, self.vectorize, self.out_type, self.backend)
@@ -128,7 +128,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
 
-        # Precompute output size
+        # Precompute output size  # TODO is this correct? and what's its point?
         size_scattering = 1 + self.J * (2*self.get_J_fr() + 1)
 
         S = timefrequency_scattering(
