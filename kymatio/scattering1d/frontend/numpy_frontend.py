@@ -42,9 +42,6 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 
         x = x.reshape((-1, 1) + signal_shape)
 
-        if self.T is None:
-            self.T = 2**(self.J)
-
         # get the arguments before calling the scattering
         # treat the arguments
         if self.vectorize:
