@@ -195,7 +195,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
             # Convolve by Phi = phi_t * phi_f
             S_2 = _joint_lowpass(U_2_m, k1_fr, k1_plus_k2, commons)
 
-            spin = (1, -1)[s1_fr]
+            spin = (1, -1)[s1_fr] if spin_down else 0
             out_S_2[s1_fr].append({'coef': S_2,
                                    'j': (j2, j1_fr),
                                    'n': (n2, n1_fr),
@@ -219,7 +219,8 @@ def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
 
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
-                    'n': (n2, -1)})
+                    'n': (n2, -1),
+                    's': 0})
 
 
 def _joint_lowpass(U_2_m, k1_fr, k1_plus_k2, commons):

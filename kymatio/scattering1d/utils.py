@@ -279,6 +279,124 @@ def compute_meta_scattering(J, Q, max_order=2):
     return meta
 
 
+def compute_meta_jtfs(J, Q, J_fr, Q_fr):
+    """Get metadata on the Joint Time-Frequency Scattering transform.
+
+    This information specifies the content of each scattering coefficient,
+    which order, which frequencies, which filters were used, and so on.
+
+    Parameters
+    ----------
+    J : int
+        The maximum log-scale of the scattering transform.
+        In other words, the maximum scale is given by `2**J`.
+    Q : int >= 1
+        The number of first-order wavelets per octave.
+    J_fr, Q_fr: int, int
+        `J` and `Q` for frequential scattering.
+
+    Returns
+    -------
+    meta : dictionary
+        A dictionary with the following keys:
+
+        - `'order`' : tensor
+            A Tensor of length `C`, the total number of scattering
+            coefficients, specifying the scattering order.
+        - `'xi'` : tensor
+            A Tensor of size `(C, max_order)`, specifying the center
+            frequency of the filter used at each order (padded with NaNs).
+        - `'sigma'` : tensor
+            A Tensor of size `(C, max_order)`, specifying the frequency
+            bandwidth of the filter used at each order (padded with NaNs).
+        - `'j'` : tensor
+            A Tensor of size `(C, max_order)`, specifying the dyadic scale
+            of the filter used at each order (padded with NaNs).
+        - `'n'` : tensor
+            A Tensor of size `(C, max_order)`, specifying the indices of
+            the filters used at each order (padded with NaNs).
+        - `'s'` : tensor
+            A Tensor of size `(C, max_order)`, specifying the spin of
+            each frequency scattering filter (+1=up, -1=down).
+        - `'key'` : list
+            The tuples indexing the corresponding scattering coefficient
+            in the non-vectorized output.
+    """
+    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
+        calibrate_scattering_filters(J, Q)
+    sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
+        calibrate_scattering_filters(J_fr, Q_fr)
+
+    meta = {}
+    inf = -1  # placeholder for infinity
+
+    for field in ('order', 'xi', 'sigma', 'j', 'n', 's', 'key'):
+        meta[field] = [[], [], [], []]
+
+    # TODO drop `order`?
+    # TODO -1 or inf doesn't make sense for `key`
+    # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
+    meta['order'][0].append(0)
+    for field in meta:
+        if field != 'order':
+            meta[field][0].append(())
+
+    # `psi_t * psi_f` coeffs
+    for spin in (1, -1):
+        for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
+            if j2 == 0:
+                continue
+            for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
+                 ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
+                meta['order'][1].append(1)
+                meta['xi'][1].append((xi2, xi1_fr,))
+                meta['sigma'][1].append((sigma2, sigma1_fr,))
+                meta['j'][1].append((j2, j1_fr))
+                meta['n'][1].append((n2, n1_fr))
+                meta['s'][1].append(spin)
+                meta['key'][1].append((n2, n1_fr))
+
+    # `psi_t * phi_f` coeffs
+    for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
+        if j2 == 0:
+            continue
+
+        meta['order'][2].append(1)
+        meta['xi'][2].append((xi2, 0))
+        meta['sigma'][2].append((sigma2, sigma_low_fr))
+        meta['j'][2].append((j2, J_fr - 1))
+        meta['n'][2].append((n2, inf))
+        meta['s'][2].append(0)
+        meta['key'][2].append((n2, inf))
+
+    # `phi_t * psi_f` coeffs
+    for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
+         ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
+        meta['order'][3].append(1)
+        meta['xi'][3].append((0, xi1_fr,))
+        meta['sigma'][3].append((sigma_low, sigma1_fr,))
+        meta['j'][3].append((J - 1, j1_fr))
+        meta['n'][3].append((inf, n1_fr))
+        meta['s'][3].append(0)
+        meta['key'][3].append((inf, n1_fr))
+
+    for field, value in meta.items():
+        meta[field] = [v for subvalue in value for v in subvalue]
+
+    pad_fields = ['xi', 'sigma', 'j', 'n']
+    pad_len = 2
+
+    for field in pad_fields:
+        meta[field] = [x + (math.nan,) * (pad_len - len(x)) for x in meta[field]]
+
+    array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's']
+
+    for field in array_fields:
+        meta[field] = np.array(meta[field])
+
+    return meta
+
+
 def compute_spin_down_filters(psi_up, backend):
     """Copy all of `psi_up`'s dicts but conjugate arrays."""
     psi_down = []

@@ -6,7 +6,7 @@ import numpy as np
 
 from ..filter_bank import scattering_filter_factory
 from ..utils import (compute_border_indices, compute_padding, compute_minimum_support_to_pad,
-compute_meta_scattering, precompute_size_scattering)
+compute_meta_scattering, compute_meta_jtfs, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -384,6 +384,19 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             if j2_max > self.psi1_f[n1]['j']:
                 max_freq_nrows += 1
         return max_freq_nrows
+
+    def meta(self):
+        """Get meta information on the transform
+
+        Calls the static method `compute_meta_jtfs()` with the parameters of the
+        transform object.
+
+        Returns
+        ------
+        meta : dictionary
+            See the documentation for `compute_meta_jtfs()`.
+        """
+        return compute_meta_jtfs(self.J, self.Q, self.J_fr, self.Q_fr)
 
     @classmethod
     def _document(cls):
