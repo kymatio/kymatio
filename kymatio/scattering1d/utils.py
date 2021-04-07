@@ -317,7 +317,7 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
             the filters used at each order (padded with NaNs).
         - `'s'` : tensor
             A Tensor of size `(C, max_order)`, specifying the spin of
-            each frequency scattering filter (+1=up, -1=down).
+            each frequency scattering filter (+1=up, -1=down, 0=none).
         - `'key'` : list
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.

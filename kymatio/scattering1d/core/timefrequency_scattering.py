@@ -42,12 +42,14 @@ def timefrequency_scattering(
         U_1_hat = B.rfft(U_1_m)
         U_1_hat_list.append(U_1_hat)
 
+        # compute even if `average=False`, since used in `phi_t * psi_f` pairs
+        S_1_c = B.cdgmm(U_1_hat, phi[k1])
+        S_1_c_list.append(S_1_c)
+
         # Apply low-pass filtering over time (optional) and unpad
         if average:
             # Low-pass filtering over time
             k1_J = max(J - k1 - oversampling, 0)
-            S_1_c = B.cdgmm(U_1_hat, phi[k1])
-            S_1_c_list.append(S_1_c)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
 
@@ -264,6 +266,7 @@ def _pad_transpose_fft(coeff_list, total_height, B, fft):
     # zero-pad along frequency; enables convolving with longer low-pass
     padding_row = coeff_list[-1] * 0
     for i in range(total_height - len(coeff_list)):
+        # TODO false logic
         if i % 2 == 0:
             coeff_list.insert(0, padding_row)
         else:
