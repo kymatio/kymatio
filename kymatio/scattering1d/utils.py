@@ -304,19 +304,19 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
             A Tensor of length `C`, the total number of scattering
             coefficients, specifying the scattering order.
         - `'xi'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the center
+            A Tensor of size `(C, 2)`, specifying the center
             frequency of the filter used at each order (padded with NaNs).
         - `'sigma'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the frequency
+            A Tensor of size `(C, 2)`, specifying the frequency
             bandwidth of the filter used at each order (padded with NaNs).
         - `'j'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the dyadic scale
+            A Tensor of size `(C, 2)`, specifying the dyadic scale
             of the filter used at each order (padded with NaNs).
         - `'n'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the indices of
+            A Tensor of size `(C, 2)`, specifying the indices of
             the filters used at each order (padded with NaNs).
         - `'s'` : tensor
-            A Tensor of size `(C, max_order)`, specifying the spin of
+            A Tensor of length `C`, specifying the spin of
             each frequency scattering filter (+1=up, -1=down, 0=none).
         - `'key'` : list
             The tuples indexing the corresponding scattering coefficient
@@ -331,15 +331,26 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
     inf = -1  # placeholder for infinity
 
     for field in ('order', 'xi', 'sigma', 'j', 'n', 's', 'key'):
-        meta[field] = [[], [], [], []]
+        meta[field] = [[], [], [], [], []]
+
+    # First-order coeffs
+    for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
+        meta['order'][0].append(1)
+        meta['xi'][0].append((xi1,))
+        meta['sigma'][0].append((sigma1,))
+        meta['j'][0].append((j1,))
+        meta['n'][0].append((n1,))
+        meta['s'][0].append(())
+        meta['key'][0].append((n1,))
 
     # TODO drop `order`?
     # TODO -1 or inf doesn't make sense for `key`
     # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
-    meta['order'][0].append(0)
+    # Frequential lowpass over first-order
+    meta['order'][1].append(0)
     for field in meta:
         if field != 'order':
-            meta[field][0].append(())
+            meta[field][1].append(())
 
     # `psi_t * psi_f` coeffs
     for spin in (1, -1):
@@ -348,37 +359,36 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
                 continue
             for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
                  ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-                meta['order'][1].append(1)
-                meta['xi'][1].append((xi2, xi1_fr,))
-                meta['sigma'][1].append((sigma2, sigma1_fr,))
-                meta['j'][1].append((j2, j1_fr))
-                meta['n'][1].append((n2, n1_fr))
-                meta['s'][1].append(spin)
-                meta['key'][1].append((n2, n1_fr))
+                meta['order'][2].append(1)
+                meta['xi'][2].append((xi2, xi1_fr,))
+                meta['sigma'][2].append((sigma2, sigma1_fr,))
+                meta['j'][2].append((j2, j1_fr))
+                meta['n'][2].append((n2, n1_fr))
+                meta['s'][2].append((spin,))
+                meta['key'][2].append((n2, n1_fr))
 
     # `psi_t * phi_f` coeffs
     for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
         if j2 == 0:
             continue
-
-        meta['order'][2].append(1)
-        meta['xi'][2].append((xi2, 0))
-        meta['sigma'][2].append((sigma2, sigma_low_fr))
-        meta['j'][2].append((j2, J_fr - 1))
-        meta['n'][2].append((n2, inf))
-        meta['s'][2].append(0)
-        meta['key'][2].append((n2, inf))
+        meta['order'][3].append(1)
+        meta['xi'][3].append((xi2, 0))
+        meta['sigma'][3].append((sigma2, sigma_low_fr))
+        meta['j'][3].append((j2, J_fr - 1))
+        meta['n'][3].append((n2, inf))
+        meta['s'][3].append((0,))
+        meta['key'][3].append((n2, inf))
 
     # `phi_t * psi_f` coeffs
     for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
          ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-        meta['order'][3].append(1)
-        meta['xi'][3].append((0, xi1_fr,))
-        meta['sigma'][3].append((sigma_low, sigma1_fr,))
-        meta['j'][3].append((J - 1, j1_fr))
-        meta['n'][3].append((inf, n1_fr))
-        meta['s'][3].append(0)
-        meta['key'][3].append((inf, n1_fr))
+        meta['order'][4].append(1)
+        meta['xi'][4].append((0, xi1_fr,))
+        meta['sigma'][4].append((sigma_low, sigma1_fr,))
+        meta['j'][4].append((J - 1, j1_fr))
+        meta['n'][4].append((inf, n1_fr))
+        meta['s'][4].append((0,))
+        meta['key'][4].append((inf, n1_fr))
 
     for field, value in meta.items():
         meta[field] = [v for subvalue in value for v in subvalue]
@@ -388,6 +398,8 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
 
     for field in pad_fields:
         meta[field] = [x + (math.nan,) * (pad_len - len(x)) for x in meta[field]]
+    # spin is of pad_len=1
+    meta['s'] = [(math.nan,) if s == () else s for s in meta['s']]
 
     array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's']
 

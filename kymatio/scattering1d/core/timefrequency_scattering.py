@@ -54,12 +54,12 @@ def timefrequency_scattering(
             S_1_r = B.irfft(S_1_hat)
 
             # Unpad
-            S_1_tm = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
-            S_1_list.append(S_1_tm)
+            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1_list.append(S_1)
         else:
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
-            out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
+        out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
 
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
@@ -79,7 +79,7 @@ def timefrequency_scattering(
             S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start[k_fr_J],
                              sc_freq.ind_end[k_fr_J])
         S_1_fr = B.transpose(S_1_fr_T)
-        out_S_1.append({'coef': S_1_fr, 'j': (), 'n': ()})
+        out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
         # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
     ##########################################################################
@@ -201,7 +201,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
             out_S_2[s1_fr].append({'coef': S_2,
                                    'j': (j2, j1_fr),
                                    'n': (n2, n1_fr),
-                                   's': spin})
+                                   's': (spin,)})
 
 
 def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
@@ -222,7 +222,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
                     'n': (n2, -1),
-                    's': 0})
+                    's': (0,)})
 
 
 def _joint_lowpass(U_2_m, k1_fr, k1_plus_k2, commons):
