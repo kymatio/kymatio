@@ -731,3 +731,40 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi
+
+
+def resample_frequential_filters(psi1_f, J_pad, normalize, P_max, eps):
+    """Resamples `psi1_f` filters according to `sc_freq.J_pad`, and returns them
+    along original samplings with dicts packed per same structure as `psi2_f`.
+    """
+    prev_pad = J_pad[-1]
+    j0 = 0
+    j0s = [j0]
+    psi1_f_new = [{} for _ in range(len(psi1_f))]
+    # J_pad is ordered lower to greater, so iterate backward then flip
+    for pad in J_pad[::-1][1:]:
+        if pad == -1:
+            j0s.append(-1)
+            continue
+        if pad < prev_pad:
+            j0 += 1
+            N = 2 ** pad
+            prev_pad = pad
+            for n1 in range(len(psi1_f)):
+                xi, sigma = psi1_f[n1]['xi'], psi1_f[n1]['sigma']
+                psi1_f_new[n1][j0] = morlet_1d(N, xi, sigma, normalize=normalize,
+                                               P_max=P_max, eps=eps)
+        j0s.append(j0)
+    j0s = j0s[::-1]  # flip so iteration order matches `n2`
+
+    # reorder dict keys like {0: ..., 1: ..., meta}
+    psi1_f_final = []
+    for n1 in range(len(psi1_f)):
+        psi1_f_final.append({0: psi1_f[n1][0]})
+        for j0 in range(1, 1 + len(psi1_f_new[n1])):
+            psi1_f_final[n1][j0] = psi1_f_new[n1][j0]
+
+        for field in ('xi', 'sigma', 'j'):
+            psi1_f_final[n1][field] = psi1_f[n1][field]
+
+    return psi1_f_final, j0s

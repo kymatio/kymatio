@@ -55,7 +55,7 @@ def compute_padding(J_pad, T):
     """
     T_pad = 2**J_pad
     if T_pad < T:
-        raise ValueError('Padding support should be larger than the original' +
+        raise ValueError('Padding support should be larger than the original '
                          'signal size!')
     to_add = 2**J_pad - T
     pad_left = to_add // 2
@@ -414,6 +414,8 @@ def compute_spin_down_filters(psi_up, backend):
     psi_down = []
     for psi in psi_up:
         psi = psi.copy()
-        psi[0] = backend.conj_fr(psi[0])
+        for k, v in psi.items():
+            if isinstance(k, int):
+                psi[k] = backend.conj_fr(psi[k])
         psi_down.append(psi)
     return psi_down

@@ -64,7 +64,7 @@ def timefrequency_scattering(
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
         # zero-pad along frequency, map to Fourier domain
-        total_height = 2 ** sc_freq.J_pad
+        total_height = 2 ** sc_freq.J_pad[-1]  # TODO
         S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
 
         # Low-pass filtering over frequency
@@ -90,7 +90,7 @@ def timefrequency_scattering(
             continue
 
         # Wavelet transform over time
-        Y_2_list = []
+        Y_2_arr = None
         for n1 in range(len(psi1)):
             # Retrieve first-order coefficient in the list
             j1 = psi1[n1]['j']
@@ -103,14 +103,18 @@ def timefrequency_scattering(
             k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
-            Y_2_list.append(B.ifft(Y_2_hat))
+            Y_2_c = B.ifft(Y_2_hat)
+
+            if Y_2_arr is None:
+                Y_2_arr = backend.zeros((2**sc_freq.J_pad[n2], Y_2_c.shape[-1]),
+                                        dtype=Y_2_c.dtype)
+            Y_2_arr[n1 + sc_freq.pad_left[n2]] = Y_2_c
 
         # sum is same for all `n1`, just take last
         k1_plus_k2 = k1 + k2
 
-        # zero-pad along frequency, map to Fourier domain
-        total_height = 2 ** sc_freq.J_pad
-        Y_2_hat = _pad_transpose_fft(Y_2_list, total_height, B, B.fft)
+        # zero-pad along frequency, map to Fourier domain  # TODO comment
+        Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
         # Transform over frequency + low-pass, for both spins
         # `* psi_f` part of `X * (psi_t * psi_f)`
@@ -128,7 +132,7 @@ def timefrequency_scattering(
     j2 = J - 1
 
     # Low-pass filtering over time, with filter length matching first-order's
-    Y_2_list = []
+    Y_2_arr = None  # TODO
     for n1 in range(len(psi1)):
         j1 = psi1[n1]['j']
         if j1 >= j2:
@@ -139,14 +143,18 @@ def timefrequency_scattering(
         k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
         Y_2_c = S_1_c_list[n1]               # reuse 1st-order U_1_hat * phi[k1]
         Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
-        Y_2_list.append(B.ifft(Y_2_hat))
+        Y_2_c = B.ifft(Y_2_hat)
+
+        if Y_2_arr is None:
+            Y_2_arr = backend.zeros((2**sc_freq.J_pad[-1], Y_2_c.shape[-1]),
+                                    dtype=Y_2_c.dtype)
+        Y_2_arr[n1 + sc_freq.pad_left[-1]] = Y_2_c
 
     # sum is same for all `n1`, just take last
     k1_plus_k2 = k1 + k2
 
     # zero-pad along frequency, map to Fourier domain
-    total_height = 2 ** sc_freq.J_pad
-    Y_2_hat = _pad_transpose_fft(Y_2_list, total_height, B, B.fft)
+    Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
     # Transform over frequency + low-pass
     # `* psi_f` part of `X * (phi_t * psi_f)`
@@ -185,9 +193,13 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
             # Wavelet transform over frequency
+            # k0_fr accounts for sc_freq.J_pad
+            j0_fr = sc_freq.j0s[n2]
             j1_fr = psi1_f[n1_fr]['j']
-            k1_fr = max(j1_fr - oversampling, 0)
-            Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][0])
+            k0_fr = j0_fr
+            k1_fr = max(j1_fr - k0_fr - oversampling, 0)
+
+            Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][k0_fr])
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**k1_fr)
             Y_fr_c = B.ifft(Y_fr_hat)
 
@@ -195,7 +207,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
             U_2_m = B.modulus(Y_fr_c)
 
             # Convolve by Phi = phi_t * phi_f
-            S_2 = _joint_lowpass(U_2_m, k1_fr, k1_plus_k2, commons)
+            S_2 = _joint_lowpass(U_2_m, k1_fr + k0_fr, k1_plus_k2, commons)
 
             spin = (1, -1)[s1_fr] if spin_down else 0
             out_S_2[s1_fr].append({'coef': S_2,
@@ -207,9 +219,11 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
 def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
     B, sc_freq, oversampling, *_ = commons
 
+    j0_fr = sc_freq.j0s[n2]
     j1_fr = sc_freq.psi1_f_up[-1]['j']   # take largest subsampling factor
-    k1_fr = max(j1_fr - oversampling, 0)
-    Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f[0])
+    k0_fr = j0_fr
+    k1_fr = max(j1_fr - k0_fr - oversampling, 0)
+    Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f[k0_fr])
     Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**k1_fr)
     Y_fr_c = B.ifft(Y_fr_hat)
 
@@ -217,7 +231,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
     U_2_m = B.modulus(Y_fr_c)
 
     # Convolve by Phi = phi_t * phi_f
-    S_2 = _joint_lowpass(U_2_m, k1_fr, k1_plus_k2, commons)
+    S_2 = _joint_lowpass(U_2_m, k1_fr + k0_fr, k1_plus_k2, commons)
 
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
@@ -276,6 +290,14 @@ def _pad_transpose_fft(coeff_list, total_height, B, fft):
     out = B.concatenate(coeff_list)
     # swap dims to convolve along frequency
     out = B.transpose(out)
+    # Map to Fourier domain
+    out = fft(out)
+    return out
+
+
+def _transpose_fft(coeff_arr, B, fft):
+    # swap dims to convolve along frequency
+    out = B.transpose(coeff_arr)
     # Map to Fourier domain
     out = fft(out)
     return out

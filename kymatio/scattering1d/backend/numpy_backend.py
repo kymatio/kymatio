@@ -81,6 +81,10 @@ class NumpyBackend1D(NumpyBackend):
         return x[..., i0:i1]
 
     @classmethod
+    def zeros(cls, shape, dtype=None):
+        return cls._np.zeros(shape, dtype=dtype)
+
+    @classmethod
     def fft(cls, x):
         return cls._np.fft.fft(x)
 

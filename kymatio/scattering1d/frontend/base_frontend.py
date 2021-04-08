@@ -4,9 +4,13 @@ import numbers
 
 import numpy as np
 
-from ..filter_bank import scattering_filter_factory
-from ..utils import (compute_border_indices, compute_padding, compute_minimum_support_to_pad,
-compute_meta_scattering, compute_meta_jtfs, precompute_size_scattering)
+from ..filter_bank import scattering_filter_factory, resample_frequential_filters
+from ..utils import (compute_border_indices, compute_padding,
+                     compute_minimum_support_to_pad,
+                     compute_meta_scattering,
+                     compute_meta_jtfs,
+                     precompute_size_scattering,
+                     compute_spin_down_filters)
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -368,22 +372,79 @@ class ScatteringBase1D(ScatteringBase):
             n=cls._doc_array_n)
 
 
-class TimeFrequencyScatteringBase(ScatteringBase1D):
+class TimeFrequencyScatteringBase():
+    def __init__(self, FrontendClass, J_fr=None, Q_fr=1):
+        self.FrontendClass = FrontendClass
+        self.J_fr = J_fr
+        self.Q_fr = Q_fr
+
+    def build(self):
+        # First-order scattering object for the frequency variable
+        self.max_order_fr = 1
+        self.shape_fr = self.get_shape_fr()
+        # Calibrate all filters with respect to the most obtainable freq rows
+        self.N_fr = self.shape_fr[-1]
+        if self.J_fr is None:
+            self.J_fr = self.get_J_fr()
+
+        self.sc_freq = self.FrontendClass(
+            self.J_fr, self.N_fr, self.Q_fr, self.max_order_fr, self.average,
+            self.oversampling, self.vectorize, self.out_type, self.backend)
+
+        self.compute_padding_fr()
+        self.sc_freq.psi1_f, self.sc_freq.j0s = resample_frequential_filters(
+            **self.get_fr_params('psi1_f', 'J_pad', 'normalize', 'P_max', 'eps'))
+
+        # build spin up & down wavelets
+        # TODO make `create_filters`?
+        self.sc_freq.psi1_f_up = self.sc_freq.psi1_f
+        self.sc_freq.psi1_f_down = compute_spin_down_filters(
+            self.sc_freq.psi1_f_up, self.backend)
+        del self.sc_freq.psi1_f
+
+    def compute_padding_fr(self):
+        self.sc_freq.J_pad, self.sc_freq.pad_left, self.sc_freq.pad_right = (
+            [], [], [])
+        for shape_fr in self.shape_fr:
+            if shape_fr != 0:
+                min_to_pad = compute_minimum_support_to_pad(
+                    shape_fr, self.J_fr, self.Q_fr,
+                    **self.get_fr_params('r_psi', 'sigma0', 'alpha', 'P_max',
+                                         'eps', 'criterion_amplitude',
+                                         'normalize'))
+
+                # to avoid padding more than N - 1 on the left and on the right,
+                # since otherwise torch sends nans
+                J_max_support = int(np.floor(np.log2(3 * shape_fr - 2)))
+                J_pad = min(int(np.ceil(np.log2(shape_fr + 2 * min_to_pad))),
+                            J_max_support)
+                # compute the padding quantities:
+                pads = compute_padding(J_pad, shape_fr)
+            else:
+                J_pad, pads = -1, (-1, -1)
+            self.sc_freq.J_pad.append(J_pad)
+            self.sc_freq.pad_left.append(pads[0])
+            self.sc_freq.pad_right.append(pads[1])
+
+    def get_fr_params(self, *args):
+        return {k: getattr(self.sc_freq, k) for k in args}
+
     def get_J_fr(self):
         return int(math.log2(self.Q) + 1)  # TODO +1 or no +1
 
     def get_shape_fr(self):
         """This is equivalent to `len(x)` along frequency, which varies across
-        `psi2`; we set this to the longest among them to support all subsamplings
-        and enable concatenation.
+        `psi2`, so we compute for each.
         """
-        # highest j2 wavelet convolves with the most psi1 wavelets
-        j2_max = self.psi2_f[-1]['j']
-        max_freq_nrows= 0
-        for n1 in range(len(self.psi1_f)):
-            if j2_max > self.psi1_f[n1]['j']:
-                max_freq_nrows += 1
-        return max_freq_nrows
+        shape_fr = []
+        for n2 in range(len(self.psi2_f)):
+            j2 = self.psi2_f[n2]['j']
+            max_freq_nrows = 0
+            for n1 in range(len(self.psi1_f)):
+                if j2 > self.psi1_f[n1]['j']:
+                    max_freq_nrows += 1
+            shape_fr.append(max_freq_nrows)
+        return shape_fr
 
     def meta(self):
         """Get meta information on the transform

@@ -3,7 +3,7 @@ import warnings
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
-from ..utils import precompute_size_scattering, compute_spin_down_filters
+from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 
@@ -87,6 +87,8 @@ ScatteringNumPy1D._document()
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
                  oversampling=0, out_type="array", backend="numpy"):
+        TimeFrequencyScatteringBase.__init__(self, ScatteringNumPy1D, J_fr, Q_fr)
+
         vectorize = True # for compatibility, will be removed in 0.3
 
         # Second-order scattering object for the time variable
@@ -95,20 +97,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             self, J, shape, Q, max_order_tm, average,
             oversampling, vectorize, out_type, backend)
 
-        # First-order scattering object for the frequency variable
-        self.max_order_fr = 1
-        self.shape_fr = self.get_shape_fr()
-        self.J_fr = J_fr if J_fr is not None else self.get_J_fr()
-        self.Q_fr = Q_fr
-        self.sc_freq = ScatteringNumPy1D(
-            self.J_fr, self.shape_fr, self.Q_fr, self.max_order_fr, self.average,
-            self.oversampling, self.vectorize, self.out_type, self.backend)
-
-        # build spin up & down wavelets
-        self.sc_freq.psi1_f_up = self.sc_freq.psi1_f
-        self.sc_freq.psi1_f_down = compute_spin_down_filters(
-            self.sc_freq.psi1_f_up, self.backend)
-        del self.sc_freq.psi1_f
+        TimeFrequencyScatteringBase.build(self)
 
     def scattering(self, x):
         if len(x.shape) < 1:
