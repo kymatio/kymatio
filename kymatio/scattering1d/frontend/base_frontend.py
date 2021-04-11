@@ -403,8 +403,10 @@ class TimeFrequencyScatteringBase():
         del self.sc_freq.psi1_f
 
     def compute_padding_fr(self):
-        self.sc_freq.J_pad, self.sc_freq.pad_left, self.sc_freq.pad_right = (
-            [], [], [])
+        """Long story"""  # TODO
+        for name in ('J_pad', 'pad_left', 'pad_right', 'ind_start', 'ind_end'):
+            setattr(self.sc_freq, name, [])
+
         for shape_fr in self.shape_fr:
             if shape_fr != 0:
                 min_to_pad = compute_minimum_support_to_pad(
@@ -418,13 +420,17 @@ class TimeFrequencyScatteringBase():
                 J_max_support = int(np.floor(np.log2(3 * shape_fr - 2)))
                 J_pad = min(int(np.ceil(np.log2(shape_fr + 2 * min_to_pad))),
                             J_max_support)
+
                 # compute the padding quantities:
-                pads = compute_padding(J_pad, shape_fr)
+                pad_left = 0
+                pad_right = 2**J_pad - pad_left - shape_fr
             else:
-                J_pad, pads = -1, (-1, -1)
+                J_pad, pad_left, pad_right = -1, -1, -1
             self.sc_freq.J_pad.append(J_pad)
-            self.sc_freq.pad_left.append(pads[0])
-            self.sc_freq.pad_right.append(pads[1])
+            self.sc_freq.pad_left.append(pad_left)
+            self.sc_freq.pad_right.append(pad_right)
+            self.sc_freq.ind_start.append(pad_left)
+            self.sc_freq.ind_end.append(pad_right)
 
     def get_fr_params(self, *args):
         return {k: getattr(self.sc_freq, k) for k in args}

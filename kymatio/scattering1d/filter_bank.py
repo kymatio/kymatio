@@ -752,10 +752,11 @@ def resample_frequential_filters(psi1_f, J_pad, normalize, P_max, eps):
             prev_pad = pad
             for n1 in range(len(psi1_f)):
                 xi, sigma = psi1_f[n1]['xi'], psi1_f[n1]['sigma']
+                # psi1_f_new[n1][j0] = periodize_filter_fourier(psi1_f[n1][0], 2**j0)
                 psi1_f_new[n1][j0] = morlet_1d(N, xi, sigma, normalize=normalize,
-                                               P_max=P_max, eps=eps)
+                                                P_max=P_max, eps=eps)
         j0s.append(j0)
-    j0s = j0s[::-1]  # flip so iteration order matches `n2`
+    j0s.reverse()  # flip so iteration order matches `n2`
 
     # reorder dict keys like {0: ..., 1: ..., meta}
     psi1_f_final = []

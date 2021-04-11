@@ -60,6 +60,9 @@ def timefrequency_scattering(
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
+    else:
+        # TODO what to do here?
+        out_S_1.append({'coef': [], 'j': (), 'n': (), 's': ()})
 
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
@@ -108,12 +111,12 @@ def timefrequency_scattering(
             if Y_2_arr is None:
                 Y_2_arr = backend.zeros((2**sc_freq.J_pad[n2], Y_2_c.shape[-1]),
                                         dtype=Y_2_c.dtype)
-            Y_2_arr[n1 + sc_freq.pad_left[n2]] = Y_2_c
+            Y_2_arr[n1] = Y_2_c
 
         # sum is same for all `n1`, just take last
         k1_plus_k2 = k1 + k2
 
-        # zero-pad along frequency, map to Fourier domain  # TODO comment
+        # swap axes & map to Fourier domain to prepare for conv along freq
         Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
         # Transform over frequency + low-pass, for both spins
@@ -132,7 +135,7 @@ def timefrequency_scattering(
     j2 = J - 1
 
     # Low-pass filtering over time, with filter length matching first-order's
-    Y_2_arr = None  # TODO
+    Y_2_arr = None
     for n1 in range(len(psi1)):
         j1 = psi1[n1]['j']
         if j1 >= j2:
@@ -148,12 +151,12 @@ def timefrequency_scattering(
         if Y_2_arr is None:
             Y_2_arr = backend.zeros((2**sc_freq.J_pad[-1], Y_2_c.shape[-1]),
                                     dtype=Y_2_c.dtype)
-        Y_2_arr[n1 + sc_freq.pad_left[-1]] = Y_2_c
+        Y_2_arr[n1] = Y_2_c
 
     # sum is same for all `n1`, just take last
     k1_plus_k2 = k1 + k2
 
-    # zero-pad along frequency, map to Fourier domain
+    # swap axes & map to Fourier domain to prepare for conv along freq
     Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
     # Transform over frequency + low-pass
@@ -280,11 +283,7 @@ def _pad_transpose_fft(coeff_list, total_height, B, fft):
     # zero-pad along frequency; enables convolving with longer low-pass
     padding_row = coeff_list[-1] * 0
     for i in range(total_height - len(coeff_list)):
-        # TODO false logic
-        if i % 2 == 0:
-            coeff_list.insert(0, padding_row)
-        else:
-            coeff_list.append(padding_row)
+        coeff_list.append(padding_row)
 
     # Concatenate along the frequency axis
     out = B.concatenate(coeff_list)
