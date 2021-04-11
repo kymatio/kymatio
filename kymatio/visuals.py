@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 __all__ = ['gif_jtfs']
 
 
-def gif_jtfs(Scx, meta, norms=(1e-4, 1e-6, 1e-4), inf_token=-1, skip_spins=False):
+def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
     # Arguments:
@@ -17,16 +17,29 @@ def gif_jtfs(Scx, meta, norms=(1e-4, 1e-6, 1e-4), inf_token=-1, skip_spins=False
         meta: list[dict]
             `scattering.meta()`.
 
-        norms: tuple
+        norms: None / tuple
             Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
             3) `phi_t * psi_f` pairs, respectively.
             Tuple of three (upper limits only, lower assumed 0).
+            If None, will auto-norm each slice (not recommended).
+            # TODO make better default
 
         inf_token: int / np.nan
             Placeholder used in `meta` to denote infinity.
 
         skip_spins: bool (default False)
             Whether to skip `psi_t * psi_f` pairs.
+
+    # Example:
+        T, J, Q = 2049, 7, 16
+        x = np.cos(np.pi * 350 ** np.linspace(0, 1, T))
+
+        scattering = TimeFrequencyScattering(J, T, Q, J_fr=4, Q_fr=2,
+                                             out_type='list', average=True)
+        Scx = scattering(x)
+        meta = scattering.meta()
+
+        gif_jtfs(Scx, meta)
     """
     def _title(meta, i, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
@@ -48,7 +61,10 @@ def gif_jtfs(Scx, meta, norms=(1e-4, 1e-6, 1e-4), inf_token=-1, skip_spins=False
         imshow(Scx[i]['coef'], abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
                title=_title(meta, i, '0'))
 
-    norms = [(0, n) for n in norms]
+    if norms is not None:
+        norms = [(0, n) for n in norms]
+    else:
+        norms = (None, None, None)
     n_spins = sum(int(s) for s in meta['s'][1:] if s == 1)
 
     i = 0
@@ -88,6 +104,9 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
     w, h: rescale width & height
     kw: passed to `plt.imshow()`
     """
+    ax  = ax  or plt.gca()
+    fig = fig or plt.gcf()
+
     if norm is None:
         mx = np.max(np.abs(x))
         vmin, vmax = ((-mx, mx) if not abs else
@@ -225,6 +244,9 @@ def _ticks(xticks, yticks):
 def _title(title, ax=None):
     title, kw = (title if isinstance(title, tuple) else
                  (title, {}))
+    defaults = dict(loc='left', fontsize=17, weight='bold')
+    for k, v in defaults.items():
+        kw[k] = kw.get(k, v)
 
     if ax:
         ax.set_title(str(title), **kw)
