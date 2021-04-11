@@ -1,28 +1,11 @@
 name: Kymatio Conda CI
 
 on:
-    push:
-        paths:
-          - "kymatio/*"
-          - "tests/*"
-          - ".github/workflows/*"
-          - ".coveragerc"
-          - "requirements.txt"
-          - "requirements_optional.txt"
-          
-    pull_request:
-        paths:
-          - "kymatio/*"
-          - "tests/*"
-          - ".github/workflows/*"
-          - ".coveragerc"
-          - "requirements.txt"
-          - "requirements_optional.txt"
+    - push
+    - pull_request
 
 jobs:
     build-conda:
-        if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
-
         runs-on: ubuntu-20.04
 
         strategy:
@@ -69,7 +52,4 @@ jobs:
             - name: Set up Kymatio
               run: conda run -n test-env python3 setup.py develop
             - name: Test
-              run: >
-                  conda run -n test-env pycodestyle --max-line-length=85 kymatio
-                  
-                  conda run -n test-env pytest --cov=kymatio
+              run: conda run -n test-env pytest --cov=kymatio
