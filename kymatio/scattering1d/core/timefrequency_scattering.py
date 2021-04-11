@@ -60,9 +60,6 @@ def timefrequency_scattering(
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
-    else:
-        # TODO what to do here?
-        out_S_1.append({'coef': [], 'j': (), 'n': (), 's': ()})
 
     # Apply low-pass filtering over frequency (optional) and unpad
     if average:
@@ -84,6 +81,9 @@ def timefrequency_scattering(
         S_1_fr = B.transpose(S_1_fr_T)
         out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
         # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
+    else:
+        # TODO what to do here?
+        out_S_1.append({'coef': [], 'j': (), 'n': (), 's': ()})
 
     ##########################################################################
     # Second order: separable convolutions (along time & freq), and low-pass
@@ -175,7 +175,7 @@ def timefrequency_scattering(
         else:
             out_S.extend(outs)
 
-    if out_type == 'array':
+    if out_type == 'array':  # TODO breaks for first-order coeffs
         out_S = B.concatenate([x['coef'] for x in out_S])
     # elif out_type == 'list':  # TODO why pop? need for viz
     #     for x in out_S:
