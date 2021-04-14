@@ -322,13 +322,8 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
             subsample_equiv_due_to_pad_min = 0
         elif out_type == 'list':
             subsample_equiv_due_to_pad_min = reference_subsample_equiv_due_to_pad
-        max_j1_fr = sc_freq.psi1_f_up[-1]['j']
-        max_n1_fr_subsample_min = max(max_j1_fr -
-                                      reference_subsample_equiv_due_to_pad -
-                                      oversampling, 0)
         reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
                                             n1_fr_subsample)
-                                            # max_n1_fr_subsample_min)
     else:
         reference_total_subsample_so_far = total_subsample_so_far
 
