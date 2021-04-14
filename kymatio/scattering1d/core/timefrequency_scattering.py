@@ -303,9 +303,22 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
+    if oversampling_fr == 'auto':
+        reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+        subsample_equiv_due_to_pad_min = reference_subsample_equiv_due_to_pad
+        max_j1_fr = sc_freq.psi1_f_up[-1]['j']
+        max_n1_fr_subsample_min = max(max_j1_fr -
+                                      reference_subsample_equiv_due_to_pad -
+                                      oversampling, 0)
+        reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
+                                            max_n1_fr_subsample_min)
+    else:
+        reference_total_subsample_so_far = total_subsample_so_far
+
     if average:
         lowpass_subsample_fr = max(total_subsample_fr_max -
-                                   total_subsample_so_far - oversampling, 0)
+                                   reference_total_subsample_so_far -
+                                   oversampling, 0)
         total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
     else:
         total_subsample_fr = total_subsample_so_far
