@@ -86,8 +86,10 @@ ScatteringNumPy1D._document()
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
-                 oversampling=0, out_type="array", backend="numpy"):
-        TimeFrequencyScatteringBase.__init__(self, ScatteringNumPy1D, J_fr, Q_fr)
+                 oversampling=0, oversampling_fr='auto', out_type="array",
+                 backend="numpy"):
+        TimeFrequencyScatteringBase.__init__(self, ScatteringNumPy1D, J_fr, Q_fr,
+                                             oversampling_fr)
 
         vectorize = True # for compatibility, will be removed in 0.3
 
@@ -131,6 +133,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             pad_left=self.pad_left, pad_right=self.pad_right,
             ind_start=self.ind_start, ind_end=self.ind_end,
             oversampling=self.oversampling,
+            oversampling_fr=self.oversampling_fr,
             size_scattering=size_scattering,
             out_type=self.out_type)
 

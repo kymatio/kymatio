@@ -373,10 +373,11 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase():
-    def __init__(self, FrontendClass, J_fr=None, Q_fr=1):
+    def __init__(self, FrontendClass, J_fr=None, Q_fr=1, oversampling_fr='auto'):
         self.FrontendClass = FrontendClass
         self.J_fr = J_fr
         self.Q_fr = Q_fr
+        self.oversampling_fr = oversampling_fr
 
     def build(self):
         # First-order scattering object for the frequency variable
@@ -392,7 +393,7 @@ class TimeFrequencyScatteringBase():
             self.oversampling, self.vectorize, self.out_type, self.backend)
 
         self.compute_padding_fr()
-        self.sc_freq.psi1_f, self.sc_freq.j0s = resample_frequential_filters(
+        self.sc_freq.psi1_f = resample_frequential_filters(
             **self.get_fr_params('psi1_f', 'J_pad', 'normalize', 'P_max', 'eps'))
 
         # build spin up & down wavelets
@@ -404,10 +405,15 @@ class TimeFrequencyScatteringBase():
 
     def compute_padding_fr(self):
         """Long story"""  # TODO
-        for name in ('J_pad', 'pad_left', 'pad_right', 'ind_start', 'ind_end'):
-            setattr(self.sc_freq, name, [])
+        attrs = ('J_pad', 'pad_left', 'pad_right', 'ind_start', 'ind_end', 'j0s')
+        for attr in attrs:
+            setattr(self.sc_freq, attr, [])
 
-        for shape_fr in self.shape_fr:
+        # J_pad is ordered lower to greater, so iterate backward then reverse
+        # (since we don't yet know max `j0`)
+        j0 = 0
+        pad_prev = -1
+        for shape_fr in self.shape_fr[::-1]:
             if shape_fr != 0:
                 min_to_pad = compute_minimum_support_to_pad(
                     shape_fr, self.J_fr, self.Q_fr,
@@ -418,19 +424,56 @@ class TimeFrequencyScatteringBase():
                 # to avoid padding more than N - 1 on the left and on the right,
                 # since otherwise torch sends nans
                 J_max_support = int(np.floor(np.log2(3 * shape_fr - 2)))
-                J_pad = min(int(np.ceil(np.log2(shape_fr + 2 * min_to_pad))),
+                J_pad = min(math.ceil(np.log2(shape_fr + 2 * min_to_pad)),
                             J_max_support)
 
-                # compute the padding quantities:
+                # compute the padding quantities
                 pad_left = 0
                 pad_right = 2**J_pad - pad_left - shape_fr
+                if pad_prev == -1:
+                    j0 = 0
+                elif J_pad < pad_prev:
+                    j0 += 1
+                pad_prev = J_pad
+
+                # compute unpad indices for all possible subsamplings
+                ind_start, ind_end = [], []
+                for j in range(self.J_fr + 1):
+                    if j == j0:
+                        ind_start.append(0)
+                        ind_end.append(shape_fr)
+                    elif j > j0:
+                        ind_start.append(0)
+                        ind_end.append(math.ceil(ind_end[-1] / 2))
+                    else:
+                        ind_start.append(-1)
+                        ind_end.append(-1)
             else:
-                J_pad, pad_left, pad_right = -1, -1, -1
+                J_pad, pad_left, pad_right, j0 = -1, -1, -1, -1
+                ind_start, ind_end = [], []
+
             self.sc_freq.J_pad.append(J_pad)
             self.sc_freq.pad_left.append(pad_left)
             self.sc_freq.pad_right.append(pad_right)
-            self.sc_freq.ind_start.append(pad_left)
-            self.sc_freq.ind_end.append(pad_right)
+            self.sc_freq.ind_start.append(ind_start)
+            self.sc_freq.ind_end.append(ind_end)
+            self.sc_freq.j0s.append(j0)
+
+        for attr in attrs:
+            getattr(self.sc_freq, attr).reverse()
+
+        # compute maximum ind_start and ind_end across all subsampling factors
+        # to use as common for out_type='array'
+        def get_idxs(attr):
+            return getattr(self.sc_freq, attr.strip('_max'))
+
+        for attr in ('ind_start_max', 'ind_end_max'):
+            setattr(self.sc_freq, attr, [])
+            for j in range(self.J_fr + 1):
+                idxs_max = max(get_idxs(attr)[n2][j]
+                               for n2 in range(len(self.shape_fr))
+                               if len(get_idxs(attr)[n2]) != 0)
+                getattr(self.sc_freq, attr).append(idxs_max)
 
     def get_fr_params(self, *args):
         return {k: getattr(self.sc_freq, k) for k in args}
