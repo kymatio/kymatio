@@ -30,14 +30,14 @@ RUN cd /tmp && \
     make -j4 && make install && \
     git clone --recursive --depth 1 -b v1.7.1 https://github.com/pytorch/pytorch /tmp/pytorch && \
     cd /tmp/pytorch && \
-    CMAKE_INCLUDE_PATH=/usr/include/mkl TORCH_CUDA_ARCH_LIST="3.5" python3 setup.py install && \
+    CMAKE_INCLUDE_PATH=/usr/include/mkl TORCH_CUDA_ARCH_LIST=3.5 PYTORCH_BUILD_VERSION=1.7.1 PYTORCH_BUILD_NUMBER=1 python3 setup.py install && \
     cd /tmp && \
     rm -rf magma pytorch
 
 RUN pip3 install \
       scipy \
       configparser \
-      torchvision \
+      'torchvision==0.8.2' \
       scikit-cuda \
       cupy \
       'tensorflow-gpu>=2.0.0a0' \
