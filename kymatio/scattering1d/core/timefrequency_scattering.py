@@ -344,8 +344,6 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr)
         S_2_fr = B.irfft(S_2_fr_hat)
 
-        if 19 not in unpad_fr(S_2_fr, total_subsample_fr).shape:
-            1 == 1
         S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
 
         # Swap time and frequency subscripts again
