@@ -268,11 +268,10 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
      ind_start, ind_end, average) = commons
 
     if oversampling_fr == 'auto':
-        if out_type == 'array':
-            total_subsample_fr_max = sc_freq.J - max(sc_freq.j0s)
-        elif out_type == 'list':
-            total_subsample_fr_max = sc_freq.J - max(sc_freq.j0s)
+        # subsample as we would in min-padded case
+        total_subsample_fr_max = sc_freq.J - max(sc_freq.j0s)
     else:
+        # subsample regularly (relative to current padding)
         total_subsample_fr_max = sc_freq.J
 
     total_subsample_so_far = n1_fr_subsample + subsample_equiv_due_to_pad
@@ -292,11 +291,13 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
         # TODO unpad frequency domain iff out_type == "list"
         # TODO shouldn't we *always* unpad?
-        if out_type == 'list':# or oversampling_fr != 'auto':
-            S_2_fr = unpad(S_2_fr, sc_freq.ind_start[n2][total_subsample_fr],
+        if out_type == 'list':
+            S_2_fr = unpad(S_2_fr,
+                           sc_freq.ind_start[n2][total_subsample_fr],
                            sc_freq.ind_end[n2][total_subsample_fr])
-        elif out_type == 'array':# and oversampling_fr == 'auto':
-            S_2_fr = unpad(S_2_fr, sc_freq.ind_start_max[total_subsample_fr],
+        elif out_type == 'array':
+            S_2_fr = unpad(S_2_fr,
+                           sc_freq.ind_start_max[total_subsample_fr],
                            sc_freq.ind_end_max[total_subsample_fr])
         # Swap time and frequency subscripts again
         S_2_fr = B.transpose(S_2_fr)
@@ -311,11 +312,13 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         S_2 = unpad(S_2_r, ind_start[k1_plus_k2 + k2_tm_J],
                     ind_end[k1_plus_k2 + k2_tm_J])
     else:
-        if out_type == 'list':# or oversampling_fr != 'auto':
-            S_2_fr = unpad(S_2_fr, sc_freq.ind_start[n2][total_subsample_fr],
+        if out_type == 'list':
+            S_2_fr = unpad(S_2_fr,
+                           sc_freq.ind_start[n2][total_subsample_fr],
                            sc_freq.ind_end[n2][total_subsample_fr])
-        elif out_type == 'array':# and oversampling_fr == 'auto':
-            S_2_fr = unpad(S_2_fr, sc_freq.ind_start_max[total_subsample_fr],
+        elif out_type == 'array':
+            S_2_fr = unpad(S_2_fr,
+                           sc_freq.ind_start_max[total_subsample_fr],
                            sc_freq.ind_end_max[total_subsample_fr])
         S_2_r = B.transpose(U_2_m)
         S_2 = unpad(S_2_r, ind_start[k1_plus_k2],
