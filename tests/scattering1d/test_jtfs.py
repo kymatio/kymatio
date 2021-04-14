@@ -6,7 +6,7 @@ from kymatio.numpy import TimeFrequencyScattering
 # TODO `out_type == 'array'` won't need `['coef']` later
 
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def test_alignment():
@@ -53,34 +53,38 @@ def test_alignment():
 
 def test_shapes():
     """Ensure `out_type == 'array'` joint coeff slices have same shape."""
-    T = 2049
-    J = 7
+    T = 1024
+    J = 6
     Q = 16
 
     x = np.random.randn(T)
 
     # scatter ################################################################
-    scattering = TimeFrequencyScattering(J, T, Q, J_fr=4, Q_fr=2, average=True,
-                                         oversampling=0, out_type='array',
-                                         oversampling_fr='auto')
-    Scx = scattering(x)
+    for oversampling in (0, 1):
+        for oversampling_fr in ('auto', 'none'):
+            scattering = TimeFrequencyScattering(
+                J, T, Q, J_fr=4, Q_fr=2, average=True, out_type='array',
+                oversampling=oversampling, oversampling_fr=oversampling_fr)
+            Scx = scattering(x)
 
-    # assert peaks share an index ########################################
-    meta = scattering.meta()
-    S_all = {}
-    for i, s in enumerate(Scx):
-        if not np.isnan(meta['n'][i][1]):
-            S_all[i] = s
+            # assert peaks share an index ####################################
+            meta = scattering.meta()
+            S_all = {}
+            for i, s in enumerate(Scx):
+                if not np.isnan(meta['n'][i][1]):
+                    S_all[i] = s
 
-    ref_shape = list(S_all.values())[0]['coef'].shape
-    for i, s in S_all.items():
-        assert s['coef'].shape == ref_shape, "{} != {} (n={})".format(
-            s['coef'].shape, ref_shape, tuple(meta['n'][i]))
+            ref_shape = list(S_all.values())[0]['coef'].shape
+            for i, s in S_all.items():
+                assert s['coef'].shape == ref_shape, (
+                    "{} != {} | (oversampling, oversampling_fr, n) = ({}, {}, {})"
+                    ).format(s['coef'].shape, ref_shape, oversampling,
+                             oversampling_fr, tuple(meta['n'][i]))
 
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
+        test_alignment()
         test_shapes()
     else:
         pytest.main([__file__, "-s"])
