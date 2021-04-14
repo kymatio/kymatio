@@ -77,12 +77,12 @@ def timefrequency_scattering(
 
         # unpad + transpose, append to out
         # TODO dedicated ind_start, ind_end
-        if out_type == 'list' or oversampling_fr != 'auto':
+        if out_type == 'list':# or oversampling_fr != 'auto':
             S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start[-1][k_fr_J],
                              sc_freq.ind_end[-1][k_fr_J])
-        elif out_type == 'array':
-            S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start[-1][0],
-                             sc_freq.ind_end[-1][0])
+        elif out_type == 'array':# and oversampling_fr == 'auto':
+            S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start_max[k_fr_J],
+                             sc_freq.ind_end_max[k_fr_J])
 
         S_1_fr = B.transpose(S_1_fr_T)
         out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
@@ -116,10 +116,10 @@ def timefrequency_scattering(
 
             if Y_2_arr is None:
                 if oversampling_fr == 'auto' and out_type == 'array':
-                    pad_fr = 2**sc_freq.J_pad[-1]
+                    pad_fr = sc_freq.J_pad[-1]
                 else:
-                    pad_fr = 2**sc_freq.J_pad[n2]
-                Y_2_arr = backend.zeros((pad_fr, Y_2_c.shape[-1]),
+                    pad_fr = sc_freq.J_pad[n2]
+                Y_2_arr = backend.zeros((2**pad_fr, Y_2_c.shape[-1]),
                                         dtype=Y_2_c.dtype)
             Y_2_arr[n1] = Y_2_c
 
@@ -131,12 +131,12 @@ def timefrequency_scattering(
 
         # Transform over frequency + low-pass, for both spins
         # `* psi_f` part of `X * (psi_t * psi_f)`
-        _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons,
+        _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons,
                               out_S_2['psi_t * psi_f'])
 
         # Low-pass over frequency
         # `* phi_f` part of `X * (psi_t * phi_f)`
-        _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons,
+        _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons,
                            out_S_2['psi_t * phi_f'])
 
     ##########################################################################
@@ -159,7 +159,8 @@ def timefrequency_scattering(
         Y_2_c = B.ifft(Y_2_hat)
 
         if Y_2_arr is None:
-            Y_2_arr = backend.zeros((2**sc_freq.J_pad[-1], Y_2_c.shape[-1]),
+            pad_fr = sc_freq.J_pad[-1]
+            Y_2_arr = backend.zeros((2**pad_fr, Y_2_c.shape[-1]),
                                     dtype=Y_2_c.dtype)
         Y_2_arr[n1] = Y_2_c
 
@@ -171,7 +172,7 @@ def timefrequency_scattering(
 
     # Transform over frequency + low-pass
     # `* psi_f` part of `X * (phi_t * psi_f)`
-    _frequency_scattering(Y_2_hat, j2, -1, k1_plus_k2, commons,
+    _frequency_scattering(Y_2_hat, j2, -1, pad_fr, k1_plus_k2, commons,
                           out_S_2['phi_t * psi_f'], spin_down=False)
 
     ##########################################################################
@@ -194,7 +195,7 @@ def timefrequency_scattering(
     return out_S
 
 
-def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
+def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                           spin_down=True):
     B, sc_freq, oversampling, oversampling_fr, out_type, *_ = commons
 
@@ -216,7 +217,9 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
                     k0_fr_pad = sc_freq.j0s[n2]
             else:
                 j0_fr = sc_freq.j0s[n2]
-                k0_fr_pad = j0_fr  # TODO
+                k0_fr_pad = j0_fr
+
+            # k0_fr_pad = max(sc_freq.J_pad) - pad_fr
 
             j1_fr = psi1_f[n1_fr]['j']
             k0_fr = j0_fr
@@ -224,7 +227,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
 
             n1_fr_subsample = k1_fr
             Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][k0_fr_pad])
-            Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**k1_fr)
+            Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
             Y_fr_c = B.ifft(Y_fr_hat)
 
             # Modulus
@@ -238,7 +241,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
 
             # Convolve by Phi = phi_t * phi_f
             S_2 = _joint_lowpass(U_2_m, n2, n1_fr, k1_fr + k0_fr,
-                                 n1_fr_subsample, k1_plus_k2, commons)
+                                 n1_fr_subsample, pad_fr, k1_plus_k2, commons)
             # print("S_2.shape", S_2.shape)
             # print()
 
@@ -249,7 +252,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2,
                                    's': (spin,)})
 
 
-def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
+def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     B, sc_freq, oversampling, oversampling_fr, out_type, *_ = commons
 
     if oversampling_fr == 'auto':
@@ -278,7 +281,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
 
     # Convolve by Phi = phi_t * phi_f
     S_2 = _joint_lowpass(U_2_m, n2, -1, k1_fr + k0_fr, n1_fr_subsample,
-                         k1_plus_k2, commons)
+                         pad_fr, k1_plus_k2, commons)
     # print(Y_2_hat.shape, U_2_m.shape, S_2.shape)
 
     out_S_2.append({'coef': S_2,
@@ -287,30 +290,11 @@ def _frequency_lowpass(Y_2_hat, j2, n2, k1_plus_k2, commons, out_S_2):
                     's': (0,)})
 
 
-def _joint_lowpass(U_2_m, n2, n1_fr, k1_fr, n1_fr_subsample, k1_plus_k2, commons):
+def _joint_lowpass(U_2_m, n2, n1_fr, k1_fr, n1_fr_subsample, pad_fr,
+                   k1_plus_k2, commons):
     # TODO rename `k1_fr`
     (B, sc_freq, oversampling, oversampling_fr, out_type, unpad, J, phi,
      ind_start, ind_end, average) = commons
-
-    # if oversampling_fr == 'auto':
-    #     if out_type == 'array':
-    #         k1_fr_J = max(sc_freq.J - k1_fr - oversampling, 0)
-    #     elif out_type == 'list':
-    #         # use minimal padding's subsampling
-    #         # account only for `len(sc_freq.psi1_f_up)`
-    #         j0_fr_max = max(sc_freq.j0s)
-    #         j0_fr = sc_freq.j0s[n2]
-    #         j1_fr = sc_freq.psi1_f_up[n1_fr]['j']
-    #         _k0_fr = j0_fr
-    #         _k1_fr = max(j1_fr - _k0_fr - oversampling, 0)
-    #         print(("(_k0_fr, _k1_fr, k1_fr_J) = ({}, {}, {})"
-    #                ).format(_k0_fr, _k1_fr,
-    #                         max(sc_freq.J - _k1_fr - j0_fr_max - oversampling, 0))
-    #         )
-    #         _k1_fr = _k1_fr + j0_fr_max #_k0_fr
-    #         k1_fr_J = max(sc_freq.J - _k1_fr - oversampling, 0)
-    # else:
-    #     k1_fr_J = max(sc_freq.J - k1_fr - oversampling, 0)
 
     if oversampling_fr == 'auto':
         if out_type == 'array':
@@ -321,11 +305,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, k1_fr, n1_fr_subsample, k1_plus_k2, commons
     else:
         j0_fr = sc_freq.j0s[n2]
 
-    # j1_fr = psi1_f[n1_fr]['j']
-    # k0_fr = j0_fr
-    # k0_fr_pad = sc_freq.j0s[n2]
-    # k1_fr = max(j1_fr - k0_fr - oversampling, 0)
-
     j1_fr = sc_freq.psi1_f_up[n1_fr]['j']
     k0_fr = j0_fr
     k1_fr = max(j1_fr - k0_fr - oversampling, 0)
@@ -335,8 +314,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, k1_fr, n1_fr_subsample, k1_plus_k2, commons
 
     k1_fr = k1_fr + k0_fr
     k1_fr_J = max(sc_freq.J - k1_fr - oversampling, 0)
-    # _k1_fr = k1_fr
-    total_subsample_fr = k1_fr_J + n1_fr_subsample
+    total_subsample_fr = k1_fr_J + n1_fr_subsample + (max(sc_freq.J_pad) - pad_fr)
 
     # greater idx = shorter phi_f, so increase if padding was less (greater j0)
     # or `*sc_freq.psi1_f` was subsampled more (greater n1_fr_subsample)
@@ -365,20 +343,17 @@ def _joint_lowpass(U_2_m, n2, n1_fr, k1_fr, n1_fr_subsample, k1_plus_k2, commons
         # TODO unpad frequency domain iff out_type == "list"
         # TODO shouldn't we *always* unpad?
         # print(S_2_fr.shape)
-        if out_type == 'list' or oversampling_fr != 'auto':
+        if out_type == 'list':# or oversampling_fr != 'auto':
             S_2_fr = unpad(S_2_fr, sc_freq.ind_start[n2][k1_fr_J + _k1_fr],
                            sc_freq.ind_end[n2][k1_fr_J + _k1_fr])
         elif out_type == 'array':# and oversampling_fr == 'auto':
-            g = unpad(S_2_fr, sc_freq.ind_start_max[total_subsample_fr],
-                      sc_freq.ind_end_max[total_subsample_fr])
-            if 4 in g.shape:
-                1 == 1
             S_2_fr = unpad(S_2_fr, sc_freq.ind_start_max[total_subsample_fr],
                            sc_freq.ind_end_max[total_subsample_fr])
-        if 4 in S_2_fr.shape:
-            1 == 1
         # Swap time and frequency subscripts again
         S_2_fr = B.transpose(S_2_fr)
+
+        if 8 in S_2_fr.shape:
+            1 == 1
 
         # Low-pass filtering over time
         k2_tm_J = max(J - k1_plus_k2 - oversampling, 0)
