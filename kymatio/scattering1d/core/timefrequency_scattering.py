@@ -68,8 +68,15 @@ def timefrequency_scattering(
         total_height = 2 ** sc_freq.J_pad[-1]  # TODO
         S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
 
+        if oversampling_fr == 'auto':
+            # subsample as we would in min-padded case
+            total_subsample_fr_max = sc_freq.J - max(sc_freq.j0s)
+        else:
+            # subsample regularly (relative to current padding)
+            total_subsample_fr_max = sc_freq.J
+
         # Low-pass filtering over frequency
-        k_fr_J = max(sc_freq.J - oversampling, 0)
+        k_fr_J = max(total_subsample_fr_max - oversampling, 0)
         S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
         # TODO if `total_height` here disagrees with later's, must change k_fr_J
         S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
