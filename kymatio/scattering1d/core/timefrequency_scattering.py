@@ -75,21 +75,38 @@ def timefrequency_scattering(
             # subsample regularly (relative to current padding)
             total_subsample_fr_max = sc_freq.J
 
+        if oversampling_fr == 'auto':
+            reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+            subsample_equiv_due_to_pad_min = reference_subsample_equiv_due_to_pad
+            max_j1_fr = sc_freq.psi1_f_up[-1]['j']
+            max_n1_fr_subsample_min = max(max_j1_fr -
+                                          reference_subsample_equiv_due_to_pad -
+                                          oversampling, 0)
+            reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
+                                                max_n1_fr_subsample_min)
+        else:
+            reference_total_subsample_so_far = 0
+        lowpass_subsample_fr = max(total_subsample_fr_max -
+                                   reference_total_subsample_so_far -
+                                   oversampling, 0)
+
         # Low-pass filtering over frequency
-        k_fr_J = max(total_subsample_fr_max - oversampling, 0)
+        # k_fr_J = max(total_subsample_fr_max - oversampling, 0)
         S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
         # TODO if `total_height` here disagrees with later's, must change k_fr_J
-        S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**k_fr_J)
+        S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # TODO dedicated ind_start, ind_end and phi
         # unpad + transpose, append to out
-        if out_type == 'list':# or oversampling_fr != 'auto':
-            S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start[-1][k_fr_J],
-                             sc_freq.ind_end[-1][k_fr_J])
-        elif out_type == 'array':# and oversampling_fr == 'auto':
-            S_1_fr_T = unpad(S_1_fr_T, sc_freq.ind_start_max[k_fr_J],
-                             sc_freq.ind_end_max[k_fr_J])
+        if out_type == 'list':
+            S_1_fr_T = unpad(S_1_fr_T,
+                             sc_freq.ind_start[-1][lowpass_subsample_fr],
+                             sc_freq.ind_end[-1][lowpass_subsample_fr])
+        elif out_type == 'array':
+            S_1_fr_T = unpad(S_1_fr_T,
+                             sc_freq.ind_start_max[lowpass_subsample_fr],
+                             sc_freq.ind_end_max[lowpass_subsample_fr])
 
         S_1_fr = B.transpose(S_1_fr_T)
         out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
@@ -129,9 +146,6 @@ def timefrequency_scattering(
                 Y_2_arr = backend.zeros((2**pad_fr, Y_2_c.shape[-1]),
                                         dtype=Y_2_c.dtype)
             Y_2_arr[n1] = Y_2_c
-
-        if n2 >= 4:
-            1==1
 
         # sum is same for all `n1`, just take last
         k1_plus_k2 = k1 + k2
@@ -332,6 +346,8 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr)
         S_2_fr = B.irfft(S_2_fr_hat)
 
+        if 37 in unpad_fr(S_2_fr, total_subsample_fr).shape:
+            1 == 1
         S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
 
         # Swap time and frequency subscripts again
