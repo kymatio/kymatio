@@ -733,35 +733,75 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     return phi_f, psi1_f, psi2_f, t_max_phi
 
 
-def resample_frequential_filters(psi1_f, J_pad, normalize, P_max, eps):
+def scattering_filter_factory_fr(J_fr, Q_fr, J_pad, j0s, backend,
+                                 resample_psi_fr=True, resample_phi_fr=True,
+                                 r_psi=math.sqrt(0.5), criterion_amplitude=1e-3,
+                                 normalize='l1', sigma0=0.1, alpha=5., P_max=5,
+                                 eps=1e-7):
     """Resamples `psi1_f` filters according to `sc_freq.J_pad`, and returns them
     along original samplings with dicts packed per same structure as `psi2_f`.
     """
-    prev_pad = J_pad[-1]
-    j0 = 0
-    psi1_f_new = [{} for _ in range(len(psi1_f))]
-    # J_pad is ordered lower to greater, so iterate backward then flip
-    for pad in J_pad[::-1][1:]:
-        if pad == -1:
-            continue
-        if pad < prev_pad:
-            j0 += 1
-            N = 2 ** pad
-            prev_pad = pad
-            for n1 in range(len(psi1_f)):
-                xi, sigma = psi1_f[n1]['xi'], psi1_f[n1]['sigma']
-                # psi1_f_new[n1][j0] = periodize_filter_fourier(psi1_f[n1][0], 2**j0)
-                psi1_f_new[n1][j0] = morlet_1d(N, xi, sigma, normalize=normalize,
-                                               P_max=P_max, eps=eps)
+    # TODO docs
+    # compute the spectral parameters of the filters
+    sigma_low, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
+        J_fr, Q_fr, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
-    # reorder dict keys like {0: ..., 1: ..., meta}
-    psi1_f_final = []
-    for n1 in range(len(psi1_f)):
-        psi1_f_final.append({0: psi1_f[n1][0]})
-        for j0 in range(1, 1 + len(psi1_f_new[n1])):
-            psi1_f_final[n1][j0] = psi1_f_new[n1][j0]
+    # instantiate the dictionaries which will contain the filters
+    phi_f = {}
+    psi1_f_up = []
+    psi1_f_down = []
 
-        for field in ('xi', 'sigma', 'j'):
-            psi1_f_final[n1][field] = psi1_f[n1][field]
+    J_support = max(J_pad)  # begin with longest
+    # for the 1st order filters, the input is trimmed, so we resample or subsample
+    # filters at expected pad lengths
+    for (n1_fr, j1) in enumerate(j1s):
+        N = 2**J_support
+        psi_f = {}
+        psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
+                             P_max=P_max, eps=eps)
 
-    return psi1_f_final
+        # j0s is ordered greater to lower, so reverse
+        for j0 in j0s[::-1]:
+            if j0 <= 0:
+                continue
+            factor = 2**j0
+            if resample_psi_fr:
+                psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
+                                      normalize=normalize, P_max=P_max, eps=eps)
+            else:
+                psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
+        psi1_f_up.append(psi_f)
+
+    # compute spin down filters by conjugating spin up in frequency domain
+    for psi_ups in psi1_f_up:
+        psi_down = {}
+        for j0, psi_up in enumerate(psi_ups.values()):
+            psi_down[j0] = backend.conj_fr(psi_up)
+        psi1_f_down.append(psi_down)
+
+    # compute lowpass filters at all possible input lengths
+    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    for j_fr in range(1, 1 + J_fr):
+        factor = 2**j_fr
+        if resample_phi_fr:
+            phi_f[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max, eps=eps)
+        else:
+            phi_f[j_fr] = periodize_filter_fourier(phi_f[0], nperiods=factor)
+
+    # Embed the meta information within the filters
+    for (n1, j1) in enumerate(j1s):
+        for psi1_f in (psi1_f_up, psi1_f_down):
+            psi1_f[n1]['xi'] = xi1[n1]
+            psi1_f[n1]['sigma'] = sigma1[n1]
+            psi1_f[n1]['j'] = j1
+    phi_f['xi'] = 0.
+    phi_f['sigma'] = sigma_low
+    phi_f['j'] = 0
+
+    # compute the support size allowing to pad without boundary errors
+    # at the finest resolution
+    f_max_phi = compute_temporal_support(
+        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
+
+    # return results
+    return phi_f, psi1_f_up, psi1_f_down, f_max_phi
