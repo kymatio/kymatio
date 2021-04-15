@@ -70,10 +70,10 @@ def timefrequency_scattering(
 
         if oversampling_fr == 'auto':
             # subsample as we would in min-padded case
-            total_subsample_fr_max = sc_freq.J - max(sc_freq.j0s)
+            total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
         else:
             # subsample regularly (relative to current padding)
-            total_subsample_fr_max = sc_freq.J
+            total_subsample_fr_max = sc_freq.J_fr
 
         if oversampling_fr == 'auto':
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
@@ -309,10 +309,10 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     if oversampling_fr == 'auto':
         # subsample as we would in min-padded case
-        total_subsample_fr_max = sc_freq.J - max(sc_freq.j0s)
+        total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
     else:
         # subsample regularly (relative to current padding)
-        total_subsample_fr_max = sc_freq.J
+        total_subsample_fr_max = sc_freq.J_fr
 
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 

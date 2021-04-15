@@ -4,13 +4,12 @@ import numbers
 
 import numpy as np
 
-from ..filter_bank import scattering_filter_factory, resample_frequential_filters
+from ..filter_bank import scattering_filter_factory, scattering_filter_factory_fr
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
                      compute_meta_jtfs,
-                     precompute_size_scattering,
-                     compute_spin_down_filters)
+                     precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -373,41 +372,128 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase():
-    def __init__(self, FrontendClass, J_fr=None, Q_fr=1, oversampling_fr='auto'):
-        self.FrontendClass = FrontendClass
-        self.J_fr = J_fr
-        self.Q_fr = Q_fr
+    def __init__(self, J_fr=None, Q_fr=1, oversampling_fr='auto',
+                 resample_psi_fr=True, resample_phi_fr=True):
+        self._J_fr = J_fr
+        self._Q_fr = Q_fr
         self.oversampling_fr = oversampling_fr
+        self.resample_psi_fr = resample_psi_fr
+        self.resample_phi_fr = resample_phi_fr
 
     def build(self):
-        # First-order scattering object for the frequency variable
-        self.max_order_fr = 1
-        self.shape_fr = self.get_shape_fr()
-        # Calibrate all filters with respect to the most obtainable freq rows
+        self._shape_fr = self.get_shape_fr()
+        max_order_fr = 1
+        if self._J_fr is None:
+            self._J_fr = int(math.log2(self.Q) + 1)
+
+        self.sc_freq = _FrequencyScatteringBase(
+            self._J_fr, self._shape_fr, self._Q_fr, max_order_fr, self.average,
+            self.resample_psi_fr, self.resample_phi_fr, self.oversampling,
+            self.vectorize, self.out_type, self.backend)
+
+    def get_shape_fr(self):
+        """This is equivalent to `len(x)` along frequency, which varies across
+        `psi2`, so we compute for each.
+        """
+        shape_fr = []
+        for n2 in range(len(self.psi2_f)):
+            j2 = self.psi2_f[n2]['j']
+            max_freq_nrows = 0
+            for n1 in range(len(self.psi1_f)):
+                if j2 > self.psi1_f[n1]['j']:
+                    max_freq_nrows += 1
+            shape_fr.append(max_freq_nrows)
+        return shape_fr
+
+    def meta(self):
+        """Get meta information on the transform
+
+        Calls the static method `compute_meta_jtfs()` with the parameters of the
+        transform object.
+
+        Returns
+        ------
+        meta : dictionary
+            See the documentation for `compute_meta_jtfs()`.
+        """
+        return compute_meta_jtfs(self.J, self.Q, self.J_fr, self.Q_fr)
+
+    # access key attributes via frequential class
+    @property
+    def J_fr(self):
+        return self.sc_freq.J_fr
+
+    @property
+    def Q_fr(self):
+        return self.sc_freq.Q_fr
+
+    @property
+    def N_fr(self):
+        return self.sc_freq.N_fr
+
+    @property
+    def max_order_fr(self):
+        return self.sc_freq.max_order_fr
+
+    @classmethod
+    def _document(cls):
+        # TODO documentation
+        cls.__doc__ = """Joint time-frequency scattering"""
+
+
+class _FrequencyScatteringBase(ScatteringBase):
+    """Attribute object for TimeFrequencyScatteringBase for frequential
+    scattering part of JTFS.
+    """
+    def __init__(self, J_fr, shape_fr, Q_fr=2, max_order_fr=1, average=True,
+                 resample_psi_fr=True, resample_phi_fr=True, oversampling=0,
+                 vectorize=True, out_type='array', backend=None):
+        super(_FrequencyScatteringBase, self).__init__()
+        self.J_fr = J_fr
+        self.shape_fr = shape_fr
+        self.Q_fr = Q_fr
+        self.max_order_fr = max_order_fr
+        self.average = average
+        self.resample_psi_fr = resample_psi_fr
+        self.resample_phi_fr = resample_phi_fr
+        self.oversampling = oversampling
+        self.vectorize = vectorize
+        self.out_type = out_type
+        self.backend = backend
+
+        # ScatteringBase._instantiate_backend(self, 'kymatio.scattering1d.backend.')
+        self.build()
+        self.create_filters()
+
+    def build(self):
+        """""" # TODO
+        self.r_psi = math.sqrt(0.5)
+        self.sigma0 = 0.1
+        self.alpha = 5.
+        self.P_max = 5
+        self.eps = 1e-7
+        self.criterion_amplitude = 1e-3
+        self.normalize = 'l1'
+
+        # let N denote longest obtainable frequency row, with respect to which
+        # we calibrate filters
         self.N_fr = self.shape_fr[-1]
-        if self.J_fr is None:
-            self.J_fr = self.get_J_fr()
-
-        self.sc_freq = self.FrontendClass(
-            self.J_fr, self.N_fr, self.Q_fr, self.max_order_fr, self.average,
-            self.oversampling, self.vectorize, self.out_type, self.backend)
-
         self.compute_padding_fr()
-        self.sc_freq.psi1_f = resample_frequential_filters(
-            **self.get_fr_params('psi1_f', 'J_pad', 'normalize', 'P_max', 'eps'))
 
-        # build spin up & down wavelets
-        # TODO make `create_filters`?
-        self.sc_freq.psi1_f_up = self.sc_freq.psi1_f
-        self.sc_freq.psi1_f_down = compute_spin_down_filters(
-            self.sc_freq.psi1_f_up, self.backend)
-        del self.sc_freq.psi1_f
+    def create_filters(self):
+        # Create the filters
+        (self.phi_f, self.psi1_f_up, self.psi1_f_down, self.f_max_phi
+         ) = scattering_filter_factory_fr(
+             self.J_fr, self.Q_fr, self.J_pad, self.j0s,
+             **self.get_params('backend', 'resample_psi_fr', 'resample_phi_fr',
+                               'r_psi', 'criterion_amplitude', 'normalize',
+                               'sigma0', 'alpha', 'P_max', 'eps'))
 
     def compute_padding_fr(self):
         """Long story"""  # TODO
         attrs = ('J_pad', 'pad_left', 'pad_right', 'ind_start', 'ind_end', 'j0s')
         for attr in attrs:
-            setattr(self.sc_freq, attr, [])
+            setattr(self, attr, [])
 
         # J_pad is ordered lower to greater, so iterate backward then reverse
         # (since we don't yet know max `j0`)
@@ -417,9 +503,8 @@ class TimeFrequencyScatteringBase():
             if shape_fr != 0:
                 min_to_pad = compute_minimum_support_to_pad(
                     shape_fr, self.J_fr, self.Q_fr,
-                    **self.get_fr_params('r_psi', 'sigma0', 'alpha', 'P_max',
-                                         'eps', 'criterion_amplitude',
-                                         'normalize'))
+                    **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
+                                      'eps', 'criterion_amplitude', 'normalize'))
 
                 # to avoid padding more than N - 1 on the left and on the right,
                 # since otherwise torch sends nans
@@ -452,66 +537,31 @@ class TimeFrequencyScatteringBase():
                 J_pad, pad_left, pad_right, j0 = -1, -1, -1, -1
                 ind_start, ind_end = [], []
 
-            self.sc_freq.J_pad.append(J_pad)
-            self.sc_freq.pad_left.append(pad_left)
-            self.sc_freq.pad_right.append(pad_right)
-            self.sc_freq.ind_start.append(ind_start)
-            self.sc_freq.ind_end.append(ind_end)
-            self.sc_freq.j0s.append(j0)
+            self.J_pad.append(J_pad)
+            self.pad_left.append(pad_left)
+            self.pad_right.append(pad_right)
+            self.ind_start.append(ind_start)
+            self.ind_end.append(ind_end)
+            self.j0s.append(j0)
 
         for attr in attrs:
-            getattr(self.sc_freq, attr).reverse()
+            getattr(self, attr).reverse()
 
         # compute maximum ind_start and ind_end across all subsampling factors
         # to use as common for out_type='array'
         def get_idxs(attr):
-            return getattr(self.sc_freq, attr.strip('_max'))
+            return getattr(self, attr.strip('_max'))
 
         for attr in ('ind_start_max', 'ind_end_max'):
-            setattr(self.sc_freq, attr, [])
+            setattr(self, attr, [])
             for j in range(self.J_fr + 1):
                 idxs_max = max(get_idxs(attr)[n2][j]
                                for n2 in range(len(self.shape_fr))
                                if len(get_idxs(attr)[n2]) != 0)
-                getattr(self.sc_freq, attr).append(idxs_max)
+                getattr(self, attr).append(idxs_max)
 
-    def get_fr_params(self, *args):
-        return {k: getattr(self.sc_freq, k) for k in args}
-
-    def get_J_fr(self):
-        return int(math.log2(self.Q) + 1)  # TODO +1 or no +1
-
-    def get_shape_fr(self):
-        """This is equivalent to `len(x)` along frequency, which varies across
-        `psi2`, so we compute for each.
-        """
-        shape_fr = []
-        for n2 in range(len(self.psi2_f)):
-            j2 = self.psi2_f[n2]['j']
-            max_freq_nrows = 0
-            for n1 in range(len(self.psi1_f)):
-                if j2 > self.psi1_f[n1]['j']:
-                    max_freq_nrows += 1
-            shape_fr.append(max_freq_nrows)
-        return shape_fr
-
-    def meta(self):
-        """Get meta information on the transform
-
-        Calls the static method `compute_meta_jtfs()` with the parameters of the
-        transform object.
-
-        Returns
-        ------
-        meta : dictionary
-            See the documentation for `compute_meta_jtfs()`.
-        """
-        return compute_meta_jtfs(self.J, self.Q, self.J_fr, self.Q_fr)
-
-    @classmethod
-    def _document(cls):
-        # TODO documentation
-        cls.__doc__ = """Joint time-frequency scattering"""
+    def get_params(self, *args):
+        return {k: getattr(self, k) for k in args}
 
 
 __all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
