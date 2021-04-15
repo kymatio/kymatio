@@ -1,6 +1,7 @@
 import numpy as np
 import math
-from .filter_bank import scattering_filter_factory, calibrate_scattering_filters
+from .filter_bank import (calibrate_scattering_filters, compute_temporal_support,
+                          gauss_1d)
 
 def compute_border_indices(J, i0, i1):
     """
@@ -122,10 +123,20 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         boundary error.
     """
     J_tentative = int(np.ceil(np.log2(T)))
-    _, _, _, t_max_phi = scattering_filter_factory(
-        J_tentative, J, Q, normalize=normalize, to_torch=False,
-        max_subsampling=0, criterion_amplitude=criterion_amplitude,
-        r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
+    J_support = J_tentative
+    J_scattering = J
+    sigma_low, *_ = calibrate_scattering_filters(J_scattering, Q, r_psi=r_psi,
+                                                 sigma0=sigma0, alpha=alpha)
+
+    # compute the filters at all possible subsamplings
+    N = 2 ** J_support
+    phi_f = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+
+    # compute the support size allowing to pad without boundary errors
+    # at the finest resolution
+    t_max_phi = compute_temporal_support(
+        phi_f.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+
     min_to_pad = 3 * t_max_phi
     return min_to_pad
 
