@@ -418,15 +418,3 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
         meta[field] = np.array(meta[field])
 
     return meta
-
-
-def compute_spin_down_filters(psi_up, backend):
-    """Copy all of `psi_up`'s dicts but conjugate arrays."""
-    psi_down = []
-    for psi in psi_up:
-        psi = psi.copy()
-        for k, v in psi.items():
-            if isinstance(k, int):
-                psi[k] = backend.conj_fr(psi[k])
-        psi_down.append(psi)
-    return psi_down
