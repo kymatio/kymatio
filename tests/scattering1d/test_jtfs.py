@@ -71,7 +71,7 @@ def test_shapes():
             meta = scattering.meta()
             S_all = {}
             for i, s in enumerate(Scx):
-                if not np.isnan(meta['n'][i][1]):
+                if not np.isnan(meta['n'][i][1]):  # skip first-order
                     S_all[i] = s
 
             ref_shape = list(S_all.values())[0]['coef'].shape
