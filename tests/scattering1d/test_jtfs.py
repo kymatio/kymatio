@@ -67,7 +67,7 @@ def test_shapes():
                 oversampling=oversampling, oversampling_fr=oversampling_fr)
             Scx = scattering(x)
 
-            # assert peaks share an index ####################################
+            # assert slice shapes are equal ##################################
             meta = scattering.meta()
             S_all = {}
             for i, s in enumerate(Scx):
