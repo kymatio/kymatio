@@ -66,15 +66,15 @@ def timefrequency_scattering(
     # Apply low-pass filtering over frequency (optional) and unpad
     if average_fr:
         # zero-pad along frequency, map to Fourier domain
-        total_height = 2 ** sc_freq.J_pad[-1]  # TODO
+        total_height = len(sc_freq.phi_f_fo)
         S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
 
         if aligned:
             # subsample as we would in min-padded case
-            total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
+            total_subsample_fr_max = sc_freq.J_fr_fo - max(sc_freq.j0s)
         else:
             # subsample regularly (relative to current padding)
-            total_subsample_fr_max = sc_freq.J_fr
+            total_subsample_fr_max = sc_freq.J_fr_fo
 
         if aligned:
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
@@ -89,16 +89,16 @@ def timefrequency_scattering(
             reference_total_subsample_so_far = 0
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
-                                   oversampling, 0)
+                                   oversampling_fr, 0)
 
         # Low-pass filtering over frequency
-        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
-        # TODO if `total_height` here disagrees with later's, must change k_fr_J
+        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f_fo)
         S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
-        # TODO dedicated ind_start, ind_end and phi
         # unpad + transpose, append to out
+        if sc_freq.J_fr_fo > sc_freq.J_fr:
+            lowpass_subsample_fr -= 1  # adjust so indexing matches
         if out_type == 'list':
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start[-1][lowpass_subsample_fr],
@@ -112,7 +112,6 @@ def timefrequency_scattering(
         out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
         # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
     else:
-        # TODO what to do here?
         out_S_1.append({'coef': [], 'j': (), 'n': (), 's': ()})
 
     ##########################################################################

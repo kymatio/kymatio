@@ -4,7 +4,9 @@ import numbers
 
 import numpy as np
 
-from ..filter_bank import scattering_filter_factory, scattering_filter_factory_fr
+from ..filter_bank import (scattering_filter_factory,
+                           scattering_filter_factory_fr,
+                           gauss_1d)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -61,6 +63,13 @@ class ScatteringBase1D(ScatteringBase):
         if self.padtype not in ('reflect', 'symmetric', 'zero'):
             raise ValueError("`padtype` must be one of: reflect, symmetric, "
                              "zero (got %s)" % self.padtype)
+
+        # check that we get any second-order coefficients if max_order==2
+        meta = ScatteringBase1D.meta(self)
+        if self.max_order == 2 and np.isnan(meta['n'][-1][1]):
+            raise ValueError("configuration yields no second-order coefficients; "
+                             "try increasing `J`, or (`Scattering1D` only) "
+                             "set `max_order=1`.")
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
@@ -397,11 +406,13 @@ class TimeFrequencyScatteringBase():
         max_order_fr = 1
         if self._J_fr is None:
             self._J_fr = int(math.log2(self.Q) + 1)
+        # number of psi1 filters
+        self._n_psi1 = len(self.psi1_f)
 
         self.sc_freq = _FrequencyScatteringBase(
             self._J_fr, self._shape_fr, self._Q_fr, max_order_fr, self.average,
             self.resample_psi_fr, self.resample_phi_fr, self.oversampling,
-            self.vectorize, self.out_type, self.backend)
+            self.vectorize, self.out_type, self._n_psi1, self.backend)
 
     def get_shape_fr(self):
         """This is equivalent to `len(x)` along frequency, which varies across
@@ -459,7 +470,7 @@ class _FrequencyScatteringBase(ScatteringBase):
     """
     def __init__(self, J_fr, shape_fr, Q_fr=2, max_order_fr=1, average=True,
                  resample_psi_fr=True, resample_phi_fr=True, oversampling=0,
-                 vectorize=True, out_type='array', backend=None):
+                 vectorize=True, out_type='array', n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.J_fr = J_fr
         self.shape_fr = shape_fr
@@ -471,6 +482,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
+        self._n_psi1 = n_psi1
         self.backend = backend
 
         self.build()
@@ -500,6 +512,19 @@ class _FrequencyScatteringBase(ScatteringBase):
                                'r_psi', 'criterion_amplitude', 'normalize',
                                'sigma0', 'alpha', 'P_max', 'eps'))
 
+        # Edge case: need phi_f in case number of `psi1` filters (and thus
+        # first-order coeffs) pads greater than max(J_pad). Note this filter,
+        # if `!= phi_f[0]`, always computes per `resample_phi_fr=True`
+        J_pad = self._compute_J_pad(self._n_psi1)
+        if J_pad > max(self.J_pad):
+            self.phi_f_fo = gauss_1d(2**J_pad, sigma=self.phi_f['sigma'],
+                                     P_max=self.P_max, eps=self.eps)
+            # need to subsample more since padded more
+            self.J_fr_fo = self.J_fr + 1
+        else:
+            self.phi_f_fo = self.phi_f[0]
+            self.J_fr_fo = self.J_fr
+
     def compute_padding_fr(self):
         """Long story"""  # TODO
         attrs = ('J_pad', 'pad_left', 'pad_right', 'ind_start', 'ind_end', 'j0s')
@@ -512,16 +537,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         pad_prev = -1
         for shape_fr in self.shape_fr[::-1]:
             if shape_fr != 0:
-                min_to_pad = compute_minimum_support_to_pad(
-                    shape_fr, self.J_fr, self.Q_fr,
-                    **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
-                                      'eps', 'criterion_amplitude', 'normalize'))
-
-                # to avoid padding more than N - 1 on the left and on the right,
-                # since otherwise torch sends nans
-                J_max_support = int(np.floor(np.log2(3 * shape_fr - 2)))
-                J_pad = min(math.ceil(np.log2(shape_fr + 2 * min_to_pad)),
-                            J_max_support)
+                J_pad = self._compute_J_pad(shape_fr)
 
                 # compute the padding quantities
                 pad_left = 0
@@ -570,6 +586,19 @@ class _FrequencyScatteringBase(ScatteringBase):
                                for n2 in range(len(self.shape_fr))
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
+
+    def _compute_J_pad(self, shape_fr):
+        min_to_pad = compute_minimum_support_to_pad(
+            shape_fr, self.J_fr, self.Q_fr,
+            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
+                              'eps', 'criterion_amplitude', 'normalize'))
+
+        # to avoid padding more than N - 1 on the left and on the right,
+        # since otherwise torch sends nans
+        J_max_support = int(np.floor(np.log2(3 * shape_fr - 2)))
+        J_pad = min(math.ceil(np.log2(shape_fr + 2 * min_to_pad)),
+                    J_max_support)
+        return J_pad
 
     def get_params(self, *args):
         return {k: getattr(self, k) for k in args}
