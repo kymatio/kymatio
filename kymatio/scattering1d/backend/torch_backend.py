@@ -37,7 +37,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, padtype):
         """Pad real 1D tensors
 
         1D implementation of the padding function for real PyTorch tensors.
@@ -60,8 +60,10 @@ class TorchBackend1D(TorchBackend):
         """
         if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
             raise ValueError('Indefinite padding size (larger than tensor).')
+        if padtype == 'zero':
+            padtype = 'constant'
 
-        res = F.pad(x, (pad_left, pad_right), mode='reflect')
+        res = F.pad(x, (pad_left, pad_right), mode=padtype)
         res = res[..., None]
 
         return res
