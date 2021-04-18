@@ -55,7 +55,8 @@ class ScatteringBase1D(ScatteringBase):
         meta = ScatteringBase1D.meta(self)
         if self.max_order == 2 and np.isnan(meta['n'][-1][1]):
             raise ValueError("configuration yields no second-order coefficients; "
-                             "try increasing `J`, or set `max_order=1`.")
+                             "try increasing `J`, or (`Scattering1D` only) "
+                             "set `max_order=1`.")
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
