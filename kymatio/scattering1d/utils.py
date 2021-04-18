@@ -130,7 +130,7 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
     return min_to_pad
 
 
-def precompute_size_scattering(J, Q, max_order=2, detail=False):
+def precompute_size_scattering(J, Q, Q2=1, max_order=2, detail=False):
     """Get size of the scattering transform
 
     The number of scattering coefficients depends on the filter
@@ -144,7 +144,8 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         In other words, the maximum scale is given by `2**J`.
     Q : int >= 1
         The number of first-order wavelets per octave.
-        Second-order wavelets are fixed to one wavelet per octave.
+    Q2 : int >= 1
+        The number of second-order wavelets per octave.
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
@@ -160,7 +161,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         the number of coefficients in each order.
     """
     sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-        calibrate_scattering_filters(J, Q)
+        calibrate_scattering_filters(J, Q, Q2=Q2)
 
     size_order0 = 1
     size_order1 = len(xi1)
@@ -181,7 +182,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
             return size_order0 + size_order1
 
 
-def compute_meta_scattering(J, Q, max_order=2):
+def compute_meta_scattering(J, Q, Q2=1, max_order=2):
     """Get metadata on the transform.
 
     This information specifies the content of each scattering coefficient,
@@ -224,7 +225,7 @@ def compute_meta_scattering(J, Q, max_order=2):
             in the non-vectorized output.
     """
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-        calibrate_scattering_filters(J, Q)
+        calibrate_scattering_filters(J, Q, Q2=Q2)
 
     meta = {}
 

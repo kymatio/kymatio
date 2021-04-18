@@ -552,7 +552,8 @@ def calibrate_scattering_filters(J, Q, Q2=1, r_psi=math.sqrt(0.5), sigma0=0.1,
     return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
 
 
-def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
+def scattering_filter_factory(J_support, J_scattering, Q, Q2=1,
+                              r_psi=math.sqrt(0.5),
                               criterion_amplitude=1e-3, normalize='l1',
                               max_subsampling=None, sigma0=0.1, alpha=5.,
                               P_max=5, eps=1e-7, **kwargs):
@@ -579,6 +580,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     Q : int
         number of wavelets per octave at the first order. For audio signals,
         a value Q >= 12 is recommended in order to separate partials.
+    Q2 : int
+        number of wavelets per octave at the second order. Recommended Q2 = 1
+        for most (`Scattering1D`) applications.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -650,7 +654,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     """
     # compute the spectral parameters of the filters
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
-        J_scattering, Q, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+        J_scattering, Q, Q2=Q2, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
