@@ -129,6 +129,7 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
                                                  sigma0=sigma0, alpha=alpha)
 
     # compute the filters at all possible subsamplings
+    # TODO subsampled variant
     N = 2 ** J_support
     phi_f = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
@@ -170,7 +171,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         integer. If `True`, returns a tuple of size `max_order` containing
         the number of coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+    sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2 = \
         calibrate_scattering_filters(J, Q)
 
     size_order0 = 1
@@ -234,7 +235,8 @@ def compute_meta_scattering(J, Q, max_order=2):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
+    # TODO meta won't match output if non-CQT are dropped
+    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
         calibrate_scattering_filters(J, Q)
 
     meta = {}
@@ -333,7 +335,7 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
+    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
         calibrate_scattering_filters(J, Q)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
         calibrate_scattering_filters(J_fr, Q_fr)
@@ -357,6 +359,7 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
     # TODO drop `order`?
     # TODO -1 or inf doesn't make sense for `key`
     # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
+    # TODO meta won't match output if non-CQT are dropped
     # Frequential lowpass over first-order
     meta['order'][1].append(0)
     for field in meta:

@@ -359,8 +359,8 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         S_2 = unpad(S_2_r, ind_start[k1_plus_k2 + k2_tm_J],
                     ind_end[k1_plus_k2 + k2_tm_J])
     else:
-        S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
-        S_2_r = B.transpose(U_2_m)
+        S_2_fr = unpad_fr(U_2_m, total_subsample_fr)
+        S_2_r = B.transpose(S_2_fr)
         S_2 = unpad(S_2_r, ind_start[k1_plus_k2],
                     ind_end[k1_plus_k2])
     return S_2
