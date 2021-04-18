@@ -32,7 +32,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.reduce_mean(y, axis=-2)
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, padtype='reflect'):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -53,11 +53,13 @@ class TensorFlowBackend1D(TensorFlowBackend):
         """
         if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
             raise ValueError('Indefinite padding size (larger than tensor).')
+        if padtype == 'zero':
+            padtype = 'constant'
 
         paddings = [[0, 0]] * len(x.shape[:-1])
         paddings += [[pad_left, pad_right]]
 
-        return tf.pad(x, paddings, mode="REFLECT")
+        return tf.pad(x, paddings, mode=padtype)
 
     @staticmethod
     def unpad(x, i0, i1):
