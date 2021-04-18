@@ -88,10 +88,10 @@ ScatteringNumPy1D._document()
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
-                 oversampling=0, oversampling_fr='auto', resample_psi_fr=True,
+                 oversampling=0, aligned=True, resample_psi_fr=True,
                  resample_phi_fr=True, out_type="array", padtype='zero',
                  backend="numpy"):
-        TimeFrequencyScatteringBase.__init__(self, J_fr, Q_fr, oversampling_fr,
+        TimeFrequencyScatteringBase.__init__(self, J_fr, Q_fr, aligned,
                                              resample_psi_fr, resample_phi_fr)
 
         # Second-order scattering object for the time variable
@@ -135,7 +135,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             pad_left=self.pad_left, pad_right=self.pad_right,
             ind_start=self.ind_start, ind_end=self.ind_end,
             oversampling=self.oversampling,
-            oversampling_fr=self.oversampling_fr,
+            aligned=self.aligned,
             size_scattering=size_scattering,
             out_type=self.out_type,
             padtype=self.padtype)

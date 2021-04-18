@@ -2,14 +2,14 @@
 def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        oversampling_fr='auto', max_order=2, average=True,
+        aligned=True, max_order=2, average=True,
         size_scattering=(0, 0, 0), out_type='array', padtype='zero'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
     # pack for later
     B = backend
-    commons = (B, sc_freq, oversampling, oversampling_fr, out_type, unpad, J, phi,
+    commons = (B, sc_freq, oversampling, aligned, out_type, unpad, J, phi,
                ind_start, ind_end, average)
 
     batch_size = x.shape[0]
@@ -68,14 +68,14 @@ def timefrequency_scattering(
         total_height = 2 ** sc_freq.J_pad[-1]  # TODO
         S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
 
-        if oversampling_fr == 'auto':
+        if aligned:
             # subsample as we would in min-padded case
             total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
         else:
             # subsample regularly (relative to current padding)
             total_subsample_fr_max = sc_freq.J_fr
 
-        if oversampling_fr == 'auto':
+        if aligned:
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
             if out_type == 'array':
                 subsample_equiv_due_to_pad_min = 0
@@ -138,7 +138,7 @@ def timefrequency_scattering(
             Y_2_c = B.ifft(Y_2_hat)
 
             if Y_2_arr is None:
-                if oversampling_fr == 'auto' and out_type == 'array':
+                if aligned and out_type == 'array':
                     pad_fr = sc_freq.J_pad[-1]
                 else:
                     pad_fr = sc_freq.J_pad[n2]
@@ -220,7 +220,7 @@ def timefrequency_scattering(
 
 def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                           spin_down=True):
-    B, sc_freq, oversampling, oversampling_fr, *_ = commons
+    B, sc_freq, oversampling, aligned, *_ = commons
 
     psi1_fs = [sc_freq.psi1_f_up]
     if spin_down:
@@ -230,7 +230,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
             # Wavelet transform over frequency
-            if oversampling_fr == 'auto':
+            if aligned:
                 # subsample as we would in min-padded case
                 reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
             else:
@@ -261,9 +261,9 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
 
 
 def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
-    B, sc_freq, oversampling, oversampling_fr, *_ = commons
+    B, sc_freq, oversampling, aligned, *_ = commons
 
-    if oversampling_fr == 'auto':
+    if aligned:
         # subsample as we would in min-padded case
         reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
     else:
@@ -304,10 +304,10 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          sc_freq.ind_start_max[total_subsample_fr],
                          sc_freq.ind_end_max[total_subsample_fr])
 
-    (B, sc_freq, oversampling, oversampling_fr, out_type, unpad, J, phi,
+    (B, sc_freq, oversampling, aligned, out_type, unpad, J, phi,
      ind_start, ind_end, average) = commons
 
-    if oversampling_fr == 'auto':
+    if aligned:
         # subsample as we would in min-padded case
         total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
     else:
@@ -316,7 +316,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
-    if oversampling_fr == 'auto':
+    if aligned:
         reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
         if out_type == 'array':
             subsample_equiv_due_to_pad_min = 0

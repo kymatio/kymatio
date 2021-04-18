@@ -379,11 +379,11 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase():
-    def __init__(self, J_fr=None, Q_fr=1, oversampling_fr='auto',
+    def __init__(self, J_fr=None, Q_fr=1, aligned=True,
                  resample_psi_fr=True, resample_phi_fr=True):
         self._J_fr = J_fr
         self._Q_fr = Q_fr
-        self.oversampling_fr = oversampling_fr
+        self.aligned = aligned
         self.resample_psi_fr = resample_psi_fr
         self.resample_phi_fr = resample_phi_fr
 
