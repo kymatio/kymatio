@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
-from kymatio.numpy import TimeFrequencyScattering
+import scipy.signal
+from kymatio.numpy import Scattering1D, TimeFrequencyScattering
 
 # TODO no kymatio.numpy
 # TODO `out_type == 'array'` won't need `['coef']` later
@@ -82,9 +83,73 @@ def test_shapes():
                              oversampling_fr, tuple(meta['n'][i]))
 
 
+def test_jtfs_vs_ts():
+    """Test JTFS sensitivity to FDTS (frequency-dependent time shifts), and that
+    time scattering is insensitive to it.
+    """
+    N = 2048
+    f0 = N // 96
+    n_partials = 5
+    total_shift = N//16
+
+    t = np.linspace(0, 1, N // 8, endpoint=False)
+    window = scipy.signal.tukey(N//8, alpha=0.5)
+
+    x = np.zeros(N)
+    y = x.copy()
+    for p in range(1, 1 + n_partials):
+        tone = np.cos(2*np.pi * p*f0 * t)
+        x_partial = tone * window
+        x_partial = np.pad(x_partial, 7*N//16)
+        partial_shift = int(total_shift * np.log2(p) / np.log2(n_partials)
+                            ) - total_shift//2
+        y_partial = np.roll(x_partial, partial_shift)
+        x += x_partial
+        y += y_partial
+
+    J = int(np.log2(N) - 1)  # have 2 time units at output
+    Q = 16
+    ts = Scattering1D(J=J, Q=Q, shape=N)
+    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
+                                   out_type="array")
+
+    ts_x = ts(x)
+    ts_y = ts(y)
+
+    jtfs_x_list = jtfs(x)
+    jtfs_y_list = jtfs(y)
+    jtfs_x = np.concatenate([path["coef"] for path in jtfs_x_list])
+    jtfs_y = np.concatenate([path["coef"] for path in jtfs_y_list])
+
+    # get index of first joint coeff
+    jmeta = jtfs.meta()
+    first_joint_idx = [i for i, n in enumerate(jmeta['n'])
+                       if not np.isnan(n[1])][0]
+    arr_idx = sum(len(jtfs_x_list[i]['coef']) for i in range(len(jtfs_x_list))
+                  if i < first_joint_idx)
+
+    # skip zeroth-order
+    ts_l1l2 = l1l2(ts_x[1:], ts_y[1:])
+    # compare against joint coeffs only
+    jtfs_l1l2 = l1l2(jtfs_x[arr_idx:], jtfs_y[arr_idx:])
+
+    # max ratio limited by `N`; can do much better with longer input
+    assert jtfs_l1l2 / ts_l1l2 > 3, "TS: %s\nJTFS: %s" % (ts_l1l2, jtfs_l1l2)
+    assert ts_l1l2 < .1, "TS: %s" % ts_l1l2
+
+
+def _l1l2(x):
+    return np.sum(np.sqrt(np.mean(x**2, axis=1)), axis=0)
+
+def l1l2(x0, x1):
+    """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
+    return _l1l2(x1 - x0) / _l1l2(x0)
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_alignment()
         test_shapes()
+        test_jtfs_vs_ts()
     else:
         pytest.main([__file__, "-s"])
