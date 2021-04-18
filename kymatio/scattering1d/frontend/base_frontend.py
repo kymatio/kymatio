@@ -52,7 +52,8 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("shape must be an integer or a 1-tuple")
 
         # check that we get any second-order coefficients if max_order==2
-        if self.max_order == 2 and np.isnan(self.meta()['n'][-1][1]):
+        meta = ScatteringBase1D.meta(self)
+        if self.max_order == 2 and np.isnan(meta['n'][-1][1]):
             raise ValueError("configuration yields no second-order coefficients; "
                              "try increasing `J`, or set `max_order=1`.")
 
