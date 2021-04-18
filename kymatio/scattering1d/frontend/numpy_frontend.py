@@ -3,16 +3,17 @@ import warnings
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
-from ..utils import precompute_size_scattering, compute_spin_down_filters
+from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend='numpy'):
+            oversampling=0, vectorize=True, out_type='array', padtype='reflect',
+            backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
-                oversampling, vectorize, out_type, backend)
+                oversampling, vectorize, out_type, padtype, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -57,7 +58,8 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                          oversampling=self.oversampling,
                          vectorize=self.vectorize,
                          size_scattering=size_scattering,
-                         out_type=self.out_type)
+                         out_type=self.out_type,
+                         padtype=self.padtype)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = S.shape[-2:]
@@ -86,29 +88,20 @@ ScatteringNumPy1D._document()
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
-                 oversampling=0, out_type="array", backend="numpy"):
-        vectorize = True # for compatibility, will be removed in 0.3
+                 oversampling=0, aligned=True, resample_psi_fr=True,
+                 resample_phi_fr=True, out_type="array", padtype='zero',
+                 backend="numpy"):
+        TimeFrequencyScatteringBase.__init__(self, J_fr, Q_fr, aligned,
+                                             resample_psi_fr, resample_phi_fr)
 
         # Second-order scattering object for the time variable
+        vectorize = True # for compatibility, will be removed in 0.3
         max_order_tm = 2
         ScatteringNumPy1D.__init__(
             self, J, shape, Q, max_order_tm, average,
-            oversampling, vectorize, out_type, backend)
+            oversampling, vectorize, out_type, padtype, backend)
 
-        # First-order scattering object for the frequency variable
-        self.max_order_fr = 1
-        self.shape_fr = self.get_shape_fr()
-        self.J_fr = J_fr if J_fr is not None else self.get_J_fr()
-        self.Q_fr = Q_fr
-        self.sc_freq = ScatteringNumPy1D(
-            self.J_fr, self.shape_fr, self.Q_fr, self.max_order_fr, self.average,
-            self.oversampling, self.vectorize, self.out_type, self.backend)
-
-        # build spin up & down wavelets
-        self.sc_freq.psi1_f_up = self.sc_freq.psi1_f
-        self.sc_freq.psi1_f_down = compute_spin_down_filters(
-            self.sc_freq.psi1_f_up, self.backend)
-        del self.sc_freq.psi1_f
+        TimeFrequencyScatteringBase.build(self)
 
     def scattering(self, x):
         if len(x.shape) < 1:
@@ -129,7 +122,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         x = x.reshape((-1, 1) + signal_shape)
 
         # Precompute output size  # TODO is this correct? and what's its point?
-        size_scattering = 1 + self.J * (2*self.get_J_fr() + 1)
+        size_scattering = 1 + self.J * (2*self.J_fr + 1)
 
         S = timefrequency_scattering(
             x,
@@ -142,8 +135,10 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             pad_left=self.pad_left, pad_right=self.pad_right,
             ind_start=self.ind_start, ind_end=self.ind_end,
             oversampling=self.oversampling,
+            aligned=self.aligned,
             size_scattering=size_scattering,
-            out_type=self.out_type)
+            out_type=self.out_type,
+            padtype=self.padtype)
 
         # TODO switch-case out_type array vs list
         return S

@@ -1,6 +1,7 @@
 import numpy as np
 import math
-from .filter_bank import scattering_filter_factory, calibrate_scattering_filters
+from .filter_bank import (calibrate_scattering_filters, compute_temporal_support,
+                          gauss_1d)
 
 def compute_border_indices(J, i0, i1):
     """
@@ -55,7 +56,7 @@ def compute_padding(J_pad, T):
     """
     T_pad = 2**J_pad
     if T_pad < T:
-        raise ValueError('Padding support should be larger than the original' +
+        raise ValueError('Padding support should be larger than the original '
                          'signal size!')
     to_add = 2**J_pad - T
     pad_left = to_add // 2
@@ -122,10 +123,21 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         boundary error.
     """
     J_tentative = int(np.ceil(np.log2(T)))
-    _, _, _, t_max_phi = scattering_filter_factory(
-        J_tentative, J, Q, normalize=normalize, to_torch=False,
-        max_subsampling=0, criterion_amplitude=criterion_amplitude,
-        r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
+    J_support = J_tentative
+    J_scattering = J
+    sigma_low, *_ = calibrate_scattering_filters(J_scattering, Q, r_psi=r_psi,
+                                                 sigma0=sigma0, alpha=alpha)
+
+    # compute the filters at all possible subsamplings
+    # TODO subsampled variant
+    N = 2 ** J_support
+    phi_f = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+
+    # compute the support size allowing to pad without boundary errors
+    # at the finest resolution
+    t_max_phi = compute_temporal_support(
+        phi_f.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+
     min_to_pad = 3 * t_max_phi
     return min_to_pad
 
@@ -159,7 +171,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         integer. If `True`, returns a tuple of size `max_order` containing
         the number of coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+    sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2 = \
         calibrate_scattering_filters(J, Q)
 
     size_order0 = 1
@@ -223,7 +235,8 @@ def compute_meta_scattering(J, Q, max_order=2):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
+    # TODO meta won't match output if non-CQT are dropped
+    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
         calibrate_scattering_filters(J, Q)
 
     meta = {}
@@ -322,7 +335,7 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
+    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
         calibrate_scattering_filters(J, Q)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
         calibrate_scattering_filters(J_fr, Q_fr)
@@ -346,6 +359,7 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
     # TODO drop `order`?
     # TODO -1 or inf doesn't make sense for `key`
     # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
+    # TODO meta won't match output if non-CQT are dropped
     # Frequential lowpass over first-order
     meta['order'][1].append(0)
     for field in meta:
@@ -407,13 +421,3 @@ def compute_meta_jtfs(J, Q, J_fr, Q_fr):
         meta[field] = np.array(meta[field])
 
     return meta
-
-
-def compute_spin_down_filters(psi_up, backend):
-    """Copy all of `psi_up`'s dicts but conjugate arrays."""
-    psi_down = []
-    for psi in psi_up:
-        psi = psi.copy()
-        psi[0] = backend.conj_fr(psi[0])
-        psi_down.append(psi)
-    return psi_down
