@@ -51,6 +51,11 @@ class ScatteringBase1D(ScatteringBase):
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
 
+        # check that we get any second-order coefficients if max_order==2
+        if self.max_order == 2 and np.isnan(self.meta()['n'][-1][1]):
+            raise ValueError("configuration yields no second-order coefficients; "
+                             "try increasing `J`, or set `max_order=1`.")
+
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
