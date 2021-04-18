@@ -32,7 +32,7 @@ def test_alignment():
     for out_type in ('array', 'list'):
         scattering = TimeFrequencyScattering(
             J, T, Q, J_fr=4, Q_fr=2, average=True, oversampling=0,
-            out_type=out_type, oversampling_fr='auto')
+            out_type=out_type, aligned=True, padtype='reflect')
 
         Scx = scattering(x)
 
@@ -48,8 +48,9 @@ def test_alignment():
         mx_idx = max_row_idx(list(S_all.values())[0])
         for i, s in S_all.items():
             mx_idx_i = max_row_idx(s)
-            assert mx_idx_i == mx_idx, "{} != {} (Scx[{}], out_type={})".format(
-                mx_idx_i, mx_idx, i, out_type)
+            assert abs(mx_idx_i - mx_idx) < 2, (
+                "{} != {} (Scx[{}], out_type={})").format(
+                    mx_idx_i, mx_idx, i, out_type)
 
 
 def test_shapes():
@@ -62,25 +63,27 @@ def test_shapes():
 
     # scatter ################################################################
     for oversampling in (0, 1):
-        for oversampling_fr in ('auto', 'none'):
-            scattering = TimeFrequencyScattering(
-                J, T, Q, J_fr=4, Q_fr=2, average=True, out_type='array',
-                oversampling=oversampling, oversampling_fr=oversampling_fr)
-            Scx = scattering(x)
+      for oversampling_fr in (0, 1):
+        for aligned in (True, False):
+          scattering = TimeFrequencyScattering(
+              J, T, Q, J_fr=4, Q_fr=2, average=True, out_type='array',
+              oversampling=oversampling, aligned=aligned)
+          Scx = scattering(x)
 
-            # assert slice shapes are equal ##################################
-            meta = scattering.meta()
-            S_all = {}
-            for i, s in enumerate(Scx):
-                if not np.isnan(meta['n'][i][1]):  # skip first-order
-                    S_all[i] = s
+          # assert slice shapes are equal ##############################
+          meta = scattering.meta()
+          S_all = {}
+          for i, s in enumerate(Scx):
+              if not np.isnan(meta['n'][i][1]):  # skip first-order
+                  S_all[i] = s
 
-            ref_shape = list(S_all.values())[0]['coef'].shape
-            for i, s in S_all.items():
-                assert s['coef'].shape == ref_shape, (
-                    "{} != {} | (oversampling, oversampling_fr, n) = ({}, {}, {})"
-                    ).format(s['coef'].shape, ref_shape, oversampling,
-                             oversampling_fr, tuple(meta['n'][i]))
+          ref_shape = list(S_all.values())[0]['coef'].shape
+          for i, s in S_all.items():
+              assert s['coef'].shape == ref_shape, (
+                  "{} != {} | (oversampling, oversampling_fr, aligned, n) = "
+                  "({}, {}, {}, {})"
+                  ).format(s['coef'].shape, ref_shape, oversampling,
+                           oversampling_fr, aligned, tuple(meta['n'][i]))
 
 
 def test_jtfs_vs_ts():

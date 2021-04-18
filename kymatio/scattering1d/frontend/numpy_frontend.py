@@ -88,11 +88,16 @@ ScatteringNumPy1D._document()
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
-                 oversampling=0, aligned=True, resample_psi_fr=True,
-                 resample_phi_fr=True, out_type="array", padtype='zero',
-                 backend="numpy"):
-        TimeFrequencyScatteringBase.__init__(self, J_fr, Q_fr, aligned,
-                                             resample_psi_fr, resample_phi_fr)
+                 average_fr=None, oversampling=0, oversampling_fr=None,
+                 aligned=True, resample_psi_fr=True, resample_phi_fr=True,
+                 out_type="array", padtype='zero', backend="numpy"):
+        if average_fr is None:
+            average_fr = average
+        if oversampling_fr is None:
+            oversampling_fr = oversampling
+        TimeFrequencyScatteringBase.__init__(
+            self, J_fr, Q_fr, average_fr, oversampling_fr, aligned,
+            resample_psi_fr, resample_phi_fr)
 
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
@@ -132,9 +137,11 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             self.psi1_f, self.psi2_f, self.phi_f,
             self.sc_freq,
             average=self.average,
+            average_fr=self.average_fr,
             pad_left=self.pad_left, pad_right=self.pad_right,
             ind_start=self.ind_start, ind_end=self.ind_end,
             oversampling=self.oversampling,
+            oversampling_fr=self.oversampling_fr,
             aligned=self.aligned,
             size_scattering=size_scattering,
             out_type=self.out_type,
