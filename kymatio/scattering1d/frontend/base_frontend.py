@@ -13,13 +13,14 @@ from ..utils import (compute_border_indices, compute_padding,
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, Q2=1, max_order=2, average=True,
             oversampling=0, vectorize=True, out_type='array', padtype='reflect',
             backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
         self.Q = Q
+        self.Q2 = Q2
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
@@ -81,7 +82,7 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, normalize=self.normalize,
+            self.J_pad, self.J, self.Q, Q2=self.Q2, normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
@@ -97,7 +98,8 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, max_order=self.max_order)
+        return compute_meta_scattering(self.J, self.Q, Q2=self.Q2,
+                                       max_order=self.max_order)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
@@ -118,7 +120,7 @@ class ScatteringBase1D(ScatteringBase):
         """
 
         return precompute_size_scattering(
-            self.J, self.Q, max_order=self.max_order, detail=detail)
+            self.J, self.Q, Q2=self.Q2, max_order=self.max_order, detail=detail)
 
     _doc_shape = 'N'
 
@@ -271,9 +273,10 @@ class ScatteringBase1D(ScatteringBase):
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by :math:`2^J`.
-        {param_shape}Q : int >= 1
-            The number of first-order wavelets per octave (second-order
-            wavelets are fixed to one wavelet per octave). Defaults to `1`.
+        {param_shape}Q : int
+            The number of first-order wavelets per octave.
+        Q2 : int
+            The number of second-order wavelets per octave.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
@@ -425,7 +428,7 @@ class TimeFrequencyScatteringBase():
         meta : dictionary
             See the documentation for `compute_meta_jtfs()`.
         """
-        return compute_meta_jtfs(self.J, self.Q, self.J_fr, self.Q_fr)
+        return compute_meta_jtfs(self.J, self.Q, self.Q2, self.J_fr, self.Q_fr)
 
     # access key attributes via frequential class
     @property
@@ -470,7 +473,6 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.out_type = out_type
         self.backend = backend
 
-        # ScatteringBase._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         self.build()
         self.create_filters()
 
