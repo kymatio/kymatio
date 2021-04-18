@@ -159,7 +159,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         integer. If `True`, returns a tuple of size `max_order` containing
         the number of coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
+    sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2 = \
         calibrate_scattering_filters(J, Q)
 
     size_order0 = 1
@@ -223,7 +223,8 @@ def compute_meta_scattering(J, Q, max_order=2):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
-    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
+    # TODO meta won't match output if non-CQT are dropped
+    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
         calibrate_scattering_filters(J, Q)
 
     meta = {}
