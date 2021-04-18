@@ -14,7 +14,8 @@ from ..utils import (compute_border_indices, compute_padding,
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, vectorize=True, out_type='array', padtype='reflect',
+            backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -24,6 +25,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
+        self.padtype = padtype
         self.backend = backend
 
     def build(self):
@@ -53,6 +55,11 @@ class ScatteringBase1D(ScatteringBase):
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+
+        # check padtype
+        if self.padtype not in ('reflect', 'symmetric', 'zero'):
+            raise ValueError("`padtype` must be one of: reflect, symmetric, "
+                             "zero (got %s)" % self.padtype)
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(

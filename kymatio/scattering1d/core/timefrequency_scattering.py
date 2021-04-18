@@ -3,7 +3,7 @@ def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         oversampling_fr='auto', max_order=2, average=True,
-        size_scattering=(0, 0, 0), out_type='array'):
+        size_scattering=(0, 0, 0), out_type='array', padtype='reflect'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
@@ -21,7 +21,7 @@ def timefrequency_scattering(
                'phi_t * psi_f': [[]]}
 
     # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
+    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, padtype=padtype)
 
     # compute the Fourier transform
     U_0_hat = B.rfft(U_0)
