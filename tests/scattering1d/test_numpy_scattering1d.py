@@ -33,3 +33,8 @@ class TestScattering1DNumpy:
 
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0)
+
+        with pytest.raises(ValueError) as record:
+            sc = Scattering1D(
+                shape=(512,), J=2, max_order=2, backend=backend, frontend='numpy')
+        assert "max_order=1" in record.value.args[0]
