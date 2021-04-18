@@ -89,7 +89,7 @@ ScatteringNumPy1D._document()
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, average=True,
                  oversampling=0, oversampling_fr='auto', resample_psi_fr=True,
-                 resample_phi_fr=True, out_type="array", padtype='reflect',
+                 resample_phi_fr=True, out_type="array", padtype='zero',
                  backend="numpy"):
         TimeFrequencyScatteringBase.__init__(self, J_fr, Q_fr, oversampling_fr,
                                              resample_psi_fr, resample_phi_fr)

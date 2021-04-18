@@ -3,7 +3,7 @@ def timefrequency_scattering(
         x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         oversampling_fr='auto', max_order=2, average=True,
-        size_scattering=(0, 0, 0), out_type='array', padtype='reflect'):
+        size_scattering=(0, 0, 0), out_type='array', padtype='zero'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
