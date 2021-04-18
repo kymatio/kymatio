@@ -264,8 +264,9 @@ class ScatteringBase1D(ScatteringBase):
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by :math:`2^J`.
         {param_shape}Q : int >= 1
-            The number of first-order wavelets per octave (second-order
-            wavelets are fixed to one wavelet per octave). Defaults to `1`.
+            The number of first-order wavelets per octave. Defaults to `1`.
+        Q2 : int >= 1
+            The number of second-order wavelets per octave. Defaults to `1`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
@@ -285,8 +286,9 @@ class ScatteringBase1D(ScatteringBase):
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by `2 ** J`.
         {param_shape}Q : int
-            The number of first-order wavelets per octave (second-order
-            wavelets are fixed to one wavelet per octave).
+            The number of first-order wavelets per octave.
+        Q2 : int
+            The number of second-order wavelets per octave.
         {attrs_shape}max_order : int
             The maximum scattering order of the transform.
         {attr_average}oversampling : int
