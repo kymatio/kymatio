@@ -195,7 +195,8 @@ def compute_meta_scattering(J, Q, Q2=1, max_order=2):
         In other words, the maximum scale is given by `2**J`.
     Q : int >= 1
         The number of first-order wavelets per octave.
-        Second-order wavelets are fixed to one wavelet per octave.
+    Q2 : int >= 1
+        The number of second-order wavelets per octave.
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
