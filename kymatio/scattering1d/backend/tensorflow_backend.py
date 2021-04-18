@@ -46,6 +46,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        padtype : str
+            name of padding to use.
         Returns
         -------
         res : tensor
