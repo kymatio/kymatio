@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', padtype='reflect',
+            oversampling=0, vectorize=True, out_type='array', pad_mode='reflect',
             backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
@@ -22,7 +22,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
-        self.padtype = padtype
+        self.pad_mode = pad_mode
         self.backend = backend
 
     def build(self):
@@ -53,10 +53,10 @@ class ScatteringBase1D(ScatteringBase):
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
 
-        # check padtype
-        if self.padtype not in ('reflect', 'symmetric', 'zero'):
-            raise ValueError("`padtype` must be one of: reflect, symmetric, "
-                             "zero (got %s)" % self.padtype)
+        # check pad_mode
+        if self.pad_mode not in ('reflect', 'symmetric', 'zero'):
+            raise ValueError("`pad_mode` must be one of: reflect, symmetric, "
+                             "zero (got %s)" % self.pad_mode)
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(

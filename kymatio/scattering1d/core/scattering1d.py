@@ -1,7 +1,7 @@
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array', padtype='reflect'):
+        vectorize=False, out_type='array', pad_mode='reflect'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -51,7 +51,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
-    padtype : str
+    pad_mode : str
         name of padding to use.
 
     """
@@ -71,7 +71,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, padtype=padtype)
+    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
