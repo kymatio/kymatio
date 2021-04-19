@@ -33,3 +33,8 @@ class TestScattering1DNumpy:
 
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0)
+
+        with pytest.raises(ValueError) as record:
+            sc = Scattering1D(
+                J, T, Q, backend=backend, frontend='numpy', pad_mode="invalid")
+        assert "pad_mode" in record.value.args[0]
