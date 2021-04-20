@@ -6,6 +6,8 @@ from kymatio.numpy import Scattering1D, TimeFrequencyScattering
 # TODO no kymatio.numpy
 # TODO `out_type == 'array'` won't need `['coef']` later
 # TODO test that freq-averaged FOTS shape matches joint for out_type='array'
+# TODO joint coeffs exclude freq-averaged U1 (fix after sorting meta stuff)
+# TODO phase-shift sensitivity
 
 # set True to execute all test functions without pytest
 run_without_pytest = 0
@@ -91,39 +93,30 @@ def test_jtfs_vs_ts():
     """Test JTFS sensitivity to FDTS (frequency-dependent time shifts), and that
     time scattering is insensitive to it.
     """
+    # design signal
     N = 2048
-    f0 = N // 96
+    f0 = N // 12
     n_partials = 5
     total_shift = N//16
+    seg_len = N//8
 
-    t = np.linspace(0, 1, N // 8, endpoint=False)
-    window = scipy.signal.tukey(N//8, alpha=0.5)
+    x, xs = fdts(N, n_partials, total_shift, f0, seg_len)
 
-    x = np.zeros(N)
-    y = x.copy()
-    for p in range(1, 1 + n_partials):
-        tone = np.cos(2*np.pi * p*f0 * t)
-        x_partial = tone * window
-        x_partial = np.pad(x_partial, 7*N//16)
-        partial_shift = int(total_shift * np.log2(p) / np.log2(n_partials)
-                            ) - total_shift//2
-        y_partial = np.roll(x_partial, partial_shift)
-        x += x_partial
-        y += y_partial
-
+    # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
     ts = Scattering1D(J=J, Q=Q, shape=N)
     jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
                                    out_type="array")
 
-    ts_x = ts(x)
-    ts_y = ts(y)
+    # scatter
+    ts_x  = ts(x)
+    ts_xs = ts(xs)
 
-    jtfs_x_list = jtfs(x)
-    jtfs_y_list = jtfs(y)
-    jtfs_x = np.concatenate([path["coef"] for path in jtfs_x_list])
-    jtfs_y = np.concatenate([path["coef"] for path in jtfs_y_list])
+    jtfs_x_list  = jtfs(x)
+    jtfs_xs_list = jtfs(xs)
+    jtfs_x  = np.concatenate([path["coef"] for path in jtfs_x_list])
+    jtfs_xs = np.concatenate([path["coef"] for path in jtfs_xs_list])
 
     # get index of first joint coeff
     jmeta = jtfs.meta()
@@ -133,15 +126,57 @@ def test_jtfs_vs_ts():
                   if i < first_joint_idx)
 
     # skip zeroth-order
-    ts_l1l2 = l1l2(ts_x[1:], ts_y[1:])
+    l1l2_ts = l1l2(ts_x[1:], ts_xs[1:])
     # compare against joint coeffs only
-    jtfs_l1l2 = l1l2(jtfs_x[arr_idx:], jtfs_y[arr_idx:])
+    l1l2_jtfs = l1l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
 
     # max ratio limited by `N`; can do much better with longer input
-    assert jtfs_l1l2 / ts_l1l2 > 3, "TS: %s\nJTFS: %s" % (ts_l1l2, jtfs_l1l2)
-    assert ts_l1l2 < .1, "TS: %s" % ts_l1l2
+    assert l1l2_jtfs / l1l2_ts > 3, "\nTS: %s\nJTFS: %s" % (l1l2_ts, l1l2_jtfs)
+    assert l1l2_ts < .1, "TS: %s" % l1l2_ts
 
 
+def test_freq_tp_invar():
+    """Test frequency transposition invariance."""
+    # design signal
+    N = 2048
+    f0 = N // 12
+    f1 = N // 16
+    n_partials = 5
+    seg_len = N//8
+
+    x0 = fdts(N, n_partials, f0=f0, seg_len=seg_len)[0]
+    x1 = fdts(N, n_partials, f0=f1, seg_len=seg_len)[0]
+
+    # make scattering objects
+    J = int(np.log2(N) - 1)  # have 2 time units at output
+    Q = 16
+    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
+                                   out_type="array")
+
+    # scatter
+    jtfs_x0_list = jtfs(x0)
+    jtfs_x1_list = jtfs(x1)
+    jtfs_x0 = np.concatenate([path["coef"] for path in jtfs_x0_list])
+    jtfs_x1 = np.concatenate([path["coef"] for path in jtfs_x1_list])
+
+    # get index of first joint coeff
+    jmeta = jtfs.meta()
+    first_joint_idx = [i for i, n in enumerate(jmeta['n'])
+                       if not np.isnan(n[1])][0]
+    arr_idx = sum(len(jtfs_x0_list[i]['coef']) for i in range(len(jtfs_x0_list))
+                  if i < first_joint_idx)
+
+    # compare against joint coeffs only
+    l1l2_x0x1 = l1l2_mod(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
+
+    # TODO is this value reasonable? it's much greater with different f0
+    # (but same relative f1)
+    th = .17
+    assert l1l2_x0x1 < th, "{} > {}".format(l1l2_x0x1, th)
+
+
+### helper methods ###########################################################
+# TODO move to (and create) tests/utils.py?
 def _l1l2(x):
     return np.sum(np.sqrt(np.mean(x**2, axis=1)), axis=0)
 
@@ -149,11 +184,38 @@ def l1l2(x0, x1):
     """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
     return _l1l2(x1 - x0) / _l1l2(x0)
 
+def l1l2_mod(x0, x1):
+    """L1L2 agnostic to choice of reference."""
+    return _l1l2(x1 - x0) / ( (_l1l2(x0) + _l1l2(x1))/2 )
+
+
+def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
+    """Generate windowed tones with Frequency-dependent Time Shifts (FDTS)."""
+    total_shift = total_shift or N//16
+    f0 = f0 or N//12
+    seg_len = seg_len or N//8
+
+    t = np.linspace(0, 1, N, endpoint=False)
+    window = scipy.signal.tukey(seg_len, alpha=0.5)
+    window = np.pad(window, (N - len(window)) // 2)
+
+    x = np.zeros(N)
+    xs = x.copy()
+    for p in range(1, 1 + n_partials):
+        x_partial = np.sin(2*np.pi * p*f0 * t) * window
+        partial_shift = int(total_shift * np.log2(p) / np.log2(n_partials)
+                            ) - total_shift//2
+        xs_partial = np.roll(x_partial, partial_shift)
+        x += x_partial
+        xs += xs_partial
+    return x, xs
+
 
 if __name__ == '__main__':
     if run_without_pytest:
         test_alignment()
         test_shapes()
         test_jtfs_vs_ts()
+        test_freq_tp_invar()
     else:
         pytest.main([__file__, "-s"])
