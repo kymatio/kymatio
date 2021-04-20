@@ -9,11 +9,11 @@ from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, Q2=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', padtype='reflect',
+            oversampling=0, vectorize=True, out_type='array', pad_mode='reflect',
             backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, Q2, max_order, average,
-                oversampling, vectorize, out_type, padtype, backend)
+                oversampling, vectorize, out_type, pad_mode, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -59,7 +59,7 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                          vectorize=self.vectorize,
                          size_scattering=size_scattering,
                          out_type=self.out_type,
-                         padtype=self.padtype)
+                         pad_mode=self.pad_mode)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = S.shape[-2:]
@@ -90,7 +90,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
     def __init__(self, J, shape, Q, Q2=1, J_fr=None, Q_fr=1, average=True,
                  average_fr=None, oversampling=0, oversampling_fr=None,
                  aligned=True, resample_psi_fr=True, resample_phi_fr=True,
-                 out_type="array", padtype='zero', backend="numpy"):
+                 out_type="array", pad_mode='zero', backend="numpy"):
         if average_fr is None:
             average_fr = average
         if oversampling_fr is None:
@@ -104,7 +104,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         max_order_tm = 2
         ScatteringNumPy1D.__init__(
             self, J, shape, Q, Q2, max_order_tm, average,
-            oversampling, vectorize, out_type, padtype, backend)
+            oversampling, vectorize, out_type, pad_mode, backend)
 
         TimeFrequencyScatteringBase.build(self)
 
@@ -145,7 +145,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             aligned=self.aligned,
             size_scattering=size_scattering,
             out_type=self.out_type,
-            padtype=self.padtype)
+            pad_mode=self.pad_mode)
 
         # TODO switch-case out_type array vs list
         return S
