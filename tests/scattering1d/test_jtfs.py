@@ -140,7 +140,7 @@ def test_freq_tp_invar():
     # design signal
     N = 2048
     f0 = N // 12
-    f1 = N // 16
+    f1 = f0 / np.sqrt(2)
     n_partials = 5
     seg_len = N//8
 
@@ -171,7 +171,7 @@ def test_freq_tp_invar():
 
     # TODO is this value reasonable? it's much greater with different f0
     # (but same relative f1)
-    th = .17
+    th = .18
     assert l1l2_x0x1 < th, "{} > {}".format(l1l2_x0x1, th)
 
 
