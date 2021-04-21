@@ -54,9 +54,9 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("shape must be an integer or a 1-tuple")
 
         # check pad_mode
-        if self.pad_mode not in ('reflect', 'symmetric', 'zero'):
-            raise ValueError("`pad_mode` must be one of: reflect, symmetric, "
-                             "zero (got %s)" % self.pad_mode)
+        if self.pad_mode not in ('reflect', 'zero'):
+            raise ValueError("`pad_mode` must be one of: reflect, zero "
+                             "(got %s)" % self.pad_mode)
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
@@ -182,6 +182,10 @@ class ScatteringBase1D(ScatteringBase):
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
             `'array'`.
+        pad_mode : str, optional
+            Name of padding scheme to use, one of (`x = [1, 2, 3]`):
+                - zero:    [0, 0, 1, 2, 3, 0, 0, 0]
+                - reflect: [3, 2, 1, 2, 3, 2, 1, 2]
         """
 
     _doc_attr_vectorize = \
