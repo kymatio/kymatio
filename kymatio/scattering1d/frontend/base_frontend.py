@@ -1,4 +1,5 @@
 from ...frontend.base_frontend import ScatteringBase
+from types import FunctionType
 import math
 import numbers
 
@@ -53,10 +54,16 @@ class ScatteringBase1D(ScatteringBase):
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
 
-        # check pad_mode
-        if self.pad_mode not in ('reflect', 'zero'):
-            raise ValueError("`pad_mode` must be one of: reflect, zero "
-                             "(got %s)" % self.pad_mode)
+        # check `pad_mode`, set `_pad_fn`
+        if isinstance(self.pad_mode, FunctionType):
+            self._pad_fn = self.pad_mode
+        elif self.pad_mode not in ('reflect', 'zero'):
+            raise ValueError("`pad_mode` must be a function, or string, one of: "
+                             "reflect, zero (got %s)" % str(self.pad_mode))
+        else:
+            def pad_fn(x, pad_left, pad_right):
+                return self.backend.pad(x, pad_left, pad_right, self.pad_mode)
+            self._pad_fn = pad_fn
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
