@@ -51,6 +51,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
+
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
