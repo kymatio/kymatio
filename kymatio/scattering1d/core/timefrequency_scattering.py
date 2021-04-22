@@ -16,6 +16,7 @@ def timefrequency_scattering(
     batch_size = x.shape[0]
     kJ = max(J - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
+    out_S_0 = []
     out_S_1 = []
     out_S_2 = {'psi_t * psi_f': [[], []],
                'psi_t * phi_f': [],
@@ -23,9 +24,19 @@ def timefrequency_scattering(
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
-
     # compute the Fourier transform
     U_0_hat = B.rfft(U_0)
+
+    # Zeroth order:
+    k0 = max(J - oversampling, 0)
+    if average:
+        S_0_c = B.cdgmm(U_0_hat, phi[0])
+        S_0_hat = B.subsample_fourier(S_0_c, 2**k0)
+        S_0_r = B.irfft(S_0_hat)
+        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
+    else:
+        S_0 = x
+    out_S_0.append({'coef': S_0, 'j': (), 'n': (), 's': ()})
 
     # First order:
     U_1_hat_list, S_1_list, S_1_c_list = [], [], []
@@ -201,6 +212,7 @@ def timefrequency_scattering(
     ##########################################################################
 
     out_S = []
+    out_S.extend(out_S_0)
     out_S.extend(out_S_1)
     for outs in out_S_2.values():
         if isinstance(outs[0], list):
@@ -271,7 +283,8 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
         reference_subsample_equiv_due_to_pad = sc_freq.j0s[n2]
 
     subsample_equiv_due_to_pad = max(sc_freq.J_pad) - pad_fr
-    j1_fr = sc_freq.psi1_f_up[-1]['j']   # take largest subsampling factor
+    j1_fr = sc_freq.J_fr - 1   # take largest subsampling factor
+    # sc_freq.psi1_f_up[-1]['j']   # TODO it was this, why?
     n1_fr_subsample = max(j1_fr - reference_subsample_equiv_due_to_pad -
                           oversampling_fr, 0)
 

@@ -35,7 +35,7 @@ def test_alignment():
     for out_type in ('array', 'list'):
         scattering = TimeFrequencyScattering(
             J, T, Q, J_fr=4, Q_fr=2, average=True, oversampling=0,
-            out_type=out_type, aligned=True, padtype='reflect')
+            out_type=out_type, aligned=True)
 
         Scx = scattering(x)
 
@@ -97,7 +97,7 @@ def test_jtfs_vs_ts():
     N = 2048
     f0 = N // 12
     n_partials = 5
-    total_shift = N//16
+    total_shift = N//12
     seg_len = N//8
 
     x, xs = fdts(N, n_partials, total_shift, f0, seg_len)
@@ -126,13 +126,13 @@ def test_jtfs_vs_ts():
                   if i < first_joint_idx)
 
     # skip zeroth-order
-    l1l2_ts = l1l2(ts_x[1:], ts_xs[1:])
+    l2_ts = l2(ts_x[1:], ts_xs[1:])
     # compare against joint coeffs only
-    l1l2_jtfs = l1l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
+    l2_jtfs = l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
 
     # max ratio limited by `N`; can do much better with longer input
-    assert l1l2_jtfs / l1l2_ts > 3, "\nTS: %s\nJTFS: %s" % (l1l2_ts, l1l2_jtfs)
-    assert l1l2_ts < .1, "TS: %s" % l1l2_ts
+    assert l2_jtfs / l2_ts > 3, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_ts < .1, "TS: %s" % l2_ts
 
 
 def test_freq_tp_invar():
@@ -167,26 +167,49 @@ def test_freq_tp_invar():
                   if i < first_joint_idx)
 
     # compare against joint coeffs only
-    l1l2_x0x1 = l1l2_mod(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
+    l2_x0x1 = l2(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
 
     # TODO is this value reasonable? it's much greater with different f0
     # (but same relative f1)
-    th = .18
-    assert l1l2_x0x1 < th, "{} > {}".format(l1l2_x0x1, th)
+    th = .20
+    assert l2_x0x1 < th, "{} > {}".format(l2_x0x1, th)
 
+
+def test_meta():
+    """Test that `TimeFrequencyScattering.meta()` matches output's meta."""
+    def assert_equal(a, b, field, i):
+        errmsg = "{}: (out[{}], meta[{}]) = ({}, {})".format(field, i, i, a, b)
+        if len(a) == len(b):
+            assert np.all(a == b), errmsg
+        elif len(a) == 0:
+            assert np.all(np.isnan(b)), errmsg
+        elif len(a) < len(b):
+            assert a[0] == b[0], errmsg
+            assert np.isnan(b[1]), errmsg
+
+    N = 2048
+    x = np.random.randn(N)
+
+    # make scattering objects
+    J = int(np.log2(N) - 1)  # have 2 time units at output
+    Q = 16
+    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, shape=N, out_type="list")
+
+    out = jtfs(x)
+    meta = jtfs.meta()
+
+    for field in ('j', 'n', 's'):
+        for i in range(len(meta[field])):
+            assert_equal(out[i][field], meta[field][i], field, i)
 
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
-def _l1l2(x):
-    return np.sum(np.sqrt(np.mean(x**2, axis=1)), axis=0)
+def _l2(x):
+    return np.linalg.norm(x)
 
-def l1l2(x0, x1):
-    """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
-    return _l1l2(x1 - x0) / _l1l2(x0)
-
-def l1l2_mod(x0, x1):
-    """L1L2 agnostic to choice of reference."""
-    return _l1l2(x1 - x0) / ( (_l1l2(x0) + _l1l2(x1))/2 )
+def l2(x0, x1):
+    """Coeff distance measure; Eq 2.25 in https://arxiv.org/abs/1101.2286"""
+    return _l2(x1 - x0) / _l2(x0)
 
 
 def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
@@ -217,5 +240,6 @@ if __name__ == '__main__':
         test_shapes()
         test_jtfs_vs_ts()
         test_freq_tp_invar()
+        test_meta()
     else:
         pytest.main([__file__, "-s"])
