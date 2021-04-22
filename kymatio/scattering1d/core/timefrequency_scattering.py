@@ -132,8 +132,15 @@ def timefrequency_scattering(
         if j2 == 0:
             continue
 
+        # preallocate output slice
+        if aligned and out_type == 'array':
+            pad_fr = sc_freq.J_pad[-1]
+        else:
+            pad_fr = sc_freq.J_pad[n2]
+        n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
+        Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
+
         # Wavelet transform over time
-        Y_2_arr = None
         for n1 in range(len(psi1)):
             # Retrieve first-order coefficient in the list
             j1 = psi1[n1]['j']
@@ -147,14 +154,6 @@ def timefrequency_scattering(
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
             Y_2_c = B.ifft(Y_2_hat)
-
-            if Y_2_arr is None:
-                if aligned and out_type == 'array':
-                    pad_fr = sc_freq.J_pad[-1]
-                else:
-                    pad_fr = sc_freq.J_pad[n2]
-                Y_2_arr = backend.zeros((2**pad_fr, Y_2_c.shape[-1]),
-                                        dtype=Y_2_c.dtype)
             Y_2_arr[n1] = Y_2_c
 
         # sum is same for all `n1`, just take last
@@ -178,8 +177,12 @@ def timefrequency_scattering(
     # take largest subsampling factor
     j2 = J - 1
 
+    # preallocate output slice
+    pad_fr = sc_freq.J_pad[-1]
+    n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
+    Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
+
     # Low-pass filtering over time, with filter length matching first-order's
-    Y_2_arr = None
     for n1 in range(len(psi1)):
         j1 = psi1[n1]['j']
         if j1 >= j2:
@@ -191,11 +194,6 @@ def timefrequency_scattering(
         Y_2_c = S_1_c_list[n1]               # reuse 1st-order U_1_hat * phi[k1]
         Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
         Y_2_c = B.ifft(Y_2_hat)
-
-        if Y_2_arr is None:
-            pad_fr = sc_freq.J_pad[-1]
-            Y_2_arr = backend.zeros((2**pad_fr, Y_2_c.shape[-1]),
-                                    dtype=Y_2_c.dtype)
         Y_2_arr[n1] = Y_2_c
 
     # sum is same for all `n1`, just take last
