@@ -10,8 +10,8 @@ def timefrequency_scattering(
     """
     # pack for later
     B = backend
-    commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average_fr,
-               out_type, unpad, J, phi, ind_start, ind_end)
+    commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average,
+               average_fr, out_type, unpad, J, phi, ind_start, ind_end)
 
     batch_size = x.shape[0]
     kJ = max(J - oversampling, 0)
@@ -68,14 +68,14 @@ def timefrequency_scattering(
 
             # Unpad
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
-            S_1_list.append(S_1)
         else:
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
+        S_1_list.append(S_1)
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
 
     # Apply low-pass filtering over frequency (optional) and unpad
-    if average_fr:
+    if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
         total_height = len(sc_freq.phi_f_fo)
         S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
@@ -282,7 +282,6 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 
     subsample_equiv_due_to_pad = max(sc_freq.J_pad) - pad_fr
     j1_fr = sc_freq.J_fr - 1   # take largest subsampling factor
-    # sc_freq.psi1_f_up[-1]['j']   # TODO it was this, why?
     n1_fr_subsample = max(j1_fr - reference_subsample_equiv_due_to_pad -
                           oversampling_fr, 0)
 
@@ -315,9 +314,10 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          sc_freq.ind_start_max[total_subsample_fr],
                          sc_freq.ind_end_max[total_subsample_fr])
 
-    (B, sc_freq, aligned, oversampling_fr, oversampling, average_fr, out_type,
-     unpad, J, phi, ind_start, ind_end) = commons
+    (B, sc_freq, aligned, oversampling_fr, oversampling, average, average_fr,
+     out_type, unpad, J, phi, ind_start, ind_end) = commons
 
+    # compute subsampling logic ##############################################
     if aligned:
         # subsample as we would in min-padded case
         total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
@@ -345,35 +345,35 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
     else:
         total_subsample_fr = total_subsample_so_far
-    # greater idx = shorter phi_f, so increase if padding was less (greater j0)
-    # or `*sc_freq.psi1_f` was subsampled more (greater n1_fr_subsample)
 
+    # lowpass + subsample + unpad ############################################
     if average_fr:
         # Low-pass filtering over frequency
         U_2_hat = B.rfft(U_2_m)
         S_2_fr_c = B.cdgmm(U_2_hat, sc_freq.phi_f[total_subsample_so_far])
         S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr)
         S_2_fr = B.irfft(S_2_fr_hat)
+    else:
+        S_2_fr = U_2_m
 
-        S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
+    S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
+    # Swap time and frequency subscripts again
+    S_2_fr = B.transpose(S_2_fr)
 
-        # Swap time and frequency subscripts again
-        S_2_fr = B.transpose(S_2_fr)
-
+    if average:
         # Low-pass filtering over time
         k2_tm_J = max(J - k1_plus_k2 - oversampling, 0)
         U_2_hat = B.rfft(S_2_fr)
         S_2_c = B.cdgmm(U_2_hat, phi[k1_plus_k2])
         S_2_hat = B.subsample_fourier(S_2_c, 2**k2_tm_J)
         S_2_r = B.irfft(S_2_hat)
-
-        S_2 = unpad(S_2_r, ind_start[k1_plus_k2 + k2_tm_J],
-                    ind_end[k1_plus_k2 + k2_tm_J])
+        total_subsample_tm = k1_plus_k2 + k2_tm_J
     else:
-        S_2_fr = unpad_fr(U_2_m, total_subsample_fr)
-        S_2_r = B.transpose(S_2_fr)
-        S_2 = unpad(S_2_r, ind_start[k1_plus_k2],
-                    ind_end[k1_plus_k2])
+        total_subsample_tm = k1_plus_k2
+        S_2_r = S_2_fr
+
+    S_2 = unpad(S_2_r, ind_start[total_subsample_tm],
+                ind_end[total_subsample_tm])
     return S_2
 
 
