@@ -207,9 +207,10 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-        - (aligned, out_type) = (True,  "list")
-        - (aligned, out_type) = (True,  "array")
-        - (aligned, out_type) = (False, "array")
+        - (aligned, out_type, average_fr) = (True,  "list",  True)
+        - (aligned, out_type, average_fr) = (True,  "array", True)
+        - (aligned, out_type, average_fr) = (False, "array", True)
+        - (aligned, out_type, average_fr) = (True,  "list",  "global")
     """
     def _load_data(test_num):
         """Also see data['code']."""
@@ -224,8 +225,11 @@ def test_output():
                       'average_fr')
         params = {}
         for k in param_keys:
-            if k in ('aligned', 'average_fr'):
+            if k == 'aligned':
                 params[k] = bool(data[k])
+            elif k == 'average_fr':
+                params[k] = (str(data[k]) if str(data[k]) == 'global' else
+                             bool(data[k]))
             elif k == 'out_type':
                 params[k] = str(data[k])
             else:

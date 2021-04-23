@@ -74,11 +74,19 @@ def timefrequency_scattering(
         S_1_list.append(S_1)
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
 
-    # Apply low-pass filtering over frequency (optional) and unpad
+    # Apply averaging over frequency and unpad
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
         total_height = len(sc_freq.phi_f_fo)
-        S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
+        # S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
+        S_1_fr = B.zeros((total_height, S_1_list[-1].shape[-1]),
+                         dtype=S_1_list[-1].dtype)
+        S_1_fr[:len(S_1_list)] = S_1_list
+
+    if average_fr == 'global' and average:
+        S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
+    elif average_fr and average:
+        S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
 
         if aligned:
             # subsample as we would in min-padded case
@@ -118,12 +126,11 @@ def timefrequency_scattering(
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start_max[lowpass_subsample_fr],
                              sc_freq.ind_end_max[lowpass_subsample_fr])
-
         S_1_fr = B.transpose(S_1_fr_T)
-        out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
-        # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
     else:
-        out_S_1.append({'coef': [], 'j': (), 'n': (), 's': ()})
+        S_1_fr = []
+    out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
+    # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
     ##########################################################################
     # Second order: separable convolutions (along time & freq), and low-pass
@@ -338,7 +345,9 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         reference_total_subsample_so_far = total_subsample_so_far
 
-    if average_fr:
+    if average_fr == 'global':
+        pass
+    elif average_fr:
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)
@@ -346,8 +355,9 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         total_subsample_fr = total_subsample_so_far
 
-    # lowpass + subsample + unpad ############################################
-    if average_fr:
+    if average_fr == 'global':
+        S_2_fr = B.mean(U_2_m, axis=-1)
+    elif average_fr:
         # Low-pass filtering over frequency
         U_2_hat = B.rfft(U_2_m)
         S_2_fr_c = B.cdgmm(U_2_hat, sc_freq.phi_f[total_subsample_so_far])
@@ -356,7 +366,8 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         S_2_fr = U_2_m
 
-    S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
+    if average_fr != 'global':
+        S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
     # Swap time and frequency subscripts again
     S_2_fr = B.transpose(S_2_fr)
 
@@ -375,21 +386,6 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     S_2 = unpad(S_2_r, ind_start[total_subsample_tm],
                 ind_end[total_subsample_tm])
     return S_2
-
-
-def _pad_transpose_fft(coeff_list, total_height, B, fft):
-    # zero-pad along frequency; enables convolving with longer low-pass
-    padding_row = coeff_list[-1] * 0
-    for i in range(total_height - len(coeff_list)):
-        coeff_list.append(padding_row)
-
-    # Concatenate along the frequency axis
-    out = B.concatenate(coeff_list)
-    # swap dims to convolve along frequency
-    out = B.transpose(out)
-    # Map to Fourier domain
-    out = fft(out)
-    return out
 
 
 def _transpose_fft(coeff_arr, B, fft):

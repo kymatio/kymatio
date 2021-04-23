@@ -125,5 +125,10 @@ class NumpyBackend1D(NumpyBackend):
         out[..., 1:] = x[..., :0:-1]
         return out
 
+    @classmethod
+    def mean(cls, x, axis=-1):
+        """Take mean along specified axis, without collapsing the axis."""
+        return x.mean(axis, keepdims=True)
+
 
 backend = NumpyBackend1D
