@@ -1,3 +1,4 @@
+import os
 import pytest
 import numpy as np
 import scipy.signal
@@ -202,6 +203,57 @@ def test_meta():
         for i in range(len(meta[field])):
             assert_equal(out[i][field], meta[field][i], field, i)
 
+
+def test_output():
+    """Applies JTFS on a stored signal to make sure its output agrees with
+    a previously calculated version. Tests for:
+        - (aligned, out_type) = (True,  "list")
+        - (aligned, out_type) = (True,  "array")
+        - (aligned, out_type) = (False, "array")
+    """
+    def _load_data(test_num):
+        """Also see data['code']."""
+        test_data_dir = os.path.dirname(__file__)
+        data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
+
+        x = data['x']
+        out_stored = [data[k] for k in data.files
+                      if (k.startswith('out_') and k != 'out_type')]
+
+        param_keys = ('shape', 'J', 'J_fr', 'Q', 'Q_fr', 'aligned', 'out_type',
+                      'average_fr')
+        params = {}
+        for k in param_keys:
+            if k in ('aligned', 'average_fr'):
+                params[k] = bool(data[k])
+            elif k == 'out_type':
+                params[k] = str(data[k])
+            else:
+                params[k] = int(data[k])
+
+        params_str = ""
+        for k, v in params.items():
+            params_str += "{}={}\n".format(k, str(v))
+        return x, out_stored, params, params_str
+
+    for test_num in range(3):
+        x, out_stored, params, params_str = _load_data(test_num)
+
+        jtfs = TimeFrequencyScattering(**params)
+        out = jtfs(x)
+        if params['out_type'] == 'list':
+            out = [o['coef'] for o in out]
+        else:  # TODO
+            out = [o['coef'] for o in out]
+
+        assert len(out) == len(out_stored), (
+            "out vs stored number of coeffs mismatch ({} != {})\n{}"
+            ).format(len(out), len(out_stored), params_str)
+
+        for i, (o, o_stored) in enumerate(zip(out, out_stored)):
+            errmsg = ("out[{}] != out_stored[{}]\n{}").format(i, i, params_str)
+            assert np.allclose(o, o_stored), errmsg
+
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
 def _l2(x):
@@ -241,5 +293,6 @@ if __name__ == '__main__':
         test_jtfs_vs_ts()
         test_freq_tp_invar()
         test_meta()
+        test_output()
     else:
         pytest.main([__file__, "-s"])
