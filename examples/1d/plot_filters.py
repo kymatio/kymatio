@@ -60,12 +60,12 @@ Q = 8
 # first-order wavelet filters (`psi1_f`), and the second-order filters
 # (`psi2_f`).
 
-phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(T), J, Q)
+phi_f, psi1_f, psi2_f = scattering_filter_factory(np.log2(T), J, Q)
 
 ###############################################################################
 # The `phi_f` output is a dictionary where each integer key corresponds points
 # to the instantiation of the filter at a certain resolution. In other words,
-# `phi_f[0]` corresponds to the lowpass filter at resolution `T`, while 
+# `phi_f[0]` corresponds to the lowpass filter at resolution `T`, while
 # `phi_f[1]` corresponds to the filter at resolution `T/2`, and so on.
 #
 # While `phi_f` only contains a single filter (at different resolutions),
