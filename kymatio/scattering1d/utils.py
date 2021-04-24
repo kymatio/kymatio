@@ -128,12 +128,12 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
     sigma_low, *_ = calibrate_scattering_filters(J_scattering, Q, r_psi=r_psi,
                                                  sigma0=sigma0, alpha=alpha)
 
-    # compute the filters at all possible subsamplings
+    # compute lowpass
     N = 2 ** J_support
     phi_f = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
+    # at the coarsest resolution
     t_max_phi = compute_temporal_support(phi_f.reshape(1, -1),
                                          criterion_amplitude=criterion_amplitude)
     min_to_pad = 3 * t_max_phi
