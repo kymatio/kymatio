@@ -172,7 +172,7 @@ def test_freq_tp_invar():
 
     # TODO is this value reasonable? it's much greater with different f0
     # (but same relative f1)
-    th = .20
+    th = .21
     assert l2_x0x1 < th, "{} > {}".format(l2_x0x1, th)
 
 

@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from .filter_bank import (calibrate_scattering_filters, compute_temporal_support,
-                          gauss_1d)
+                          gauss_1d, morlet_1d)
 
 def compute_border_indices(J, i0, i1):
     """
@@ -65,7 +65,7 @@ def compute_padding(J_pad, T):
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
 
-def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
+def compute_minimum_support_to_pad(T, J, Q, Q2=1, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
                                        sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
 
@@ -80,8 +80,11 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         temporal size of the input signal
     J : int
         scale of the scattering
-    Q : int
-        number of wavelets per octave
+    Q : int >= 1
+        The number of first-order wavelets per octave.
+    Q2 : int >= 0
+        The number of second-order wavelets per octave.
+        If 0, will exclude `psi2` from computation.
     normalize : string, optional
         normalization type for the wavelets.
         Only `'l2'` or `'l1'` normalizations are supported.
@@ -125,20 +128,56 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
     J_tentative = int(np.ceil(np.log2(T)))
     J_support = J_tentative
     J_scattering = J
-    sigma_low, *_ = calibrate_scattering_filters(J_scattering, Q, r_psi=r_psi,
-                                                 sigma0=sigma0, alpha=alpha)
+    sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2 = \
+        calibrate_scattering_filters(J_scattering, Q, Q2=max(Q2, 1))
 
-    # compute the filters at all possible subsamplings
+    # compute psi1_f with greatest time support
     # TODO subsampled variant
+    n1_last_noncqt = is_cqt1.index(True) - 1
     N = 2 ** J_support
+    for n1 in range(n1_last_noncqt, len(j1s)):
+        try:
+            psi1_f = morlet_1d(N, xi1[n1], sigma1[n1], normalize=normalize,
+                               P_max=P_max, eps=eps)
+        except ValueError as e:
+            if is_cqt1[n1]:
+                raise e
+            break
+    psi1_f_widest = psi1_f
+
+    # compute psi2_f with greatest time support, if requested
+    if Q2 >= 1:
+        n2_last_noncqt = is_cqt1.index(True) - 1
+        N = 2 ** J_support
+        for n2 in range(n2_last_noncqt, len(j2s)):
+            try:
+                psi2_f = morlet_1d(N, xi2[n2], sigma2[n2], normalize=normalize,
+                                   P_max=P_max, eps=eps)
+            except ValueError as e:
+                if is_cqt2[n2]:
+                    raise e
+                break
+        psi2_f_widest = psi2_f
+
+    # compute lowpass
     phi_f = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
-    # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
-    t_max_phi = compute_temporal_support(
-        phi_f.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+    # compute for all cases as psi's time support might exceed phi's
+    t_max_phi  = compute_temporal_support(phi_f.reshape(1, -1),
+                                          criterion_amplitude=criterion_amplitude)
+    t_max_psi1 = compute_temporal_support(psi1_f_widest.reshape(1, -1),
+                                          criterion_amplitude=criterion_amplitude)
+    if Q2 >= 1:
+        t_max_psi2 = compute_temporal_support(
+            psi2_f_widest.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+    else:
+        t_max_psi2 = -1
 
-    min_to_pad = 3 * t_max_phi
+    # take max, set min to pad
+    t_max = max(t_max_phi, t_max_psi1, t_max_psi2)
+    min_to_pad = 3 * t_max
+
+    # return results
     return min_to_pad
 
 

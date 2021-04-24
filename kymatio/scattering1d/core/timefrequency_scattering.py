@@ -77,9 +77,8 @@ def timefrequency_scattering(
     # Apply averaging over frequency and unpad
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
-        total_height = len(sc_freq.phi_f_fo)
-        # S_1_tm_T_hat = _pad_transpose_fft(S_1_list, total_height, B, B.rfft)
-        S_1_fr = B.zeros((total_height, S_1_list[-1].shape[-1]),
+        pad_fr = sc_freq.J_pad_fo
+        S_1_fr = B.zeros((2**pad_fr, S_1_list[-1].shape[-1]),
                          dtype=S_1_list[-1].dtype)
         S_1_fr[:len(S_1_list)] = S_1_list
 
@@ -141,7 +140,7 @@ def timefrequency_scattering(
 
         # preallocate output slice
         if aligned and out_type == 'array':
-            pad_fr = sc_freq.J_pad[-1]
+            pad_fr = sc_freq.J_pad_max
         else:
             pad_fr = sc_freq.J_pad[n2]
         n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
@@ -182,17 +181,25 @@ def timefrequency_scattering(
     ##########################################################################
     # Second order: `X * (phi_t * psi_f)`
     # take largest subsampling factor
+    if sc_freq.J_fr_fo > sc_freq.J_fr:
+        # TODO can lift restriction if we have psi equivalents of `phi_f_fo`
+        j2_compare = J - 1
+    else:
+        j2_compare = J
+    # `j2_compare` is for fetching from `S_1_c_list`, `j2` is for subsampling;
+    # since we lowpass time again later (`if average`), need to leave room
+    # for subsampling, so this cannot be set to `J`
     j2 = J - 1
 
     # preallocate output slice
-    pad_fr = sc_freq.J_pad[-1]
+    pad_fr = sc_freq.J_pad_max
     n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
     Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
 
     # Low-pass filtering over time, with filter length matching first-order's
     for n1 in range(len(psi1)):
         j1 = psi1[n1]['j']
-        if j1 >= j2:
+        if j1 >= j2_compare:
             continue
 
         # Convolution and downsampling
@@ -215,7 +222,6 @@ def timefrequency_scattering(
                           out_S_2['phi_t * psi_f'], spin_down=False)
 
     ##########################################################################
-
     out_S = []
     out_S.extend(out_S_0)
     out_S.extend(out_S_1)
@@ -253,11 +259,13 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             else:
                 # subsample regularly (relative to current padding)
                 reference_subsample_equiv_due_to_pad = sc_freq.j0s[n2]
-            subsample_equiv_due_to_pad = max(sc_freq.J_pad) - pad_fr
+            subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
 
             j1_fr = psi1_f[n1_fr]['j']
-            n1_fr_subsample = max(j1_fr - reference_subsample_equiv_due_to_pad -
-                                  oversampling_fr, 0)
+            n1_fr_subsample = max(
+                min(j1_fr, sc_freq.max_subsampling_before_phi_fr) -
+                reference_subsample_equiv_due_to_pad -
+                oversampling_fr, 0)
 
             Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
@@ -287,10 +295,13 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
         # subsample regularly (relative to current padding)
         reference_subsample_equiv_due_to_pad = sc_freq.j0s[n2]
 
-    subsample_equiv_due_to_pad = max(sc_freq.J_pad) - pad_fr
-    j1_fr = sc_freq.J_fr - 1   # take largest subsampling factor
-    n1_fr_subsample = max(j1_fr - reference_subsample_equiv_due_to_pad -
-                          oversampling_fr, 0)
+    subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
+    # take largest subsampling factor
+    j1_fr = sc_freq.J_fr - 1
+    n1_fr_subsample = max(
+        min(j1_fr, sc_freq.max_subsampling_before_phi_fr) -
+        reference_subsample_equiv_due_to_pad -
+        oversampling_fr, 0)
 
     Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f[subsample_equiv_due_to_pad])
     Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)

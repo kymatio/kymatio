@@ -5,7 +5,8 @@ import numbers
 import numpy as np
 
 from ..filter_bank import (scattering_filter_factory,
-                           scattering_filter_factory_fr,
+                           psi_fr_factory,
+                           phi_fr_factory,
                            gauss_1d)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
@@ -451,8 +452,8 @@ class TimeFrequencyScatteringBase():
         return self.sc_freq.Q_fr
 
     @property
-    def N_fr(self):
-        return self.sc_freq.N_fr
+    def shape_fr_max(self):
+        return self.sc_freq.shape_fr_max
 
     @property
     def max_order_fr(self):
@@ -486,7 +487,9 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.backend = backend
 
         self.build()
-        self.create_filters()
+        self.create_phi_filters()
+        self.compute_padding_fr()
+        self.create_psi_filters()
 
     def build(self):
         """""" # TODO
@@ -498,32 +501,52 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.criterion_amplitude = 1e-3
         self.normalize = 'l1'
 
-        # let N denote longest obtainable frequency row, with respect to which
-        # we calibrate filters
-        self.N_fr = self.shape_fr[-1]
-        self.compute_padding_fr()
+        # longest obtainable frequency row w.r.t. which we calibrate filters
+        self.shape_fr_max = max(self.shape_fr)
+        # compute maximum amount of padding
+        self.min_to_pad_max = compute_minimum_support_to_pad(
+            self.shape_fr_max, self.J_fr, self.Q_fr, Q2=0,
+            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
+                              'eps', 'criterion_amplitude', 'normalize'))
+        self.J_pad_max = math.ceil(np.log2(
+            max(self.shape_fr) + 2 * self.min_to_pad_max))
 
-    def create_filters(self):
-        # Create the filters
-        (self.phi_f, self.psi1_f_up, self.psi1_f_down, self.f_max_phi
-         ) = scattering_filter_factory_fr(
-             self.J_fr, self.Q_fr, self.J_pad, self.j0s,
-             **self.get_params('backend', 'resample_psi_fr', 'resample_phi_fr',
-                               'r_psi', 'criterion_amplitude', 'normalize',
+    def create_psi_filters(self):
+        self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
+            self.J_fr, self.Q_fr, self.J_pad_max, self.j0s,
+            **self.get_params('backend', 'resample_psi_fr', 'r_psi', 'normalize',
+                              'sigma0', 'alpha', 'P_max', 'eps'))
+
+    def create_phi_filters(self):
+        self.phi_f = phi_fr_factory(
+            self.J_fr, self.Q_fr, self.J_pad_max,
+             **self.get_params('resample_phi_fr', 'r_psi', 'criterion_amplitude',
                                'sigma0', 'alpha', 'P_max', 'eps'))
 
         # Edge case: need phi_f in case number of `psi1` filters (and thus
         # first-order coeffs) pads greater than max(J_pad). Note this filter,
         # if `!= phi_f[0]`, always computes per `resample_phi_fr=True`
-        J_pad = self._compute_J_pad(self._n_psi1)
-        if J_pad > max(self.J_pad):
-            self.phi_f_fo = gauss_1d(2**J_pad, sigma=self.phi_f['sigma'],
+        # TODO compute per `resample_phi_fr` instead?
+        self.J_pad_fo = self._compute_J_pad(self._n_psi1, recompute=True)
+        if self.J_pad_fo > self.J_pad_max:
+            self.phi_f_fo = gauss_1d(2**self.J_pad_fo, sigma=self.phi_f['sigma'],
                                      P_max=self.P_max, eps=self.eps)
             # need to subsample more since padded more
             self.J_fr_fo = self.J_fr + 1
         else:
             self.phi_f_fo = self.phi_f[0]
             self.J_fr_fo = self.J_fr
+
+        if self.resample_phi_fr:
+            # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f`)
+            # is limited by `sc_freq.phi_f[0]`'s time width.
+            # This is accounted for  in `scattering_filter_factory_fr` by
+            # not computing `sc_freq.phi_f` at such resampling lengths.
+            n_phi_f = sum(isinstance(k, int) for k in self.phi_f)
+            self.max_subsampling_before_phi_fr = n_phi_f - 1
+        else:
+            # usual behavior
+            self.max_subsampling_before_phi_fr = self.J_fr - 1
 
     def compute_padding_fr(self):
         """Long story"""  # TODO
@@ -533,7 +556,6 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # J_pad is ordered lower to greater, so iterate backward then reverse
         # (since we don't yet know max `j0`)
-        j0 = 0
         pad_prev = -1
         for shape_fr in self.shape_fr[::-1]:
             if shape_fr != 0:
@@ -587,17 +609,36 @@ class _FrequencyScatteringBase(ScatteringBase):
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
 
-    def _compute_J_pad(self, shape_fr):
-        min_to_pad = compute_minimum_support_to_pad(
-            shape_fr, self.J_fr, self.Q_fr,
-            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
-                              'eps', 'criterion_amplitude', 'normalize'))
+    def _compute_J_pad(self, shape_fr, recompute=False):
+        """Depends on `shape_fr` and `(resample_phi_fr or resample_phi_fr)`:
+            True:  pad per `shape_fr` and `min_to_pad` of longest `shape_fr`
+            False: pad per `shape_fr` and `min_to_pad` of subsampled filters
 
-        # to avoid padding more than N - 1 on the left and on the right,
-        # since otherwise torch sends nans
-        J_max_support = int(np.floor(np.log2(3 * shape_fr - 2)))
-        J_pad = min(math.ceil(np.log2(shape_fr + 2 * min_to_pad)),
-                    J_max_support)
+        `min_to_pad` is computed for both `phi_f[0]` and `psi1_f[-1]` in case
+        latter has greater time-domain support.
+
+        `recompute=True` will force computation from `shape_fr` alone, independent
+        of `J_pad_max` and `min_to_pad_max`, and per
+        `(resample_phi_fr or resample_psi_fr) == True`
+        """
+        if recompute:
+            min_to_pad = compute_minimum_support_to_pad(
+                shape_fr, self.J_fr, self.Q_fr, Q2=0,
+                **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
+                                  'eps', 'criterion_amplitude', 'normalize'))
+            J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+
+        elif self.resample_phi_fr or self.resample_psi_fr:
+            J_pad = math.ceil(np.log2(shape_fr + 2 * self.min_to_pad_max))
+            if self.resample_phi_fr:
+                # don't let J_pad drop below `J_pad_max - max_sub...`
+                J_pad = max(J_pad,
+                            self.J_pad_max - self.max_subsampling_before_phi_fr)
+        else:
+            # reproduce `compute_minimum_support_to_pad`'s logic
+            J_tentative     = int(np.ceil(np.log2(shape_fr)))
+            J_tentative_max = int(np.ceil(np.log2(self.shape_fr_max)))
+            J_pad = self.J_pad_max // 2**(J_tentative_max - J_tentative)
         return J_pad
 
     def get_params(self, *args):
