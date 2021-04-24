@@ -148,7 +148,6 @@ def compute_minimum_support_to_pad(T, J, Q, Q2=1, criterion_amplitude=1e-3,
     # compute psi2_f with greatest time support, if requested
     if Q2 >= 1:
         n2_last_noncqt = is_cqt1.index(True) - 1
-        N = 2 ** J_support
         for n2 in range(n2_last_noncqt, len(j2s)):
             try:
                 psi2_f = morlet_1d(N, xi2[n2], sigma2[n2], normalize=normalize,
