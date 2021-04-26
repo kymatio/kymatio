@@ -77,7 +77,7 @@ class ScatteringBase1D(ScatteringBase):
             self.N, self.J, self.Q, Q2=self.Q2, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
-            normalize=self.normalize)
+            normalize=self.normalize, pad_mode=self.pad_mode)
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
         J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
@@ -393,7 +393,8 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase():
     def __init__(self, J_fr=None, Q_fr=1, average_fr=True, oversampling_fr=0,
-                 aligned=True, resample_psi_fr=True, resample_phi_fr=True):
+                 aligned=True, resample_psi_fr=True, resample_phi_fr=True,
+                 pad_mode='zero'):
         self._J_fr = J_fr
         self._Q_fr = Q_fr
         self.average_fr = average_fr
@@ -401,6 +402,7 @@ class TimeFrequencyScatteringBase():
         self.aligned = aligned
         self.resample_psi_fr = resample_psi_fr
         self.resample_phi_fr = resample_phi_fr
+        self.pad_mode = pad_mode
 
     def build(self):
         self._shape_fr = self.get_shape_fr()
@@ -413,7 +415,8 @@ class TimeFrequencyScatteringBase():
         self.sc_freq = _FrequencyScatteringBase(
             self._J_fr, self._shape_fr, self._Q_fr, max_order_fr, self.average,
             self.resample_psi_fr, self.resample_phi_fr, self.oversampling,
-            self.vectorize, self.out_type, self._n_psi1, self.backend)
+            self.vectorize, self.out_type, self.pad_mode, self._n_psi1,
+            self.backend)
 
     def get_shape_fr(self):
         """This is equivalent to `len(x)` along frequency, which varies across
@@ -471,7 +474,8 @@ class _FrequencyScatteringBase(ScatteringBase):
     """
     def __init__(self, J_fr, shape_fr, Q_fr=2, max_order_fr=1, average=True,
                  resample_psi_fr=True, resample_phi_fr=True, oversampling=0,
-                 vectorize=True, out_type='array', n_psi1=None, backend=None):
+                 vectorize=True, out_type='array', pad_mode='zero', n_psi1=None,
+                 backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.J_fr = J_fr
         self.shape_fr = shape_fr
@@ -484,6 +488,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.vectorize = vectorize
         self.out_type = out_type
         self._n_psi1 = n_psi1
+        self.pad_mode = pad_mode
         self.backend = backend
 
         self.build()
@@ -506,8 +511,8 @@ class _FrequencyScatteringBase(ScatteringBase):
         # compute maximum amount of padding
         self.min_to_pad_max = compute_minimum_support_to_pad(
             self.shape_fr_max, self.J_fr, self.Q_fr, Q2=0,
-            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
-                              'eps', 'criterion_amplitude', 'normalize'))
+            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
+                              'criterion_amplitude', 'normalize', 'pad_mode'))
         self.J_pad_max = math.ceil(np.log2(
             max(self.shape_fr) + 2 * self.min_to_pad_max))
 
@@ -624,8 +629,8 @@ class _FrequencyScatteringBase(ScatteringBase):
         if recompute:
             min_to_pad = compute_minimum_support_to_pad(
                 shape_fr, self.J_fr, self.Q_fr, Q2=0,
-                **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max',
-                                  'eps', 'criterion_amplitude', 'normalize'))
+                **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
+                                  'criterion_amplitude', 'normalize', 'pad_mode'))
             J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
         elif self.resample_phi_fr or self.resample_psi_fr:

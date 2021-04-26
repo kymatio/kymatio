@@ -97,7 +97,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase.__init__(
             self, J_fr, Q_fr, average_fr, oversampling_fr, aligned,
-            resample_psi_fr, resample_phi_fr)
+            resample_psi_fr, resample_phi_fr, pad_mode)
 
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3

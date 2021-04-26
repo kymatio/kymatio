@@ -67,7 +67,8 @@ def compute_padding(J_pad, T):
 
 def compute_minimum_support_to_pad(T, J, Q, Q2=1, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
-                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
+                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7,
+                                       pad_mode='reflect'):
 
 
     """
@@ -118,6 +119,8 @@ def compute_minimum_support_to_pad(T, J, Q, Q2=1, criterion_amplitude=1e-3,
         required machine precision for the periodization (single
         floating point is enough for deep learning applications).
         Defaults to `1e-7`.
+    pad_mode : str
+        Name of padding used. If 'zero', will halve `min_to_pad`, else no effect.
 
     Returns
     -------
@@ -174,7 +177,9 @@ def compute_minimum_support_to_pad(T, J, Q, Q2=1, criterion_amplitude=1e-3,
 
     # take max, set min to pad
     t_max = max(t_max_phi, t_max_psi1, t_max_psi2)
-    min_to_pad = 3 * t_max
+    min_to_pad = int(1.2 * t_max)
+    if pad_mode == 'zero':
+        min_to_pad //= 2
 
     # return results
     return min_to_pad
