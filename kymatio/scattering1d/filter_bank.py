@@ -293,17 +293,16 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     """
     h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
-    # compute ||h - h_[-N, N]||_1
-    l1_residual = np.fliplr(
-        np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
-    # find the first point above criterion_amplitude
-    if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
+    # check if any value in half of worst case of abs(h) is below criterion
+    hhalf = np.max(np.abs(h[:, :half_support]), axis=0)[::-1]
+    max_amplitude = hhalf.max()
+    meets_criterion_idxs = np.where(hhalf <= criterion_amplitude * max_amplitude
+                                    )[0]
+    if len(meets_criterion_idxs) != 0:
         # if it is possible
-        N = np.min(
-            np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
-            + 1
+        N = meets_criterion_idxs.min() + 1
     else:
-        # if there is none:
+        # if there are none
         N = half_support
         # Raise a warning to say that there will be border effects
         warnings.warn('Signal support is too small to avoid border effects')
