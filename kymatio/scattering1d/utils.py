@@ -115,6 +115,8 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         required machine precision for the periodization (single
         floating point is enough for deep learning applications).
         Defaults to `1e-7`.
+    pad_mode : str
+        Name of padding used. If 'zero', will halve `min_to_pad`, else no effect.
 
     Returns
     -------
