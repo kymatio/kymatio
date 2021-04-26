@@ -132,7 +132,7 @@ def test_jtfs_vs_ts():
     l2_jtfs = l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
 
     # max ratio limited by `N`; can do much better with longer input
-    assert l2_jtfs / l2_ts > 3, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_jtfs / l2_ts > 5, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
     assert l2_ts < .1, "TS: %s" % l2_ts
 
 
@@ -172,7 +172,7 @@ def test_freq_tp_invar():
 
     # TODO is this value reasonable? it's much greater with different f0
     # (but same relative f1)
-    th = .21
+    th = .2
     assert l2_x0x1 < th, "{} > {}".format(l2_x0x1, th)
 
 
