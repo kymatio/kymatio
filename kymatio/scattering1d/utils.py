@@ -66,7 +66,8 @@ def compute_padding(J_pad, T):
 
 def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
-                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
+                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7,
+                                       pad_mode='reflect'):
 
 
     """
@@ -126,7 +127,9 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         J_tentative, J, Q, normalize=normalize, to_torch=False,
         max_subsampling=0, criterion_amplitude=criterion_amplitude,
         r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
-    min_to_pad = 3 * t_max_phi
+    min_to_pad = 1.2 * t_max_phi
+    if pad_mode == 'zero':
+        min_to_pad /= 2
     return min_to_pad
 
 
