@@ -294,7 +294,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
     # check if any value in half of worst case of abs(h) is below criterion
-    hhalf = np.max(np.abs(h[:, :half_support]), axis=0)[::-1]
+    hhalf = np.max(np.abs(h[:, :half_support]), axis=0)
     max_amplitude = hhalf.max()
     meets_criterion_idxs = np.where(hhalf <= criterion_amplitude * max_amplitude
                                     )[0]
