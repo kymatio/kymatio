@@ -106,7 +106,7 @@ def test_jtfs_vs_ts():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    ts = Scattering1D(J=J, Q=Q, shape=N)
+    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero")
     jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
                                    out_type="array")
 
@@ -126,14 +126,13 @@ def test_jtfs_vs_ts():
     arr_idx = sum(len(jtfs_x_list[i]['coef']) for i in range(len(jtfs_x_list))
                   if i < first_joint_idx)
 
-    # skip zeroth-order
-    l2_ts = l2(ts_x[1:], ts_xs[1:])
+    l2_ts = l2(ts_x, ts_xs)
     # compare against joint coeffs only
     l2_jtfs = l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
 
     # max ratio limited by `N`; can do much better with longer input
-    assert l2_jtfs / l2_ts > 5, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
-    assert l2_ts < .1, "TS: %s" % l2_ts
+    assert l2_jtfs / l2_ts > 18, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_ts < .01, "TS: %s" % l2_ts
 
 
 def test_freq_tp_invar():
@@ -261,11 +260,20 @@ def test_output():
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
 def _l2(x):
-    return np.linalg.norm(x)
+    return np.sqrt(np.sum(np.abs(x)**2))
 
 def l2(x0, x1):
-    """Coeff distance measure; Eq 2.25 in https://arxiv.org/abs/1101.2286"""
+    """Coeff distance measure; Eq 2.24 in
+    https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
+    """
     return _l2(x1 - x0) / _l2(x0)
+
+# def _l1l2(x):
+#     return np.sum(np.sqrt(np.sum(np.abs(x)**2, axis=1)), axis=0)
+
+# def l1l2(x0, x1):
+#     """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
+#     return _l2(x1 - x0) / _l2(x0)
 
 
 def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
