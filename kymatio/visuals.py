@@ -83,8 +83,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     """
     def to_time(p):
         # center & ifft
-        idx = 0 if not zoomed else max(k for k in p if isinstance(k, int))
-        return ifft(p[idx] * (-1)**np.arange(len(p[idx])))
+        return ifft(p[0] * (-1)**np.arange(len(p[0])))
 
     def get_imshow_data(jtfs, t_idx, f_idx, s_idx=None, max_t_bound=None,
                         max_f_bound=None):
@@ -192,30 +191,27 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                     Psi = process_Psi(Psi, None, None,
                                       imshow_data[(0, 0, f_idx)][2])
                 row_idx = n_rows
-                ax = axes[row_idx][1 + f_idx]
+                ax = axes[row_idx][f_idx]
                 _show(Psi, title=title, ax=ax)
 
         # (psi_t * psi_f)
         for t_idx in range(n_rows):
             for f_idx in range(n_cols):
-                psi_t_idx = t_idx if s_idx == 1 else (n_rows - 1 - t_idx)
+                psi_t_idx = t_idx if s_idx == 0 else (n_rows - 1 - t_idx)
                 Psi, title, m = imshow_data[(s_idx, psi_t_idx, f_idx)]
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound, m)
 
                 row_idx = t_idx + (n_rows + 1) * s_idx
-                ax = axes[row_idx][f_idx + 1]
-                if t_idx == 5 and f_idx == 3:
-                    1==1
+                ax = axes[row_idx][f_idx]
                 _show(Psi, title=title, ax=ax)
 
     # (psi_t * phi_f)
     for t_idx in range(n_rows):
-        psi_t_idx = n_rows - 1 - t_idx
-        Psi, title = get_imshow_data(jtfs, psi_t_idx, -1, 0, *bounds)
+        Psi, title = get_imshow_data(jtfs, t_idx, -1, 0, *bounds)
         if zoomed:
             Psi = process_Psi(Psi, None, None,
-                              imshow_data[(0, psi_t_idx, 0)][2])
-        ax = axes[t_idx][0]
+                              imshow_data[(0, t_idx, 0)][2])
+        ax = axes[t_idx][-1]
         _show(Psi, title=title, ax=ax)
 
     # (phi_t * phi_f)
@@ -223,12 +219,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     if zoomed:
         Psi = process_Psi(Psi, None, None,
                           imshow_data[(0, 0, 0)][2])
-    ax = axes[n_rows][0]
+    ax = axes[n_rows][-1]
     _show(Psi, title=title, ax=ax)
 
     # strip borders of remainders
     for t_idx in range(n_rows + 1, 2*n_rows + 1):
-        ax = axes[t_idx][0]
+        ax = axes[t_idx][-1]
         ax.set_xticks([])
         ax.set_yticks([])
         for spine in ax.spines:
