@@ -2,9 +2,11 @@
 """Convenience visual methods."""
 import numpy as np
 import matplotlib.pyplot as plt
+from .scattering1d.filter_bank import compute_temporal_support
+from scipy.fft import ifft
 
 
-__all__ = ['gif_jtfs', 'filterbank_scattering']
+__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs']
 
 
 def filterbank_scattering(scattering, zoom=0, second_order=False):
@@ -59,6 +61,181 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
 
     if second_order:
         _plot_filters(p2, p0, title="Second-order filterbank")
+
+
+def filterbank_jtfs(jtfs, part='real', zoomed=False):
+    """
+    # Arguments:
+        jtfs: kymatio.scattering1d.TimeFrequencyScattering
+            JTFS instance.
+        part: str['real', 'imag', 'complex']
+            Whether to plot real or imaginary part (black-white-red colormap),
+            or complex (special coloring).
+        zoomed: bool (default False)
+            Whether to plot all filters with maximum subsampling
+            (loses relative orientations but shows fine detail).
+
+    # Examples:
+        T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
+        jtfs = TimeFrequencyScattering(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
+                                       out_type='array', average_fr=1)
+        filterbank_jtfs(jtfs)
+    """
+    def to_time(p):
+        # center & ifft
+        idx = 0 if not zoomed else max(k for k in p if isinstance(k, int))
+        return ifft(p[idx] * (-1)**np.arange(len(p[idx])))
+
+    def get_imshow_data(jtfs, t_idx, f_idx, s_idx=None, max_t_bound=None,
+                        max_f_bound=None):
+        # if lowpass, get lowpass data #######################################
+        if t_idx == -1 and f_idx == -1:
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f
+            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
+        elif t_idx == -1:
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_up[f_idx]
+            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", f_idx, 0)
+        elif f_idx == -1:
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f
+            psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
+
+        if t_idx == -1 or f_idx == -1:
+            title = (psi_txt, dict(fontsize=17, y=.75))
+            Psi = to_time(p_f)[:, None] * to_time(p_t)[None]
+            if max_t_bound is not None or zoomed:
+                Psi = process_Psi(Psi, max_t_bound, max_f_bound)
+            return Psi, title
+
+        # else get spinned wavelets ##########################################
+        psi_spin = (jtfs.sc_freq.psi1_f_up if s_idx == 0 else
+                    jtfs.sc_freq.psi1_f_down)
+        psi_f = psi_spin[f_idx]
+        psi_t = jtfs.psi2_f[t_idx]
+
+        f_width = compute_temporal_support(psi_f[0][None])
+        t_width = compute_temporal_support(psi_t[0][None])
+        f_bound = int(2**np.floor(np.log2(f_width)))
+        t_bound = int(2**np.floor(np.log2(t_width)))
+
+        # to time
+        psi_f = to_time(psi_f)
+        psi_t = to_time(psi_t)
+
+        # compute joint wavelet in time
+        # TODO fix up & down instead of conjugating
+        Psi = np.conj(psi_f)[:, None] * psi_t[None]
+        # title
+        spin = '+1' if s_idx == 0 else '-1'
+        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, f_idx, spin)
+        title = (psi_txt, dict(fontsize=17, y=.75))
+        # meta
+        m = dict(t_bound=t_bound, f_bound=f_bound)
+        return Psi, title, m
+
+    def process_Psi(Psi, max_t_bound, max_f_bound, m=None):
+        M, N = Psi.shape
+        if zoomed and m is not None:
+            f_bound, t_bound = m['f_bound'], m['t_bound']
+        else:
+            f_bound, t_bound = max_f_bound, max_t_bound
+
+        # ensure doesn't exceed own or max bounds
+        Psi = Psi[max(0, M//2 - f_bound):min(M, M//2 + f_bound),
+                  max(0, N//2 - t_bound):min(N, N//2 + t_bound)]
+        if zoomed:
+            return Psi
+
+        # pad to common size if too short
+        f_diff = 2*f_bound - Psi.shape[0]
+        t_diff = 2*t_bound - Psi.shape[1]
+        Psi = np.pad(Psi, [[int(np.ceil(f_diff/2)), f_diff//2],
+                           [int(np.ceil(t_diff/2)), t_diff//2]])
+        return Psi
+
+    def _show(Psi, title, ax):
+        if part == 'real':
+            Psi = Psi.real
+        elif part == 'imag':
+            Psi = Psi.imag
+        else:
+            Psi = _colorize_complex(Psi)
+        cmap = 'bwr' if part in ('real', 'imag') else 'none'
+        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=0, cmap=cmap)
+
+    # get spinned wavelet arrays & metadata ##################################
+    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_up)
+    imshow_data = {}
+    for s_idx in (0, 1):
+        for t_idx in range(n_rows):
+            for f_idx in range(n_cols):
+                imshow_data[(s_idx, t_idx, f_idx)
+                            ] = get_imshow_data(jtfs, t_idx, f_idx)
+
+    max_t_bound = max(data[2]['t_bound'] for data in imshow_data.values())
+    max_f_bound = max(data[2]['f_bound'] for data in imshow_data.values())
+    bounds = (max_t_bound, max_f_bound)
+
+    # plot ###################################################################
+    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(12, 13))
+    _txt = "(%s%s" % (part, " part" if part in ('real', 'imag') else "")
+    _txt += ", zoomed)" if zoomed else ")"
+    plt.suptitle("Joint wavelet filterbank " + _txt,
+                 y=1.04, weight='bold', fontsize=17)
+
+    # (psi_t * psi_f) and (phi_t * psi_f)
+    for s_idx in (0, 1):
+        # (phi_t * psi_f)
+        if s_idx == 1 and t_idx == n_rows - 1 and f_idx == n_cols - 1:
+            for f_idx in range(n_cols):
+                Psi, title  = get_imshow_data(jtfs, -1, f_idx, 0, *bounds)
+                if zoomed:
+                    Psi = process_Psi(Psi, None, None,
+                                      imshow_data[(0, 0, f_idx)][2])
+                row_idx = n_rows
+                ax = axes[row_idx][1 + f_idx]
+                _show(Psi, title=title, ax=ax)
+
+        # (psi_t * psi_f)
+        for t_idx in range(n_rows):
+            for f_idx in range(n_cols):
+                psi_t_idx = t_idx if s_idx == 1 else (n_rows - 1 - t_idx)
+                Psi, title, m = imshow_data[(s_idx, psi_t_idx, f_idx)]
+                Psi = process_Psi(Psi, max_t_bound, max_f_bound, m)
+
+                row_idx = t_idx + (n_rows + 1) * s_idx
+                ax = axes[row_idx][f_idx + 1]
+                if t_idx == 5 and f_idx == 3:
+                    1==1
+                _show(Psi, title=title, ax=ax)
+
+    # (psi_t * phi_f)
+    for t_idx in range(n_rows):
+        psi_t_idx = n_rows - 1 - t_idx
+        Psi, title = get_imshow_data(jtfs, psi_t_idx, -1, 0, *bounds)
+        if zoomed:
+            Psi = process_Psi(Psi, None, None,
+                              imshow_data[(0, psi_t_idx, 0)][2])
+        ax = axes[t_idx][0]
+        _show(Psi, title=title, ax=ax)
+
+    # (phi_t * phi_f)
+    Psi, title = get_imshow_data(jtfs, -1, -1, 0, *bounds)
+    if zoomed:
+        Psi = process_Psi(Psi, None, None,
+                          imshow_data[(0, 0, 0)][2])
+    ax = axes[n_rows][0]
+    _show(Psi, title=title, ax=ax)
+
+    # strip borders of remainders
+    for t_idx in range(n_rows + 1, 2*n_rows + 1):
+        ax = axes[t_idx][0]
+        ax.set_xticks([])
+        ax.set_yticks([])
+        for spine in ax.spines:
+            ax.spines[spine].set_visible(False)
+
+    # tight
+    plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
 
 
 def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
@@ -149,12 +326,14 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
 
 #### Visuals primitives ## messy code ########################################
 def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
-           w=None, h=None, ticks=True, aspect='auto', ax=None, fig=None,
-           yticks=None, xticks=None, xlabel=None, ylabel=None, **kw):
+           w=None, h=None, ticks=True, borders=True, aspect='auto',
+           ax=None, fig=None, yticks=None, xticks=None, xlabel=None, ylabel=None,
+           **kw):
     """
     norm: color norm, tuple of (vmin, vmax)
     abs: take abs(data) before plotting
     ticks: False to not plot x & y ticks
+    borders: False to not display plot borders
     w, h: rescale width & height
     kw: passed to `plt.imshow()`
     """
@@ -167,7 +346,9 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
                       (0, mx))
     else:
         vmin, vmax = norm
-    if cmap is None:
+    if cmap == 'none':
+        cmap = None
+    elif cmap is None:
         cmap = 'jet' if abs else 'bwr'
     _kw = dict(vmin=vmin, vmax=vmax, cmap=cmap, aspect=aspect, **kw)
 
@@ -184,6 +365,9 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
         ax.set_yticks([])
     if xticks is not None or yticks is not None:
         _ticks(xticks, yticks)
+    if not borders:
+        for spine in ax.spines:
+            ax.spines[spine].set_visible(False)
     if xlabel is not None:
         ax.set_xlabel(xlabel, weight='bold', fontsize=15)
     if ylabel is not None:
@@ -306,3 +490,23 @@ def _title(title, ax=None):
         ax.set_title(str(title), **kw)
     else:
         plt.title(str(title), **kw)
+
+
+def _colorize_complex(z):
+    """Map complex `z` to 3D array suitable for complex image visualization.
+
+    Borrowed from https://stackoverflow.com/a/20958684/10133797
+    """
+    from colorsys import hls_to_rgb
+    z = z / np.abs(z).max()
+    r = np.abs(z)
+    arg = np.angle(z)
+
+    h = (arg + np.pi)  / (2 * np.pi) + 0.5
+    l = 1.0 / (1 + r)
+    s = 0.8
+
+    c = np.vectorize(hls_to_rgb)(h, l, s)
+    c = np.array(c)
+    c = c.swapaxes(0,2)
+    return c
