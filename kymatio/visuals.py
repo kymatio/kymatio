@@ -266,7 +266,7 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
             Whether to plot second-order wavelets.
 
     # Example:
-        scattering = Scattering1D(shape=2048, J=8, Q=16)
+        scattering = Scattering1D(shape=2048, J=8, Q=8)
         filterbank_scattering(scattering)
     """
     def _plot_filters(ps, p0, title):
