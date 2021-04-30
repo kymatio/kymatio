@@ -169,7 +169,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         for t_idx in range(n_rows):
             for f_idx in range(n_cols):
                 imshow_data[(s_idx, t_idx, f_idx)
-                            ] = get_imshow_data(jtfs, t_idx, f_idx)
+                            ] = get_imshow_data(jtfs, t_idx, f_idx, s_idx)
 
     max_t_bound = max(data[2]['t_bound'] for data in imshow_data.values())
     max_f_bound = max(data[2]['f_bound'] for data in imshow_data.values())
