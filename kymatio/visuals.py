@@ -252,3 +252,57 @@ def _title(title, ax=None):
         ax.set_title(str(title), **kw)
     else:
         plt.title(str(title), **kw)
+
+
+def filterbank_scattering(scattering, zoom=0, second_order=False):
+    """
+    # Arguments:
+        scattering: kymatio.scattering1d.Scattering1D
+            Scattering object.
+        zoom: int
+            Will zoom plots by this many octaves.
+            If -1, will show full frequency axis (including negatives).
+        second_order: bool (default False)
+            Whether to plot second-order wavelets.
+
+    # Example:
+        scattering = Scattering1D(shape=2048, J=8, Q=16)
+        filterbank_scattering(scattering)
+    """
+    def _plot_filters(ps, p0, title):
+        # Morlets
+        for p in ps:
+            j = p['j']
+            plot(p[0], color=colors[j], linestyle=linestyles[j])
+
+        # octave bounds
+        Nmax = len(p[0])
+        plot([], vlines=([Nmax//2**j for j in range(scattering.J)],
+                         dict(color='k', linewidth=1)))
+        # lowpass
+        if zoom == -1:
+            xlims = (-.02 * Nmax, 1.02 * Nmax)
+        else:
+            xlims = (-.01 * Nmax / 2**(zoom + 1), .55 * Nmax / 2**(zoom + 1))
+        plot(p0[0], color='k', xlims=xlims, title=title, show=1)
+
+    # define colors & linestyles
+    colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "
+                                   "gray olive cyan".split())]
+    linestyles = ('-', '--', '-.')
+    nc = len(colors)
+    nls = len(linestyles)
+
+    # support J up to nc * nls
+    colors = colors * nls
+    linestyles = [ls_set for ls in "- -- -.".split() for ls_set in [ls]*nc]
+
+    # shorthand references
+    p0 = scattering.phi_f
+    p1 = scattering.psi1_f
+    p2 = scattering.psi2_f
+
+    _plot_filters(p1, p0, title="First-order filterbank")
+
+    if second_order:
+        _plot_filters(p2, p0, title="Second-order filterbank")
