@@ -283,7 +283,7 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
         if zoom == -1:
             xlims = (-.02 * Nmax, 1.02 * Nmax)
         else:
-            xlims = (-.01 * Nmax / 2**(zoom + 1), .55 * Nmax / 2**(zoom + 1))
+            xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
         plot(p0[0], color='k', xlims=xlims, title=title, show=1)
 
     # define colors & linestyles
