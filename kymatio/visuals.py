@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-__all__ = ['gif_jtfs']
+__all__ = ['gif_jtfs', 'filterbank_scattering']
 
 
 def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
@@ -266,7 +266,7 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
             Whether to plot second-order wavelets.
 
     # Example:
-        scattering = Scattering1D(shape=2048, J=8, Q=16)
+        scattering = Scattering1D(shape=2048, J=8, Q=8)
         filterbank_scattering(scattering)
     """
     def _plot_filters(ps, p0, title):
@@ -283,7 +283,7 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
         if zoom == -1:
             xlims = (-.02 * Nmax, 1.02 * Nmax)
         else:
-            xlims = (-.01 * Nmax / 2**(zoom + 1), .55 * Nmax / 2**(zoom + 1))
+            xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
         plot(p0[0], color='k', xlims=xlims, title=title, show=1)
 
     # define colors & linestyles
