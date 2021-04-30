@@ -48,17 +48,18 @@ def adaptive_choice_P(sigma, eps=1e-7):
     return P
 
 
-def periodize_filter_fourier(h_f, nperiods=1):
+def periodize_filter_fourier(h_f, nperiods=1, upscale=True):
     """
     Computes a periodization of a filter provided in the Fourier domain.
-
     Parameters
     ----------
     h_f : array_like
         complex numpy array of shape (N*n_periods,)
     n_periods: int, optional
         Number of periods which should be used to periodize
-
+    upscale: bool (default True)
+        Whether to multiply time-domain signal by subsampling factor
+        to conserve energy.
     Returns
     -------
     v_f : array_like
@@ -67,7 +68,9 @@ def periodize_filter_fourier(h_f, nperiods=1):
         v_f[k] = sum_{i=0}^{n_periods - 1} h_f[i * N + k]
     """
     N = h_f.shape[0] // nperiods
-    v_f = h_f.reshape(nperiods, N).mean(axis=0)
+    h_f_re = h_f.reshape(nperiods, N)
+    v_f = (h_f_re.sum(axis=0) if upscale else
+           h_f_re.mean(axis=0))
     return v_f
 
 
@@ -293,17 +296,16 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     """
     h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
-    # compute ||h - h_[-N, N]||_1
-    l1_residual = np.fliplr(
-        np.cumsum(np.fliplr(np.abs(h)[:, :half_support]), axis=1))
-    # find the first point above criterion_amplitude
-    if np.any(np.max(l1_residual, axis=0) <= criterion_amplitude):
+    # check if any value in half of worst case of abs(h) is below criterion
+    hhalf = np.max(np.abs(h[:, :half_support]), axis=0)
+    max_amplitude = hhalf.max()
+    meets_criterion_idxs = np.where(hhalf <= criterion_amplitude * max_amplitude
+                                    )[0]
+    if len(meets_criterion_idxs) != 0:
         # if it is possible
-        N = np.min(
-            np.where(np.max(l1_residual, axis=0) <= criterion_amplitude)[0])\
-            + 1
+        N = meets_criterion_idxs.min() + 1
     else:
-        # if there is none:
+        # if there are none
         N = half_support
         # Raise a warning to say that there will be border effects
         warnings.warn('Signal support is too small to avoid border effects')
@@ -754,54 +756,52 @@ def scattering_filter_factory(J_support, J_scattering, Q, Q2=1,
     return phi_f, psi1_f, psi2_f, t_max_phi
 
 
-def scattering_filter_factory_fr(J_fr, Q_fr, J_pad, j0s, backend,
-                                 resample_psi_fr=True, resample_phi_fr=True,
-                                 r_psi=math.sqrt(0.5), criterion_amplitude=1e-3,
-                                 normalize='l1', sigma0=0.1, alpha=5., P_max=5,
-                                 eps=1e-7):
-    """Resamples `psi1_f` filters according to `sc_freq.J_pad`, and returns them
-    along original samplings with dicts packed per same structure as `psi2_f`.
-    """
+def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
+                   r_psi=math.sqrt(0.5), normalize='l1', sigma0=0.1, alpha=5.,
+                   P_max=5, eps=1e-7):
     # TODO docs
     # compute the spectral parameters of the filters
     sigma_low, xi1, sigma1, j1s, is_cqt1, *_ = calibrate_scattering_filters(
         J_fr, Q_fr, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
-    phi_f = {}
     psi1_f_up = []
     psi1_f_down = []
-    n1_fr_skipped_psi = -1
 
-    J_support = max(J_pad)  # begin with longest
+    # loop params
+    n1_fr_skipped_psi = -1
+    J_support = J_pad_max  # begin with longest
+    N = 2**J_support
+
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
     for (n1_fr, j1) in enumerate(j1s):
-        N = 2**J_support
         psi_f = {}
-        psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
-                             P_max=P_max, eps=eps)
-
         skip_psi = False
-        # j0s is ordered greater to lower, so reverse
-        for j0 in j0s[::-1]:
-            if j0 <= 0:
-                continue
-            factor = 2**j0
-            if resample_psi_fr:
-                try:
+        try:
+            psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
+                                 normalize=normalize, P_max=P_max, eps=eps)
+            # j0s is ordered greater to lower, so reverse
+            j0_prev = -1
+            for j0 in j0s[::-1]:
+                if j0 <= 0 or j0 == j0_prev:
+                    continue
+                factor = 2**j0
+                j0_prev = j0
+                if resample_psi_fr:
                     psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
                                           normalize=normalize, P_max=P_max,
                                           eps=eps)
-                except ValueError as e:
-                    if is_cqt1[n1_fr]:
-                        raise e
-                    # TODO throw warning
-                    # we don't care if non-CQT wavelet construction fails
-                    skip_psi = True
-                    break
-            else:
-                psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
+                else:
+                    psi_f[j0] = periodize_filter_fourier(psi_f[0],
+                                                         nperiods=factor)
+        except ValueError as e:
+            if is_cqt1[n1_fr]:
+                raise e
+            # TODO throw warning
+            # we don't care if non-CQT wavelet construction fails
+            skip_psi = True
+
         if not skip_psi:
             psi1_f_up.append(psi_f)
         else:
@@ -815,15 +815,6 @@ def scattering_filter_factory_fr(J_fr, Q_fr, J_pad, j0s, backend,
             psi_down[j0] = backend.conj_fr(psi_up)
         psi1_f_down.append(psi_down)
 
-    # compute lowpass filters at all possible input lengths
-    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
-    for j_fr in range(1, 1 + J_fr):
-        factor = 2**j_fr
-        if resample_phi_fr:
-            phi_f[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max, eps=eps)
-        else:
-            phi_f[j_fr] = periodize_filter_fourier(phi_f[0], nperiods=factor)
-
     # Embed the meta information within the filters
     for (n1_fr, j1) in enumerate(j1s):
         if n1_fr == n1_fr_skipped_psi:
@@ -832,14 +823,46 @@ def scattering_filter_factory_fr(J_fr, Q_fr, J_pad, j0s, backend,
             psi1_f[n1_fr]['xi'] = xi1[n1_fr]
             psi1_f[n1_fr]['sigma'] = sigma1[n1_fr]
             psi1_f[n1_fr]['j'] = j1
+
+    # return results
+    return psi1_f_up, psi1_f_down
+
+
+def phi_fr_factory(J_fr, Q_fr, J_pad_max, resample_phi_fr=True,
+                   r_psi=math.sqrt(0.5), criterion_amplitude=1e-3,
+                   sigma0=0.1, alpha=5., P_max=5, eps=1e-7):
+    # TODO docs
+    # compute the spectral parameters of the filters
+    sigma_low, *_ = calibrate_scattering_filters(J_fr, Q_fr, r_psi=r_psi,
+                                                 sigma0=sigma0, alpha=alpha)
+    J_support = J_pad_max
+    N = 2**J_support
+
+    # initial lowpass
+    phi_f = {}
+    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+
+    # lowpass filters at all possible input lengths
+    for j_fr in range(1, 1 + J_fr):
+        factor = 2**j_fr
+        if resample_phi_fr:
+            prev_phi = phi_f[j_fr - 1].reshape(1, -1)
+            prev_phi_halfwidth = compute_temporal_support(
+                prev_phi, criterion_amplitude=criterion_amplitude)
+
+            if prev_phi_halfwidth == prev_phi.size // 2:
+                # This means width is already too great for own length,
+                # so lesser length will distort lowpass.
+                # Frontend will adjust "all possible input lengths" accordingly
+                break
+            phi_f[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max, eps=eps)
+        else:
+            phi_f[j_fr] = periodize_filter_fourier(phi_f[0], nperiods=factor)
+
+    # embed meta info in filters
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
     phi_f['j'] = 0
 
-    # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
-    f_max_phi = compute_temporal_support(
-        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
-
     # return results
-    return phi_f, psi1_f_up, psi1_f_down, f_max_phi
+    return phi_f
