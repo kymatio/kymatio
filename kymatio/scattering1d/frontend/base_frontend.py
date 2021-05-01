@@ -17,8 +17,8 @@ from ..utils import (compute_border_indices, compute_padding,
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, Q2=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', pad_mode='reflect',
-            backend=None):
+            oversampling=0, T=None, vectorize=True, out_type='array',
+            pad_mode='reflect', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -27,6 +27,7 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
+        self.T = T
         self.vectorize = vectorize
         self.out_type = out_type
         self.pad_mode = pad_mode
@@ -65,6 +66,14 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("`pad_mode` must be one of: reflect, symmetric, "
                              "zero (got %s)" % self.pad_mode)
 
+        # check T or set default
+        if self.T is None:
+            self.T = 2**(self.J)
+        elif self.T > 2**(self.J):
+            raise ValueError("The temporal support T of the low-pass filter "
+                             "cannot exceed 2**J (got {} > {})".format(
+                                 self.T, 2**(self.J)))  # TODO
+
         # check that we get any second-order coefficients if max_order==2
         meta = ScatteringBase1D.meta(self)
         if self.max_order == 2 and np.isnan(meta['n'][-1][1]):
@@ -74,7 +83,7 @@ class ScatteringBase1D(ScatteringBase):
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
-            self.N, self.J, self.Q, Q2=self.Q2, r_psi=self.r_psi,
+            self.N, self.J, self.Q, self.T, Q2=self.Q2, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize, pad_mode=self.pad_mode)
@@ -92,10 +101,10 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, Q2=self.Q2, normalize=self.normalize,
-            criterion_amplitude=self.criterion_amplitude,
-            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
-            P_max=self.P_max, eps=self.eps)
+            self.J_pad, self.J, self.Q, self.T, Q2=self.Q2,
+            normalize=self.normalize,
+            criterion_amplitude=self.criterion_amplitude, r_psi=self.r_psi,
+            sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps)
 
     def meta(self):
         """Get meta information on the transform
@@ -108,7 +117,7 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, Q2=self.Q2,
+        return compute_meta_scattering(self.J, self.Q, self.T, Q2=self.Q2,
                                        max_order=self.max_order)
 
     def output_size(self, detail=False):
@@ -392,11 +401,12 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase():
-    def __init__(self, J_fr=None, Q_fr=1, average_fr=True, oversampling_fr=0,
-                 aligned=True, resample_psi_fr=True, resample_phi_fr=True,
-                 pad_mode='zero'):
+    def __init__(self, J_fr=None, Q_fr=1, F=None, average_fr=True,
+                 oversampling_fr=0, aligned=True, resample_psi_fr=True,
+                 resample_phi_fr=True, pad_mode='zero'):
         self._J_fr = J_fr
         self._Q_fr = Q_fr
+        self._F = F
         self.average_fr = average_fr
         self.oversampling_fr = oversampling_fr
         self.aligned = aligned
@@ -413,10 +423,10 @@ class TimeFrequencyScatteringBase():
         self._n_psi1 = len(self.psi1_f)
 
         self.sc_freq = _FrequencyScatteringBase(
-            self._J_fr, self._shape_fr, self._Q_fr, max_order_fr, self.average,
-            self.resample_psi_fr, self.resample_phi_fr, self.oversampling,
-            self.vectorize, self.out_type, self.pad_mode, self._n_psi1,
-            self.backend)
+            self._J_fr, self._shape_fr, self._Q_fr, self._F, max_order_fr,
+            self.average, self.resample_psi_fr, self.resample_phi_fr,
+            self.oversampling, self.vectorize, self.out_type, self.pad_mode,
+            self._n_psi1, self.backend)
 
     def get_shape_fr(self):
         """This is equivalent to `len(x)` along frequency, which varies across
@@ -443,7 +453,8 @@ class TimeFrequencyScatteringBase():
         meta : dictionary
             See the documentation for `compute_meta_jtfs()`.
         """
-        return compute_meta_jtfs(self.J, self.Q, self.Q2, self.J_fr, self.Q_fr)
+        return compute_meta_jtfs(self.J, self.Q, self.T, self.F, self.Q2,
+                                 self.J_fr, self.Q_fr)
 
     # access key attributes via frequential class
     @property
@@ -459,6 +470,10 @@ class TimeFrequencyScatteringBase():
         return self.sc_freq.shape_fr_max
 
     @property
+    def F(self):
+        return self.sc_freq.F
+
+    @property
     def max_order_fr(self):
         return self.sc_freq.max_order_fr
 
@@ -472,14 +487,15 @@ class _FrequencyScatteringBase(ScatteringBase):
     """Attribute object for TimeFrequencyScatteringBase for frequential
     scattering part of JTFS.
     """
-    def __init__(self, J_fr, shape_fr, Q_fr=2, max_order_fr=1, average=True,
-                 resample_psi_fr=True, resample_phi_fr=True, oversampling=0,
-                 vectorize=True, out_type='array', pad_mode='zero', n_psi1=None,
-                 backend=None):
+    def __init__(self, J_fr, shape_fr, Q_fr=2, F=None, max_order_fr=1,
+                 average=True, resample_psi_fr=True, resample_phi_fr=True,
+                 oversampling=0, vectorize=True, out_type='array',
+                 pad_mode='zero', n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.J_fr = J_fr
         self.shape_fr = shape_fr
         self.Q_fr = Q_fr
+        self.F = F
         self.max_order_fr = max_order_fr
         self.average = average
         self.resample_psi_fr = resample_psi_fr
@@ -508,9 +524,18 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # longest obtainable frequency row w.r.t. which we calibrate filters
         self.shape_fr_max = max(self.shape_fr)
+
+        # check F or set default  # TODO duplication
+        if self.F is None:
+            self.F = 2**(self.J_fr)
+        elif self.F > 2**(self.J_fr):
+            raise ValueError("The temporal support F of the low-pass filter "
+                             "cannot exceed 2**J_fr (got {} > {})".format(
+                                 self.F, 2**(self.J_fr)))  # TODO
+
         # compute maximum amount of padding
         self.min_to_pad_max = compute_minimum_support_to_pad(
-            self.shape_fr_max, self.J_fr, self.Q_fr, Q2=0,
+            self.shape_fr_max, self.J_fr, self.Q_fr, self.F, Q2=0,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                               'criterion_amplitude', 'normalize', 'pad_mode'))
         self.J_pad_max = math.ceil(np.log2(
@@ -524,7 +549,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def create_phi_filters(self):
         self.phi_f = phi_fr_factory(
-            self.J_fr, self.Q_fr, self.J_pad_max,
+            self.J_fr, self.Q_fr, self.F, self.J_pad_max,
              **self.get_params('resample_phi_fr', 'r_psi', 'criterion_amplitude',
                                'sigma0', 'alpha', 'P_max', 'eps'))
 
@@ -628,7 +653,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         """
         if recompute:
             min_to_pad = compute_minimum_support_to_pad(
-                shape_fr, self.J_fr, self.Q_fr, Q2=0,
+                shape_fr, self.J_fr, self.Q_fr, self.F, Q2=0,
                 **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                                   'criterion_amplitude', 'normalize', 'pad_mode'))
             J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))

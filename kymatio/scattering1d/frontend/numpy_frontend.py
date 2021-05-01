@@ -9,11 +9,11 @@ from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, Q2=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', pad_mode='reflect',
-            backend='numpy'):
+            oversampling=0, T=None, vectorize=True, out_type='array',
+            pad_mode='reflect', backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, Q2, max_order, average,
-                oversampling, vectorize, out_type, pad_mode, backend)
+                oversampling, T, vectorize, out_type, pad_mode, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -48,11 +48,12 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
         # treat the arguments
         if self.vectorize:
             size_scattering = precompute_size_scattering(
-                self.J, self.Q, Q2=self.Q2, max_order=self.max_order, detail=True)
+                self.J, self.Q, self.T, Q2=self.Q2, max_order=self.max_order,
+                detail=True)
         else:
             size_scattering = 0
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f,
+        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.T, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling,
@@ -87,16 +88,17 @@ ScatteringNumPy1D._document()
 
 
 class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
-    def __init__(self, J, shape, Q, Q2=1, J_fr=None, Q_fr=1, average=True,
-                 average_fr=None, oversampling=0, oversampling_fr=None,
-                 aligned=True, resample_psi_fr=True, resample_phi_fr=True,
-                 out_type="array", pad_mode='zero', backend="numpy"):
+    def __init__(self, J, shape, Q, Q2=1, J_fr=None, Q_fr=1, T=None, F=None,
+                 average=True, average_fr=None, oversampling=0,
+                 oversampling_fr=None, aligned=True, resample_psi_fr=True,
+                 resample_phi_fr=True, out_type="array", pad_mode='zero',
+                 backend="numpy"):
         if average_fr is None:
             average_fr = average
         if oversampling_fr is None:
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase.__init__(
-            self, J_fr, Q_fr, average_fr, oversampling_fr, aligned,
+            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
             resample_psi_fr, resample_phi_fr, pad_mode)
 
         # Second-order scattering object for the time variable
@@ -104,7 +106,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         max_order_tm = 2
         ScatteringNumPy1D.__init__(
             self, J, shape, Q, Q2, max_order_tm, average,
-            oversampling, vectorize, out_type, pad_mode, backend)
+            oversampling, T, vectorize, out_type, pad_mode, backend)
 
         TimeFrequencyScatteringBase.build(self)
 
@@ -134,6 +136,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             self.backend.pad, self.backend.unpad,
             self.backend,
             self.J,
+            self.T,
             self.psi1_f, self.psi2_f, self.phi_f,
             self.sc_freq,
             average=self.average,

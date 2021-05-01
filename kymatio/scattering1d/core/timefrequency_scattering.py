@@ -1,6 +1,6 @@
 
 def timefrequency_scattering(
-        x, pad, unpad, backend, J, psi1, psi2, phi, sc_freq,
+        x, pad, unpad, backend, J, T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
         oversampling=0, oversampling_fr=0,
         aligned=True, max_order=2, average=True, average_fr=True,

@@ -411,14 +411,13 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
+def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
     This family is defined by constant ratios between the frequencies and
     width of adjacent filters, up to a minimum frequency where the frequencies
-    are translated.
-    This ensures that the low-pass filter has the largest temporal support
+    are translated. sigma_min specifies the smallest frequential width
     among all filters, while preserving the coverage of the whole frequency
     axis.
 
@@ -428,11 +427,10 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
 
     Parameters
     ----------
-    sigma_low : float
-        frequential width of the low-pass filter. This acts as a
-        lower-bound on the frequential widths of the band-pass filters,
-        so as to ensure that the low-pass filter has the largest temporal
-        support among all filters.
+    sigma_min : float
+        This acts as a lower-bound on the frequential widths of the band-pass
+        filters. The low-pass filter may be wider (if T < 2**J_scattering), making
+        invariants over shorter time scales than longest band-pass filter.
     Q : int
         number of wavelets per octave.
     r_psi : float, optional
@@ -465,14 +463,14 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     j = []
     is_cqt = []
 
-    if sigma_max <= sigma_low:
+    if sigma_max <= sigma_min:
         # in this exceptional case, we will not go through the loop, so
         # we directly assign
         last_xi = sigma_max
     else:
         # fill all the dyadic wavelets as long as possible
         current = {'key': 0, 'j': 0, 'xi': xi_max, 'sigma': sigma_max}
-        while current['sigma'] > sigma_low:  # while we can attribute something
+        while current['sigma'] > sigma_min:  # while we can attribute something
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
@@ -485,7 +483,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     for q in range(1, num_intermediate + 1):
         factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
         new_xi = factor * last_xi
-        new_sigma = sigma_low
+        new_sigma = sigma_min
         xi.append(new_xi)
         sigma.append(new_sigma)
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
@@ -494,7 +492,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     return xi, sigma, j, is_cqt
 
 
-def calibrate_scattering_filters(J, Q, Q2=1, r_psi=math.sqrt(0.5), sigma0=0.1,
+def calibrate_scattering_filters(J, Q, T, Q2=1, r_psi=math.sqrt(0.5), sigma0=0.1,
                                  alpha=5.):
     """
     Calibrates the parameters of the filters used at the 1st and 2nd orders
@@ -515,6 +513,9 @@ def calibrate_scattering_filters(J, Q, Q2=1, r_psi=math.sqrt(0.5), sigma0=0.1,
         maximal scale of the scattering (controls the number of wavelets)
     Q : int
         number of wavelets per octave for the first order (Q1)
+    T : int
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
     Q2: int
         number of wavelets per octave for the second order
     r_psi : float, optional
@@ -549,15 +550,22 @@ def calibrate_scattering_filters(J, Q, Q2=1, r_psi=math.sqrt(0.5), sigma0=0.1,
     """
     if Q < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
-    sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
+
+    # lower bound of band-pass filter frequential widths:
+    # for default T = 2**(J), this coincides with sigma_low
+    sigma_min = sigma0 / math.pow(2, J)
+
     xi1, sigma1, j1, is_cqt1 = compute_params_filterbank(
-        sigma_low, Q, r_psi=r_psi, alpha=alpha)
+        sigma_min, Q, r_psi=r_psi, alpha=alpha)
     xi2, sigma2, j2, is_cqt2 = compute_params_filterbank(
-        sigma_low, Q2, r_psi=r_psi, alpha=alpha)
+        sigma_min, Q2, r_psi=r_psi, alpha=alpha)
+
+    # width of the low-pass filter
+    sigma_low = sigma0 / T
     return sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2
 
 
-def scattering_filter_factory(J_support, J_scattering, Q, Q2=1,
+def scattering_filter_factory(J_support, J_scattering, Q, T, Q2=1,
                               r_psi=math.sqrt(0.5),
                               criterion_amplitude=1e-3, normalize='l1',
                               max_subsampling=None, sigma0=0.1, alpha=5.,
@@ -581,10 +589,13 @@ def scattering_filter_factory(J_support, J_scattering, Q, Q2=1,
         2**J_support is the desired support size of the filters
     J_scattering : int
         parameter for the scattering transform (2**J_scattering
-        corresponds to the averaging support of the low-pass filter)
+        corresponds to maximal temporal support of any filter)
     Q : int
         number of wavelets per octave at the first order. For audio signals,
         a value Q >= 12 is recommended in order to separate partials.
+    T : int
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and subsampling
     Q2 : int
         number of wavelets per octave at the second order. Recommended Q2 = 1
         for most (`Scattering1D`) applications.
@@ -660,7 +671,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, Q2=1,
     # compute the spectral parameters of the filters
     (sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2
      ) = calibrate_scattering_filters(
-         J_scattering, Q, Q2=Q2, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+         J_scattering, Q, T, Q2=Q2, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
@@ -761,8 +772,9 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
                    P_max=5, eps=1e-7):
     # TODO docs
     # compute the spectral parameters of the filters
-    sigma_low, xi1, sigma1, j1s, is_cqt1, *_ = calibrate_scattering_filters(
-        J_fr, Q_fr, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+    T = 1  # for computing `sigma_low`, unused
+    _, xi1, sigma1, j1s, is_cqt1, *_ = calibrate_scattering_filters(
+        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_up = []
@@ -828,12 +840,13 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
     return psi1_f_up, psi1_f_down
 
 
-def phi_fr_factory(J_fr, Q_fr, J_pad_max, resample_phi_fr=True,
+def phi_fr_factory(J_fr, Q_fr, F, J_pad_max, resample_phi_fr=True,
                    r_psi=math.sqrt(0.5), criterion_amplitude=1e-3,
                    sigma0=0.1, alpha=5., P_max=5, eps=1e-7):
     # TODO docs
+    # TODO don't need r_psi or alpha
     # compute the spectral parameters of the filters
-    sigma_low, *_ = calibrate_scattering_filters(J_fr, Q_fr, r_psi=r_psi,
+    sigma_low, *_ = calibrate_scattering_filters(J_fr, Q_fr, F, r_psi=r_psi,
                                                  sigma0=sigma0, alpha=alpha)
     J_support = J_pad_max
     N = 2**J_support
