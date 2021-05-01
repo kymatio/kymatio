@@ -73,6 +73,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed 2**J (got {} > {})".format(
                                  self.T, 2**(self.J)))  # TODO
+        self.log2_T = math.floor(math.log2(self.T))
 
         # check that we get any second-order coefficients if max_order==2
         meta = ScatteringBase1D.meta(self)
@@ -532,6 +533,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             raise ValueError("The temporal support F of the low-pass filter "
                              "cannot exceed 2**J_fr (got {} > {})".format(
                                  self.F, 2**(self.J_fr)))  # TODO
+        self.log2_F = math.floor(math.log2(self.F))
 
         # compute maximum amount of padding
         self.min_to_pad_max = compute_minimum_support_to_pad(
@@ -549,9 +551,9 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def create_phi_filters(self):
         self.phi_f = phi_fr_factory(
-            self.J_fr, self.Q_fr, self.F, self.J_pad_max,
-             **self.get_params('resample_phi_fr', 'r_psi', 'criterion_amplitude',
-                               'sigma0', 'alpha', 'P_max', 'eps'))
+            self.log2_F, self.Q_fr, self.J_pad_max,
+             **self.get_params('resample_phi_fr', 'criterion_amplitude',
+                               'sigma0', 'P_max', 'eps'))
 
         # Edge case: need phi_f in case number of `psi1` filters (and thus
         # first-order coeffs) pads greater than max(J_pad). Note this filter,
@@ -562,10 +564,10 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.phi_f_fo = gauss_1d(2**self.J_pad_fo, sigma=self.phi_f['sigma'],
                                      P_max=self.P_max, eps=self.eps)
             # need to subsample more since padded more
-            self.J_fr_fo = self.J_fr + 1
+            self.log2_F_fo = self.log2_F + 1
         else:
             self.phi_f_fo = self.phi_f[0]
-            self.J_fr_fo = self.J_fr
+            self.log2_F_fo = self.log2_F
 
         if self.resample_phi_fr:
             # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f`)
@@ -576,7 +578,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.max_subsampling_before_phi_fr = n_phi_f - 1
         else:
             # usual behavior
-            self.max_subsampling_before_phi_fr = self.J_fr - 1
+            self.max_subsampling_before_phi_fr = self.log2_F - 1
 
     def compute_padding_fr(self):
         """Long story"""  # TODO
@@ -602,7 +604,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
                 # compute unpad indices for all possible subsamplings
                 ind_start, ind_end = [], []
-                for j in range(self.J_fr + 1):
+                for j in range(self.log2_F + 1):
                     if j == j0:
                         ind_start.append(0)
                         ind_end.append(shape_fr)
@@ -633,7 +635,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         for attr in ('ind_start_max', 'ind_end_max'):
             setattr(self, attr, [])
-            for j in range(self.J_fr + 1):
+            for j in range(self.log2_F + 1):
                 idxs_max = max(get_idxs(attr)[n2][j]
                                for n2 in range(len(self.shape_fr))
                                if len(get_idxs(attr)[n2]) != 0)

@@ -1,7 +1,7 @@
 import math
 
 def timefrequency_scattering(
-        x, pad, unpad, backend, J, T, psi1, psi2, phi, sc_freq,
+        x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
         oversampling=0, oversampling_fr=0,
         aligned=True, max_order=2, average=True, average_fr=True,
@@ -11,12 +11,11 @@ def timefrequency_scattering(
     """
     # pack for later
     B = backend
-    log2_T = math.floor(math.log2(T))
     commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average,
                average_fr, out_type, unpad, log2_T, phi, ind_start, ind_end)
 
     batch_size = x.shape[0]
-    kJ = max(J - oversampling, 0)
+    kJ = max(log2_T - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0 = []
     out_S_1 = []
@@ -91,10 +90,10 @@ def timefrequency_scattering(
 
         if aligned:
             # subsample as we would in min-padded case
-            total_subsample_fr_max = sc_freq.J_fr_fo - max(sc_freq.j0s)
+            total_subsample_fr_max = sc_freq.log2_F_fo - max(sc_freq.j0s)
         else:
             # subsample regularly (relative to current padding)
-            total_subsample_fr_max = sc_freq.J_fr_fo
+            total_subsample_fr_max = sc_freq.log2_F_fo
 
         if aligned:
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
@@ -117,7 +116,7 @@ def timefrequency_scattering(
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # unpad + transpose, append to out
-        if sc_freq.J_fr_fo > sc_freq.J_fr:
+        if sc_freq.log2_F_fo > sc_freq.log2_F:
             lowpass_subsample_fr -= 1  # adjust so indexing matches
         if out_type == 'list':
             S_1_fr_T = unpad(S_1_fr_T,
@@ -185,7 +184,7 @@ def timefrequency_scattering(
     ##########################################################################
     # Second order: `X * (phi_t * psi_f)`
     # take largest subsampling factor
-    if sc_freq.J_fr_fo > sc_freq.J_fr:
+    if sc_freq.log2_F_fo > sc_freq.log2_F:
         # TODO can lift restriction if we have psi equivalents of `phi_f_fo`
         j2_compare = J - 1
     else:
@@ -301,7 +300,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 
     subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
     # take largest subsampling factor
-    j1_fr = sc_freq.J_fr - 1
+    j1_fr = sc_freq.log2_F - 1
     n1_fr_subsample = max(
         min(j1_fr, sc_freq.max_subsampling_before_phi_fr) -
         reference_subsample_equiv_due_to_pad -
@@ -342,10 +341,10 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     # compute subsampling logic ##############################################
     if aligned:
         # subsample as we would in min-padded case
-        total_subsample_fr_max = sc_freq.J_fr - max(sc_freq.j0s)
+        total_subsample_fr_max = sc_freq.log2_F - max(sc_freq.j0s)
     else:
         # subsample regularly (relative to current padding)
-        total_subsample_fr_max = sc_freq.J_fr
+        total_subsample_fr_max = sc_freq.log2_F
 
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 

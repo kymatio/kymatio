@@ -840,14 +840,11 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
     return psi1_f_up, psi1_f_down
 
 
-def phi_fr_factory(J_fr, Q_fr, F, J_pad_max, resample_phi_fr=True,
-                   r_psi=math.sqrt(0.5), criterion_amplitude=1e-3,
-                   sigma0=0.1, alpha=5., P_max=5, eps=1e-7):
+def phi_fr_factory(log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
+                   criterion_amplitude=1e-3, sigma0=0.1, P_max=5, eps=1e-7):
     # TODO docs
-    # TODO don't need r_psi or alpha
     # compute the spectral parameters of the filters
-    sigma_low, *_ = calibrate_scattering_filters(J_fr, Q_fr, F, r_psi=r_psi,
-                                                 sigma0=sigma0, alpha=alpha)
+    sigma_low = sigma0 / 2**log2_F
     J_support = J_pad_max
     N = 2**J_support
 
@@ -856,7 +853,7 @@ def phi_fr_factory(J_fr, Q_fr, F, J_pad_max, resample_phi_fr=True,
     phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # lowpass filters at all possible input lengths
-    for j_fr in range(1, 1 + J_fr):
+    for j_fr in range(1, 1 + log2_F):
         factor = 2**j_fr
         if resample_phi_fr:
             prev_phi = phi_f[j_fr - 1].reshape(1, -1)
