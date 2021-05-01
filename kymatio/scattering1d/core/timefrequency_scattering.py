@@ -1,3 +1,4 @@
+import math
 
 def timefrequency_scattering(
         x, pad, unpad, backend, J, T, psi1, psi2, phi, sc_freq,
@@ -10,8 +11,9 @@ def timefrequency_scattering(
     """
     # pack for later
     B = backend
+    log2_T = math.floor(math.log2(T))
     commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average,
-               average_fr, out_type, unpad, J, phi, ind_start, ind_end)
+               average_fr, out_type, unpad, log2_T, phi, ind_start, ind_end)
 
     batch_size = x.shape[0]
     kJ = max(J - oversampling, 0)
@@ -28,7 +30,7 @@ def timefrequency_scattering(
     U_0_hat = B.rfft(U_0)
 
     # Zeroth order:
-    k0 = max(J - oversampling, 0)
+    k0 = max(log2_T - oversampling, 0)
     if average:
         S_0_c = B.cdgmm(U_0_hat, phi[0])
         S_0_hat = B.subsample_fourier(S_0_c, 2**k0)
@@ -43,7 +45,7 @@ def timefrequency_scattering(
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
-        k1 = max(j1 - oversampling, 0)
+        k1 = max(min(j1, log2_T) - oversampling, 0)
         U_1_c = B.cdgmm(U_0_hat, psi1[n1][0])
         U_1_hat = B.subsample_fourier(U_1_c, 2**k1)
         U_1_c = B.ifft(U_1_hat)
@@ -62,7 +64,7 @@ def timefrequency_scattering(
         # Apply low-pass filtering over time (optional) and unpad
         if average:
             # Low-pass filtering over time
-            k1_J = max(J - k1 - oversampling, 0)
+            k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
 
@@ -155,8 +157,10 @@ def timefrequency_scattering(
             U_1_hat = U_1_hat_list[n1]
 
             # Convolution and downsampling
-            k1 = max(j1 - oversampling, 0)       # what we subsampled in 1st-order
-            k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
+            # what we subsampled in 1st-order
+            k1 = max(j1 - oversampling, 0)
+            # what we subsample now in 2nd
+            k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
             Y_2_c = B.ifft(Y_2_hat)
@@ -188,8 +192,8 @@ def timefrequency_scattering(
         j2_compare = J
     # `j2_compare` is for fetching from `S_1_c_list`, `j2` is for subsampling;
     # since we lowpass time again later (`if average`), need to leave room
-    # for subsampling, so this cannot be set to `J`
-    j2 = J - 1
+    # for subsampling, so this cannot be set to `log2_T`
+    j2 = log2_T - 1  # TODO check this
 
     # preallocate output slice
     pad_fr = sc_freq.J_pad_max
@@ -333,7 +337,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          sc_freq.ind_end_max[total_subsample_fr])
 
     (B, sc_freq, aligned, oversampling_fr, oversampling, average, average_fr,
-     out_type, unpad, J, phi, ind_start, ind_end) = commons
+     out_type, unpad, log2_T, phi, ind_start, ind_end) = commons
 
     # compute subsampling logic ##############################################
     if aligned:
@@ -366,6 +370,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         total_subsample_fr = total_subsample_so_far
 
+    # do lowpassing ##########################################################
     if average_fr == 'global':
         S_2_fr = B.mean(U_2_m, axis=-1)
     elif average_fr:
@@ -384,7 +389,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     if average:
         # Low-pass filtering over time
-        k2_tm_J = max(J - k1_plus_k2 - oversampling, 0)
+        k2_tm_J = max(log2_T - k1_plus_k2 - oversampling, 0)
         U_2_hat = B.rfft(S_2_fr)
         S_2_c = B.cdgmm(U_2_hat, phi[k1_plus_k2])
         S_2_hat = B.subsample_fourier(S_2_c, 2**k2_tm_J)
