@@ -32,7 +32,7 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
 
         # octave bounds
         Nmax = len(p[0])
-        plot([], vlines=([Nmax//2**j for j in range(scattering.J)],
+        plot([], vlines=([Nmax//2**j for j in range(1, scattering.J + 2)],
                          dict(color='k', linewidth=1)))
         # lowpass
         if zoom == -1:
@@ -57,10 +57,14 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
     p1 = scattering.psi1_f
     p2 = scattering.psi2_f
 
-    _plot_filters(p1, p0, title="First-order filterbank")
+    title = ("First-order filterbank | J, Q1 = {}, {}".format(
+        scattering.J, scattering.Q))
+    _plot_filters(p1, p0, title=title)
 
     if second_order:
-        _plot_filters(p2, p0, title="Second-order filterbank")
+        title = "Second-order filterbank | J, Q2 = {}, {}".format(
+            scattering.J, scattering.Q2)
+        _plot_filters(p2, p0, title=title)
 
 
 def filterbank_jtfs(jtfs, part='real', zoomed=False):
