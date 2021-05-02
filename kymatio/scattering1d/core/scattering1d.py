@@ -1,6 +1,5 @@
-import math
 
-def scattering1d(x, pad, unpad, backend, J, T, psi1, psi2, phi, pad_left=0,
+def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
         vectorize=False, out_type='array'):
@@ -30,9 +29,9 @@ def scattering1d(x, pad, unpad, backend, J, T, psi1, psi2, phi, pad_left=0,
         The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
-    T : int
-        temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
+    log2_T : int
+        (log2 of) temporal support of low-pass filter, controlling amount of
+        imposed time-shift invariance and subsampling
     pad_left : int, optional
         how much to pad the signal on the left. Defaults to `0`
     pad_right : int, optional
@@ -69,7 +68,7 @@ def scattering1d(x, pad, unpad, backend, J, T, psi1, psi2, phi, pad_left=0,
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
-    kJ = max(J - oversampling, 0)
+    kJ = max(log2_T - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
@@ -77,8 +76,6 @@ def scattering1d(x, pad, unpad, backend, J, T, psi1, psi2, phi, pad_left=0,
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
-
-    log2_T = math.floor(math.log2(T))
 
     # Get S0
     k0 = max(log2_T - oversampling, 0)

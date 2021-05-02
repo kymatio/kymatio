@@ -58,6 +58,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed 2**J (got {} > {})".format(
                                  self.T, 2**(self.J)))
+        self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
