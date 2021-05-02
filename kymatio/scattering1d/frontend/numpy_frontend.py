@@ -50,7 +50,7 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
         else:
             size_scattering = 0
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.T, self.psi1_f, self.psi2_f,
+        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.log2_T, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling,
