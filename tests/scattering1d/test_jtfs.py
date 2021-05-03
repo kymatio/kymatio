@@ -239,7 +239,7 @@ def test_output():
             params_str += "{}={}\n".format(k, str(v))
         return x, out_stored, params, params_str
 
-    for test_num in range(4):
+    for test_num in range(3):
         x, out_stored, params, params_str = _load_data(test_num)
 
         jtfs = TimeFrequencyScattering(**params)
