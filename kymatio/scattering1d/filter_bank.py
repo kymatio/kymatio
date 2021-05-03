@@ -409,7 +409,8 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
+def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.,
+                              xi_min=None):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
@@ -441,6 +442,9 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
+    xi_min : float, optional
+        Lower bound on `xi` to ensure every bandpass is a valid wavelet
+        (doesn't peak at FFT bin 1) within `2*len(x)` padding.
 
     Returns
     -------
@@ -455,6 +459,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
+    xi_min = xi_min if xi_min is not None else -1
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 
@@ -462,14 +467,15 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
     sigma = []
     j = []
 
-    if sigma_max <= sigma_low:
+    if sigma_max <= sigma_low or xi_max <= xi_min:
         # in this exceptional case, we will not go through the loop, so
         # we directly assign
         last_xi = sigma_max
     else:
         # fill all the dyadic wavelets as long as possible
         current = {'key': 0, 'j': 0, 'xi': xi_max, 'sigma': sigma_max}
-        while current['sigma'] > sigma_low:  # while we can attribute something
+        # while we can attribute something
+        while current['sigma'] > sigma_low and current['xi'] > xi_min:
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
@@ -482,6 +488,8 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
         factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
         new_xi = factor * last_xi
         new_sigma = sigma_low
+        if new_xi < xi_min:
+            break
         xi.append(new_xi)
         sigma.append(new_sigma)
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
@@ -490,7 +498,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
 
 
 def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
-                                 alpha=5.):
+                                 alpha=5., xi_min=None):
     """
     Calibrates the parameters of the filters used at the 1st and 2nd orders
     of the scattering transform.
@@ -522,6 +530,9 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
+    xi_min : float, optional
+        Lower bound on `xi` to ensure every bandpass is a valid wavelet
+        (doesn't peak at FFT bin 1) within `2*len(x)` padding.
 
     Returns
     -------
@@ -544,9 +555,9 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
     sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
     xi1, sigma1, j1 = compute_params_filterbank(sigma_low, Q, r_psi=r_psi,
-                                            alpha=alpha)
+                                            alpha=alpha, xi_min=xi_min)
     xi2, sigma2, j2 = compute_params_filterbank(sigma_low, 1, r_psi=r_psi,
-                                            alpha=alpha)
+                                            alpha=alpha, xi_min=xi_min)
     return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
 
 
@@ -647,8 +658,10 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
+    N = 2**J_support
+    xi_min = (2 / N)  # leftmost peak at bin 2
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
-        J_scattering, Q, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+        J_scattering, Q, r_psi=r_psi, sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
@@ -669,9 +682,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
                 max_sub_psi2 = 0
         else:
             max_sub_psi2 = max_subsampling
-        # We first compute the filter without subsampling
-        N = 2**J_support
 
+        # We first compute the filter without subsampling
         psi_f = {}
         psi_f[0] = morlet_1d(
             N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
@@ -687,7 +699,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
-        N = 2**J_support
         psi1_f.append({0: morlet_1d(
             N, xi1[n1], sigma1[n1], normalize=normalize,
             P_max=P_max, eps=eps)})
