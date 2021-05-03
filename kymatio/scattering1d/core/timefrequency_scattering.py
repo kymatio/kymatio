@@ -88,14 +88,9 @@ def timefrequency_scattering(
     elif average_fr and average:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
 
+        total_subsample_fr_max = sc_freq.log2_F_fo
         if aligned:
             # subsample as we would in min-padded case
-            total_subsample_fr_max = sc_freq.log2_F_fo - max(sc_freq.j0s)
-        else:
-            # subsample regularly (relative to current padding)
-            total_subsample_fr_max = sc_freq.log2_F_fo
-
-        if aligned:
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
             if out_type == 'array':
                 subsample_equiv_due_to_pad_min = 0
@@ -105,6 +100,7 @@ def timefrequency_scattering(
             reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
                                                 0)
         else:
+            # subsample regularly (relative to current padding)
             reference_total_subsample_so_far = 0
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
@@ -339,16 +335,11 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
      out_type, unpad, log2_T, phi, ind_start, ind_end) = commons
 
     # compute subsampling logic ##############################################
-    if aligned:
-        # subsample as we would in min-padded case
-        total_subsample_fr_max = sc_freq.log2_F - max(sc_freq.j0s)
-    else:
-        # subsample regularly (relative to current padding)
-        total_subsample_fr_max = sc_freq.log2_F
-
+    total_subsample_fr_max = sc_freq.log2_F
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
     if aligned:
+        # subsample as we would in min-padded case
         reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
         if out_type == 'array':
             subsample_equiv_due_to_pad_min = 0
@@ -357,6 +348,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
                                             n1_fr_subsample)
     else:
+        # subsample regularly (relative to current padding)
         reference_total_subsample_so_far = total_subsample_so_far
 
     if average_fr == 'global':
