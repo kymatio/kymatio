@@ -142,11 +142,15 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2 = \
         calibrate_scattering_filters(J_scattering, Q_temp, T, xi_min=xi_min)
 
+    def last_cqt(is_cqt):
+        """Begin iterating from last CQT wavelet."""
+        return (is_cqt.index(False) if False in is_cqt else len(is_cqt)) - 1
+
     # compute psi1_f with greatest time support, if requested
     if Q1 >= 1:
         # TODO subsampled variant
-        n1_last_noncqt = is_cqt1.index(True) - 1
-        for n1 in range(n1_last_noncqt, len(j1s)):
+        n1_last_cqt = last_cqt(is_cqt1)
+        for n1 in range(n1_last_cqt, len(j1s)):
             try:
                 psi1_f_fn = lambda N: morlet_1d(
                     N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max,
@@ -160,8 +164,8 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
 
     # compute psi2_f with greatest time support, if requested
     if Q2 >= 1:
-        n2_last_noncqt = is_cqt2.index(True) - 1
-        for n2 in range(n2_last_noncqt, len(j2s)):
+        n2_last_cqt = last_cqt(is_cqt2)
+        for n2 in range(n2_last_cqt, len(j2s)):
             try:
                 psi2_f_fn = lambda N: morlet_1d(
                     N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
