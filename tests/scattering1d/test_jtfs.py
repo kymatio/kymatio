@@ -11,7 +11,7 @@ from kymatio.numpy import Scattering1D, TimeFrequencyScattering
 # TODO phase-shift sensitivity
 
 # set True to execute all test functions without pytest
-run_without_pytest = 0
+run_without_pytest = 1
 
 
 def test_alignment():
@@ -242,7 +242,7 @@ def test_output():
     for test_num in range(3):
         x, out_stored, params, params_str = _load_data(test_num)
 
-        jtfs = TimeFrequencyScattering(**params)
+        jtfs = TimeFrequencyScattering(**params, max_pad_factor=1)
         out = jtfs(x)
         if params['out_type'] == 'list':
             out = [o['coef'] for o in out]
@@ -254,8 +254,12 @@ def test_output():
             ).format(len(out), len(out_stored), params_str)
 
         for i, (o, o_stored) in enumerate(zip(out, out_stored)):
-            errmsg = ("out[{}] != out_stored[{}]\n{}").format(i, i, params_str)
-            assert np.allclose(o, o_stored), errmsg
+            assert o.shape == o_stored.shape, (
+                "out[{}].shape != out_stored[{}].shape ({} != {})\n{}".format(
+                    i, i, o.shape, o_stored.shape, params_str))
+            assert np.allclose(o, o_stored), (
+                "out[{}] != out_stored[{}] (MAE={:.5f})\n{}".format(
+                    i, i, np.abs(o - o_stored).mean(), params_str))
 
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
@@ -300,11 +304,11 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
-        test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_meta()
+        # test_alignment()
+        # test_shapes()
+        # test_jtfs_vs_ts()
+        # test_freq_tp_invar()
+        # test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])

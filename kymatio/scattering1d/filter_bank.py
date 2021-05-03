@@ -509,6 +509,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.,
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     xi_min = xi_min if xi_min is not None else -1
+    xi_min = -1
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 

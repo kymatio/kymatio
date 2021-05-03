@@ -427,8 +427,8 @@ class TimeFrequencyScatteringBase():
     def build(self):
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1
-        if self._J_fr is None:
-            self._J_fr = int(math.log2(self.Q) + 1)
+        if self._J_fr is None:  # TODO set from shape_fr_max
+            self._J_fr = int(math.log2(self.Q[0]) + 1)
         # number of psi1 filters
         self._n_psi1 = len(self.psi1_f)
 
