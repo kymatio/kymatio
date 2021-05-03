@@ -87,7 +87,7 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, self.N,
+        return compute_meta_scattering(self.J, self.Q, self.J_pad,
                                        max_order=self.max_order)
 
     def output_size(self, detail=False):
