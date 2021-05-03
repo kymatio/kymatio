@@ -53,8 +53,6 @@ class NumpyBackend1D(NumpyBackend):
         output : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
         if pad_mode == 'zero':
             pad_mode = 'constant'
 

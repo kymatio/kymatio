@@ -58,12 +58,12 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
     p2 = scattering.psi2_f
 
     title = "First-order filterbank | J, Q1 = {}, {}".format(
-        scattering.J, scattering.Q)
+        scattering.J, scattering.Q[0])
     _plot_filters(p1, p0, title=title)
 
     if second_order:
         title = "Second-order filterbank | J, Q2 = {}, {}".format(
-            scattering.J, scattering.Q2)
+            scattering.J, scattering.Q[1])
         _plot_filters(p2, p0, title=title)
 
 

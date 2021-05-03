@@ -1,9 +1,9 @@
 import numpy as np
 import math
 from .filter_bank import (calibrate_scattering_filters, compute_temporal_support,
-                          gauss_1d, morlet_1d)
+                          compute_minimum_required_length, gauss_1d, morlet_1d)
 
-def compute_border_indices(J, i0, i1):
+def compute_border_indices(log2_T, i0, i1):
     """
     Computes border indices at all scales which correspond to the original
     signal boundaries after padding.
@@ -15,8 +15,8 @@ def compute_border_indices(J, i0, i1):
 
     Parameters
     ----------
-    J : int
-        maximal subsampling by 2**J
+    log2_T : int
+        maximal subsampling by 2**log2_T
     i0 : int
         start index of the original signal at the finest resolution
     i1 : int
@@ -24,13 +24,13 @@ def compute_border_indices(J, i0, i1):
 
     Returns
     -------
-    ind_start, ind_end: dictionaries with keys in [0, ..., J] such that the
+    ind_start, ind_end: dictionaries with keys in [0, ..., log2_T] such that the
         original signal is in padded_signal[ind_start[j]:ind_end[j]]
         after subsampling by 2**j
     """
     ind_start = {0: i0}
     ind_end = {0: i1}
-    for j in range(1, J + 1):
+    for j in range(1, log2_T + 1):
         ind_start[j] = (ind_start[j - 1] // 2) + (ind_start[j - 1] % 2)
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
@@ -61,11 +61,9 @@ def compute_padding(J_pad, T):
     to_add = 2**J_pad - T
     pad_left = to_add // 2
     pad_right = to_add - pad_left
-    if max(pad_left, pad_right) >= T:
-        raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
 
-def compute_minimum_support_to_pad(N, J, Q, T, Q2=1, criterion_amplitude=1e-3,
+def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
                                        sigma0=1e-1, alpha=5., P_max=5, eps=1e-7,
                                        pad_mode='reflect'):
@@ -86,7 +84,7 @@ def compute_minimum_support_to_pad(N, J, Q, T, Q2=1, criterion_amplitude=1e-3,
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and subsampling
-    Q2 : int >= 0
+    Q2 : int >= 0  # TODO
         The number of second-order wavelets per octave.
         If 0, will exclude `psi2` from computation.
     normalize : string, optional
@@ -131,55 +129,76 @@ def compute_minimum_support_to_pad(N, J, Q, T, Q2=1, criterion_amplitude=1e-3,
         minimal value to pad the signal on one size to avoid any
         boundary error.
     """
+    # compute params for calibrating, & calibrate
     J_tentative = int(np.ceil(np.log2(N)))
     J_support = J_tentative
     J_scattering = J
-    sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2 = \
-        calibrate_scattering_filters(J_scattering, Q, T, Q2=max(Q2, 1))
 
-    # compute psi1_f with greatest time support
-    # TODO subsampled variant
-    n1_last_noncqt = is_cqt1.index(True) - 1
+    Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
+    Q_temp = (max(Q1, 1), max(Q2, 1))  # don't pass in zero
     N = 2 ** J_support
-    for n1 in range(n1_last_noncqt, len(j1s)):
-        try:
-            psi1_f = morlet_1d(N, xi1[n1], sigma1[n1], normalize=normalize,
-                               P_max=P_max, eps=eps)
-        except ValueError as e:
-            if is_cqt1[n1]:
-                raise e
-            break
-    psi1_f_widest = psi1_f
+    xi_min = (2 / N)  # leftmost peak at bin 2
+
+    sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2 = \
+        calibrate_scattering_filters(J_scattering, Q_temp, T, xi_min=xi_min)
+
+    # compute psi1_f with greatest time support, if requested
+    if Q1 >= 1:
+        # TODO subsampled variant
+        n1_last_noncqt = is_cqt1.index(True) - 1
+        for n1 in range(n1_last_noncqt, len(j1s)):
+            try:
+                psi1_f_fn = lambda N: morlet_1d(
+                    N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max,
+                    eps=eps)
+                _ = psi1_f_fn(N)
+            except ValueError as e:
+                if is_cqt1[n1]:
+                    raise e
+                break
+        psi1_f_fn_widest = psi1_f_fn
 
     # compute psi2_f with greatest time support, if requested
     if Q2 >= 1:
-        n2_last_noncqt = is_cqt1.index(True) - 1
+        n2_last_noncqt = is_cqt2.index(True) - 1
         for n2 in range(n2_last_noncqt, len(j2s)):
             try:
-                psi2_f = morlet_1d(N, xi2[n2], sigma2[n2], normalize=normalize,
-                                   P_max=P_max, eps=eps)
+                psi2_f_fn = lambda N: morlet_1d(
+                    N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
+                    eps=eps)
+                _ = psi2_f_fn(N)
             except ValueError as e:
                 if is_cqt2[n2]:
                     raise e
                 break
-        psi2_f_widest = psi2_f
+        psi2_f_fn_widest = psi2_f_fn
 
     # compute lowpass
-    phi_f = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    phi_f_fn = lambda N: gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # compute for all cases as psi's time support might exceed phi's
-    t_max_phi  = compute_temporal_support(phi_f.reshape(1, -1),
-                                          criterion_amplitude=criterion_amplitude)
-    t_max_psi1 = compute_temporal_support(psi1_f_widest.reshape(1, -1),
-                                          criterion_amplitude=criterion_amplitude)
-    if Q2 >= 1:
-        t_max_psi2 = compute_temporal_support(
-            psi2_f_widest.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+    kw = dict(N_init=N, criterion_amplitude=criterion_amplitude)
+    N_min_phi = compute_minimum_required_length(phi_f_fn, **kw)
+    if Q1 >= 1:
+        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, **kw)
     else:
-        t_max_psi2 = -1
+        N_min_psi1 = -2  # placeholder
+    if Q2 >= 1:
+        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, **kw)
+    else:
+        N_min_psi2 = -2
 
-    # take max, set min to pad
-    t_max = max(t_max_phi, t_max_psi1, t_max_psi2)
+    # take maximum
+    if N_min_phi == max(N_min_phi, N_min_psi1, N_min_psi2):
+        p_fr = phi_f_fn(N_min_phi)
+    elif N_min_psi1 == max(N_min_phi, N_min_psi1, N_min_psi2):
+        p_fr = psi1_f_fn_widest(N_min_psi1)
+    else:
+        p_fr = psi2_f_fn_widest(N_min_psi2)
+    t_max = compute_temporal_support(p_fr.reshape(1, -1),
+                                     criterion_amplitude=criterion_amplitude)
+
+    # set min to pad based on maximum
     min_to_pad = int(1.2 * t_max)
     if pad_mode == 'zero':
         min_to_pad //= 2
@@ -188,7 +207,7 @@ def compute_minimum_support_to_pad(N, J, Q, T, Q2=1, criterion_amplitude=1e-3,
     return min_to_pad
 
 
-def precompute_size_scattering(J, Q, T, Q2=1, max_order=2, detail=False):
+def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
     """Get size of the scattering transform
 
     The number of scattering coefficients depends on the filter
@@ -222,7 +241,7 @@ def precompute_size_scattering(J, Q, T, Q2=1, max_order=2, detail=False):
         the number of coefficients in each order.
     """
     sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2 = \
-        calibrate_scattering_filters(J, Q, T, Q2=Q2)
+        calibrate_scattering_filters(J, Q, T)
 
     size_order0 = 1
     size_order1 = len(xi1)
@@ -243,7 +262,7 @@ def precompute_size_scattering(J, Q, T, Q2=1, max_order=2, detail=False):
             return size_order0 + size_order1
 
 
-def compute_meta_scattering(J, Q, T, Q2=1, max_order=2):
+def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
     """Get metadata on the transform.
 
     This information specifies the content of each scattering coefficient,
@@ -256,14 +275,17 @@ def compute_meta_scattering(J, Q, T, Q2=1, max_order=2):
         In other words, the maximum scale is given by `2**J`.
     Q : int >= 1
         The number of first-order wavelets per octave.
+    J_pad : int
+        2**J_pad == amount of temporal padding
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and subsampling
-    Q2 : int >= 1
-        The number of second-order wavelets per octave.
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
+    xi_min : float, optional
+        Lower bound on `xi` to ensure every bandpass is a valid wavelet
+        (doesn't peak at FFT bin 1) within `2*len(x)` padding.
 
     Returns
     -------
@@ -289,9 +311,10 @@ def compute_meta_scattering(J, Q, T, Q2=1, max_order=2):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
+    xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
     # TODO meta won't match output if non-CQT are dropped
     sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
-        calibrate_scattering_filters(J, Q, T, Q2=Q2)
+        calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
 
     meta = {}
 
@@ -346,7 +369,7 @@ def compute_meta_scattering(J, Q, T, Q2=1, max_order=2):
     return meta
 
 
-def compute_meta_jtfs(J, Q, T, F, Q2, J_fr, Q_fr):
+def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
     """Get metadata on the Joint Time-Frequency Scattering transform.
 
     This information specifies the content of each scattering coefficient,
@@ -359,6 +382,10 @@ def compute_meta_jtfs(J, Q, T, F, Q2, J_fr, Q_fr):
         In other words, the maximum scale is given by `2**J`.
     Q : int >= 1
         The number of first-order wavelets per octave.
+    J_pad : int
+        2**J_pad == amount of temporal padding
+    J_pad_fr_max: int
+        2**J_pad_fr_max == maximum amount of frequential padding
     T : int
         temporal support of temporal low-pass filter, controlling amount of
         imposed time-shift invariance and subsampling
@@ -397,10 +424,12 @@ def compute_meta_jtfs(J, Q, T, F, Q2, J_fr, Q_fr):
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
     """
+    xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
+    xi_min_fr = (2 / 2**J_pad_fr_max)
     sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
-        calibrate_scattering_filters(J, Q, T)
+        calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
-        calibrate_scattering_filters(J_fr, Q_fr, F)
+        calibrate_scattering_filters(J_fr, Q_fr, F, xi_min=xi_min_fr)
 
     meta = {}
     inf = -1  # placeholder for infinity
