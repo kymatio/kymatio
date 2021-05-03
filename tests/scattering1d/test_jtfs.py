@@ -11,7 +11,7 @@ from kymatio.numpy import Scattering1D, TimeFrequencyScattering
 # TODO phase-shift sensitivity
 
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def test_alignment():
@@ -300,11 +300,11 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_meta()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])
