@@ -34,7 +34,7 @@ class TestScattering1DNumpy:
 
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0)
-    
+
     def test_Scattering1D_T(self, backend):
         """
         Applies scattering on a stored signal to make sure its output agrees with
@@ -56,38 +56,32 @@ class TestScattering1DNumpy:
         # default
         scattering1 = Scattering1D(J, N, Q, backend=backend, frontend='numpy')
         Sx1 = scattering1(x)
- 
+
         # adjust T
         sigma_low_scale_factor = 2
         T=2**(J-sigma_low_scale_factor)
         scattering2 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='numpy')
         Sx2 = scattering2(x)
-        
-        # for now, just be sure that the output shape is different from default
-        # should we add this new result to the test data?
-        #print('Sx1 shape: ' + str(Sx1.shape) + ' Sx2.shape: ' + str(Sx2.shape))
+
         assert Sx2.shape == (Sx1.shape[0], Sx1.shape[1], Sx1.shape[2]*2**(sigma_low_scale_factor))
-        
+
     def test_Scattering1D_filter_factory_T(self, backend):
         """
         Constructs the scattering filters for the T parameter which controls the
         temporal extent of the low-pass sigma_log filter
         """
         N = 2**13
-        Q = 1       
-        sigma_low_scale_factor = [0, 5]        
+        Q = 1
+        sigma_low_scale_factor = [0, 5]
         Js = [5]
-        
+
         for j in Js:
             J = j
             for i in sigma_low_scale_factor:
                 T=2**(J-i)
                 if i == 0:
                     default_str = ' (default)'
-                else: 
+                else:
                     default_str = ''
                 phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(N), J, Q, T)
-                #msg = 'J=' + str(J) + ', T=' +str(T) + default_str + ': LP-filter width $\sigma_{low}$=' + str(phi_f['sigma']) + ' (=0.1/T)'                
-                #print(msg)
                 assert(phi_f['sigma']==0.1/T)
-
