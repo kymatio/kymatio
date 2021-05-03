@@ -52,12 +52,13 @@ class ScatteringBase1D(ScatteringBase):
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
 
+        # check T or set default
         if self.T is None:
             self.T = 2**(self.J)
-        elif self.T > 2**(self.J):
+        elif self.T > self.N:
             raise ValueError("The temporal support T of the low-pass filter "
-                             "cannot exceed 2**J (got {} > {})".format(
-                                 self.T, 2**(self.J)))
+                             "cannot exceed input length (got {} > {})".format(
+                                 self.T, self.N))
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
@@ -75,7 +76,7 @@ class ScatteringBase1D(ScatteringBase):
         self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.J, self.pad_left, self.pad_left + self.N)
+            self.log2_T, self.pad_left, 2**self.J_pad - self.pad_right)
 
     def create_filters(self):
         # Create the filters
