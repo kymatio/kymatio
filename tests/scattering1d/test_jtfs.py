@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 import scipy.signal
 from kymatio.numpy import Scattering1D, TimeFrequencyScattering
+from kymatio.toolkit import pack_jtfs
 
 # TODO no kymatio.numpy
 # TODO `out_type == 'array'` won't need `['coef']` later
@@ -106,9 +107,9 @@ def test_jtfs_vs_ts():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero")
+    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", max_pad_factor=1)
     jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                   out_type="array")
+                                   out_type="array", max_pad_factor=1)
 
     # scatter
     ts_x  = ts(x)
@@ -131,7 +132,7 @@ def test_jtfs_vs_ts():
     l2_jtfs = l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
 
     # max ratio limited by `N`; can do much better with longer input
-    assert l2_jtfs / l2_ts > 18, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_jtfs / l2_ts > 15, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
     assert l2_ts < .01, "TS: %s" % l2_ts
 
 
@@ -149,30 +150,46 @@ def test_freq_tp_invar():
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    Q = 16
-    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                   out_type="array")
+    J_fr = 4
+    F_all = [2**(J_fr), 2**(J_fr + 1)]
+    th_all = [.17, .12]
 
-    # scatter
-    jtfs_x0_list = jtfs(x0)
-    jtfs_x1_list = jtfs(x1)
-    jtfs_x0 = np.concatenate([path["coef"] for path in jtfs_x0_list])
-    jtfs_x1 = np.concatenate([path["coef"] for path in jtfs_x1_list])
+    for th, F in zip(th_all, F_all):
+        jtfs = TimeFrequencyScattering(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
+                                       F=F, out_type="array")
+        # scatter
+        jtfs_x0_list = jtfs(x0)
+        jtfs_x1_list = jtfs(x1)
+        jtfs_x0 = np.concatenate([path["coef"] for path in jtfs_x0_list])
+        jtfs_x1 = np.concatenate([path["coef"] for path in jtfs_x1_list])
 
-    # get index of first joint coeff
-    jmeta = jtfs.meta()
-    first_joint_idx = [i for i, n in enumerate(jmeta['n'])
-                       if not np.isnan(n[1])][0]
-    arr_idx = sum(len(jtfs_x0_list[i]['coef']) for i in range(len(jtfs_x0_list))
-                  if i < first_joint_idx)
+        # get index of first joint coeff
+        jmeta = jtfs.meta()
+        first_joint_idx = [i for i, n in enumerate(jmeta['n'])
+                           if not np.isnan(n[1])][0]
+        arr_idx = sum(len(jtfs_x0_list[i]['coef']) for i in
+                      range(len(jtfs_x0_list)) if i < first_joint_idx)
 
-    # compare against joint coeffs only
-    l2_x0x1 = l2(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
+        # compare against joint coeffs only
+        l2_x0x1 = l2(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
 
-    # TODO is this value reasonable? it's much greater with different f0
-    # (but same relative f1)
-    th = .2
-    assert l2_x0x1 < th, "{} > {}".format(l2_x0x1, th)
+        # TODO is this value reasonable? it's much greater with different f0
+        # (but same relative f1)
+        assert l2_x0x1 < th, "{} > {} (F={})".format(l2_x0x1, th, F)
+
+
+def test_up_vs_down():
+    """Test that echirp yields significant disparity in up vs down coeffs."""
+    N = 2048
+    x = echirp(N)
+
+    jtfs = TimeFrequencyScattering(shape=N, J=10, Q=16, J_fr=4, Q_fr=1)
+    out = jtfs(x)
+
+    coeffs = pack_jtfs(out, jtfs.meta(), concat=True)
+    E_up   = energy(coeffs['psi_t * psi_f_up'])
+    E_down = energy(coeffs['psi_t * psi_f_down'])
+    assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
 def test_meta():
@@ -206,25 +223,33 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-        - (aligned, out_type, average_fr) = (True,  "list",  True)
-        - (aligned, out_type, average_fr) = (True,  "array", True)
-        - (aligned, out_type, average_fr) = (False, "array", True)
-        - (aligned, out_type, average_fr) = (True,  "list",  "global")
+        0. (aligned, out_type, average_fr) = (True,  "list",  True)
+        1. (aligned, out_type, average_fr) = (True,  "array", True)
+        2. (aligned, out_type, average_fr) = (False, "array", True)
+        3. (aligned, out_type, average_fr) = (True,  "list",  "global")
+        4. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
+        5. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
+            - i.e. all first-order coeffs pad to greater than longest set of
+            second-order, as in `U1 * phi_t * phi_f` and
+            `(U1 * phi_t * psi_f) * phi_t * phi_f`.
     """
-    def _load_data(test_num):
+    def _load_data(test_num, test_data_dir):
         """Also see data['code']."""
-        test_data_dir = os.path.dirname(__file__)
-        data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
+        def not_param(k):
+            return (k in ('code', 'x') or
+                    (k.startswith('out_') and k != 'out_type'))
 
+        data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
         x = data['x']
         out_stored = [data[k] for k in data.files
                       if (k.startswith('out_') and k != 'out_type')]
 
-        param_keys = ('shape', 'J', 'J_fr', 'Q', 'Q_fr', 'aligned', 'out_type',
-                      'average_fr')
         params = {}
-        for k in param_keys:
-            if k == 'aligned':
+        for k in data.files:
+            if not_param(k):
+                continue
+
+            if k in ('average', 'aligned', 'resample_psi_fr', 'resample_phi_fr'):
                 params[k] = bool(data[k])
             elif k == 'average_fr':
                 params[k] = (str(data[k]) if str(data[k]) == 'global' else
@@ -234,15 +259,18 @@ def test_output():
             else:
                 params[k] = int(data[k])
 
-        params_str = ""
+        params_str = "Test #%s:\n" % test_num
         for k, v in params.items():
             params_str += "{}={}\n".format(k, str(v))
         return x, out_stored, params, params_str
 
-    for test_num in range(3):
-        x, out_stored, params, params_str = _load_data(test_num)
+    test_data_dir = os.path.dirname(__file__)
+    num_tests = sum("test_jtfs_" in p for p in os.listdir(test_data_dir))
 
-        jtfs = TimeFrequencyScattering(**params)
+    for test_num in range(num_tests):
+        x, out_stored, params, params_str = _load_data(test_num, test_data_dir)
+
+        jtfs = TimeFrequencyScattering(**params, max_pad_factor=1)
         out = jtfs(x)
         if params['out_type'] == 'list':
             out = [o['coef'] for o in out]
@@ -254,8 +282,12 @@ def test_output():
             ).format(len(out), len(out_stored), params_str)
 
         for i, (o, o_stored) in enumerate(zip(out, out_stored)):
-            errmsg = ("out[{}] != out_stored[{}]\n{}").format(i, i, params_str)
-            assert np.allclose(o, o_stored), errmsg
+            assert o.shape == o_stored.shape, (
+                "out[{}].shape != out_stored[{}].shape ({} != {})\n{}".format(
+                    i, i, o.shape, o_stored.shape, params_str))
+            assert np.allclose(o, o_stored), (
+                "out[{}] != out_stored[{}] (MAE={:.5f})\n{}".format(
+                    i, i, np.abs(o - o_stored).mean(), params_str))
 
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
@@ -267,6 +299,9 @@ def l2(x0, x1):
     https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
     """
     return _l2(x1 - x0) / _l2(x0)
+
+def energy(x):
+    return np.sum(np.abs(x)**2)
 
 # def _l1l2(x):
 #     return np.sum(np.sqrt(np.sum(np.abs(x)**2, axis=1)), axis=0)
@@ -298,12 +333,25 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
     return x, xs
 
 
+def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
+    """https://overlordgolddragon.github.io/test-signals/ (bottom)"""
+    fmax = fmax or N // 2
+    t = np.linspace(tmin, tmax, N)
+
+    a = (fmin**tmax / fmax**tmin) ** (1/(tmax - tmin))
+    b = fmax**(1/tmax) * (1/a)**(1/tmax)
+
+    phi = 2*np.pi * (a/np.log(b)) * (b**t - b**tmin)
+    return np.cos(phi)
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_alignment()
         test_shapes()
         test_jtfs_vs_ts()
         test_freq_tp_invar()
+        test_up_vs_down()
         test_meta()
         test_output()
     else:

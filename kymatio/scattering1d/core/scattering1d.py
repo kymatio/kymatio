@@ -1,4 +1,5 @@
-def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
+
+def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
         vectorize=False, out_type='array', pad_mode='reflect'):
@@ -28,6 +29,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
+    log2_T : int
+        (log2 of) temporal support of low-pass filter, controlling amount of
+        imposed time-shift invariance and subsampling
     pad_left : int, optional
         how much to pad the signal on the left. Defaults to `0`
     pad_right : int, optional
@@ -66,7 +70,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
-    kJ = max(J - oversampling, 0)
+    kJ = max(log2_T - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
@@ -76,7 +80,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     U_0_hat = rfft(U_0)
 
     # Get S0
-    k0 = max(J - oversampling, 0)
+    k0 = max(log2_T - oversampling, 0)
 
     if average:
         S_0_c = cdgmm(U_0_hat, phi[0])
@@ -94,7 +98,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         # Convolution + downsampling
         j1 = psi1[n1]['j']
 
-        k1 = max(j1 - oversampling, 0)
+        k1 = max(min(j1, log2_T) - oversampling, 0)
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
         U_1_c = cdgmm(U_0_hat, psi1[n1][0])
@@ -109,7 +113,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
         if average:
             # Convolve with phi_J
-            k1_J = max(J - k1 - oversampling, 0)
+            k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
@@ -131,7 +135,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
 
                     # convolution + downsampling
-                    k2 = max(j2 - k1 - oversampling, 0)
+                    k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
 
                     U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
@@ -144,7 +148,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                         U_2_hat = rfft(U_2_m)
 
                         # Convolve with phi_J
-                        k2_J = max(J - k2 - k1 - oversampling, 0)
+                        k2_J = max(log2_T - k2 - k1 - oversampling, 0)
 
                         S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
