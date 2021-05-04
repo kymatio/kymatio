@@ -3,9 +3,27 @@ import torch
 
 
 def pad(x, pad_left, pad_right, pad_mode='reflect', backend_name='numpy'):
-    """
-       - zero:    [0,0,0,0, 1,2,3,4, 0,0,0]
-       - reflect: [3,4,3,2, 1,2,3,4, 3,2,1]
+    """Backend-agnostic padding.
+
+    Parameters
+    ----------
+    x : input tensor
+        Input tensor.
+    pad_left : int >= 0
+        Amount to pad on left.
+    pad_right : int >= 0
+        Amount to pad on right.
+    pad_mode : str
+        One of supported padding modes:
+            - zero:    [0,0,0,0, 1,2,3,4, 0,0,0]
+            - reflect: [3,4,3,2, 1,2,3,4, 3,2,1]
+    backend_name : str
+        One of: numpy, torch, tensorflow
+
+    Returns
+    -------
+    out : type(x)
+        Padded tensor.
     """
     if backend_name == 'numpy':
         backend = np
