@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 import scipy.signal
 from kymatio.numpy import Scattering1D, TimeFrequencyScattering
+from kymatio.toolkit import pack_jtfs
 
 # TODO no kymatio.numpy
 # TODO `out_type == 'array'` won't need `['coef']` later
@@ -177,6 +178,20 @@ def test_freq_tp_invar():
         assert l2_x0x1 < th, "{} > {} (F={})".format(l2_x0x1, th, F)
 
 
+def test_up_vs_down():
+    """Test that echirp yields significant disparity in up vs down coeffs."""
+    N = 2048
+    x = echirp(N)
+
+    jtfs = TimeFrequencyScattering(shape=N, J=10, Q=16, J_fr=4, Q_fr=1)
+    out = jtfs(x)
+
+    coeffs = pack_jtfs(out, jtfs.meta(), concat=True)
+    E_up   = energy(coeffs['psi_t * psi_f_up'])
+    E_down = energy(coeffs['psi_t * psi_f_down'])
+    assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
+
+
 def test_meta():
     """Test that `TimeFrequencyScattering.meta()` matches output's meta."""
     def assert_equal(a, b, field, i):
@@ -285,6 +300,9 @@ def l2(x0, x1):
     """
     return _l2(x1 - x0) / _l2(x0)
 
+def energy(x):
+    return np.sum(np.abs(x)**2)
+
 # def _l1l2(x):
 #     return np.sum(np.sqrt(np.sum(np.abs(x)**2, axis=1)), axis=0)
 
@@ -315,12 +333,25 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
     return x, xs
 
 
+def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
+    """https://overlordgolddragon.github.io/test-signals/ (bottom)"""
+    fmax = fmax or N // 2
+    t = np.linspace(tmin, tmax, N)
+
+    a = (fmin**tmax / fmax**tmin) ** (1/(tmax - tmin))
+    b = fmax**(1/tmax) * (1/a)**(1/tmax)
+
+    phi = 2*np.pi * (a/np.log(b)) * (b**t - b**tmin)
+    return np.cos(phi)
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_alignment()
         test_shapes()
         test_jtfs_vs_ts()
         test_freq_tp_invar()
+        test_up_vs_down()
         test_meta()
         test_output()
     else:
