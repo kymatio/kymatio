@@ -362,7 +362,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         phi_fr = sc_freq.phi_f[total_subsample_so_far]
     else:
         if total_subsample_so_far > 0:
-            sub = 1 if (sc_freq.J_pad_fo - sc_freq.J_pad_max > 0) else 0
+            sub = 1 if (sc_freq.J_pad_fo > sc_freq.J_pad_max) else 0
             phi_fr = sc_freq.phi_f[total_subsample_so_far - sub]
         else:
             phi_fr = sc_freq.phi_f_fo
