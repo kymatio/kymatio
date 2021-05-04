@@ -310,6 +310,49 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     return N
 
 
+def compute_minimum_required_length(fn, N_init, max_N=None,
+                                    criterion_amplitude=1e-3):
+    """Computes minimum required number of samples for `fn(N)` to have temporal
+    support less than `N`, as determined by `compute_temporal_support`.
+
+    Parameters
+    ----------
+    fn: FunctionType
+        Function / lambda taking `N` as input and returning a filter in
+        frequency domain.
+    N_init: int
+        Initial input to `fn`, will keep doubling until `N == max_N` or
+        temporal support of `fn` is `< N`.
+    max_N: int / None
+        See `N_init`; if None, will raise `N` indefinitely.
+    criterion_amplitude : float, optional
+        value \\epsilon controlling the numerical
+        error. The larger criterion_amplitude, the smaller the temporal
+        support and the larger the numerical error. Defaults to 1e-3
+
+    Returns
+    -------
+    N_min : int
+        Minimum required number of samples for `fn(N)` to have temporal
+        support less than `N`. If `fn` ends up global averaging, will return -1
+        (no such `N` exists).
+    """
+    N = 2**math.ceil(math.log2(N_init))  # ensure pow 2
+    N_min = N
+    while True:
+        p_fr = fn(N)
+        N_min = 2 * compute_temporal_support(
+            p_fr.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+
+        if N > 1e9:  # avoid crash
+            raise Exception("couldn't satisfy stop criterion before `N > 1e9`; "
+                            "check `fn`")
+        if N_min < N or (max_N is not None and N > max_N):
+            break
+        N *= 2
+    return N
+
+
 def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
