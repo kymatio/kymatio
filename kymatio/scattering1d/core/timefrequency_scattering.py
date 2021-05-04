@@ -16,11 +16,12 @@ def timefrequency_scattering(
     batch_size = x.shape[0]
     kJ = max(log2_T - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
-    out_S_0 = []
+    out_S_0 = {}
     out_S_1 = []
     out_S_2 = {'psi_t * psi_f': [[], []],
                'psi_t * phi_f': [],
-               'phi_t * psi_f': [[]]}
+               'phi_t * psi_f': [[]],
+               'phi_t * phi_f': {}}
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
@@ -36,7 +37,7 @@ def timefrequency_scattering(
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S_0.append({'coef': S_0, 'j': (), 'n': (), 's': ()})
+    out_S_0 = {'coef': S_0, 'j': (), 'n': (), 's': ()}
 
     # First order:
     U_1_hat_list, S_1_list, S_1_c_list = [], [], []
@@ -124,7 +125,7 @@ def timefrequency_scattering(
         S_1_fr = B.transpose(S_1_fr_T)
     else:
         S_1_fr = []
-    out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
+    out_S_2['phi_t * phi_f'] = {'coef': S_1_fr, 'j': (), 'n': (), 's': ()}
     # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
     ##########################################################################
@@ -212,23 +213,29 @@ def timefrequency_scattering(
                           all_first_order=True)
 
     ##########################################################################
-    out_S = []
-    out_S.extend(out_S_0)
-    out_S.extend(out_S_1)
-    for outs in out_S_2.values():
-        if isinstance(outs[0], list):
-            for o in outs:
-                out_S.extend(o)
-        else:
-            out_S.extend(outs)
 
-    # if out_type == 'array':  # TODO breaks for first-order coeffs
-    #     out_S = B.concatenate([x['coef'] for x in out_S])
-    # elif out_type == 'list':  # TODO why pop? need for viz
-    #     for x in out_S:
-    #         x.pop('n')
-
-    return out_S
+    if out_type == 'array':
+        def concat(coeffs):
+            return B.concatenate([c['coef'] for c in coeffs])
+        out = {}
+        out['S0'] = out_S_0
+        out['S1'] = concat(out_S_1)
+        out['psi_t * psi_f_up']   = concat(out_S_2['psi_t * psi_f'][0])
+        out['psi_t * psi_f_down'] = concat(out_S_2['psi_t * psi_f'][1])
+        out['psi_t * phi_f'] = concat(out_S_2['psi_t * phi_f'])
+        out['phi_t * psi_f'] = concat(out_S_2['phi_t * psi_f'][0])
+        out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
+    elif out_type == 'list':
+        out = []
+        out.extend(out_S_0)
+        out.extend(out_S_1)
+        for outs in out_S_2.values():
+            if isinstance(outs[0], list):
+                for o in outs:
+                    out.extend(o)
+            else:
+                out.extend(outs)
+    return out
 
 
 def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
