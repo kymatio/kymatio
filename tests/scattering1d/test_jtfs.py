@@ -149,30 +149,32 @@ def test_freq_tp_invar():
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    Q = 16
-    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                   out_type="array")
+    J_fr = 4
+    F_all = [2**(J_fr), 2**(J_fr + 1)]
+    th_all = [.17, .12]
 
-    # scatter
-    jtfs_x0_list = jtfs(x0)
-    jtfs_x1_list = jtfs(x1)
-    jtfs_x0 = np.concatenate([path["coef"] for path in jtfs_x0_list])
-    jtfs_x1 = np.concatenate([path["coef"] for path in jtfs_x1_list])
+    for th, F in zip(th_all, F_all):
+        jtfs = TimeFrequencyScattering(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
+                                       F=F, out_type="array")
+        # scatter
+        jtfs_x0_list = jtfs(x0)
+        jtfs_x1_list = jtfs(x1)
+        jtfs_x0 = np.concatenate([path["coef"] for path in jtfs_x0_list])
+        jtfs_x1 = np.concatenate([path["coef"] for path in jtfs_x1_list])
 
-    # get index of first joint coeff
-    jmeta = jtfs.meta()
-    first_joint_idx = [i for i, n in enumerate(jmeta['n'])
-                       if not np.isnan(n[1])][0]
-    arr_idx = sum(len(jtfs_x0_list[i]['coef']) for i in range(len(jtfs_x0_list))
-                  if i < first_joint_idx)
+        # get index of first joint coeff
+        jmeta = jtfs.meta()
+        first_joint_idx = [i for i, n in enumerate(jmeta['n'])
+                           if not np.isnan(n[1])][0]
+        arr_idx = sum(len(jtfs_x0_list[i]['coef']) for i in
+                      range(len(jtfs_x0_list)) if i < first_joint_idx)
 
-    # compare against joint coeffs only
-    l2_x0x1 = l2(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
+        # compare against joint coeffs only
+        l2_x0x1 = l2(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
 
-    # TODO is this value reasonable? it's much greater with different f0
-    # (but same relative f1)
-    th = .2
-    assert l2_x0x1 < th, "{} > {}".format(l2_x0x1, th)
+        # TODO is this value reasonable? it's much greater with different f0
+        # (but same relative f1)
+        assert l2_x0x1 < th, "{} > {} (F={})".format(l2_x0x1, th, F)
 
 
 def test_meta():
@@ -218,17 +220,21 @@ def test_output():
     """
     def _load_data(test_num, test_data_dir):
         """Also see data['code']."""
-        data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
+        def not_param(k):
+            return (k in ('code', 'x') or
+                    (k.startswith('out_') and k != 'out_type'))
 
+        data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
         x = data['x']
         out_stored = [data[k] for k in data.files
                       if (k.startswith('out_') and k != 'out_type')]
 
-        param_keys = ('shape', 'J', 'J_fr', 'Q', 'Q_fr', 'aligned', 'out_type',
-                      'average_fr')
         params = {}
-        for k in param_keys:
-            if k == 'aligned':
+        for k in data.files:
+            if not_param(k):
+                continue
+
+            if k in ('average', 'aligned', 'resample_psi_fr', 'resample_phi_fr'):
                 params[k] = bool(data[k])
             elif k == 'average_fr':
                 params[k] = (str(data[k]) if str(data[k]) == 'global' else
