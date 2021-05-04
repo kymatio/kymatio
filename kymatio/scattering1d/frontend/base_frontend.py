@@ -4,10 +4,9 @@ import numbers
 
 import numpy as np
 
-from ..filter_bank import (scattering_filter_factory,
-                           psi_fr_factory,
-                           phi_fr_factory,
-                           gauss_1d)
+from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
+                           psi_fr_factory, phi_fr_factory,
+                           morlet_1d, gauss_1d)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -437,6 +436,7 @@ class TimeFrequencyScatteringBase():
             self.average, self.resample_psi_fr, self.resample_phi_fr,
             self.oversampling, self.vectorize, self.out_type, self.pad_mode,
             self._n_psi1, self.backend)
+        self.finish_creating_filters()
 
     def get_shape_fr(self):
         """This is equivalent to `len(x)` along frequency, which varies across
@@ -451,6 +451,16 @@ class TimeFrequencyScatteringBase():
                     max_freq_nrows += 1
             shape_fr.append(max_freq_nrows)
         return shape_fr
+
+    def finish_creating_filters(self):
+        """Handles necessary adjustments in time scattering filters unaccounted
+        for in default construction.
+        """
+        # ensure phi is subsampled up to (log2_T - 1) for `phi_t * psi_f` pairs
+        max_sub_phi = lambda: max(k for k in self.phi_f if isinstance(k, int))
+        while max_sub_phi() < (self.log2_T - 1):
+            self.phi_f[max_sub_phi() + 1] = periodize_filter_fourier(
+                self.phi_f[0], nperiods=2**(max_sub_phi() + 1))
 
     def meta(self):
         """Get meta information on the transform
@@ -564,12 +574,6 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.J_pad_max = math.ceil(np.log2(
             max(self.shape_fr) + 2 * self.min_to_pad_max))
 
-    def create_psi_filters(self):
-        self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
-            self.J_fr, self.Q_fr, self.J_pad_max, self.j0s,
-            **self.get_params('backend', 'resample_psi_fr', 'r_psi', 'normalize',
-                              'sigma0', 'alpha', 'P_max', 'eps'))
-
     def create_phi_filters(self):
         self.phi_f = phi_fr_factory(
             self.log2_F, self.Q_fr, self.J_pad_max,
@@ -600,6 +604,33 @@ class _FrequencyScatteringBase(ScatteringBase):
         else:
             # usual behavior
             self.max_subsampling_before_phi_fr = self.log2_F - 1
+
+    def create_psi_filters(self):
+        self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
+            self.J_fr, self.Q_fr, self.J_pad_max, self.j0s,
+            **self.get_params('backend', 'resample_psi_fr', 'r_psi', 'normalize',
+                              'sigma0', 'alpha', 'P_max', 'eps'))
+
+        # create `_fo` filters for `phi_t * psi_f` pairs
+        # TODO compute per `resample_psi_fr` instead?
+        def copy_meta(out, p):
+            out.update({k: v for k, v in p.items() if not isinstance(k, int)})
+
+        if self.J_pad_fo > self.J_pad_max:
+            def create_psi_fo(p):
+                out = {}
+                out[0] = morlet_1d(2**self.J_pad_fo, p['xi'], p['sigma'],
+                                   **self.get_params('normalize', 'P_max', 'eps'))
+                copy_meta(out, p)
+                return out
+        else:
+            def create_psi_fo(p):
+                out = {}
+                out[0] = p[0].copy()
+                copy_meta(out, p)
+                return out
+        self.psi1_f_up_fo = [create_psi_fo(p) for p in self.psi1_f_up]
+        self.psi1_f_down_fo = [create_psi_fo(p) for p in self.psi1_f_down]
 
     def compute_padding_fr(self):
         """Long story"""  # TODO

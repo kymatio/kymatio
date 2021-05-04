@@ -11,7 +11,7 @@ from kymatio.numpy import Scattering1D, TimeFrequencyScattering
 # TODO phase-shift sensitivity
 
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def test_alignment():
@@ -106,9 +106,9 @@ def test_jtfs_vs_ts():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero")
+    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", max_pad_factor=1)
     jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                   out_type="array")
+                                   out_type="array", max_pad_factor=1)
 
     # scatter
     ts_x  = ts(x)
@@ -131,7 +131,7 @@ def test_jtfs_vs_ts():
     l2_jtfs = l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
 
     # max ratio limited by `N`; can do much better with longer input
-    assert l2_jtfs / l2_ts > 18, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_jtfs / l2_ts > 15, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
     assert l2_ts < .01, "TS: %s" % l2_ts
 
 
@@ -206,14 +206,17 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-        - (aligned, out_type, average_fr) = (True,  "list",  True)
-        - (aligned, out_type, average_fr) = (True,  "array", True)
-        - (aligned, out_type, average_fr) = (False, "array", True)
-        - (aligned, out_type, average_fr) = (True,  "list",  "global")
+        0. (aligned, out_type, average_fr) = (True,  "list",  True)
+        1. (aligned, out_type, average_fr) = (True,  "array", True)
+        2. (aligned, out_type, average_fr) = (False, "array", True)
+        3. (aligned, out_type, average_fr) = (True,  "list",  "global")
+        4. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
+            - i.e. all first-order coeffs pad to greater than longest set of
+            second-order, as in `U1 * phi_t * phi_f` and
+            `(U1 * phi_t * psi_f) * phi_t * phi_f`.
     """
-    def _load_data(test_num):
+    def _load_data(test_num, test_data_dir):
         """Also see data['code']."""
-        test_data_dir = os.path.dirname(__file__)
         data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
 
         x = data['x']
@@ -234,13 +237,16 @@ def test_output():
             else:
                 params[k] = int(data[k])
 
-        params_str = ""
+        params_str = "Test #%s:\n" % test_num
         for k, v in params.items():
             params_str += "{}={}\n".format(k, str(v))
         return x, out_stored, params, params_str
 
-    for test_num in range(4):
-        x, out_stored, params, params_str = _load_data(test_num)
+    test_data_dir = os.path.dirname(__file__)
+    num_tests = sum("test_jtfs_" in p for p in os.listdir(test_data_dir))
+
+    for test_num in range(num_tests):
+        x, out_stored, params, params_str = _load_data(test_num, test_data_dir)
 
         jtfs = TimeFrequencyScattering(**params, max_pad_factor=1)
         out = jtfs(x)
@@ -304,11 +310,11 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_meta()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])

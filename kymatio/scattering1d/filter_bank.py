@@ -329,9 +329,7 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
         Initial input to `fn`, will keep doubling until `N == max_N` or
         temporal support of `fn` is `< N`.
     max_N: int / None
-        See N_init; if None, will raise `N` indefinitely, or if magnitude
-        of dc bin is at least `1 / criterion_amplitude` times the sum of
-        magnitudes of all other bins (i.e. global averaging).
+        See `N_init`; if None, will raise `N` indefinitely.
     criterion_amplitude : float, optional
         value \\epsilon controlling the numerical
         error. The larger criterion_amplitude, the smaller the temporal
@@ -351,11 +349,10 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
         N_min = 2 * compute_temporal_support(
             p_fr.reshape(1, -1), criterion_amplitude=criterion_amplitude)
 
-        if (np.abs(p_fr)[0] > np.abs(p_fr[1:]).sum() * (1 / criterion_amplitude)
-                and (N != N_init)):  # allow on first occurrence
-            N = -1
-            break
-        elif N_min < N or (max_N is not None and N > max_N):
+        if N > 1e9:  # avoid crash
+            raise Exception("couldn't satisfy stop criterion before `N > 1e9`; "
+                            "check `fn`")
+        if N_min < N or (max_N is not None and N > max_N):
             break
         N *= 2
     return N
@@ -509,7 +506,6 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.,
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     xi_min = xi_min if xi_min is not None else -1
-    xi_min = -1
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 
