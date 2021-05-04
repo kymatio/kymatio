@@ -28,7 +28,8 @@ def test_T():
     xs = np.roll(x, shift)
 
     # make scattering objects
-    kw = dict(J=J, Q=Q, shape=N, average=1, out_type="array", pad_mode="zero")
+    kw = dict(J=J, Q=Q, shape=N, average=1, out_type="array", pad_mode="zero",
+              max_pad_factor=1)
     ts0 = Scattering1D(T=T0, **kw)
     ts1 = Scattering1D(T=T1, **kw)
 
@@ -39,20 +40,22 @@ def test_T():
     ts1_xs = ts1.scattering(xs)
 
     # compare distances
-    l1l2_00_xxs = l1l2(ts0_x, ts0_xs)
-    l1l2_11_xxs = l1l2(ts1_x, ts1_xs)
+    l2_00_xxs = l2(ts0_x, ts0_xs)
+    l2_11_xxs = l2(ts1_x, ts1_xs)
 
-    th0, th1 = .02, .13
-    assert l1l2_00_xxs < th0, "{} > {}".format(l1l2_00_xxs, th0)
-    assert l1l2_11_xxs > th1, "{} < {}".format(l1l2_11_xxs, th1)
+    th0, th1 = .021, .15
+    assert l2_00_xxs < th0, "{} > {}".format(l2_00_xxs, th0)
+    assert l2_11_xxs > th1, "{} < {}".format(l2_11_xxs, th1)
 
 
-def _l1l2(x):
-    return np.sum(np.sqrt(np.mean(x**2, axis=1)), axis=0)
+def _l2(x):
+    return np.sqrt(np.sum(np.abs(x)**2))
 
-def l1l2(x0, x1):
-    """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
-    return _l1l2(x1 - x0) / _l1l2(x0)
+def l2(x0, x1):
+    """Coeff distance measure; Eq 2.24 in
+    https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
+    """
+    return _l2(x1 - x0) / _l2(x0)
 
 
 if __name__ == '__main__':
