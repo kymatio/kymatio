@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from kymatio.scattering1d.backend.agnostic_backend import pad
 
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def _test_padding(backend_name):
