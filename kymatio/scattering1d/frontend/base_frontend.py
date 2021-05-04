@@ -567,7 +567,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.log2_F = math.floor(math.log2(self.F))
 
         # compute maximum amount of padding
-        self.J_pad_max, self.min_to_pad_max = self.__compute_J_pad(
+        self.J_pad_max, self.min_to_pad_max = self._compute_J_pad(
             self.shape_fr_max, (self.Q_fr, 0))
 
     def create_phi_filters(self):
@@ -580,7 +580,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # first-order coeffs) pads greater than max(J_pad). Note this filter,
         # if `!= phi_f[0]`, always computes per `resample_phi_fr=True`
         # TODO compute per `resample_phi_fr` instead?
-        self.J_pad_fo = self._compute_J_pad(self._n_psi1, recompute=True)
+        self.J_pad_fo = self.compute_J_pad(self._n_psi1, recompute=True)
         if self.J_pad_fo > self.J_pad_max:
             self.phi_f_fo = gauss_1d(2**self.J_pad_fo, sigma=self.phi_f['sigma'],
                                      P_max=self.P_max, eps=self.eps)
@@ -639,7 +639,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         pad_prev = -1
         for shape_fr in self.shape_fr[::-1]:
             if shape_fr != 0:
-                J_pad = self._compute_J_pad(shape_fr)
+                J_pad = self.compute_J_pad(shape_fr)
 
                 # compute the padding quantities
                 pad_left = 0
@@ -689,7 +689,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
 
-    def _compute_J_pad(self, shape_fr, recompute=False):
+    def compute_J_pad(self, shape_fr, recompute=False):
         """Depends on `shape_fr` and `(resample_phi_fr or resample_phi_fr)`:
             True:  pad per `shape_fr` and `min_to_pad` of longest `shape_fr`
             False: pad per `shape_fr` and `min_to_pad` of subsampled filters
@@ -703,7 +703,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         """
         if recompute:
             Q = (0, 0)  # decide only from phi
-            J_pad, _ = self.__compute_J_pad(shape_fr, Q)
+            J_pad, _ = self._compute_J_pad(shape_fr, Q)
 
         elif self.resample_phi_fr or self.resample_psi_fr:
             J_pad = math.ceil(np.log2(shape_fr + 2 * self.min_to_pad_max))
@@ -719,9 +719,9 @@ class _FrequencyScatteringBase(ScatteringBase):
             J_pad = self.J_pad_max - (J_tentative_max - J_tentative)
         return J_pad
 
-    def __compute_J_pad(self, shape_fr, Q):
+    def _compute_J_pad(self, shape_fr, Q):
         min_to_pad = compute_minimum_support_to_pad(
-            self.shape_fr_max, self.J_fr, Q, self.F,
+            shape_fr, self.J_fr, Q, self.F,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                               'criterion_amplitude', 'normalize', 'pad_mode'))
         J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
