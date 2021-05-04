@@ -567,12 +567,8 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.log2_F = math.floor(math.log2(self.F))
 
         # compute maximum amount of padding
-        self.min_to_pad_max = compute_minimum_support_to_pad(
-            self.shape_fr_max, self.J_fr, (self.Q_fr, 0), self.F,
-            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
-                              'criterion_amplitude', 'normalize', 'pad_mode'))
-        self.J_pad_max = math.ceil(np.log2(
-            max(self.shape_fr) + 2 * self.min_to_pad_max))
+        self.J_pad_max, self.min_to_pad_max = self.__compute_J_pad(
+            self.shape_fr_max, (self.Q_fr, 0))
 
     def create_phi_filters(self):
         self.phi_f = phi_fr_factory(
@@ -707,11 +703,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         """
         if recompute:
             Q = (0, 0)  # decide only from phi
-            min_to_pad = compute_minimum_support_to_pad(
-                shape_fr, self.J_fr, Q, self.F,
-                **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
-                                  'criterion_amplitude', 'normalize', 'pad_mode'))
-            J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+            J_pad, _ = self.__compute_J_pad(shape_fr, Q)
 
         elif self.resample_phi_fr or self.resample_psi_fr:
             J_pad = math.ceil(np.log2(shape_fr + 2 * self.min_to_pad_max))
@@ -721,10 +713,19 @@ class _FrequencyScatteringBase(ScatteringBase):
                             self.J_pad_max - self.max_subsampling_before_phi_fr)
         else:
             # reproduce `compute_minimum_support_to_pad`'s logic
+            # TODO instead compute directly? must introduce kwargs to above method
             J_tentative     = int(np.ceil(np.log2(shape_fr)))
             J_tentative_max = int(np.ceil(np.log2(self.shape_fr_max)))
-            J_pad = self.J_pad_max // 2**(J_tentative_max - J_tentative)
+            J_pad = self.J_pad_max - (J_tentative_max - J_tentative)
         return J_pad
+
+    def __compute_J_pad(self, shape_fr, Q):
+        min_to_pad = compute_minimum_support_to_pad(
+            self.shape_fr_max, self.J_fr, Q, self.F,
+            **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
+                              'criterion_amplitude', 'normalize', 'pad_mode'))
+        J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+        return J_pad, min_to_pad
 
     def get_params(self, *args):
         return {k: getattr(self, k) for k in args}

@@ -210,7 +210,8 @@ def test_output():
         1. (aligned, out_type, average_fr) = (True,  "array", True)
         2. (aligned, out_type, average_fr) = (False, "array", True)
         3. (aligned, out_type, average_fr) = (True,  "list",  "global")
-        4. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
+        4. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
+        5. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
             `(U1 * phi_t * psi_f) * phi_t * phi_f`.
