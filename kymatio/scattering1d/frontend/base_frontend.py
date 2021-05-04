@@ -10,13 +10,12 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, Q2=1, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, max_order=2, average=True,
             oversampling=0, vectorize=True, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
-        self.Q = Q
-        self.Q2 = Q2
+        self.Q = Q if isinstance(Q, tuple) else (Q, 1)
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
@@ -72,7 +71,7 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, Q2=self.Q2, normalize=self.normalize,
+            self.J_pad, self.J, self.Q, normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
@@ -88,8 +87,7 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, Q2=self.Q2,
-                                       max_order=self.max_order)
+        return compute_meta_scattering(self.J, self.Q, max_order=self.max_order)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
@@ -110,7 +108,7 @@ class ScatteringBase1D(ScatteringBase):
         """
 
         return precompute_size_scattering(
-            self.J, self.Q, Q2=self.Q2, max_order=self.max_order, detail=detail)
+            self.J, self.Q, max_order=self.max_order, detail=detail)
 
     _doc_shape = 'N'
 
@@ -263,10 +261,13 @@ class ScatteringBase1D(ScatteringBase):
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by :math:`2^J`.
-        {param_shape}Q : int >= 1
+        {param_shape}Q : int >= 1 / tuple[int]
             The number of first-order wavelets per octave. Defaults to `1`.
-        Q2 : int >= 1
-            The number of second-order wavelets per octave. Defaults to `1`.
+            If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+            second-order wavelets per octave (which defaults to `1`).
+                - Q1: For audio signals, a value of `>= 12` is recommended in
+                order to separate partials.
+                - Q2: Recommended `== 1` for most (`Scattering1D`) applications.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
