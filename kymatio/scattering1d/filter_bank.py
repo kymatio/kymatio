@@ -660,6 +660,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     # compute the spectral parameters of the filters
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
         J_scattering, Q, T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+    log2_T = math.floor(math.log2(T))
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
@@ -709,8 +710,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     if max_subsampling is None:
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
-        max_sub_phi = max(max_subsampling_after_psi1,
-                          max_subsampling_after_psi2)
+        max_sub_phi = min(max(max_subsampling_after_psi1,
+                              max_subsampling_after_psi2), log2_T)
     else:
         max_sub_phi = max_subsampling
 
