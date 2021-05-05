@@ -58,12 +58,12 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
     p2 = scattering.psi2_f
 
     title = "First-order filterbank | J, Q1 = {}, {}".format(
-        scattering.J, scattering.Q)
+        scattering.J, scattering.Q[0])
     _plot_filters(p1, p0, title=title)
 
     if second_order:
         title = "Second-order filterbank | J, Q2 = {}, {}".format(
-            scattering.J, scattering.Q2)
+            scattering.J, scattering.Q[1])
         _plot_filters(p2, p0, title=title)
 
 
@@ -252,8 +252,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
             Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
             3) `phi_t * psi_f` pairs, respectively.
             Tuple of three (upper limits only, lower assumed 0).
-            If None, will auto-norm each slice (not recommended).
-            # TODO make better default
+            If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
+            coeffs except `phi_t * phi_f`.
 
         inf_token: int / np.nan
             Placeholder used in `meta` to denote infinity.
@@ -272,56 +272,107 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
 
         gif_jtfs(Scx, meta)
     """
-    def _title(meta, i, spin):
+    def _title(meta, i, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
         mu, l = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                 for n in meta['n'][i]]
+                 for n in meta['n'][pair][i]]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
-    def _viz_spins(Scx, meta, i, norm, n_spins):
-        i0, i1 = i, i + n_spins
-
+    def _viz_spins(Scx, meta, i, norm):
+        kup = 'psi_t * psi_f_up'
+        kdn = 'psi_t * psi_f_down'
+        sup, sdn = Scx[kup][i], Scx[kdn][i]
         fig, axes = plt.subplots(1, 2, figsize=(15, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
-        imshow(Scx[i0]['coef'], ax=axes[0], **kw, title=_title(meta, i0, '+1'))
-        imshow(Scx[i1]['coef'], ax=axes[1], **kw, title=_title(meta, i1, '-1'))
+
+        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, +1))
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, -1))
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
-    def _viz_simple(Scx, meta, i, norm):
-        imshow(Scx[i]['coef'], abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
-               title=_title(meta, i, '0'))
+    def _viz_simple(coef, pair, meta, i, norm):
+        imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
+               title=_title(meta, i, pair, '0'))
 
     if norms is not None:
         norms = [(0, n) for n in norms]
     else:
-        norms = (None, None, None)
-    n_spins = sum(int(s) for s in meta['s'][1:] if s == 1)
+        # set to .5 times the max of any joint coefficient (except phi_t * phi_f)
+        mx = np.max([(c['coef'] if isinstance(c, list) else c).max()
+                     for pair in Scx for c in Scx[pair]
+                     if pair not in ('S0', 'S1', 'phi_t * phi_f')])
+        norms = [(0, .5 * mx)] * 5
 
-    i = 0
-    # skip first-order
-    while meta['n'][i][1] != 0:
-        i += 1
-    i += 1
+    if not skip_spins:
+        for i in range(len(Scx['psi_t * psi_f_up'])):
+            _viz_spins(Scx, meta, i, norms[0])
 
-    # `psi_t * psi_f` first
-    while inf_token not in meta['n'][i + n_spins]:
-        if not skip_spins:
-            _viz_spins(Scx, meta, i, norms[0], n_spins)
-        i += 1
-    i += n_spins
+    pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
+    for j, pair in enumerate(pairs):
+        for i, coef in enumerate(Scx[pair]):
+            coef = coef['coef'] if isinstance(coef, list) else coef
+            _viz_simple(coef, pair, meta, i, norms[1 + j])
 
-    # `psi_t * phi_f`
-    while meta['n'][i][1] == inf_token:
-        _viz_simple(Scx, meta, i, norms[1])
-        i += 1
 
-    # `phi_t * psi_f`
-    while meta['n'][i][0] == inf_token:
-        _viz_simple(Scx, meta, i, norms[2])
-        i += 1
-        if i >= len(Scx):
-            break
+def energy_profile_jtfs(Scx, log2_T, log2_F, kind='L2'):
+    """Plot & print relevant energy information across coefficient pairs.
+
+    Parameters
+    ----------
+    Scx : dict
+        Output of `TimeFrequencyScattering.scattering()`.
+    log2_T : int
+        `TimeFrequencyScattering.log2_T`. `average=False`   -> `log2_T=1`.
+    log2_F : int
+        `TimeFrequencyScattering.log2_T`. `average_fr=False` -> `log2_F=1`.
+    kind : str['L1', 'L2']
+        - L1: sum(abs(x))
+        - L2: sum(abs(x)**2) -- actually L2^2
+    """
+    def energy(x):
+        return (np.abs(x).sum() if kind == 'L1' else
+                (np.abs(x)**2).sum())
+
+    # extract energy info
+    energies = []
+    pair_energies = {}
+    idxs = []
+    # enforce pair order
+    pairs = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+             'psi_t * psi_f_up', 'psi_t * psi_f_down')
+    for pair in pairs:
+        norm = 2**log2_T if pair in ('S0', 'S1') else 2**(log2_T + log2_F)
+        E = [norm * energy(c['coef'] if isinstance(c, list) else c)
+             for c in Scx[pair]]
+        pair_energies[pair] = np.sum(E)
+        energies.extend(E)
+        idxs.append(len(energies) - 1)
+
+    # format & plot ##########################################################
+    energies = np.array(energies)
+    ticks = np.arange(len(energies))
+    vlines = (idxs, {'color': 'tab:red', 'linewidth': 1})
+
+    scat(ticks[idxs], energies[idxs], s=20)
+    title = "{} | S0, S1, phi_t * phi_f, phi_t *, * phi_f, up, down".format(
+        "L1 norm" if kind == 'L1' else "Energy")
+    plot(energies, vlines=vlines, show=1, title=title)
+
+    # cumulative sum
+    energies_cs = np.cumsum(energies)
+    scat(ticks[idxs], energies_cs[idxs], s=20)
+    plot(energies_cs, ylims=(0, None), vlines=vlines, show=1,
+         title="cumsum(%s)" % ("L1" if kind == 'L1' else "Energy"))
+
+    # print report ###########################################################
+    e_total = np.sum(energies)
+    nums = ["%.1f" % pair_energies[pair] for pair in pair_energies]
+    longest_num = max(map(len, nums))
+
+    for i, pair in enumerate(pairs):
+        e_perc = "%.1f" % (np.sum(pair_energies[pair]) / e_total * 100)
+        print("{} ({}%) -- {}".format(
+            nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
 
 
 #### Visuals primitives ## messy code ########################################
@@ -423,31 +474,48 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
 
     if title is not None:
         _title(title, ax=ax)
+    _scale_plot(fig, ax, show=show, w=w, h=h, xlims=xlims, ylims=ylims,
+                xlabel=xlabel, ylabel=ylabel)
 
-    # tighten plot boundaries
-    xmin, xmax = ax.get_xlim()
-    rng = xmax - xmin
-    ax.set_xlim(xmin + .018 * rng, xmax - .018 * rng)
 
-    # xlims/ylims, labels
-    if xlims:
-        ax.set_xlim(*xlims)
-    if ylims:
-        ax.set_ylim(*ylims)
-    if xlabel is not None:
-        plt.xlabel(xlabel, weight='bold', fontsize=15)
-    if ylabel is not None:
-        plt.ylabel(ylabel, weight='bold', fontsize=15)
+def scat(x, y=None, title=None, show=0, s=18, w=None, h=None,
+         xlims=None, ylims=None, vlines=None, hlines=None, ticks=1,
+         complex=False, abs=False, xlabel=None, ylabel=None, ax=None, fig=None,
+         **kw):
+    ax  = ax  or plt.gca()
+    fig = fig or plt.gcf()
 
-    # size, display
-    if w or h:
-        fig.set_size_inches(14*(w or 1), 8*(h or 1))
-    if show:
-        plt.show()
+    if x is None and y is None:
+        raise Exception("`x` and `y` cannot both be None")
+    elif x is None:
+        x = np.arange(len(y))
+    elif y is None:
+        y = x
+        x = np.arange(len(x))
+
+    if complex:
+        ax.scatter(x, y.real, s=s, **kw)
+        ax.scatter(x, y.imag, s=s, **kw)
+    else:
+        if abs:
+            y = np.abs(y)
+        ax.scatter(x, y, s=s, **kw)
+    if not ticks:
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    if title is not None:
+        _title(title, ax=ax)
+    if vlines:
+        vhlines(vlines, kind='v')
+    if hlines:
+        vhlines(hlines, kind='h')
+    _scale_plot(fig, ax, show=show, w=w, h=h, xlims=xlims, ylims=ylims,
+                xlabel=xlabel, ylabel=ylabel)
 
 
 def vhlines(lines, kind='v'):
-    lfn = plt.axvline if kind=='v' else plt.axhline
+    lfn = getattr(plt, f'ax{kind}line')
 
     if not isinstance(lines, (list, tuple)):
         lines, lkw = [lines], {}
@@ -490,6 +558,26 @@ def _title(title, ax=None):
         ax.set_title(str(title), **kw)
     else:
         plt.title(str(title), **kw)
+
+
+def _scale_plot(fig, ax, show=False, ax_equal=False, w=None, h=None,
+                xlims=None, ylims=None, xlabel=None, ylabel=None):
+    xmin, xmax = ax.get_xlim()
+    rng = xmax - xmin
+
+    ax.set_xlim(xmin + .018 * rng, xmax - .018 * rng)
+    if xlims:
+        ax.set_xlim(*xlims)
+    if ylims:
+        ax.set_ylim(*ylims)
+    if w or h:
+        fig.set_size_inches(14*(w or 1), 8*(h or 1))
+    if xlabel is not None:
+        plt.xlabel(xlabel, weight='bold', fontsize=15)
+    if ylabel is not None:
+        plt.ylabel(ylabel, weight='bold', fontsize=15)
+    if show:
+        plt.show()
 
 
 def _colorize_complex(z):
