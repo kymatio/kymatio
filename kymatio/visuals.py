@@ -272,56 +272,42 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
 
         gif_jtfs(Scx, meta)
     """
-    def _title(meta, i, spin):
+    def _title(meta, i, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
         mu, l = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                 for n in meta['n'][i]]
+                 for n in meta['n'][pair][i]]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
-    def _viz_spins(Scx, meta, i, norm, n_spins):
-        i0, i1 = i, i + n_spins
-
+    def _viz_spins(Scx, meta, i, norm):
+        kup = 'psi_t * psi_f_up'
+        kdn = 'psi_t * psi_f_down'
+        sup, sdn = Scx[kup][i], Scx[kdn][i]
         fig, axes = plt.subplots(1, 2, figsize=(15, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
-        imshow(Scx[i0]['coef'], ax=axes[0], **kw, title=_title(meta, i0, '+1'))
-        imshow(Scx[i1]['coef'], ax=axes[1], **kw, title=_title(meta, i1, '-1'))
+
+        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, +1))
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, -1))
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
-    def _viz_simple(Scx, meta, i, norm):
-        imshow(Scx[i]['coef'], abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
-               title=_title(meta, i, '0'))
+    def _viz_simple(coef, pair, meta, i, norm):
+        imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
+               title=_title(meta, i, pair, '0'))
 
     if norms is not None:
         norms = [(0, n) for n in norms]
     else:
-        norms = (None, None, None)
-    n_spins = sum(int(s) for s in meta['s'][1:] if s == 1)
+        norms = (None, None, None, None)
 
-    i = 0
-    # skip first-order
-    while meta['n'][i][1] != 0:
-        i += 1
-    i += 1
+    if not skip_spins:
+        for i in range(len(Scx['psi_t * psi_f_up'])):
+            _viz_spins(Scx, meta, i, norms[0])
 
-    # `psi_t * psi_f` first
-    while inf_token not in meta['n'][i + n_spins]:
-        if not skip_spins:
-            _viz_spins(Scx, meta, i, norms[0], n_spins)
-        i += 1
-    i += n_spins
-
-    # `psi_t * phi_f`
-    while meta['n'][i][1] == inf_token:
-        _viz_simple(Scx, meta, i, norms[1])
-        i += 1
-
-    # `phi_t * psi_f`
-    while meta['n'][i][0] == inf_token:
-        _viz_simple(Scx, meta, i, norms[2])
-        i += 1
-        if i >= len(Scx):
-            break
+    pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
+    for j, pair in enumerate(pairs):
+        for i, coef in enumerate(Scx[pair]):
+            coef = coef if not isinstance(coef, list) else coef['coef']
+            _viz_simple(coef, pair, meta, i, norms[1 + j])
 
 
 #### Visuals primitives ## messy code ########################################

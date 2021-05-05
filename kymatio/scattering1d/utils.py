@@ -492,24 +492,26 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
                 meta['key'  ][k].append((n2, n1_fr))
 
     # `psi_t * phi_f` coeffs
+    log2_F = math.floor(math.log2(F))
     for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
         if j2 == 0:
             continue
         meta['order']['psi_t * phi_f'].append(1)
         meta['xi'   ]['psi_t * phi_f'].append((xi2, 0))
         meta['sigma']['psi_t * phi_f'].append((sigma2, sigma_low_fr))
-        meta['j'    ]['psi_t * phi_f'].append((j2, J_fr - 1))
+        meta['j'    ]['psi_t * phi_f'].append((j2, log2_F))
         meta['n'    ]['psi_t * phi_f'].append((n2, inf))
         meta['s'    ]['psi_t * phi_f'].append((0,))
         meta['key'  ]['psi_t * phi_f'].append((n2, inf))
 
     # `phi_t * psi_f` coeffs
+    log2_T = math.floor(math.log2(T))
     for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
          ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
         meta['order']['phi_t * psi_f'].append(1)
         meta['xi'   ]['phi_t * psi_f'].append((0, xi1_fr,))
         meta['sigma']['phi_t * psi_f'].append((sigma_low, sigma1_fr,))
-        meta['j'    ]['phi_t * psi_f'].append((J - 1, j1_fr))
+        meta['j'    ]['phi_t * psi_f'].append((log2_T, j1_fr))
         meta['n'    ]['phi_t * psi_f'].append((inf, n1_fr))
         meta['s'    ]['phi_t * psi_f'].append((0,))
         meta['key'  ]['phi_t * psi_f'].append((inf, n1_fr))

@@ -458,7 +458,7 @@ class TimeFrequencyScatteringBase():
         """
         # ensure phi is subsampled up to (log2_T - 1) for `phi_t * psi_f` pairs
         max_sub_phi = lambda: max(k for k in self.phi_f if isinstance(k, int))
-        while max_sub_phi() < (self.log2_T - 1):
+        while max_sub_phi() < self.log2_T:
             self.phi_f[max_sub_phi() + 1] = periodize_filter_fourier(
                 self.phi_f[0], nperiods=2**(max_sub_phi() + 1))
 

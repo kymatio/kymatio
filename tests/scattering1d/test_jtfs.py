@@ -173,8 +173,10 @@ def test_up_vs_down():
 
 def test_meta():
     """Test that `TimeFrequencyScattering.meta()` matches output's meta."""
-    def assert_equal(a, b, field, i):
-        errmsg = "{}: (out[{}], meta[{}]) = ({}, {})".format(field, i, i, a, b)
+    def assert_equal(Scx, meta, field, pair, i):
+        a, b = Scx[pair][i][field], meta[field][pair][i]
+        errmsg = "(out[{0}][{1}][{2}], meta[{2}][{0}][{1}]) = ({3}, {4})".format(
+            pair, i, field, a, b)
         if len(a) == len(b):
             assert np.all(a == b), errmsg
         elif len(a) == 0:
@@ -197,7 +199,7 @@ def test_meta():
     for field in ('j', 'n', 's'):
         for pair in meta[field]:
             for i in range(len(meta[field][pair])):
-                assert_equal(Scx[pair][i][field], meta[field][pair][i], field, i)
+                assert_equal(Scx, meta, field, pair, i)
 
 
 def test_output():

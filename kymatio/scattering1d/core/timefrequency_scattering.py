@@ -140,7 +140,7 @@ def timefrequency_scattering(
             pad_fr = sc_freq.J_pad_max
         else:
             pad_fr = sc_freq.J_pad[n2]
-        n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
+        n2_time = U_0.shape[-1] // 2**max(min(j2, log2_T) - oversampling, 0)
         Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
 
         # Wavelet transform over time
@@ -153,7 +153,7 @@ def timefrequency_scattering(
 
             # Convolution and downsampling
             # what we subsampled in 1st-order
-            k1 = max(j1 - oversampling, 0)
+            k1 = max(min(j1, log2_T) - oversampling, 0)
             # what we subsample now in 2nd
             k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
@@ -180,9 +180,7 @@ def timefrequency_scattering(
     ##########################################################################
     # Second order: `X * (phi_t * psi_f)`
     # take largest subsampling factor
-    # since we lowpass time again later (`if average`), need to leave room
-    # for subsampling, so this cannot be set to `log2_T`
-    j2 = log2_T - 1
+    j2 = log2_T
 
     # preallocate output slice
     pad_fr = sc_freq.J_pad_fo
@@ -193,9 +191,12 @@ def timefrequency_scattering(
     for n1 in range(len(psi1)):
         j1 = psi1[n1]['j']
         # Convolution and downsampling
-        k1 = max(j1 - oversampling, 0)       # what we subsampled in 1st-order
-        k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
-        Y_2_c = S_1_c_list[n1]               # reuse 1st-order U_1_hat * phi[k1]
+        # what we subsampled in 1st-order
+        k1 = max(min(j1, log2_T) - oversampling, 0)
+        # what we subsample now in 2nd
+        k2 = max(j2 - k1 - oversampling, 0)
+        # reuse 1st-order U_1_hat * phi[k1]
+        Y_2_c = S_1_c_list[n1]
         Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
         Y_2_c = B.ifft(Y_2_hat)
         Y_2_arr[n1] = Y_2_c
@@ -290,7 +291,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 
     subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
     # take largest subsampling factor
-    j1_fr = sc_freq.log2_F - 1
+    j1_fr = sc_freq.log2_F
     n1_fr_subsample = max(
         min(j1_fr, sc_freq.max_subsampling_before_phi_fr) -
         reference_subsample_equiv_due_to_pad -
