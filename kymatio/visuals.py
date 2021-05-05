@@ -252,8 +252,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
             Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
             3) `phi_t * psi_f` pairs, respectively.
             Tuple of three (upper limits only, lower assumed 0).
-            If None, will auto-norm each slice (not recommended).
-            # TODO make better default
+            If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
+            coeffs except `phi_t * phi_f`.
 
         inf_token: int / np.nan
             Placeholder used in `meta` to denote infinity.
@@ -297,7 +297,11 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
     if norms is not None:
         norms = [(0, n) for n in norms]
     else:
-        norms = (None, None, None, None)
+        # set to .5 times the max of any joint coefficient (except phi_t * phi_f)
+        mx = np.max([(c['coef'] if isinstance(c, list) else c).max()
+                     for pair in Scx for c in Scx[pair]
+                     if pair not in ('S0', 'S1', 'phi_t * phi_f')])
+        norms = [(0, .5 * mx)] * 5
 
     if not skip_spins:
         for i in range(len(Scx['psi_t * psi_f_up'])):
@@ -306,7 +310,7 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
     pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
     for j, pair in enumerate(pairs):
         for i, coef in enumerate(Scx[pair]):
-            coef = coef if not isinstance(coef, list) else coef['coef']
+            coef = coef['coef'] if isinstance(coef, list) else coef
             _viz_simple(coef, pair, meta, i, norms[1 + j])
 
 
