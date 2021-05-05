@@ -6,7 +6,8 @@ from .scattering1d.filter_bank import compute_temporal_support
 from scipy.fft import ifft
 
 
-__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs']
+__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
+           'energy_profile_jtfs']
 
 
 def filterbank_scattering(scattering, zoom=0, second_order=False):
