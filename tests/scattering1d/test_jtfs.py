@@ -3,7 +3,6 @@ import pytest
 import numpy as np
 import scipy.signal
 from kymatio.numpy import Scattering1D, TimeFrequencyScattering
-from kymatio.toolkit import pack_jtfs
 
 # TODO no kymatio.numpy
 # TODO `out_type == 'array'` won't need `['coef']` later
@@ -35,27 +34,30 @@ def test_alignment():
 
     # scatter ################################################################
     for out_type in ('array', 'list'):
-        scattering = TimeFrequencyScattering(
+        jtfs = TimeFrequencyScattering(
             J, T, Q, J_fr=4, Q_fr=2, average=True,
             out_type=out_type, aligned=True)
 
-        Scx = scattering(x)
+        Scx = jtfs(x)
+        jmeta = jtfs.meta()
 
         # assert peaks share an index ########################################
-        meta = scattering.meta()
         S_all = {}
-        for i, s in enumerate(Scx):
-            n = meta['n'][i]
-            if (n[1] == 0            # take earliest `sc_freq.psi1_f`
-                    and n[0] >= 4):  # some `psi2` won't capture the peak
-                S_all[i] = Scx[i]['coef']
+        for pair in ('psi_t * psi_f_up', 'psi_t * psi_f_down'):
+            S_all[pair] = {}
+            for i, n in enumerate(jmeta['n'][pair]):
+                if n[0] >= 4:  # some `psi2` won't capture peak
+                    S_all[pair][i] = (Scx[pair][i]['coef'] if out_type == "list"
+                                      else Scx[pair][i])
 
-        mx_idx = max_row_idx(list(S_all.values())[0])
-        for i, s in S_all.items():
-            mx_idx_i = max_row_idx(s)
-            assert abs(mx_idx_i - mx_idx) < 2, (
-                "{} != {} (Scx[{}], out_type={})").format(
-                    mx_idx_i, mx_idx, i, out_type)
+        first_coef = list(list(S_all.values())[0].values())[0]
+        mx_idx = max_row_idx(first_coef)
+        for pair in S_all:
+            for i, s in S_all[pair].items():
+                mx_idx_i = max_row_idx(s)
+                assert abs(mx_idx_i - mx_idx) < 2, (
+                    "{} != {} (Scx[{}][{}], out_type={})").format(
+                        mx_idx_i, mx_idx, pair, i, out_type)
 
 
 def test_shapes():
@@ -70,26 +72,23 @@ def test_shapes():
     for oversampling in (0, 1):
       for oversampling_fr in (0, 1):
         for aligned in (True, False):
-          scattering = TimeFrequencyScattering(
+          jtfs = TimeFrequencyScattering(
               J, T, Q, J_fr=4, Q_fr=2, average=True, out_type='array',
               oversampling=oversampling, aligned=aligned)
-          Scx = scattering(x)
+          Scx = jtfs(x)
+          jmeta = jtfs.meta()
 
-          # assert slice shapes are equal ##############################
-          meta = scattering.meta()
-          S_all = {}
-          for i, s in enumerate(Scx):
-              if not np.isnan(meta['n'][i][1]):  # skip first-order
-                  S_all[i] = s
-
-          ref_shape = list(S_all.values())[0]['coef'].shape
-          for i, s in S_all.items():
-              assert s['coef'].shape == ref_shape, (
-                  "{} != {} | (oversampling, oversampling_fr, aligned, n) = "
-                  "({}, {}, {}, {})"
-                  ).format(s['coef'].shape, ref_shape, oversampling,
-                           oversampling_fr, aligned, tuple(meta['n'][i]))
-
+          # assert slice shapes are equal ####################################
+          # namely, # of freq rows and time shifts is same across pairs
+          ref_shape = Scx['psi_t * psi_f_up'][0].shape
+          for pair in Scx:
+              if pair not in ('S0', 'S1'):
+                  for i, s in enumerate(Scx[pair]):
+                      assert s.shape == ref_shape, (
+                          "{} != {} | (oversampling, oversampling_fr, aligned, n)"
+                          " = ({}, {}, {}, {})").format(
+                              s.shape, ref_shape, oversampling, oversampling_fr,
+                              aligned, tuple(jmeta['n'][pair][i]))
 
 def test_jtfs_vs_ts():
     """Test JTFS sensitivity to FDTS (frequency-dependent time shifts), and that
@@ -115,25 +114,18 @@ def test_jtfs_vs_ts():
     ts_x  = ts(x)
     ts_xs = ts(xs)
 
-    jtfs_x_list  = jtfs(x)
-    jtfs_xs_list = jtfs(xs)
-    jtfs_x  = np.concatenate([path["coef"] for path in jtfs_x_list])
-    jtfs_xs = np.concatenate([path["coef"] for path in jtfs_xs_list])
-
-    # get index of first joint coeff
-    jmeta = jtfs.meta()
-    first_joint_idx = [i for i, n in enumerate(jmeta['n'])
-                       if not np.isnan(n[1])][0]
-    arr_idx = sum(len(jtfs_x_list[i]['coef']) for i in range(len(jtfs_x_list))
-                  if i < first_joint_idx)
+    jtfs_x_all  = jtfs(x)
+    jtfs_xs_all = jtfs(xs)
+    jtfs_x  = concat_joint(jtfs_x_all)
+    jtfs_xs = concat_joint(jtfs_xs_all)  # compare against joint coeffs only
 
     l2_ts = l2(ts_x, ts_xs)
-    # compare against joint coeffs only
-    l2_jtfs = l2(jtfs_x[arr_idx:], jtfs_xs[arr_idx:])
+    l2_jtfs = l2(jtfs_x, jtfs_xs)
 
     # max ratio limited by `N`; can do much better with longer input
-    assert l2_jtfs / l2_ts > 15, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
-    assert l2_ts < .01, "TS: %s" % l2_ts
+    # and by comparing only against up & down
+    assert l2_jtfs / l2_ts > 14, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_ts < .006, "TS: %s" % l2_ts
 
 
 def test_freq_tp_invar():
@@ -152,26 +144,18 @@ def test_freq_tp_invar():
     J = int(np.log2(N) - 1)  # have 2 time units at output
     J_fr = 4
     F_all = [2**(J_fr), 2**(J_fr + 1)]
-    th_all = [.17, .12]
+    th_all = [.19, .14]
 
     for th, F in zip(th_all, F_all):
         jtfs = TimeFrequencyScattering(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
                                        F=F, out_type="array")
         # scatter
-        jtfs_x0_list = jtfs(x0)
-        jtfs_x1_list = jtfs(x1)
-        jtfs_x0 = np.concatenate([path["coef"] for path in jtfs_x0_list])
-        jtfs_x1 = np.concatenate([path["coef"] for path in jtfs_x1_list])
+        jtfs_x0_all = jtfs(x0)
+        jtfs_x1_all = jtfs(x1)
+        jtfs_x0 = concat_joint(jtfs_x0_all)  # compare against joint coeffs only
+        jtfs_x1 = concat_joint(jtfs_x1_all)
 
-        # get index of first joint coeff
-        jmeta = jtfs.meta()
-        first_joint_idx = [i for i, n in enumerate(jmeta['n'])
-                           if not np.isnan(n[1])][0]
-        arr_idx = sum(len(jtfs_x0_list[i]['coef']) for i in
-                      range(len(jtfs_x0_list)) if i < first_joint_idx)
-
-        # compare against joint coeffs only
-        l2_x0x1 = l2(jtfs_x0[arr_idx:], jtfs_x1[arr_idx:])
+        l2_x0x1 = l2(jtfs_x0, jtfs_x1)
 
         # TODO is this value reasonable? it's much greater with different f0
         # (but same relative f1)
@@ -184,11 +168,10 @@ def test_up_vs_down():
     x = echirp(N)
 
     jtfs = TimeFrequencyScattering(shape=N, J=10, Q=16, J_fr=4, Q_fr=1)
-    out = jtfs(x)
+    Scx = jtfs(x)
 
-    coeffs = pack_jtfs(out, jtfs.meta(), concat=True)
-    E_up   = energy(coeffs['psi_t * psi_f_up'])
-    E_down = energy(coeffs['psi_t * psi_f_down'])
+    E_up   = energy(Scx['psi_t * psi_f_up'])
+    E_down = energy(Scx['psi_t * psi_f_down'])
     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
@@ -212,12 +195,13 @@ def test_meta():
     Q = 16
     jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, shape=N, out_type="list")
 
-    out = jtfs(x)
+    Scx = jtfs(x)
     meta = jtfs.meta()
 
     for field in ('j', 'n', 's'):
-        for i in range(len(meta[field])):
-            assert_equal(out[i][field], meta[field][i], field, i)
+        for pair in meta[field]:
+            for i in range(len(meta[field][pair])):
+                assert_equal(Scx[pair][i][field], meta[field][pair][i], field, i)
 
 
 def test_output():
@@ -235,14 +219,15 @@ def test_output():
     """
     def _load_data(test_num, test_data_dir):
         """Also see data['code']."""
+        def is_coef(k):
+            return ':' in k and k.split(':')[-1].isdigit()
         def not_param(k):
-            return (k in ('code', 'x') or
-                    (k.startswith('out_') and k != 'out_type'))
+            return k in ('code', 'x') or is_coef(k)
 
         data = np.load(os.path.join(test_data_dir, f'test_jtfs_{test_num}.npz'))
         x = data['x']
-        out_stored = [data[k] for k in data.files
-                      if (k.startswith('out_') and k != 'out_type')]
+        out_stored = [data[k] for k in data.files if is_coef(k)]
+        out_stored_keys = [k for k in data.files if is_coef(k)]
 
         params = {}
         for k in data.files:
@@ -262,32 +247,38 @@ def test_output():
         params_str = "Test #%s:\n" % test_num
         for k, v in params.items():
             params_str += "{}={}\n".format(k, str(v))
-        return x, out_stored, params, params_str
+        return x, out_stored, out_stored_keys, params, params_str
 
     test_data_dir = os.path.dirname(__file__)
     num_tests = sum("test_jtfs_" in p for p in os.listdir(test_data_dir))
 
     for test_num in range(num_tests):
-        x, out_stored, params, params_str = _load_data(test_num, test_data_dir)
+        (x, out_stored, out_stored_keys, params, params_str
+         ) = _load_data(test_num, test_data_dir)
 
         jtfs = TimeFrequencyScattering(**params, max_pad_factor=1)
         out = jtfs(x)
-        if params['out_type'] == 'list':
-            out = [o['coef'] for o in out]
-        else:  # TODO
-            out = [o['coef'] for o in out]
 
-        assert len(out) == len(out_stored), (
+        n_coef_out = sum(1 for pair in out for c in out[pair])
+        n_coef_out_stored = len(out_stored)
+        assert n_coef_out == n_coef_out_stored, (
             "out vs stored number of coeffs mismatch ({} != {})\n{}"
-            ).format(len(out), len(out_stored), params_str)
+            ).format(n_coef_out, n_coef_out_stored, params_str)
 
-        for i, (o, o_stored) in enumerate(zip(out, out_stored)):
-            assert o.shape == o_stored.shape, (
-                "out[{}].shape != out_stored[{}].shape ({} != {})\n{}".format(
-                    i, i, o.shape, o_stored.shape, params_str))
-            assert np.allclose(o, o_stored), (
-                "out[{}] != out_stored[{}] (MAE={:.5f})\n{}".format(
-                    i, i, np.abs(o - o_stored).mean(), params_str))
+        i_s = 0
+        for pair in out:
+            for i, o in enumerate(out[pair]):
+                o = o if params['out_type'] == 'array' else o['coef']
+                o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
+                assert o.shape == o_stored.shape, (
+                    "out[{0}][{1}].shape != out_stored[{2}].shape "
+                    "({3} != {4})\n{5}".format(pair, i, o_stored_key, o.shape,
+                                               o_stored.shape, params_str))
+                assert np.allclose(o, o_stored), (
+                    "out[{0}][{1}] != out_stored[{2}] (MAE={3:.5f})\n{4}"
+                    ).format(pair, i, o_stored_key, np.abs(o - o_stored).mean(),
+                             params_str)
+                i_s += 1
 
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
@@ -309,6 +300,11 @@ def energy(x):
 # def l1l2(x0, x1):
 #     """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
 #     return _l2(x1 - x0) / _l2(x0)
+
+def concat_joint(Scx, out_type="array"):
+    return np.vstack([(c if out_type == "array" else c['coef'])
+                      for pair, c in Scx.items()
+                      if pair not in ('S0', 'S1')])
 
 
 def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
