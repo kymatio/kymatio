@@ -498,6 +498,10 @@ class TimeFrequencyScatteringBase():
         return self.sc_freq.F
 
     @property
+    def log2_F(self):
+        return self.sc_freq.log2_F
+
+    @property
     def max_order_fr(self):
         return self.sc_freq.max_order_fr
 
