@@ -2,9 +2,8 @@
 def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
-        oversampling=0, oversampling_fr=0,
-        aligned=True, max_order=2, average=True, average_fr=True,
-        size_scattering=(0, 0, 0), out_type='array', pad_mode='zero'):
+        oversampling=0, oversampling_fr=0, aligned=True,
+        average=True, average_fr=True, out_type='array', pad_mode='zero'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
@@ -13,9 +12,6 @@ def timefrequency_scattering(
     commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average,
                average_fr, out_type, unpad, log2_T, phi, ind_start, ind_end)
 
-    batch_size = x.shape[0]
-    kJ = max(log2_T - oversampling, 0)
-    temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0 = []
     out_S_1 = []
     out_S_2 = {'psi_t * psi_f': [[], []],

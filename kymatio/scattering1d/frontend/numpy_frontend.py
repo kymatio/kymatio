@@ -104,9 +104,11 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
         max_order_tm = 2
+        _out_type = out_type if out_type != "array-like" else "array"
         ScatteringNumPy1D.__init__(
             self, J, shape, Q, max_order_tm, average, oversampling, T,
-            vectorize, out_type, pad_mode, max_pad_factor, backend)
+            vectorize, _out_type, pad_mode, max_pad_factor, backend)
+        self.out_type = _out_type
 
         TimeFrequencyScatteringBase.build(self)
 
@@ -121,15 +123,12 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
                              "are mutually incompatible. "
                              "Please set out_type='list'.")
 
-        if not self.out_type in ('array', 'list'):
-            raise RuntimeError("The out_type must be one of 'array' or 'list'.")
+        if not self.out_type in ('array', 'list', 'array-like'):
+            raise RuntimeError("The out_type must be one of: array, list, "
+                               "array-like.")
 
-        batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
-
-        # Precompute output size  # TODO is this correct? and what's its point?
-        size_scattering = 1 + self.J * (2*self.J_fr + 1)
 
         S = timefrequency_scattering(
             x,
@@ -146,11 +145,8 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             oversampling=self.oversampling,
             oversampling_fr=self.oversampling_fr,
             aligned=self.aligned,
-            size_scattering=size_scattering,
             out_type=self.out_type,
             pad_mode=self.pad_mode)
-
-        # TODO switch-case out_type array vs list
         return S
 
 TimeFrequencyScatteringNumPy._document()
