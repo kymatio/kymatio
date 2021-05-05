@@ -788,8 +788,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     if max_subsampling is None:
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
-        max_sub_phi = max(max_subsampling_after_psi1,
-                          max_subsampling_after_psi2)
+        log2_T = math.floor(math.log2(T))
+        max_sub_phi = min(max(max_subsampling_after_psi1,
+                              max_subsampling_after_psi2), log2_T)
     else:
         max_sub_phi = max_subsampling
 
@@ -898,11 +899,11 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
     return psi1_f_up, psi1_f_down
 
 
-def phi_fr_factory(log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
+def phi_fr_factory(F, log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
                    criterion_amplitude=1e-3, sigma0=0.1, P_max=5, eps=1e-7):
     # TODO docs
     # compute the spectral parameters of the filters
-    sigma_low = sigma0 / 2**log2_F
+    sigma_low = sigma0 / F
     J_support = J_pad_max
     N = 2**J_support
 

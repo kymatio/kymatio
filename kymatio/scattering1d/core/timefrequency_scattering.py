@@ -2,9 +2,8 @@
 def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
-        oversampling=0, oversampling_fr=0,
-        aligned=True, max_order=2, average=True, average_fr=True,
-        size_scattering=(0, 0, 0), out_type='array', pad_mode='zero'):
+        oversampling=0, oversampling_fr=0, aligned=True,
+        average=True, average_fr=True, out_type='array', pad_mode='zero'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
@@ -13,14 +12,12 @@ def timefrequency_scattering(
     commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average,
                average_fr, out_type, unpad, log2_T, phi, ind_start, ind_end)
 
-    batch_size = x.shape[0]
-    kJ = max(log2_T - oversampling, 0)
-    temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0 = []
     out_S_1 = []
     out_S_2 = {'psi_t * psi_f': [[], []],
                'psi_t * phi_f': [],
-               'phi_t * psi_f': [[]]}
+               'phi_t * psi_f': [[]],
+               'phi_t * phi_f': []}
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
@@ -91,7 +88,7 @@ def timefrequency_scattering(
         if aligned:
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
-            if out_type == 'array':
+            if 'array' in out_type:
                 subsample_equiv_due_to_pad_min = 0
             elif out_type == 'list':
                 subsample_equiv_due_to_pad_min = (
@@ -117,14 +114,14 @@ def timefrequency_scattering(
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start[-1][lowpass_subsample_fr],
                              sc_freq.ind_end[-1][lowpass_subsample_fr])
-        elif out_type == 'array':
+        elif 'array' in out_type:
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start_max[lowpass_subsample_fr],
                              sc_freq.ind_end_max[lowpass_subsample_fr])
         S_1_fr = B.transpose(S_1_fr_T)
     else:
         S_1_fr = []
-    out_S_1.append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
+    out_S_2['phi_t * phi_f'].append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
     # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
     ##########################################################################
@@ -135,11 +132,11 @@ def timefrequency_scattering(
             continue
 
         # preallocate output slice
-        if aligned and out_type == 'array':
+        if aligned and 'array' in out_type:
             pad_fr = sc_freq.J_pad_max
         else:
             pad_fr = sc_freq.J_pad[n2]
-        n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
+        n2_time = U_0.shape[-1] // 2**max(min(j2, log2_T) - oversampling, 0)
         Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
 
         # Wavelet transform over time
@@ -152,7 +149,7 @@ def timefrequency_scattering(
 
             # Convolution and downsampling
             # what we subsampled in 1st-order
-            k1 = max(j1 - oversampling, 0)
+            k1 = max(min(j1, log2_T) - oversampling, 0)
             # what we subsample now in 2nd
             k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
@@ -179,9 +176,7 @@ def timefrequency_scattering(
     ##########################################################################
     # Second order: `X * (phi_t * psi_f)`
     # take largest subsampling factor
-    # since we lowpass time again later (`if average`), need to leave room
-    # for subsampling, so this cannot be set to `log2_T`
-    j2 = log2_T - 1
+    j2 = log2_T
 
     # preallocate output slice
     pad_fr = sc_freq.J_pad_fo
@@ -192,9 +187,12 @@ def timefrequency_scattering(
     for n1 in range(len(psi1)):
         j1 = psi1[n1]['j']
         # Convolution and downsampling
-        k1 = max(j1 - oversampling, 0)       # what we subsampled in 1st-order
-        k2 = max(j2 - k1 - oversampling, 0)  # what we subsample now in 2nd
-        Y_2_c = S_1_c_list[n1]               # reuse 1st-order U_1_hat * phi[k1]
+        # what we subsampled in 1st-order
+        k1 = max(min(j1, log2_T) - oversampling, 0)
+        # what we subsample now in 2nd
+        k2 = max(j2 - k1 - oversampling, 0)
+        # reuse 1st-order U_1_hat * phi[k1]
+        Y_2_c = S_1_c_list[n1]
         Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
         Y_2_c = B.ifft(Y_2_hat)
         Y_2_arr[n1] = Y_2_c
@@ -212,23 +210,20 @@ def timefrequency_scattering(
                           all_first_order=True)
 
     ##########################################################################
-    out_S = []
-    out_S.extend(out_S_0)
-    out_S.extend(out_S_1)
-    for outs in out_S_2.values():
-        if isinstance(outs[0], list):
-            for o in outs:
-                out_S.extend(o)
-        else:
-            out_S.extend(outs)
+    # pack outputs & return
+    out = {}
+    out['S0'] = out_S_0
+    out['S1'] = out_S_1
+    out['psi_t * psi_f_up']   = out_S_2['psi_t * psi_f'][0]
+    out['psi_t * psi_f_down'] = out_S_2['psi_t * psi_f'][1]
+    out['psi_t * phi_f'] = out_S_2['psi_t * phi_f']
+    out['phi_t * psi_f'] = out_S_2['phi_t * psi_f'][0]
+    out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
 
-    # if out_type == 'array':  # TODO breaks for first-order coeffs
-    #     out_S = B.concatenate([x['coef'] for x in out_S])
-    # elif out_type == 'list':  # TODO why pop? need for viz
-    #     for x in out_S:
-    #         x.pop('n')
-
-    return out_S
+    if out_type == 'array':
+        for k, v in out.items():
+            out[k] = B.concatenate([c['coef'] for c in v], axis=0)
+    return out
 
 
 def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
@@ -292,7 +287,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 
     subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
     # take largest subsampling factor
-    j1_fr = sc_freq.log2_F - 1
+    j1_fr = sc_freq.log2_F
     n1_fr_subsample = max(
         min(j1_fr, sc_freq.max_subsampling_before_phi_fr) -
         reference_subsample_equiv_due_to_pad -
