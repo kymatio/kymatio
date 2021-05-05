@@ -5,10 +5,6 @@ import scipy.signal
 from kymatio.numpy import Scattering1D, TimeFrequencyScattering
 
 # TODO no kymatio.numpy
-# TODO `out_type == 'array'` won't need `['coef']` later
-# TODO test that freq-averaged FOTS shape matches joint for out_type='array'
-# TODO joint coeffs exclude freq-averaged U1 (fix after sorting meta stuff)
-# TODO phase-shift sensitivity
 
 # set True to execute all test functions without pytest
 run_without_pytest = 0
