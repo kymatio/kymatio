@@ -6,7 +6,8 @@ from .scattering1d.filter_bank import compute_temporal_support
 from scipy.fft import ifft
 
 
-__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs']
+__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
+           'energy_profile_jtfs']
 
 
 def filterbank_scattering(scattering, zoom=0, second_order=False):
@@ -314,7 +315,7 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
             _viz_simple(coef, pair, meta, i, norms[1 + j])
 
 
-def energy_profile_jtfs(Scx, log2_T, log2_F, kind='L2'):
+def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
     """Plot & print relevant energy information across coefficient pairs.
 
     Parameters
@@ -325,6 +326,8 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, kind='L2'):
         `TimeFrequencyScattering.log2_T`. `average=False`   -> `log2_T=1`.
     log2_F : int
         `TimeFrequencyScattering.log2_T`. `average_fr=False` -> `log2_F=1`.
+    x : tensor, optional
+        Original input to print `E_out / E_in`.
     kind : str['L1', 'L2']
         - L1: sum(abs(x))
         - L2: sum(abs(x)**2) -- actually L2^2
@@ -333,6 +336,7 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, kind='L2'):
         return (np.abs(x).sum() if kind == 'L1' else
                 (np.abs(x)**2).sum())
 
+    # TODO reverse coeff ordering low to high freq
     # extract energy info
     energies = []
     pair_energies = {}
@@ -373,6 +377,10 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, kind='L2'):
         e_perc = "%.1f" % (np.sum(pair_energies[pair]) / e_total * 100)
         print("{} ({}%) -- {}".format(
             nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
+
+    # E_out / E_in
+    if x is not None:
+        print("E_out / E_in = %.3f" % (e_total / energy(x)))
 
 
 #### Visuals primitives ## messy code ########################################
