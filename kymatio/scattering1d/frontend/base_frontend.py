@@ -572,7 +572,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def create_phi_filters(self):
         self.phi_f = phi_fr_factory(
-            self.log2_F, self.Q_fr, self.J_pad_max,
+            self.F, self.log2_F, self.Q_fr, self.J_pad_max,
              **self.get_params('resample_phi_fr', 'criterion_amplitude',
                                'sigma0', 'P_max', 'eps'))
 

@@ -898,11 +898,11 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
     return psi1_f_up, psi1_f_down
 
 
-def phi_fr_factory(log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
+def phi_fr_factory(F, log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
                    criterion_amplitude=1e-3, sigma0=0.1, P_max=5, eps=1e-7):
     # TODO docs
     # compute the spectral parameters of the filters
-    sigma_low = sigma0 / 2**log2_F
+    sigma_low = sigma0 / F
     J_support = J_pad_max
     N = 2**J_support
 

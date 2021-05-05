@@ -16,12 +16,12 @@ def timefrequency_scattering(
     batch_size = x.shape[0]
     kJ = max(log2_T - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
-    out_S_0 = {}
+    out_S_0 = []
     out_S_1 = []
     out_S_2 = {'psi_t * psi_f': [[], []],
                'psi_t * phi_f': [],
                'phi_t * psi_f': [[]],
-               'phi_t * phi_f': {}}
+               'phi_t * phi_f': []}
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
@@ -37,7 +37,7 @@ def timefrequency_scattering(
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S_0 = {'coef': S_0, 'j': (), 'n': (), 's': ()}
+    out_S_0.append({'coef': S_0, 'j': (), 'n': (), 's': ()})
 
     # First order:
     U_1_hat_list, S_1_list, S_1_c_list = [], [], []
@@ -92,7 +92,7 @@ def timefrequency_scattering(
         if aligned:
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
-            if out_type == 'array':
+            if 'array' in out_type:
                 subsample_equiv_due_to_pad_min = 0
             elif out_type == 'list':
                 subsample_equiv_due_to_pad_min = (
@@ -118,14 +118,14 @@ def timefrequency_scattering(
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start[-1][lowpass_subsample_fr],
                              sc_freq.ind_end[-1][lowpass_subsample_fr])
-        elif out_type == 'array':
+        elif 'array' in out_type:
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start_max[lowpass_subsample_fr],
                              sc_freq.ind_end_max[lowpass_subsample_fr])
         S_1_fr = B.transpose(S_1_fr_T)
     else:
         S_1_fr = []
-    out_S_2['phi_t * phi_f'] = {'coef': S_1_fr, 'j': (), 'n': (), 's': ()}
+    out_S_2['phi_t * phi_f'].append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
     # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
     ##########################################################################
@@ -136,7 +136,7 @@ def timefrequency_scattering(
             continue
 
         # preallocate output slice
-        if aligned and out_type == 'array':
+        if aligned and 'array' in out_type:
             pad_fr = sc_freq.J_pad_max
         else:
             pad_fr = sc_freq.J_pad[n2]
@@ -213,28 +213,19 @@ def timefrequency_scattering(
                           all_first_order=True)
 
     ##########################################################################
+    # pack outputs & return
+    out = {}
+    out['S0'] = out_S_0
+    out['S1'] = out_S_1
+    out['psi_t * psi_f_up']   = out_S_2['psi_t * psi_f'][0]
+    out['psi_t * psi_f_down'] = out_S_2['psi_t * psi_f'][1]
+    out['psi_t * phi_f'] = out_S_2['psi_t * phi_f']
+    out['phi_t * psi_f'] = out_S_2['phi_t * psi_f'][0]
+    out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
 
     if out_type == 'array':
-        def concat(coeffs):
-            return B.concatenate([c['coef'] for c in coeffs])
-        out = {}
-        out['S0'] = out_S_0
-        out['S1'] = concat(out_S_1)
-        out['psi_t * psi_f_up']   = concat(out_S_2['psi_t * psi_f'][0])
-        out['psi_t * psi_f_down'] = concat(out_S_2['psi_t * psi_f'][1])
-        out['psi_t * phi_f'] = concat(out_S_2['psi_t * phi_f'])
-        out['phi_t * psi_f'] = concat(out_S_2['phi_t * psi_f'][0])
-        out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
-    elif out_type == 'list':
-        out = []
-        out.extend(out_S_0)
-        out.extend(out_S_1)
-        for outs in out_S_2.values():
-            if isinstance(outs[0], list):
-                for o in outs:
-                    out.extend(o)
-            else:
-                out.extend(outs)
+        for k, v in out.items():
+            out[k] = B.concatenate([c['coef'] for c in v], axis=0)
     return out
 
 

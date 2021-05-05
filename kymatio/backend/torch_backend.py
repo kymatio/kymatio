@@ -141,8 +141,8 @@ class TorchBackend:
         return norm
 
     @staticmethod
-    def concatenate(arrays, dim=2):
-        return torch.stack(arrays, dim=dim)
+    def concatenate(arrays, axis=2):
+        return torch.stack(arrays, dim=axis)
 
     @classmethod
     def cdgmm(cls, A, B):

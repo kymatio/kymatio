@@ -438,87 +438,94 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
     meta = {}
     inf = -1  # placeholder for infinity
 
+    coef_names = ('S0',                  # (time)  zeroth order
+                  'S1',                  # (time)  first order
+                  'psi_t * psi_f_up',    # (joint) spin up
+                  'psi_t * psi_f_down',  # (joint) spin down
+                  'psi_t * phi_f',       # (joint) freq lowpass
+                  'phi_t * psi_f',       # (joint) time lowpass
+                  'phi_t * phi_f')       # (joint) joint lowpass
     for field in ('order', 'xi', 'sigma', 'j', 'n', 's', 'key'):
-        meta[field] = [[] for _ in range(6)]
+        meta[field] = {name: [] for name in coef_names}
 
     # Zeroth-order
-    meta['order'][0].append(0)
+    meta['order']['S0'].append(0)
     for field in meta:
         if field != 'order':
-            meta[field][0].append(())
+            meta[field]['S0'].append(())
 
     # First-order coeffs
     for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
-        meta['order'][1].append(1)
-        meta['xi'][1].append((xi1,))
-        meta['sigma'][1].append((sigma1,))
-        meta['j'][1].append((j1,))
-        meta['n'][1].append((n1,))
-        meta['s'][1].append(())
-        meta['key'][1].append((n1,))
+        meta['order']['S1'].append(1)
+        meta['xi'   ]['S1'].append((xi1,))
+        meta['sigma']['S1'].append((sigma1,))
+        meta['j'    ]['S1'].append((j1,))
+        meta['n'    ]['S1'].append((n1,))
+        meta['s'    ]['S1'].append(())
+        meta['key'  ]['S1'].append((n1,))
 
     # TODO drop `order`?
     # TODO -1 or inf doesn't make sense for `key`
     # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
     # TODO meta won't match output if non-CQT are dropped
     # Frequential lowpass over first-order
-    meta['order'][2].append(0)
+    meta['order']['phi_t * phi_f'].append(0)
     for field in meta:
         if field != 'order':
-            meta[field][2].append(())
+            meta[field]['phi_t * phi_f'].append(())
 
     # `psi_t * psi_f` coeffs
     for spin in (1, -1):
+        k = ('psi_t * psi_f_up' if spin == 1 else
+             'psi_t * psi_f_down')
         for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
             if j2 == 0:
                 continue
             for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
                  ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-                meta['order'][3].append(1)
-                meta['xi'][3].append((xi2, xi1_fr,))
-                meta['sigma'][3].append((sigma2, sigma1_fr,))
-                meta['j'][3].append((j2, j1_fr))
-                meta['n'][3].append((n2, n1_fr))
-                meta['s'][3].append((spin,))
-                meta['key'][3].append((n2, n1_fr))
+                meta['order'][k].append(1)
+                meta['xi'   ][k].append((xi2, xi1_fr,))
+                meta['sigma'][k].append((sigma2, sigma1_fr,))
+                meta['j'    ][k].append((j2, j1_fr))
+                meta['n'    ][k].append((n2, n1_fr))
+                meta['s'    ][k].append((spin,))
+                meta['key'  ][k].append((n2, n1_fr))
 
     # `psi_t * phi_f` coeffs
     for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
         if j2 == 0:
             continue
-        meta['order'][4].append(1)
-        meta['xi'][4].append((xi2, 0))
-        meta['sigma'][4].append((sigma2, sigma_low_fr))
-        meta['j'][4].append((j2, J_fr - 1))
-        meta['n'][4].append((n2, inf))
-        meta['s'][4].append((0,))
-        meta['key'][4].append((n2, inf))
+        meta['order']['psi_t * phi_f'].append(1)
+        meta['xi'   ]['psi_t * phi_f'].append((xi2, 0))
+        meta['sigma']['psi_t * phi_f'].append((sigma2, sigma_low_fr))
+        meta['j'    ]['psi_t * phi_f'].append((j2, J_fr - 1))
+        meta['n'    ]['psi_t * phi_f'].append((n2, inf))
+        meta['s'    ]['psi_t * phi_f'].append((0,))
+        meta['key'  ]['psi_t * phi_f'].append((n2, inf))
 
     # `phi_t * psi_f` coeffs
     for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
          ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-        meta['order'][5].append(1)
-        meta['xi'][5].append((0, xi1_fr,))
-        meta['sigma'][5].append((sigma_low, sigma1_fr,))
-        meta['j'][5].append((J - 1, j1_fr))
-        meta['n'][5].append((inf, n1_fr))
-        meta['s'][5].append((0,))
-        meta['key'][5].append((inf, n1_fr))
-
-    for field, value in meta.items():
-        meta[field] = [v for subvalue in value for v in subvalue]
+        meta['order']['phi_t * psi_f'].append(1)
+        meta['xi'   ]['phi_t * psi_f'].append((0, xi1_fr,))
+        meta['sigma']['phi_t * psi_f'].append((sigma_low, sigma1_fr,))
+        meta['j'    ]['phi_t * psi_f'].append((J - 1, j1_fr))
+        meta['n'    ]['phi_t * psi_f'].append((inf, n1_fr))
+        meta['s'    ]['phi_t * psi_f'].append((0,))
+        meta['key'  ]['phi_t * psi_f'].append((inf, n1_fr))
 
     pad_fields = ['xi', 'sigma', 'j', 'n']
     pad_len = 2
-
     for field in pad_fields:
-        meta[field] = [x + (math.nan,) * (pad_len - len(x)) for x in meta[field]]
+        for name, v in meta[field].items():
+            meta[field][name] = [x + (math.nan,) * (pad_len - len(x)) for x in v]
     # spin is of pad_len=1
-    meta['s'] = [(math.nan,) if s == () else s for s in meta['s']]
+    for name, v in meta['s'].items():
+        meta['s'][name] = [(math.nan,) if s == () else s for s in v]
 
     array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's']
-
     for field in array_fields:
-        meta[field] = np.array(meta[field])
+        for name, v in meta[field].items():
+            meta[field][name] = np.array(v)
 
     return meta

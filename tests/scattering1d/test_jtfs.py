@@ -36,7 +36,7 @@ def test_alignment():
     # scatter ################################################################
     for out_type in ('array', 'list'):
         scattering = TimeFrequencyScattering(
-            J, T, Q, J_fr=4, Q_fr=2, average=True, oversampling=0,
+            J, T, Q, J_fr=4, Q_fr=2, average=True,
             out_type=out_type, aligned=True)
 
         Scx = scattering(x)
