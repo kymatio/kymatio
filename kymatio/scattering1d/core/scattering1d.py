@@ -1,6 +1,6 @@
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, size_scattering=(0, 0, 0),
+        max_order=2, average=True, global_average=None, size_scattering=(0, 0, 0),
         vectorize=False, out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
@@ -60,6 +60,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     irfft = backend.irfft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
+    mean = backend.mean
 
 
     # S is simply a dictionary if we do not perform the averaging...
@@ -103,10 +104,12 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         # Take the modulus
         U_1_m = modulus(U_1_c)
 
-        if average or max_order > 1:
+        if max_order > 1 or (average and not global_average):
             U_1_hat = rfft(U_1_m)
 
-        if average:
+        if global_average:
+            S_1 = mean(U_1_m)
+        elif average:
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
             S_1_c = cdgmm(U_1_hat, phi[k1])
@@ -139,7 +142,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
                     U_2_m = modulus(U_2_c)
 
-                    if average:
+                    if global_average:
+                        S_2 = mean(S_2)
+                    elif average:
                         U_2_hat = rfft(U_2_m)
 
                         # Convolve with phi_J
