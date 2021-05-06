@@ -275,9 +275,11 @@ def test_output():
                     "out[{0}][{1}].shape != out_stored[{2}].shape "
                     "({3} != {4})\n{5}".format(pair, i, o_stored_key, o.shape,
                                                o_stored.shape, params_str))
+                adiff = np.abs(o - o_stored)
                 assert np.allclose(o, o_stored), (
-                    "out[{0}][{1}] != out_stored[{2}] (MAE={3:.5f})\n{4}"
-                    ).format(pair, i, o_stored_key, np.abs(o - o_stored).mean(),
+                    "out[{0}][{1}] != out_stored[{2}] (MeanAE={3:.2e}, "
+                    "MaxAE={4:.2e})\n{5}"
+                    ).format(pair, i, o_stored_key, adiff.mean(), adiff.max(),
                              params_str)
                 i_s += 1
 

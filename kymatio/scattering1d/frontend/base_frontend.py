@@ -601,11 +601,11 @@ class _FrequencyScatteringBase(ScatteringBase):
             # is limited by `sc_freq.phi_f[0]`'s time width.
             # This is accounted for  in `scattering_filter_factory_fr` by
             # not computing `sc_freq.phi_f` at such resampling lengths.
-            n_phi_f = sum(isinstance(k, int) for k in self.phi_f)
-            self.max_subsampling_before_phi_fr = n_phi_f - 1
+            n_phi_f = max(k for k in self.phi_f if isinstance(k, int))
+            self.max_subsampling_before_phi_fr = n_phi_f
         else:
             # usual behavior
-            self.max_subsampling_before_phi_fr = self.log2_F - 1
+            self.max_subsampling_before_phi_fr = self.log2_F
 
     def create_psi_filters(self):
         self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
