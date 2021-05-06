@@ -419,7 +419,7 @@ def _transpose_fft(coeff_arr, B, fft):
 def _right_pad(coeff_list, pad_fr, B):
     zero_row = B.zeros_like(coeff_list[0])
     zero_rows = [zero_row] * (2**pad_fr - len(coeff_list))
-    return B.concatenate(coeff_list + zero_rows).squeeze()
+    return B.concatenate_v2(coeff_list + zero_rows, axis=1)
 
 
 __all__ = ['timefrequency_scattering']

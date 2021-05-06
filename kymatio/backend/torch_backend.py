@@ -144,6 +144,10 @@ class TorchBackend:
     def concatenate(arrays, axis=2):
         return torch.stack(arrays, dim=axis)
 
+    @staticmethod
+    def concatenate_v2(arrays, axis=2):
+        return torch.cat(arrays, dim=axis)
+
     @classmethod
     def cdgmm(cls, A, B):
         """Complex pointwise multiplication.

@@ -36,6 +36,10 @@ class NumpyBackend:
         return cls._np.stack(arrays, axis=axis)
 
     @classmethod
+    def concatenate_v2(cls, arrays, axis=1):
+        return cls._np.concatenate(arrays, axis=axis)
+
+    @classmethod
     def modulus(cls, x):
         """
             This function implements a modulus transform for complex numbers.
