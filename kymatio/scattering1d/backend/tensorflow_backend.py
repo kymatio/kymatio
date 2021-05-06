@@ -79,6 +79,15 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return x[..., i0:i1]
 
     @classmethod
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return tf.zeros(shape, dtype=ref.dtype)
+
+    @classmethod
+    def fft(cls, x, axis=-1):  # TODO transpose?
+        return tf.signal.fft(x, name='fft1d')
+
+    @classmethod
     def rfft(cls, x):
         cls.real_check(x)
 
@@ -95,5 +104,25 @@ class TensorFlowBackend1D(TensorFlowBackend):
         cls.complex_check(x)
 
         return tf.signal.ifft(x, name='ifft1d')
+
+    @classmethod
+    def transpose(cls, x):
+        """Permute time and frequency dimension for time-frequency scattering"""
+        return tf.transpose(x, (-2, -3))
+
+    @classmethod
+    def conj_fr(cls, x):
+        """Conjugate in frequency domain by swapping all bins (except dc);
+        assumes frequency along last axis.
+        """
+        out = cls.zeros_like(x)
+        out[..., 0] = x[..., 0]
+        out[..., 1:] = x[..., :0:-1]
+        return out
+
+    @classmethod
+    def mean(cls, x, axis=-1):
+        """Take mean along specified axis, without collapsing the axis."""
+        return tf.reduce_mean(x, axis=axis, keepdims=True)
 
 backend = TensorFlowBackend1D

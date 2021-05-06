@@ -91,6 +91,16 @@ class TorchBackend1D(TorchBackend):
 
         return x[..., i0:i1]
 
+    @classmethod
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return torch.zeros(shape, dtype=ref.dtype, device=ref.device)
+
+    @classmethod
+    def fft(cls, x, axis=-1):
+        cls.contiguous_check(x)
+        return torch.fft.fft(x, dim=axis)
+
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
@@ -121,6 +131,21 @@ class TorchBackend1D(TorchBackend):
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
         return x.transpose(-2, -3).contiguous()
+
+    @classmethod
+    def conj_fr(cls, x):
+        """Conjugate in frequency domain by swapping all bins (except dc);
+        assumes frequency along last axis.
+        """
+        out = cls.zeros_like(x)
+        out[..., 0] = x[..., 0]
+        out[..., 1:] = x[..., :0:-1]
+        return out
+
+    @classmethod
+    def mean(cls, x, axis=-1):
+        """Take mean along specified axis, without collapsing the axis."""
+        return x.mean(axis, keepdim=True)
 
 
 backend = TorchBackend1D

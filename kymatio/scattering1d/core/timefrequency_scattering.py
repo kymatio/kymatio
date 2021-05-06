@@ -78,8 +78,7 @@ def timefrequency_scattering(
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
         pad_fr = sc_freq.J_pad_fo
-        S_1_fr = B.zeros((2**pad_fr, S_1_list[-1].shape[-1]),
-                         dtype=S_1_list[-1].dtype)
+        S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
         S_1_fr[:len(S_1_list)] = S_1_list
 
     if sc_freq.average_global and average:
@@ -141,7 +140,7 @@ def timefrequency_scattering(
         else:
             pad_fr = sc_freq.J_pad[n2]
         n2_time = U_0.shape[-1] // 2**max(min(j2, log2_T) - oversampling, 0)
-        Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
+        Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
 
         # Wavelet transform over time
         for n1 in range(len(psi1)):
@@ -185,7 +184,7 @@ def timefrequency_scattering(
     # preallocate output slice
     pad_fr = sc_freq.J_pad_fo
     n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
-    Y_2_arr = backend.zeros((2**pad_fr, n2_time), dtype=U_1_c.dtype)
+    Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
 
     # Low-pass filtering over time, with filter length matching first-order's
     for n1 in range(len(psi1)):

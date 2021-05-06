@@ -83,12 +83,13 @@ class NumpyBackend1D(NumpyBackend):
         return x[..., i0:i1]
 
     @classmethod
-    def zeros(cls, shape, dtype=None):
-        return cls._np.zeros(shape, dtype=dtype)
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return cls._np.zeros(shape, dtype=ref.dtype)
 
     @classmethod
-    def fft(cls, x):
-        return cls._np.fft.fft(x)
+    def fft(cls, x, axis=-1):
+        return cls._np.fft.fft(x, axis=axis)
 
     @classmethod
     def rfft(cls, x):
@@ -118,7 +119,7 @@ class NumpyBackend1D(NumpyBackend):
         """Conjugate in frequency domain by swapping all bins (except dc);
         assumes frequency along last axis.
         """
-        out = cls._np.zeros(x.shape, dtype=x.dtype)
+        out = cls.zeros_like(x)
         out[..., 0] = x[..., 0]
         out[..., 1:] = x[..., :0:-1]
         return out
