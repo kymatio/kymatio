@@ -52,7 +52,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("shape must be an integer or a 1-tuple")
 
         # special case enabling faster averaging
-        self.global_average = bool(self.T == self.N)
+        self.average_global = bool(self.T == self.N)
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
