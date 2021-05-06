@@ -7,7 +7,7 @@ from kymatio import Scattering1D, TimeFrequencyScattering1D
 # backend to use for most tests
 default_backend = 'numpy'
 # set True to execute all test functions without pytest
-run_without_pytest = 0
+run_without_pytest = 1
 
 
 def test_alignment():
@@ -176,22 +176,23 @@ def test_up_vs_down():
     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
-# def test_torch():
-#     from kymatio import TimeFrequencyScattering1D as TFSAgnostic
-#     # import torch
-#     import tensorflow as tf
+def test_torch():
+    from kymatio import TimeFrequencyScattering1D as TFSAgnostic
+    # import torch
+    # import tensorflow as tf
 
-#     N = 512
-#     x = echirp(N)
-#     x = tf.constant(x)
-#     # x = torch.from_numpy(x)
+    N = 512
+    x = echirp(N)
+    x = np.vstack([x, x, x])
+    # x = tf.constant(x)
+    # x = torch.from_numpy(x)
 
-#     jtfs = TFSAgnostic(shape=N, J=8, Q=8, J_fr=3, Q_fr=1, frontend='tensorflow')
-#     Scx = jtfs(x)
+    jtfs = TFSAgnostic(shape=N, J=8, Q=8, J_fr=3, Q_fr=1, frontend='numpy')
+    Scx = jtfs(x)
 
-#     E_up   = energy(Scx['psi_t * psi_f_up'])
-#     E_down = energy(Scx['psi_t * psi_f_down'])
-#     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
+    E_up   = energy(Scx['psi_t * psi_f_up'])
+    E_down = energy(Scx['psi_t * psi_f_down'])
+    assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
 def test_meta():
@@ -295,6 +296,7 @@ def test_output():
         for pair in out:
             for i, o in enumerate(out[pair]):
                 o = o if params['out_type'] == 'array' else o['coef']
+                o = o.squeeze(0) if len(o) == 1 and o.ndim == 3 else o
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
                 assert o.shape == o_stored.shape, (
                     "out[{0}][{1}].shape != out_stored[{2}].shape "
@@ -371,13 +373,13 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
-        test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_up_vs_down()
+        # test_alignment()
+        # test_shapes()
+        # test_jtfs_vs_ts()
+        # test_freq_tp_invar()
+        # test_up_vs_down()
         # test_torch()
-        test_meta()
+        # test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])

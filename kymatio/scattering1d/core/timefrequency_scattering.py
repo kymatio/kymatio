@@ -78,8 +78,9 @@ def timefrequency_scattering(
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
         pad_fr = sc_freq.J_pad_fo
-        S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
-        S_1_fr[:len(S_1_list)] = S_1_list
+        S_1_fr = _right_pad(S_1_list, pad_fr, B)
+        # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
+        # S_1_fr[:len(S_1_list)] = S_1_list
 
     if sc_freq.average_global and average:
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
@@ -140,7 +141,8 @@ def timefrequency_scattering(
         else:
             pad_fr = sc_freq.J_pad[n2]
         n2_time = U_0.shape[-1] // 2**max(min(j2, log2_T) - oversampling, 0)
-        Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
+        # Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
+        Y_2_list = []
 
         # Wavelet transform over time
         for n1 in range(len(psi1)):
@@ -158,7 +160,10 @@ def timefrequency_scattering(
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
             Y_2_c = B.ifft(Y_2_hat)
-            Y_2_arr[n1] = Y_2_c
+            Y_2_list.append(Y_2_c)
+            # Y_2_arr[n1] = Y_2_c
+
+        Y_2_arr = _right_pad(Y_2_list, pad_fr, B)
 
         # sum is same for all `n1`, just take last
         k1_plus_k2 = k1 + k2
@@ -184,7 +189,8 @@ def timefrequency_scattering(
     # preallocate output slice
     pad_fr = sc_freq.J_pad_fo
     n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
-    Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
+    Y_2_list = []
+    # Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
 
     # Low-pass filtering over time, with filter length matching first-order's
     for n1 in range(len(psi1)):
@@ -198,11 +204,13 @@ def timefrequency_scattering(
         Y_2_c = S_1_c_list[n1]
         Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
         Y_2_c = B.ifft(Y_2_hat)
-        Y_2_arr[n1] = Y_2_c
+        Y_2_list.append(Y_2_c)
+        # Y_2_arr[n1] = Y_2_c
 
     # sum is same for all `n1`, just take last
     k1_plus_k2 = k1 + k2
 
+    Y_2_arr = _right_pad(Y_2_list, pad_fr, B)
     # swap axes & map to Fourier domain to prepare for conv along freq
     Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
@@ -406,6 +414,12 @@ def _transpose_fft(coeff_arr, B, fft):
     # Map to Fourier domain
     out = fft(out)
     return out
+
+
+def _right_pad(coeff_list, pad_fr, B):
+    zero_row = B.zeros_like(coeff_list[0])
+    zero_rows = [zero_row] * (2**pad_fr - len(coeff_list))
+    return B.concatenate(coeff_list + zero_rows).squeeze()
 
 
 __all__ = ['timefrequency_scattering']

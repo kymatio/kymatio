@@ -28,7 +28,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         """
         cls.complex_check(x)
 
-        y = tf.reshape(x, (-1, k, x.shape[-1] // k))
+        y = tf.reshape(x, (*x.shape[:-1], k, x.shape[-1] // k))
 
         return tf.reduce_mean(y, axis=-2)
 
