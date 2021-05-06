@@ -61,9 +61,9 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("shape must be an integer or a 1-tuple")
 
         # check pad_mode
-        if self.pad_mode not in ('reflect', 'symmetric', 'zero'):
-            raise ValueError("`pad_mode` must be one of: reflect, symmetric, "
-                             "zero (got %s)" % self.pad_mode)
+        if self.pad_mode not in ('reflect', 'zero'):
+            raise ValueError("`pad_mode` must be one of: reflect, zero "
+                             "(got %s)" % self.pad_mode)
 
         # ensure 2**J <= nextpow2(N)
         mx = 2**math.ceil(math.log2(self.N))
@@ -74,11 +74,14 @@ class ScatteringBase1D(ScatteringBase):
         # check T or set default
         if self.T is None:
             self.T = 2**(self.J)
+        elif self.T == 'global':
+            self.T == mx
         elif self.T > self.N:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, self.N))
         self.log2_T = math.floor(math.log2(self.T))
+        self.average_global = bool(self.T == mx)
 
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
@@ -570,7 +573,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                               "rows (rounded up to pow2) in joint scattering "
                               "(got {} > {})".format(2**(self.J_fr), mx)))
 
-        # check F or set default  # TODO duplication
+        # check F or set default
         if self.F is None:
             self.F = 2**(self.J_fr)
         elif self.F == 'global':

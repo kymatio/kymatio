@@ -139,7 +139,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             self.psi1_f, self.psi2_f, self.phi_f,
             self.sc_freq,
             average=self.average,
-            average_fr=self.average_fr,
+            average_global=self.average_global,
             pad_left=self.pad_left, pad_right=self.pad_right,
             ind_start=self.ind_start, ind_end=self.ind_end,
             oversampling=self.oversampling,

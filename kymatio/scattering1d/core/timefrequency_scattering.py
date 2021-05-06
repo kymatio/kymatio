@@ -3,12 +3,13 @@ def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
         oversampling=0, oversampling_fr=0, aligned=True,
-        average=True, average_fr=True, out_type='array', pad_mode='zero'):
+        average=True, average_global=None, out_type='array', pad_mode='zero'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
     # pack for later
     B = backend
+    average_fr = sc_freq.average
     commons = (B, sc_freq, aligned, oversampling_fr, oversampling, average,
                average_fr, out_type, unpad, log2_T, phi, ind_start, ind_end)
 
@@ -57,17 +58,19 @@ def timefrequency_scattering(
         S_1_c_list.append(S_1_c)
 
         # Apply low-pass filtering over time (optional) and unpad
-        if average:
+        if average_global:
+            S_1 = B.mean(U_1_m, axis=-1)
+        elif average:
             # Low-pass filtering over time
             k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
             # Unpad
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
-            S_1_list.append(S_1)
         else:
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
+        S_1_list.append(S_1)
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
 
     # Frequential averaging over time averaged coefficients ##################
