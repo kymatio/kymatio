@@ -233,7 +233,7 @@ def timefrequency_scattering(
 
     if out_type == 'array':
         for k, v in out.items():
-            out[k] = B.concatenate([c['coef'] for c in v], axis=0)
+            out[k] = B.concatenate([c['coef'] for c in v], axis=1)
     return out
 
 

@@ -285,6 +285,10 @@ def test_output():
         jtfs = TimeFrequencyScattering1D(**params, max_pad_factor=1,
                                          frontend=default_backend)
         out = jtfs(x)
+        o = out['S0']
+        if not isinstance(o, list) and (o.ndim == 4 and o.shape[0] == 1):
+            for pair in out:
+                out[pair] = out[pair].squeeze(0)
 
         n_coef_out = sum(1 for pair in out for c in out[pair])
         n_coef_out_stored = len(out_stored)
