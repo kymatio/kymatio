@@ -232,8 +232,11 @@ def test_output():
             if not_param(k):
                 continue
 
-            if k in ('average', 'aligned', 'resample_psi_fr', 'resample_phi_fr'):
+            if k in ('average', 'aligned'):
                 params[k] = bool(data[k])
+            elif k == 'resample_filters_fr':
+                params[k] = (bool(data[k]) if len(data[k]) == 1 else
+                             tuple(data[k]))
             elif k == 'average_fr':
                 params[k] = (str(data[k]) if str(data[k]) == 'global' else
                              bool(data[k]))
