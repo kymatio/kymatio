@@ -105,7 +105,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
     @classmethod
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
-        return tf.transpose(x, (-2, -3))
+        D = x.ndim
+        return tf.transpose(x, (*list(range(D - 2)), D - 1, D - 2))
 
     @classmethod
     def mean(cls, x, axis=-1):

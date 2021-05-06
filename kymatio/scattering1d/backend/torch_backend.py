@@ -128,7 +128,7 @@ class TorchBackend1D(TorchBackend):
     @classmethod
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
-        return x.transpose(-2, -3).contiguous()
+        return x.transpose(*list(range(x.ndim - 2)), -1, -2).contiguous()
 
     @classmethod
     def mean(cls, x, axis=-1):
