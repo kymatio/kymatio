@@ -118,7 +118,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if not self.average and self.out_type == 'array':
+        if not (self.average and self.average_fr) and 'array' in self.out_type:
             raise ValueError("Options average=False and out_type='array' "
                              "are mutually incompatible. "
                              "Please set out_type='list'.")

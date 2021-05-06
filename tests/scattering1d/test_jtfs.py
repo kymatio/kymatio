@@ -232,14 +232,14 @@ def test_output():
             if not_param(k):
                 continue
 
-            if k in ('average', 'aligned'):
+            if k in ('average', 'average_fr', 'aligned'):
                 params[k] = bool(data[k])
             elif k == 'resample_filters_fr':
                 params[k] = (bool(data[k]) if len(data[k]) == 1 else
                              tuple(data[k]))
-            elif k == 'average_fr':
+            elif k == 'F':
                 params[k] = (str(data[k]) if str(data[k]) == 'global' else
-                             bool(data[k]))
+                             int(data[k]))
             elif k == 'out_type':
                 params[k] = str(data[k])
             else:

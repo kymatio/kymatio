@@ -79,7 +79,7 @@ def timefrequency_scattering(
                          dtype=S_1_list[-1].dtype)
         S_1_fr[:len(S_1_list)] = S_1_list
 
-    if average_fr == 'global' and average:
+    if sc_freq.average_global and average:
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
     elif average_fr and average:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
@@ -343,7 +343,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         # subsample regularly (relative to current padding)
         reference_total_subsample_so_far = total_subsample_so_far
 
-    if average_fr == 'global':
+    if sc_freq.average_global:
         pass
     elif average_fr:
         lowpass_subsample_fr = max(total_subsample_fr_max -
@@ -353,18 +353,19 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         total_subsample_fr = total_subsample_so_far
 
-    # fetch frequential lowpass
-    if not all_first_order:
-        phi_fr = sc_freq.phi_f[total_subsample_so_far]
-    else:
-        if total_subsample_so_far > 0:
-            sub = 1 if (sc_freq.J_pad_fo > sc_freq.J_pad_max) else 0
-            phi_fr = sc_freq.phi_f[total_subsample_so_far - sub]
+    if average_fr and not sc_freq.average_global:
+        # fetch frequential lowpass
+        if not all_first_order:
+            phi_fr = sc_freq.phi_f[total_subsample_so_far]
         else:
-            phi_fr = sc_freq.phi_f_fo
+            if total_subsample_so_far > 0:
+                sub = 1 if (sc_freq.J_pad_fo > sc_freq.J_pad_max) else 0
+                phi_fr = sc_freq.phi_f[total_subsample_so_far - sub]
+            else:
+                phi_fr = sc_freq.phi_f_fo
 
     # do lowpassing ##########################################################
-    if average_fr == 'global':
+    if sc_freq.average_global:
         S_2_fr = B.mean(U_2_m, axis=-1)
     elif average_fr:
         # Low-pass filtering over frequency
@@ -375,7 +376,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         S_2_fr = U_2_m
 
-    if average_fr != 'global':
+    if not sc_freq.average_global:
         S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
     # Swap time and frequency subscripts again
     S_2_fr = B.transpose(S_2_fr)

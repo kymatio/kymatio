@@ -416,7 +416,7 @@ class TimeFrequencyScatteringBase():
         self._J_fr = J_fr
         self._Q_fr = Q_fr
         self._F = F
-        self.average_fr = average_fr
+        self._average_fr = average_fr
         self.oversampling_fr = oversampling_fr
         self.aligned = aligned
         if isinstance(resample_filters_fr, tuple):
@@ -435,7 +435,7 @@ class TimeFrequencyScatteringBase():
 
         self.sc_freq = _FrequencyScatteringBase(
             self._J_fr, self._shape_fr, self._Q_fr, self._F, max_order_fr,
-            self.average, self.resample_psi_fr, self.resample_phi_fr,
+            self._average_fr, self.resample_psi_fr, self.resample_phi_fr,
             self.oversampling, self.vectorize, self.out_type, self.pad_mode,
             self._n_psi1, self.backend)
         self.finish_creating_filters()
@@ -494,6 +494,14 @@ class TimeFrequencyScatteringBase():
     @property
     def J_pad_fr_max(self):
         return self.sc_freq.J_pad_max
+
+    @property
+    def average_fr(self):
+        return self.sc_freq.average
+
+    @property
+    def average_fr_global(self):
+        return self.sc_freq.average_global
 
     @property
     def F(self):
@@ -565,12 +573,15 @@ class _FrequencyScatteringBase(ScatteringBase):
         # check F or set default  # TODO duplication
         if self.F is None:
             self.F = 2**(self.J_fr)
+        elif self.F == 'global':
+            self.F = mx
         elif self.F > mx:
             raise ValueError("The temporal support F of the low-pass filter "
                              "cannot exceed maximum number of frequency rows "
                              "(rounded up to pow2) in joint scattering "
                              "(got {} > {})".format(self.F, mx))
         self.log2_F = math.floor(math.log2(self.F))
+        self.average_global = bool(self.F == mx)
 
         # compute maximum amount of padding
         self.J_pad_max, self.min_to_pad_max = self._compute_J_pad(
@@ -596,7 +607,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.phi_f_fo = self.phi_f[0]
             self.log2_F_fo = self.log2_F
 
-        if self.resample_phi_fr:
+        if self.resample_phi_fr and not self.average_global:
             # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f`)
             # is limited by `sc_freq.phi_f[0]`'s time width.
             # This is accounted for  in `scattering_filter_factory_fr` by
