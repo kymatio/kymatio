@@ -24,7 +24,7 @@ def timefrequency_scattering(
     # compute the Fourier transform
     U_0_hat = B.rfft(U_0)
 
-    # Zeroth order:
+    # Zeroth order ###########################################################
     k0 = max(log2_T - oversampling, 0)
     if average:
         S_0_c = B.cdgmm(U_0_hat, phi[0])
@@ -35,7 +35,7 @@ def timefrequency_scattering(
         S_0 = x
     out_S_0.append({'coef': S_0, 'j': (), 'n': (), 's': ()})
 
-    # First order:
+    # First order ############################################################
     U_1_hat_list, S_1_list, S_1_c_list = [], [], []
     for n1 in range(len(psi1)):
         # Convolution + downsampling
@@ -62,16 +62,16 @@ def timefrequency_scattering(
             k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
-
             # Unpad
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1_list.append(S_1)
         else:
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
-        S_1_list.append(S_1)
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
 
-    # Apply averaging over frequency and unpad
+    # Frequential averaging over time averaged coefficients ##################
+    # `U1 * (phi_t * phi_f)` pair
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
         pad_fr = sc_freq.J_pad_fo
@@ -125,7 +125,8 @@ def timefrequency_scattering(
     # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
 
     ##########################################################################
-    # Second order: separable convolutions (along time & freq), and low-pass
+    # Joint scattering: separable convolutions (along time & freq), and low-pass
+    # `U1 * (psi_t * psi_f)` (up & down), and `U1 * (psi_t * phi_f)`
     for n2 in range(len(psi2)):
         j2 = psi2[n2]['j']
         if j2 == 0:
@@ -174,7 +175,7 @@ def timefrequency_scattering(
                            out_S_2['psi_t * phi_f'])
 
     ##########################################################################
-    # Second order: `X * (phi_t * psi_f)`
+    # `U1 * (phi_t * psi_f)`
     # take largest subsampling factor
     j2 = log2_T
 
