@@ -94,7 +94,8 @@ class TorchBackend1D(TorchBackend):
     @classmethod
     def zeros_like(cls, ref, shape=None):
         shape = shape if shape is not None else ref.shape
-        return torch.zeros(shape, dtype=ref.dtype, device=ref.device)
+        return torch.zeros(shape, dtype=ref.dtype, layout=ref.layout,
+                           device=ref.device)
 
     @classmethod
     def fft(cls, x, axis=-1):
