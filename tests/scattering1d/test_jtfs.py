@@ -2,10 +2,10 @@ import os
 import pytest
 import numpy as np
 import scipy.signal
-from kymatio.numpy import Scattering1D, TimeFrequencyScattering
+from kymatio import Scattering1D, TimeFrequencyScattering1D
 
-# TODO no kymatio.numpy
-
+# backend to use for most tests
+default_backend = 'numpy'
 # set True to execute all test functions without pytest
 run_without_pytest = 0
 
@@ -30,9 +30,9 @@ def test_alignment():
 
     # scatter ################################################################
     for out_type in ('array', 'list'):
-        jtfs = TimeFrequencyScattering(
+        jtfs = TimeFrequencyScattering1D(
             J, T, Q, J_fr=4, Q_fr=2, average=True,
-            out_type=out_type, aligned=True)
+            out_type=out_type, aligned=True, frontend=default_backend)
 
         Scx = jtfs(x)
         jmeta = jtfs.meta()
@@ -68,9 +68,10 @@ def test_shapes():
     for oversampling in (0, 1):
       for oversampling_fr in (0, 1):
         for aligned in (True, False):
-          jtfs = TimeFrequencyScattering(
+          jtfs = TimeFrequencyScattering1D(
               J, T, Q, J_fr=4, Q_fr=2, average=True, out_type='array',
-              oversampling=oversampling, aligned=aligned)
+              oversampling=oversampling, aligned=aligned,
+              frontend=default_backend)
           Scx = jtfs(x)
           jmeta = jtfs.meta()
 
@@ -102,9 +103,11 @@ def test_jtfs_vs_ts():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", max_pad_factor=1)
-    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                   out_type="array", max_pad_factor=1)
+    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", max_pad_factor=1,
+                      frontend=default_backend)
+    jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
+                                     out_type="array", max_pad_factor=1,
+                                     frontend=default_backend)
 
     # scatter
     ts_x  = ts(x)
@@ -143,8 +146,9 @@ def test_freq_tp_invar():
     th_all = [.19, .14]
 
     for th, F in zip(th_all, F_all):
-        jtfs = TimeFrequencyScattering(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
-                                       F=F, out_type="array")
+        jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
+                                         F=F, out_type="array",
+                                         frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
         jtfs_x1_all = jtfs(x1)
@@ -163,7 +167,8 @@ def test_up_vs_down():
     N = 2048
     x = echirp(N)
 
-    jtfs = TimeFrequencyScattering(shape=N, J=10, Q=16, J_fr=4, Q_fr=1)
+    jtfs = TimeFrequencyScattering1D(shape=N, J=10, Q=16, J_fr=4, Q_fr=1,
+                                     frontend=default_backend)
     Scx = jtfs(x)
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
@@ -171,8 +176,26 @@ def test_up_vs_down():
     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
+# def test_torch():
+#     from kymatio import TimeFrequencyScattering1D as TFSAgnostic
+#     # import torch
+#     import tensorflow as tf
+
+#     N = 512
+#     x = echirp(N)
+#     x = tf.constant(x)
+#     # x = torch.from_numpy(x)
+
+#     jtfs = TFSAgnostic(shape=N, J=8, Q=8, J_fr=3, Q_fr=1, frontend='tensorflow')
+#     Scx = jtfs(x)
+
+#     E_up   = energy(Scx['psi_t * psi_f_up'])
+#     E_down = energy(Scx['psi_t * psi_f_down'])
+#     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
+
+
 def test_meta():
-    """Test that `TimeFrequencyScattering.meta()` matches output's meta."""
+    """Test that `TimeFrequencyScattering1D.meta()` matches output's meta."""
     def assert_equal(Scx, meta, field, pair, i):
         a, b = Scx[pair][i][field], meta[field][pair][i]
         errmsg = "(out[{0}][{1}][{2}], meta[{2}][{0}][{1}]) = ({3}, {4})".format(
@@ -191,7 +214,8 @@ def test_meta():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    jtfs = TimeFrequencyScattering(J=J, Q=Q, Q_fr=1, shape=N, out_type="list")
+    jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, shape=N, out_type="list",
+                                     frontend=default_backend)
 
     Scx = jtfs(x)
     meta = jtfs.meta()
@@ -257,7 +281,8 @@ def test_output():
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
 
-        jtfs = TimeFrequencyScattering(**params, max_pad_factor=1)
+        jtfs = TimeFrequencyScattering1D(**params, max_pad_factor=1,
+                                         frontend=default_backend)
         out = jtfs(x)
 
         n_coef_out = sum(1 for pair in out for c in out[pair])
@@ -351,6 +376,7 @@ if __name__ == '__main__':
         test_jtfs_vs_ts()
         test_freq_tp_invar()
         test_up_vs_down()
+        # test_torch()
         test_meta()
         test_output()
     else:

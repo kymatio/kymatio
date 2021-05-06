@@ -2,6 +2,7 @@ import torch
 import torch.fft
 import torch.nn.functional as F
 from ...backend.torch_backend import TorchBackend
+from .agnostic_backend import pad as agnostic_pad
 
 
 class TorchBackend1D(TorchBackend):
@@ -38,7 +39,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, pad_mode='reflect'):
         """Pad real 1D tensors
 
         1D implementation of the padding function for real PyTorch tensors.
@@ -54,18 +55,14 @@ class TorchBackend1D(TorchBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        pad_mode : str
+            name of padding to use.
         Returns
         -------
         res : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
-
-        res = F.pad(x, (pad_left, pad_right), mode='reflect')
-        res = res[..., None]
-
-        return res
+        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'torch')[..., None]
 
     @staticmethod
     def unpad(x, i0, i1):
@@ -132,16 +129,6 @@ class TorchBackend1D(TorchBackend):
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
         return x.transpose(-2, -3).contiguous()
-
-    @classmethod
-    def conj_fr(cls, x):
-        """Conjugate in frequency domain by swapping all bins (except dc);
-        assumes frequency along last axis.
-        """
-        out = cls.zeros_like(x)
-        out[..., 0] = x[..., 0]
-        out[..., 1:] = x[..., :0:-1]
-        return out
 
     @classmethod
     def mean(cls, x, axis=-1):

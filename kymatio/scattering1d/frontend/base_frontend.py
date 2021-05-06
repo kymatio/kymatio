@@ -412,7 +412,7 @@ class ScatteringBase1D(ScatteringBase):
             n=cls._doc_array_n)
 
 
-class TimeFrequencyScatteringBase():
+class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=1, F=None, average_fr=True,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
                  pad_mode='zero'):
@@ -525,7 +525,7 @@ class TimeFrequencyScatteringBase():
 
 
 class _FrequencyScatteringBase(ScatteringBase):
-    """Attribute object for TimeFrequencyScatteringBase for frequential
+    """Attribute object for TimeFrequencyScatteringBase1D for frequential
     scattering part of JTFS.
     """
     def __init__(self, J_fr, shape_fr, Q_fr=2, F=None, max_order_fr=1,
@@ -624,7 +624,7 @@ class _FrequencyScatteringBase(ScatteringBase):
     def create_psi_filters(self):
         self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
             self.J_fr, self.Q_fr, self.J_pad_max, self.j0s,
-            **self.get_params('backend', 'resample_psi_fr', 'r_psi', 'normalize',
+            **self.get_params('resample_psi_fr', 'r_psi', 'normalize',
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
         # create `_fo` filters for `phi_t * psi_f` pairs
@@ -751,4 +751,4 @@ class _FrequencyScatteringBase(ScatteringBase):
         return {k: getattr(self, k) for k in args}
 
 
-__all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
+__all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase1D']

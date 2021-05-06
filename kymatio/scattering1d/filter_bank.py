@@ -826,7 +826,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     return phi_f, psi1_f, psi2_f, t_max_phi
 
 
-def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
+def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
                    r_psi=math.sqrt(0.5), normalize='l1', sigma0=0.1, alpha=5.,
                    P_max=5, eps=1e-7):
     # TODO docs
@@ -883,7 +883,7 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, backend, resample_psi_fr=True,
     for psi_ups in psi1_f_up:
         psi_down = {}
         for j0, psi_up in enumerate(psi_ups.values()):
-            psi_down[j0] = backend.conj_fr(psi_up)
+            psi_down[j0] = conj_fr(psi_up)
         psi1_f_down.append(psi_down)
 
     # Embed the meta information within the filters
@@ -935,3 +935,13 @@ def phi_fr_factory(F, log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
 
     # return results
     return phi_f
+
+
+def conj_fr(x):
+    """Conjugate in frequency domain by swapping all bins (except dc);
+    assumes frequency along last axis.
+    """
+    out = np.zeros_like(x)
+    out[..., 0] = x[..., 0]
+    out[..., 1:] = x[..., :0:-1]
+    return out

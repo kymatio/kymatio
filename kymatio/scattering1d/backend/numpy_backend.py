@@ -115,16 +115,6 @@ class NumpyBackend1D(NumpyBackend):
         return x.transpose(*list(range(x.ndim - 2)), -1, -2)
 
     @classmethod
-    def conj_fr(cls, x):
-        """Conjugate in frequency domain by swapping all bins (except dc);
-        assumes frequency along last axis.
-        """
-        out = cls.zeros_like(x)
-        out[..., 0] = x[..., 0]
-        out[..., 1:] = x[..., :0:-1]
-        return out
-
-    @classmethod
     def mean(cls, x, axis=-1):
         """Take mean along specified axis, without collapsing the axis."""
         return x.mean(axis, keepdims=True)

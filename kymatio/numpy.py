@@ -1,6 +1,6 @@
 from .scattering1d.frontend.numpy_frontend import (
     ScatteringNumPy1D as Scattering1D,
-    TimeFrequencyScatteringNumPy as TimeFrequencyScattering)
+    TimeFrequencyScatteringNumPy1D as TimeFrequencyScattering1D)
 from .scattering2d.frontend.numpy_frontend import ScatteringNumPy2D as Scattering2D
 from .scattering3d.frontend.numpy_frontend \
         import HarmonicScatteringNumPy3D as HarmonicScattering3D
@@ -15,4 +15,4 @@ HarmonicScattering3D.__module__ = 'kymatio.numpy'
 HarmonicScattering3D.__name__ = 'HarmonicScattering3D'
 
 __all__ = ['Scattering1D', 'Scattering2D', 'HarmonicScattering3D',
-           'TimeFrequencyScattering']
+           'TimeFrequencyScattering1D']

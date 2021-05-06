@@ -1,6 +1,7 @@
 import tensorflow as tf
 
 from ...backend.tensorflow_backend import TensorFlowBackend
+from .agnostic_backend import pad as agnostic_pad
 
 
 class TensorFlowBackend1D(TensorFlowBackend):
@@ -32,7 +33,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.reduce_mean(y, axis=-2)
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, pad_mode='reflect'):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -46,18 +47,14 @@ class TensorFlowBackend1D(TensorFlowBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        pad_mode : str
+            name of padding to use.
         Returns
         -------
         res : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
-
-        paddings = [[0, 0]] * len(x.shape[:-1])
-        paddings += [[pad_left, pad_right]]
-
-        return tf.pad(x, paddings, mode="REFLECT")
+        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'tensorflow')
 
     @staticmethod
     def unpad(x, i0, i1):
@@ -109,16 +106,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
         return tf.transpose(x, (-2, -3))
-
-    @classmethod
-    def conj_fr(cls, x):
-        """Conjugate in frequency domain by swapping all bins (except dc);
-        assumes frequency along last axis.
-        """
-        out = cls.zeros_like(x)
-        out[..., 0] = x[..., 0]
-        out[..., 1:] = x[..., :0:-1]
-        return out
 
     @classmethod
     def mean(cls, x, axis=-1):
