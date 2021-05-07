@@ -9,7 +9,7 @@ from kymatio.toolkit import drop_batch_dim_jtfs
 # backend to use for most tests
 default_backend = 'numpy'
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def test_alignment():
@@ -402,13 +402,13 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_backends()
-        # test_meta()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_backends()
+        test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])
