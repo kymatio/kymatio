@@ -429,6 +429,11 @@ class TimeFrequencyScatteringBase1D():
         self.pad_mode = pad_mode
 
     def build(self):
+        # don't allow untested and unneeded combination
+        if not self.aligned and self.out_type == "list":
+            raise ValueError("`aligned=False` is only allowed with "
+                             "`out_type` = 'array' or 'array-like'")
+
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1
         if self._J_fr is None:  # TODO set from shape_fr_max
