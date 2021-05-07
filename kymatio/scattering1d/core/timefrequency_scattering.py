@@ -87,7 +87,6 @@ def timefrequency_scattering(
     elif average_fr and average:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
 
-        total_subsample_fr_max = sc_freq.log2_F_fo
         if aligned:
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
@@ -101,6 +100,7 @@ def timefrequency_scattering(
         else:
             # subsample regularly (relative to current padding)
             reference_total_subsample_so_far = 0
+        total_subsample_fr_max = sc_freq.log2_F_fo
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)
@@ -111,8 +111,8 @@ def timefrequency_scattering(
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # unpad + transpose, append to out
-        if sc_freq.log2_F_fo > sc_freq.log2_F:
-            lowpass_subsample_fr -= 1  # adjust so indexing matches
+        diff = sc_freq.log2_F_fo - sc_freq.log2_F
+        lowpass_subsample_fr -= diff  # adjust so indexing matches
         if out_type == 'list':
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start[-1][lowpass_subsample_fr],
@@ -251,15 +251,16 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
             # Wavelet transform over frequency
+            pad_max = (sc_freq.J_pad_max if not all_first_order else
+                       sc_freq.J_pad_fo)
+            subsample_equiv_due_to_pad = pad_max - pad_fr
             if aligned:
                 # subsample as we would in min-padded case
                 reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
             else:
                 # subsample regularly (relative to current padding)
-                reference_subsample_equiv_due_to_pad = sc_freq.j0s[n2]
-            pad_max = (sc_freq.J_pad_max if not all_first_order else
-                       sc_freq.J_pad_fo)
-            subsample_equiv_due_to_pad = pad_max - pad_fr
+                reference_subsample_equiv_due_to_pad = (
+                    pad_max - subsample_equiv_due_to_pad)
 
             j1_fr = psi1_f[n1_fr]['j']
             n1_fr_subsample = max(
@@ -366,11 +367,17 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     if average_fr and not sc_freq.average_global:
         # fetch frequential lowpass
         if not all_first_order:
-            phi_fr = sc_freq.phi_f[total_subsample_so_far]
+            try:
+                phi_fr = sc_freq.phi_f[total_subsample_so_far]
+            except:
+                print(n2, U_2_m.shape, subsample_equiv_due_to_pad,
+                      n1_fr_subsample, lowpass_subsample_fr,
+                      total_subsample_so_far)
+                phi_fr = sc_freq.phi_f[total_subsample_so_far]
         else:
             if total_subsample_so_far > 0:
-                sub = 1 if (sc_freq.J_pad_fo > sc_freq.J_pad_max) else 0
-                phi_fr = sc_freq.phi_f[total_subsample_so_far - sub]
+                diff = sc_freq.J_pad_fo - sc_freq.J_pad_max
+                phi_fr = sc_freq.phi_f[total_subsample_so_far - diff]
             else:
                 phi_fr = sc_freq.phi_f_fo
 
