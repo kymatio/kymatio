@@ -367,13 +367,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     if average_fr and not sc_freq.average_global:
         # fetch frequential lowpass
         if not all_first_order:
-            try:
-                phi_fr = sc_freq.phi_f[total_subsample_so_far]
-            except:
-                print(n2, U_2_m.shape, subsample_equiv_due_to_pad,
-                      n1_fr_subsample, lowpass_subsample_fr,
-                      total_subsample_so_far)
-                phi_fr = sc_freq.phi_f[total_subsample_so_far]
+            phi_fr = sc_freq.phi_f[total_subsample_so_far]
         else:
             if total_subsample_so_far > 0:
                 diff = sc_freq.J_pad_fo - sc_freq.J_pad_max
