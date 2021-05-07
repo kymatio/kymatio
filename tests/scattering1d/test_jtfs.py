@@ -324,12 +324,11 @@ def test_output():
                     "({3} != {4})\n{5}".format(pair, i, o_stored_key, o.shape,
                                                o_stored.shape, params_str))
                 adiff = np.abs(o - o_stored)
-                if not np.allclose(o, o_stored):
-                    print((
+                assert np.allclose(o, o_stored), (
                     "out[{0}][{1}] != out_stored[{2}] (MeanAE={3:.2e}, "
                     "MaxAE={4:.2e})\n{5}"
                     ).format(pair, i, o_stored_key, adiff.mean(), adiff.max(),
-                             ''))
+                             params_str)
                 i_s += 1
 
 

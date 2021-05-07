@@ -601,20 +601,6 @@ class _FrequencyScatteringBase(ScatteringBase):
              **self.get_params('resample_phi_fr', 'criterion_amplitude',
                                'sigma0', 'P_max', 'eps'))
 
-        # Edge case: need phi_f in case number of `psi1` filters (and thus
-        # first-order coeffs) pads greater than max(J_pad). Note this filter,
-        # if `!= phi_f[0]`, always computes per `resample_phi_fr=True`
-        # TODO compute per `resample_phi_fr` instead?
-        self.J_pad_fo = self.compute_J_pad(self._n_psi1, recompute=True)
-        if self.J_pad_fo > self.J_pad_max:
-            self.phi_f_fo = gauss_1d(2**self.J_pad_fo, sigma=self.phi_f['sigma'],
-                                     P_max=self.P_max, eps=self.eps)
-            # need to subsample more since padded more
-            self.log2_F_fo = self.log2_F + 1
-        else:
-            self.phi_f_fo = self.phi_f[0]
-            self.log2_F_fo = self.log2_F
-
         if self.resample_phi_fr and not self.average_global:
             # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f`)
             # is limited by `sc_freq.phi_f[0]`'s time width.
@@ -625,6 +611,24 @@ class _FrequencyScatteringBase(ScatteringBase):
         else:
             # usual behavior
             self.max_subsampling_before_phi_fr = self.log2_F
+
+        # Edge case: need phi_f in case number of `psi1` filters (and thus
+        # first-order coeffs) pads greater than max(J_pad). Note this filter,
+        # if `!= phi_f[0]`, always computes per `resample_phi_fr=True`
+        # TODO compute per `resample_phi_fr` instead?
+        # Q=(0,0) to decide from `phi` alone, since we don't do *psi here
+        self.J_pad_fo = self.compute_J_pad(self._n_psi1, recompute=True, Q=(0, 0))
+        diff = self.J_pad_fo - self.J_pad_max
+        if diff > 0:
+            self.phi_f_fo = gauss_1d(2**self.J_pad_fo, sigma=self.phi_f['sigma'],
+                                     P_max=self.P_max, eps=self.eps)
+            # need to subsample more since padded more
+            self.log2_F_fo = self.log2_F + 1
+        else:
+            self.phi_f_fo = self.phi_f[-diff]
+        # subsample more or less since padded more (_fo > _max) or less (< _max)
+        self.log2_F_fo = self.log2_F + diff
+
 
     def create_psi_filters(self):
         self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
@@ -637,7 +641,8 @@ class _FrequencyScatteringBase(ScatteringBase):
         def copy_meta(out, p):
             out.update({k: v for k, v in p.items() if not isinstance(k, int)})
 
-        if self.J_pad_fo > self.J_pad_max:
+        diff = self.J_pad_fo - self.J_pad_max
+        if diff > 0:
             def create_psi_fo(p):
                 out = {}
                 out[0] = morlet_1d(2**self.J_pad_fo, p['xi'], p['sigma'],
@@ -647,7 +652,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         else:
             def create_psi_fo(p):
                 out = {}
-                out[0] = p[0].copy()
+                out[0] = p[-diff].copy()
                 copy_meta(out, p)
                 return out
         self.psi1_f_up_fo = [create_psi_fo(p) for p in self.psi1_f_up]
@@ -714,7 +719,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
 
-    def compute_J_pad(self, shape_fr, recompute=False):
+    def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
         """Depends on `shape_fr` and `(resample_phi_fr or resample_phi_fr)`:
             True:  pad per `shape_fr` and `min_to_pad` of longest `shape_fr`
             False: pad per `shape_fr` and `min_to_pad` of subsampled filters
@@ -723,25 +728,23 @@ class _FrequencyScatteringBase(ScatteringBase):
         latter has greater time-domain support.
 
         `recompute=True` will force computation from `shape_fr` alone, independent
-        of `J_pad_max`, `min_to_pad_max`, and `psi` filters, and per
-        `(resample_phi_fr) == True`.
+        of `J_pad_max` and `min_to_pad_max`, and per `resample_* == True`.
         """
         if recompute:
-            Q = (0, 0)  # decide only from phi
             J_pad, _ = self._compute_J_pad(shape_fr, Q)
 
         elif self.resample_phi_fr or self.resample_psi_fr:
             J_pad = math.ceil(np.log2(shape_fr + 2 * self.min_to_pad_max))
-            if self.resample_phi_fr:
-                # don't let J_pad drop below `J_pad_max - max_sub...`
-                J_pad = max(J_pad,
-                            self.J_pad_max - self.max_subsampling_before_phi_fr)
         else:
             # reproduce `compute_minimum_support_to_pad`'s logic
             # TODO instead compute directly? must introduce kwargs to above method
             J_tentative     = int(np.ceil(np.log2(shape_fr)))
             J_tentative_max = int(np.ceil(np.log2(self.shape_fr_max)))
             J_pad = self.J_pad_max - (J_tentative_max - J_tentative)
+
+        # don't let J_pad drop below `J_pad_max - max_sub...`
+        J_pad = max(J_pad,
+                    self.J_pad_max - self.max_subsampling_before_phi_fr)
         return J_pad
 
     def _compute_J_pad(self, shape_fr, Q):
