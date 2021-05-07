@@ -2,6 +2,7 @@ import torch
 import torch.fft
 import torch.nn.functional as F
 from ...backend.torch_backend import TorchBackend
+from .agnostic_backend import pad as agnostic_pad
 
 
 class TorchBackend1D(TorchBackend):
@@ -38,7 +39,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, pad_mode='reflect'):
         """Pad real 1D tensors
 
         1D implementation of the padding function for real PyTorch tensors.
@@ -54,18 +55,14 @@ class TorchBackend1D(TorchBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        pad_mode : str
+            name of padding to use.
         Returns
         -------
         res : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
-
-        res = F.pad(x, (pad_left, pad_right), mode='reflect')
-        res = res[..., None]
-
-        return res
+        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'torch')[..., None]
 
     @staticmethod
     def unpad(x, i0, i1):
@@ -90,6 +87,17 @@ class TorchBackend1D(TorchBackend):
         x = x.reshape(x.shape[:-1])
 
         return x[..., i0:i1]
+
+    @classmethod
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return torch.zeros(shape, dtype=ref.dtype, layout=ref.layout,
+                           device=ref.device)
+
+    @classmethod
+    def fft(cls, x, axis=-1):
+        cls.contiguous_check(x)
+        return torch.fft.fft(x, dim=axis)
 
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
@@ -120,7 +128,12 @@ class TorchBackend1D(TorchBackend):
     @classmethod
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
-        return x.transpose(-2, -3).contiguous()
+        return x.transpose(*list(range(x.ndim - 2)), -1, -2).contiguous()
+
+    @classmethod
+    def mean(cls, x, axis=-1):
+        """Take mean along specified axis, without collapsing the axis."""
+        return x.mean(axis, keepdim=True)
 
 
 backend = TorchBackend1D

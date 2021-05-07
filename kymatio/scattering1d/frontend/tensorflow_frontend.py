@@ -3,17 +3,20 @@ import warnings
 
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
 from ..core.scattering1d import scattering1d
+from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D
+from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase1D
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend='tensorflow',
-                 name='Scattering1D'):
+            oversampling=0, T=None, vectorize=True, out_type='array',
+            pad_mode='reflect', max_pad_factor=2, backend='tensorflow',
+            name='Scattering1D'):
         ScatteringTensorFlow.__init__(self, name=name)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
-                oversampling, vectorize, out_type, backend)
+                oversampling, T, vectorize, out_type, pad_mode, max_pad_factor,
+                backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -87,4 +90,70 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 ScatteringTensorFlow1D._document()
 
 
-__all__ = ['ScatteringTensorFlow1D']
+class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
+                                          ScatteringTensorFlow1D):
+    def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, T=None, F=None,
+                 average=True, average_fr=None, oversampling=0,
+                 oversampling_fr=None, aligned=True, resample_filters_fr=True,
+                 out_type="array", pad_mode='zero', max_pad_factor=2,
+                 backend="tensorflow"):
+        if average_fr is None:
+            average_fr = average
+        if oversampling_fr is None:
+            oversampling_fr = oversampling
+        TimeFrequencyScatteringBase1D.__init__(
+            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
+            resample_filters_fr, pad_mode)
+
+        # Second-order scattering object for the time variable
+        vectorize = True # for compatibility, will be removed in 0.3
+        max_order_tm = 2
+        _out_type = out_type if out_type != "array-like" else "array"
+        ScatteringTensorFlow1D.__init__(
+            self, J, shape, Q, max_order_tm, average, oversampling, T,
+            vectorize, _out_type, pad_mode, max_pad_factor, backend)
+        self.out_type = _out_type
+
+        TimeFrequencyScatteringBase1D.build(self)
+
+    def scattering(self, x):
+        if len(x.shape) < 1:
+            raise ValueError(
+                'Input tensor x should have at least one axis, got {}'.format(
+                    len(x.shape)))
+
+        if not (self.average and self.average_fr) and 'array' in self.out_type:
+            raise ValueError("Options average=False and out_type='array' "
+                             "are mutually incompatible. "
+                             "Please set out_type='list'.")
+
+        if not self.out_type in ('array', 'list', 'array-like'):
+            raise RuntimeError("The out_type must be one of: array, list, "
+                               "array-like.")
+
+        signal_shape = tf.shape(x)[-1:]
+        x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
+
+        S = timefrequency_scattering(
+            x,
+            self.backend.pad, self.backend.unpad,
+            self.backend,
+            self.J,
+            self.log2_T,
+            self.psi1_f, self.psi2_f, self.phi_f,
+            self.sc_freq,
+            average=self.average,
+            average_global=self.average_global,
+            pad_left=self.pad_left, pad_right=self.pad_right,
+            ind_start=self.ind_start, ind_end=self.ind_end,
+            oversampling=self.oversampling,
+            oversampling_fr=self.oversampling_fr,
+            aligned=self.aligned,
+            out_type=self.out_type,
+            pad_mode=self.pad_mode)
+        return S
+
+TimeFrequencyScatteringTensorFlow1D._document()
+
+
+__all__ = ['ScatteringTensorFlow1D', 'TimeFrequencyScatteringTensorFlow1D']

@@ -6,8 +6,12 @@ class TensorFlowBackend(NumpyBackend):
     name = 'tensorflow'
 
     @staticmethod
-    def concatenate(arrays, axis=1):
+    def concatenate(arrays, axis=-2):
         return tf.stack(arrays, axis=axis)
+
+    @staticmethod
+    def concatenate_v2(arrays, axis=1):
+        return tf.concat(arrays, axis=axis)
 
     @staticmethod
     def modulus(x):

@@ -71,7 +71,7 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
 def filterbank_jtfs(jtfs, part='real', zoomed=False):
     """
     # Arguments:
-        jtfs: kymatio.scattering1d.TimeFrequencyScattering
+        jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
             JTFS instance.
         part: str['real', 'imag', 'complex']
             Whether to plot real or imaginary part (black-white-red colormap),
@@ -82,8 +82,8 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
 
     # Examples:
         T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
-        jtfs = TimeFrequencyScattering(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
-                                       out_type='array', average_fr=1)
+        jtfs = TimeFrequencyScattering1D(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
+                                         out_type='array', average_fr=1)
         filterbank_jtfs(jtfs)
     """
     def to_time(p):
@@ -266,8 +266,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
         T, J, Q = 2049, 7, 16
         x = np.cos(np.pi * 350 ** np.linspace(0, 1, T))
 
-        scattering = TimeFrequencyScattering(J, T, Q, J_fr=4, Q_fr=2,
-                                             out_type='list', average=True)
+        scattering = TimeFrequencyScattering1D(J, T, Q, J_fr=4, Q_fr=2,
+                                               out_type='list', average=True)
         Scx = scattering(x)
         meta = scattering.meta()
 
@@ -321,11 +321,11 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
     Parameters
     ----------
     Scx : dict
-        Output of `TimeFrequencyScattering.scattering()`.
+        Output of `TimeFrequencyScattering1D.scattering()`.
     log2_T : int
-        `TimeFrequencyScattering.log2_T`. `average=False`   -> `log2_T=1`.
+        `TimeFrequencyScattering1D.log2_T`. `average=False`    -> `log2_T=1`.
     log2_F : int
-        `TimeFrequencyScattering.log2_T`. `average_fr=False` -> `log2_F=1`.
+        `TimeFrequencyScattering1D.log2_T`. `average_fr=False` -> `log2_F=1`.
     x : tensor, optional
         Original input to print `E_out / E_in`.
     kind : str['L1', 'L2']

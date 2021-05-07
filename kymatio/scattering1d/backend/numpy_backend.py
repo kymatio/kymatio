@@ -25,7 +25,7 @@ class NumpyBackend1D(NumpyBackend):
         """
         cls.complex_check(x)
 
-        y = x.reshape(-1, k, x.shape[-1] // k)
+        y = x.reshape(*x.shape[:-1], k, x.shape[-1] // k)
 
         res = y.mean(axis=-2)
 
@@ -83,12 +83,13 @@ class NumpyBackend1D(NumpyBackend):
         return x[..., i0:i1]
 
     @classmethod
-    def zeros(cls, shape, dtype=None):
-        return cls._np.zeros(shape, dtype=dtype)
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return cls._np.zeros(shape, dtype=ref.dtype)
 
     @classmethod
-    def fft(cls, x):
-        return cls._np.fft.fft(x)
+    def fft(cls, x, axis=-1):
+        return cls._np.fft.fft(x, axis=axis)
 
     @classmethod
     def rfft(cls, x):
@@ -112,16 +113,6 @@ class NumpyBackend1D(NumpyBackend):
     def transpose(cls, x):
         """Permute time and frequency dimension for time-frequency scattering"""
         return x.transpose(*list(range(x.ndim - 2)), -1, -2)
-
-    @classmethod
-    def conj_fr(cls, x):
-        """Conjugate in frequency domain by swapping all bins (except dc);
-        assumes frequency along last axis.
-        """
-        out = cls._np.zeros(x.shape, dtype=x.dtype)
-        out[..., 0] = x[..., 0]
-        out[..., 1:] = x[..., :0:-1]
-        return out
 
     @classmethod
     def mean(cls, x, axis=-1):

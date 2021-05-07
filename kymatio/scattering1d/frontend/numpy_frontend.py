@@ -4,7 +4,7 @@ from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
+from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase1D
 
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
@@ -87,7 +87,7 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 ScatteringNumPy1D._document()
 
 
-class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1D):
+class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, T=None, F=None,
                  average=True, average_fr=None, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
@@ -97,7 +97,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             average_fr = average
         if oversampling_fr is None:
             oversampling_fr = oversampling
-        TimeFrequencyScatteringBase.__init__(
+        TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
             resample_filters_fr, pad_mode)
 
@@ -110,7 +110,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             vectorize, _out_type, pad_mode, max_pad_factor, backend)
         self.out_type = _out_type
 
-        TimeFrequencyScatteringBase.build(self)
+        TimeFrequencyScatteringBase1D.build(self)
 
     def scattering(self, x):
         if len(x.shape) < 1:
@@ -149,7 +149,7 @@ class TimeFrequencyScatteringNumPy(TimeFrequencyScatteringBase, ScatteringNumPy1
             pad_mode=self.pad_mode)
         return S
 
-TimeFrequencyScatteringNumPy._document()
+TimeFrequencyScatteringNumPy1D._document()
 
 
-__all__ = ['ScatteringNumPy1D', 'TimeFrequencyScatteringNumPy']
+__all__ = ['ScatteringNumPy1D', 'TimeFrequencyScatteringNumPy1D']
