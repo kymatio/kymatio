@@ -96,7 +96,8 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         # Convolution + downsampling
         j1 = psi1[n1]['j']
 
-        k1 = max(min(j1, log2_T) - oversampling, 0)
+        sub1_adj = min(j1, log2_T) if average else j1
+        k1 = max(sub1_adj - oversampling, 0)
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
         U_1_c = cdgmm(U_0_hat, psi1[n1][0])
@@ -133,7 +134,8 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
 
                     # convolution + downsampling
-                    k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
+                    sub2_adj = min(j2, log2_T) if average else j2
+                    k2 = max(sub2_adj - k1 - oversampling, 0)
 
                     U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
