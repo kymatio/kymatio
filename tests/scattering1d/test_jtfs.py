@@ -2,12 +2,14 @@ import os
 import pytest
 import numpy as np
 import scipy.signal
+import warnings
 from kymatio import Scattering1D, TimeFrequencyScattering1D
+from kymatio.toolkit import drop_batch_dim_jtfs
 
 # backend to use for most tests
-default_backend = 'tensorflow'
+default_backend = 'numpy'
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def test_alignment():
@@ -35,6 +37,7 @@ def test_alignment():
             out_type=out_type, aligned=True, frontend=default_backend)
 
         Scx = jtfs(x)
+        Scx = drop_batch_dim_jtfs(Scx)
         jmeta = jtfs.meta()
 
         # assert peaks share an index ########################################
@@ -73,6 +76,7 @@ def test_shapes():
               oversampling=oversampling, aligned=aligned,
               frontend=default_backend)
           Scx = jtfs(x)
+          Scx = drop_batch_dim_jtfs(Scx)
           jmeta = jtfs.meta()
 
           # assert slice shapes are equal ####################################
@@ -103,11 +107,10 @@ def test_jtfs_vs_ts():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", max_pad_factor=1,
-                      frontend=default_backend)
+    kw = dict(max_pad_factor=1, frontend=default_backend)
+    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", **kw)
     jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                     out_type="array", max_pad_factor=1,
-                                     frontend=default_backend)
+                                     out_type="array", **kw)
 
     # scatter
     ts_x  = ts(x)
@@ -176,23 +179,38 @@ def test_up_vs_down():
     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
-def test_torch():
-    from kymatio import TimeFrequencyScattering1D as TFSAgnostic
-    # import torch
-    # import tensorflow as tf
+def test_backends():
+    for backend in ('tensorflow', 'torch'):
+        if backend == 'torch':
+            continue  # TODO
 
-    N = 512
-    x = echirp(N)
-    x = np.vstack([x, x, x])
-    # x = tf.constant(x)
-    # x = torch.from_numpy(x)
+        if backend == 'tensorflow':
+            try:
+                import tensorflow as tf
+            except ImportError:
+                warnings.warn("could not import tensorflow")
+                continue
+        elif backend == 'torch':
+            try:
+                import torch
+            except ImportError:
+                warnings.warn("could not import torch")
+                continue
 
-    jtfs = TFSAgnostic(shape=N, J=8, Q=8, J_fr=3, Q_fr=1, frontend='numpy')
-    Scx = jtfs(x)
+        N = 2048
+        x = echirp(N)
+        x = np.vstack([x, x, x])
+        x = (tf.constant(x) if backend == 'tensorflow' else
+             torch.from_numpy(x))
 
-    E_up   = energy(Scx['psi_t * psi_f_up'])
-    E_down = energy(Scx['psi_t * psi_f_down'])
-    assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
+        jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=3, Q_fr=1,
+                                         frontend=backend)
+        Scx = jtfs(x)
+
+        E_up   = energy(Scx['psi_t * psi_f_up'])
+        E_down = energy(Scx['psi_t * psi_f_down'])
+        assert E_up / E_down > 90  # TODO reverse ratio after up/down fix
+        # TODO why is lower J, Q, and J_fr better for the ratio?
 
 
 def test_meta():
@@ -285,13 +303,13 @@ def test_output():
         jtfs = TimeFrequencyScattering1D(**params, max_pad_factor=1,
                                          frontend=default_backend)
         out = jtfs(x)
-        o = out['S0']
-        if not isinstance(o, list) and (o.ndim == 4 and o.shape[0] == 1):
-            for pair in out:
-                out[pair] = squeeze(out[pair], axis=0)
 
-        n_coef_out = sum(1 for pair in out for c in out[pair])
-        n_coef_out_stored = len(out_stored)
+        if params['out_type'] == 'list':
+            n_coef_out = sum(len(o) for o in out.values())
+            n_coef_out_stored = len(out_stored)
+        else:
+            n_coef_out = sum(o.shape[1] for o in out.values())
+            n_coef_out_stored = sum(len(o) for o in out_stored)
         assert n_coef_out == n_coef_out_stored, (
             "out vs stored number of coeffs mismatch ({} != {})\n{}"
             ).format(n_coef_out, n_coef_out_stored, params_str)
@@ -300,7 +318,6 @@ def test_output():
         for pair in out:
             for i, o in enumerate(out[pair]):
                 o = o if params['out_type'] == 'array' else o['coef']
-                o = squeeze(o, axis=0) if len(o) == 1 and o.ndim == 3 else o
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
                 assert o.shape == o_stored.shape, (
                     "out[{0}][{1}].shape != out_stored[{2}].shape "
@@ -344,6 +361,7 @@ def energy(x):
 #     return _l2(x1 - x0) / _l2(x0)
 
 def concat_joint(Scx, out_type="array"):
+    Scx = drop_batch_dim_jtfs(Scx)
     return np.vstack([(c if out_type == "array" else c['coef'])
                       for pair, c in Scx.items()
                       if pair not in ('S0', 'S1')])
@@ -385,13 +403,13 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_torch()
-        # test_meta()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_backends()
+        test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])
