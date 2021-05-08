@@ -642,19 +642,18 @@ class _FrequencyScatteringBase(ScatteringBase):
             out.update({k: v for k, v in p.items() if not isinstance(k, int)})
 
         diff = self.J_pad_fo - self.J_pad_max
-        if diff > 0:
-            def create_psi_fo(p):
-                out = {}
+        def create_psi_fo(p):
+            out = {}
+            if diff > 0 or (diff < 0 and self.resample_psi_fr):
                 out[0] = morlet_1d(2**self.J_pad_fo, p['xi'], p['sigma'],
                                    **self.get_params('normalize', 'P_max', 'eps'))
-                copy_meta(out, p)
-                return out
-        else:
-            def create_psi_fo(p):
-                out = {}
-                out[0] = p[-diff].copy()
-                copy_meta(out, p)
-                return out
+            elif diff < 0:  # TODO
+                out[0] = periodize_filter_fourier(p, nperiods=2**(-diff))
+            else:
+                out[0] = p[0].copy()
+            copy_meta(out, p)
+            return out
+
         self.psi1_f_up_fo = [create_psi_fo(p) for p in self.psi1_f_up]
         self.psi1_f_down_fo = [create_psi_fo(p) for p in self.psi1_f_down]
 

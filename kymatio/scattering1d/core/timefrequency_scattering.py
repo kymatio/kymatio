@@ -255,25 +255,42 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
-            # Wavelet transform over frequency
-            pad_max = (sc_freq.J_pad_max if not all_first_order else
-                       sc_freq.J_pad_fo)
-            subsample_equiv_due_to_pad = pad_max - pad_fr
+            subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
+            if not all_first_order:
+                assert subsample_equiv_due_to_pad >= 0
+
+            # determine subsampling reference
             if aligned:
                 # subsample as we would in min-padded case
-                reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+                diff = sc_freq.J_pad_fo - sc_freq.J_pad_max
+                if all_first_order and diff < 0:
+                    # edge case, possible with small `F` and
+                    # `resample_filters_fr=False`; we may have equivalently
+                    # subsampled more than in min-padded case
+                    reference_subsample_equiv_due_to_pad = max(max(sc_freq.j0s),
+                                                               -diff)
+                else:
+                    reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+                if all_first_order and diff > 0:
+                    # edge case (only permitted with `resample_filters_fr=False`)
+                    # we've equivalently upsampled relative to J_pad_max,
+                    # so we get to subsample more
+                    reference_subsample_equiv_due_to_pad -= diff
             else:
                 # subsample regularly (relative to current padding)
-                reference_subsample_equiv_due_to_pad = (
-                    subsample_equiv_due_to_pad)
+                reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
 
+            # compute subsampling and fetch filter
             j1_fr = psi1_f[n1_fr]['j']
             sub_adj = (j1_fr if not average_fr else
                        min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
             n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
                                   oversampling_fr, 0)
+            psi_fr = (psi1_f[n1_fr][0] if all_first_order else
+                      psi1_f[n1_fr][subsample_equiv_due_to_pad])
 
-            Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
+            # Wavelet transform over frequency
+            Y_fr_c = B.cdgmm(Y_2_hat, psi_fr)
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
             Y_fr_c = B.ifft(Y_fr_hat)
 
@@ -371,14 +388,11 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     if average_fr and not sc_freq.average_global:
         # fetch frequential lowpass
-        if not all_first_order:
+        if total_subsample_so_far >= 0:
             phi_fr = sc_freq.phi_f[total_subsample_so_far]
         else:
-            if total_subsample_so_far > 0:
-                diff = sc_freq.J_pad_fo - sc_freq.J_pad_max
-                phi_fr = sc_freq.phi_f[total_subsample_so_far - diff]
-            else:
-                phi_fr = sc_freq.phi_f_fo
+            # only `all_first_order` can produce negative `total_subsample_so_far`
+            phi_fr = sc_freq.phi_f_fo
 
     # do lowpassing ##########################################################
     if sc_freq.average_global:
