@@ -696,19 +696,18 @@ class _FrequencyScatteringBase(ScatteringBase):
         """
         if recompute:
             J_pad, _ = self._compute_J_pad(shape_fr, Q)
-
         elif self.resample_phi_fr or self.resample_psi_fr:
             J_pad = math.ceil(np.log2(shape_fr + 2 * self.min_to_pad_max))
         else:
             # reproduce `compute_minimum_support_to_pad`'s logic
-            # TODO instead compute directly? must introduce kwargs to above method
+            # if we subsample, the time support reduces by same factor
             J_tentative     = int(np.ceil(np.log2(shape_fr)))
             J_tentative_max = int(np.ceil(np.log2(self.shape_fr_max)))
-            J_pad = self.J_pad_max - (J_tentative_max - J_tentative)
+            min_to_pad = self.min_to_pad_max // 2**(J_tentative_max - J_tentative)
+            J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
         # don't let J_pad drop below `J_pad_max - max_sub...`
-        J_pad = max(J_pad,
-                    self.J_pad_max - self.max_subsampling_before_phi_fr)
+        J_pad = max(J_pad, self.J_pad_max - self.max_subsampling_before_phi_fr)
         return J_pad
 
     def _compute_J_pad(self, shape_fr, Q):
