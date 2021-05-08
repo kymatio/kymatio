@@ -92,14 +92,14 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNu
                  average=True, average_fr=None, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
                  out_type="array", pad_mode='zero', max_pad_factor=2,
-                 backend="numpy"):
+                 max_pad_factor_fr=None, backend="numpy"):
         if average_fr is None:
             average_fr = average
         if oversampling_fr is None:
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, pad_mode)
+            resample_filters_fr, pad_mode, max_pad_factor_fr)
 
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3

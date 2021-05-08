@@ -414,7 +414,7 @@ class ScatteringBase1D(ScatteringBase):
 class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=1, F=None, average_fr=True,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
-                 pad_mode='zero'):
+                 pad_mode='zero', max_pad_factor_fr=None):
         self._J_fr = J_fr
         self._Q_fr = Q_fr
         self._F = F
@@ -426,6 +426,7 @@ class TimeFrequencyScatteringBase1D():
         else:
             self.resample_psi_fr = self.resample_phi_fr = resample_filters_fr
         self.pad_mode = pad_mode
+        self.max_pad_factor_fr = max_pad_factor_fr
 
     def build(self):
         # don't allow untested and unneeded combination
@@ -443,7 +444,7 @@ class TimeFrequencyScatteringBase1D():
         self.sc_freq = _FrequencyScatteringBase(
             self._J_fr, self._shape_fr, self._Q_fr, self._F, max_order_fr,
             self._average_fr, self.resample_psi_fr, self.resample_phi_fr,
-            self.oversampling, self.vectorize, self.out_type, self.pad_mode,
+            self.vectorize, self.out_type, self.pad_mode, self.max_pad_factor_fr,
             self._n_psi1, self.backend)
         self.finish_creating_filters()
 
@@ -534,8 +535,8 @@ class _FrequencyScatteringBase(ScatteringBase):
     """
     def __init__(self, J_fr, shape_fr, Q_fr=2, F=None, max_order_fr=1,
                  average=True, resample_psi_fr=True, resample_phi_fr=True,
-                 oversampling=0, vectorize=True, out_type='array',
-                 pad_mode='zero', n_psi1=None, backend=None):
+                 vectorize=True, out_type='array', pad_mode='zero',
+                 max_pad_factor_fr=None, n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.J_fr = J_fr
         self.shape_fr = shape_fr
@@ -545,11 +546,11 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.average = average
         self.resample_psi_fr = resample_psi_fr
         self.resample_phi_fr = resample_phi_fr
-        self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
         self._n_psi1 = n_psi1
         self.pad_mode = pad_mode
+        self.max_pad_factor_fr = max_pad_factor_fr
         self.backend = backend
 
         self.build()
@@ -590,6 +591,12 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.log2_F = math.floor(math.log2(self.F))
         self.average_global = bool(self.F == mx)
 
+        # restrict `J_pad_max` if specified by user
+        if self.max_pad_factor_fr is not None:
+            self.J_pad_max_user = int(round(np.log2(self.shape_fr_max *
+                                                    2**self.max_pad_factor_fr)))
+        else:
+            self.J_pad_max_user = None
         # compute maximum amount of padding
         self.J_pad_max, self.min_to_pad_max = self._compute_J_pad(
             self.shape_fr_max, (self.Q_fr, 0))
@@ -708,6 +715,9 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # don't let J_pad drop below `J_pad_max - max_sub...`
         J_pad = max(J_pad, self.J_pad_max - self.max_subsampling_before_phi_fr)
+        # don't let J_pad exceed user-set max
+        if self.max_pad_factor_fr is not None:
+            J_pad = min(J_pad, self.J_pad_max_user)
         return J_pad
 
     def _compute_J_pad(self, shape_fr, Q):
@@ -716,6 +726,9 @@ class _FrequencyScatteringBase(ScatteringBase):
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                               'criterion_amplitude', 'normalize', 'pad_mode'))
         J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+
+        if self.max_pad_factor_fr is not None:
+            J_pad = min(J_pad, self.J_pad_max_user)
         return J_pad, min_to_pad
 
     def get_params(self, *args):
