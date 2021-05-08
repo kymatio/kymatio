@@ -611,6 +611,11 @@ class _FrequencyScatteringBase(ScatteringBase):
             # usual behavior
             self.max_subsampling_before_phi_fr = self.log2_F
 
+        # unused quantity; if this exceeds `J_pad_max`, then `phi_t * psi_f`
+        # and `phi_t * phi_f` pairs will incur boundary effects. Implem doesn't
+        # account for this as the effect is rare and most often not great
+        self.J_pad_fo = self.compute_J_pad(self._n_psi1, recompute=True, Q=(0, 0))
+
     def create_psi_filters(self):
         self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
             self.J_fr, self.Q_fr, self.J_pad_max, self.j0s,
