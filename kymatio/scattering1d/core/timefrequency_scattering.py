@@ -78,7 +78,7 @@ def timefrequency_scattering(
     # `U1 * (phi_t * phi_f)` pair
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
-        pad_fr = sc_freq.J_pad_fo
+        pad_fr = sc_freq.J_pad_max
         S_1_fr = _right_pad(S_1_list, pad_fr, B)
         # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
         # S_1_fr[:len(S_1_list)] = S_1_list
@@ -101,19 +101,17 @@ def timefrequency_scattering(
         else:
             # subsample regularly (relative to current padding)
             reference_total_subsample_so_far = 0
-        total_subsample_fr_max = sc_freq.log2_F_fo
+        total_subsample_fr_max = sc_freq.log2_F
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)
 
         # Low-pass filtering over frequency
-        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f_fo)
+        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
         S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # unpad + transpose, append to out
-        diff = sc_freq.log2_F_fo - sc_freq.log2_F
-        lowpass_subsample_fr -= diff  # adjust so indexing matches
         if out_type == 'list':
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start[-1][lowpass_subsample_fr],
@@ -154,13 +152,14 @@ def timefrequency_scattering(
                 continue
             U_1_hat = U_1_hat_list[n1]
 
-            # Convolution and downsampling
             # what we subsampled in 1st-order
             sub1_adj = min(j1, log2_T) if average else j1
             k1 = max(sub1_adj - oversampling, 0)
             # what we subsample now in 2nd
             sub2_adj = min(j2, log2_T) if average else j2
             k2 = max(sub2_adj - k1 - oversampling, 0)
+
+            # Convolution and downsampling
             Y_2_c = B.cdgmm(U_1_hat, psi2[n2][k1])
             Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
             Y_2_c = B.ifft(Y_2_hat)
@@ -191,7 +190,7 @@ def timefrequency_scattering(
     j2 = log2_T
 
     # preallocate output slice
-    pad_fr = sc_freq.J_pad_fo
+    pad_fr = sc_freq.J_pad_max
     n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
     Y_2_list = []
     # Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
@@ -222,8 +221,7 @@ def timefrequency_scattering(
     # Transform over frequency + low-pass
     # `* psi_f` part of `X * (phi_t * psi_f)`
     _frequency_scattering(Y_2_hat, j2, -1, pad_fr, k1_plus_k2, commons,
-                          out_S_2['phi_t * psi_f'], spin_down=False,
-                          all_first_order=True)
+                          out_S_2['phi_t * psi_f'], spin_down=False)
 
     ##########################################################################
     # pack outputs & return
@@ -243,39 +241,22 @@ def timefrequency_scattering(
 
 
 def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
-                          spin_down=True, all_first_order=False):
+                          spin_down=True):
     B, sc_freq, aligned, oversampling_fr, average_fr, *_ = commons
 
-    psi1_fs = [sc_freq.psi1_f_up if not all_first_order else
-               sc_freq.psi1_f_up_fo]
+    psi1_fs = [sc_freq.psi1_f_up]
     if spin_down:
-        psi1_fs.append(sc_freq.psi1_f_down if not all_first_order else
-                       sc_freq.psi1_f_down_fo)
+        psi1_fs.append(sc_freq.psi1_f_down)
 
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
             subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
-            if not all_first_order:
-                assert subsample_equiv_due_to_pad >= 0
 
             # determine subsampling reference
             if aligned:
                 # subsample as we would in min-padded case
-                diff = sc_freq.J_pad_fo - sc_freq.J_pad_max
-                if all_first_order and diff < 0:
-                    # edge case, possible with small `F` and
-                    # `resample_filters_fr=False`; we may have equivalently
-                    # subsampled more than in min-padded case
-                    reference_subsample_equiv_due_to_pad = max(max(sc_freq.j0s),
-                                                               -diff)
-                else:
-                    reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
-                if all_first_order and diff > 0:
-                    # edge case (only permitted with `resample_filters_fr=False`)
-                    # we've equivalently upsampled relative to J_pad_max,
-                    # so we get to subsample more
-                    reference_subsample_equiv_due_to_pad -= diff
+                reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
             else:
                 # subsample regularly (relative to current padding)
                 reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
@@ -286,11 +267,9 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                        min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
             n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
                                   oversampling_fr, 0)
-            psi_fr = (psi1_f[n1_fr][0] if all_first_order else
-                      psi1_f[n1_fr][subsample_equiv_due_to_pad])
 
             # Wavelet transform over frequency
-            Y_fr_c = B.cdgmm(Y_2_hat, psi_fr)
+            Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
             Y_fr_c = B.ifft(Y_fr_hat)
 
@@ -299,8 +278,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
 
             # Convolve by Phi = phi_t * phi_f
             S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad,
-                                 n1_fr_subsample, k1_plus_k2, commons,
-                                 all_first_order=all_first_order)
+                                 n1_fr_subsample, k1_plus_k2, commons)
 
             spin = (1, -1)[s1_fr] if spin_down else 0
             out_S_2[s1_fr].append({'coef': S_2,
@@ -345,7 +323,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 
 
 def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
-                   k1_plus_k2, commons, all_first_order=False):
+                   k1_plus_k2, commons):
     def unpad_fr(S_2_fr, total_subsample_fr):
         if out_type == 'list':
             return unpad(S_2_fr,
@@ -388,11 +366,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     if average_fr and not sc_freq.average_global:
         # fetch frequential lowpass
-        if total_subsample_so_far >= 0:
-            phi_fr = sc_freq.phi_f[total_subsample_so_far]
-        else:
-            # only `all_first_order` can produce negative `total_subsample_so_far`
-            phi_fr = sc_freq.phi_f_fo
+        phi_fr = sc_freq.phi_f[total_subsample_so_far]
 
     # do lowpassing ##########################################################
     if sc_freq.average_global:
