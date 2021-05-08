@@ -5,8 +5,7 @@ import numbers
 import numpy as np
 
 from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
-                           psi_fr_factory, phi_fr_factory,
-                           morlet_1d, gauss_1d)
+                           psi_fr_factory, phi_fr_factory)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -612,50 +611,11 @@ class _FrequencyScatteringBase(ScatteringBase):
             # usual behavior
             self.max_subsampling_before_phi_fr = self.log2_F
 
-        # Edge case: need phi_f in case number of `psi1` filters (and thus
-        # first-order coeffs) pads greater than max(J_pad). Note this filter,
-        # if `!= phi_f[0]`, always computes per `resample_phi_fr=True`
-        # TODO compute per `resample_phi_fr` instead?
-        # Q=(0,0) to decide from `phi` alone, since we don't do *psi here
-        self.J_pad_fo = self.compute_J_pad(self._n_psi1, recompute=True, Q=(0, 0))
-        diff = self.J_pad_fo - self.J_pad_max
-        if diff > 0:
-            self.phi_f_fo = gauss_1d(2**self.J_pad_fo, sigma=self.phi_f['sigma'],
-                                     P_max=self.P_max, eps=self.eps)
-            # need to subsample more since padded more
-            self.log2_F_fo = self.log2_F + 1
-        else:
-            self.phi_f_fo = self.phi_f[-diff]
-        # subsample more or less since padded more (_fo > _max) or less (< _max)
-        self.log2_F_fo = self.log2_F + diff
-
-
     def create_psi_filters(self):
         self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
             self.J_fr, self.Q_fr, self.J_pad_max, self.j0s,
             **self.get_params('resample_psi_fr', 'r_psi', 'normalize',
                               'sigma0', 'alpha', 'P_max', 'eps'))
-
-        # create `_fo` filters for `phi_t * psi_f` pairs
-        # TODO compute per `resample_psi_fr` instead?
-        def copy_meta(out, p):
-            out.update({k: v for k, v in p.items() if not isinstance(k, int)})
-
-        diff = self.J_pad_fo - self.J_pad_max
-        def create_psi_fo(p):
-            out = {}
-            if diff > 0 or (diff < 0 and self.resample_psi_fr):
-                out[0] = morlet_1d(2**self.J_pad_fo, p['xi'], p['sigma'],
-                                   **self.get_params('normalize', 'P_max', 'eps'))
-            elif diff < 0:  # TODO
-                out[0] = periodize_filter_fourier(p, nperiods=2**(-diff))
-            else:
-                out[0] = p[0].copy()
-            copy_meta(out, p)
-            return out
-
-        self.psi1_f_up_fo = [create_psi_fo(p) for p in self.psi1_f_up]
-        self.psi1_f_down_fo = [create_psi_fo(p) for p in self.psi1_f_down]
 
     def compute_padding_fr(self):
         """Long story"""  # TODO
