@@ -9,7 +9,7 @@ from kymatio.toolkit import drop_batch_dim_jtfs
 # backend to use for most tests
 default_backend = 'numpy'
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 def test_alignment():
@@ -325,20 +325,12 @@ def test_output():
                     "({3} != {4})\n{5}".format(pair, i, o_stored_key, o.shape,
                                                o_stored.shape, params_str))
                 adiff = np.abs(o - o_stored)
-                if not np.allclose(o, o_stored):
-                    print((
+                assert np.allclose(o, o_stored), (
                     "out[{0}][{1}] != out_stored[{2}] (MeanAE={3:.2e}, "
                     "MaxAE={4:.2e})\n{5}"
                     ).format(pair, i, o_stored_key, adiff.mean(), adiff.max(),
-                             params_str))
+                             params_str)
                 i_s += 1
-
-
-def squeeze(x, axis=0):
-    if isinstance(x, np.ndarray):
-        return x.squeeze(axis)
-    import tensorflow as tf
-    return tf.squeeze(x, axis=axis)
 
 ### helper methods ###########################################################
 # TODO move to (and create) tests/utils.py?
@@ -404,13 +396,13 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_backends()
-        # test_meta()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_backends()
+        test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])

@@ -53,8 +53,8 @@ def test_T_and_F():
     """Test that large and small `T, F` execute without error.
 
     Also reproduces edge cases where, in an intermediate implementation, inputs
-    to `phi_t * phi_f` and `psi_t * phi_f` pairs padded to more than `J_pad_max`
-    were accounted.
+    to `phi_t * phi_f` and `psi_t * phi_f` pairs that were padded to more than
+    `J_pad_max` were accounted.
     """
     from timeit import default_timer as dtime
     N = 1024
