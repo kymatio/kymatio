@@ -128,6 +128,10 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     min_to_pad: int
         minimal value to pad the signal on one size to avoid any
         boundary error.
+    N_ref: int
+        Length of longest filter that decays to have time support less than
+        half own length, which may exceed `N`; this is the `N` to be used
+        for computing final pad length.
     """
     # compute params for calibrating, & calibrate
     J_tentative = int(np.ceil(np.log2(N)))
@@ -193,9 +197,10 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
         N_min_psi2 = -2
 
     # take maximum
-    if N_min_phi == max(N_min_phi, N_min_psi1, N_min_psi2):
+    N_min_max = max(N_min_phi, N_min_psi1, N_min_psi2)
+    if N_min_phi == N_min_max:
         p_fr = phi_f_fn(N_min_phi)
-    elif N_min_psi1 == max(N_min_phi, N_min_psi1, N_min_psi2):
+    elif N_min_psi1 == N_min_max:
         p_fr = psi1_f_fn_widest(N_min_psi1)
     else:
         p_fr = psi2_f_fn_widest(N_min_psi2)
@@ -208,7 +213,8 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
         min_to_pad //= 2
 
     # return results
-    return min_to_pad
+    N_ref = N_min_max
+    return min_to_pad, N_ref
 
 
 def precompute_size_scattering(J, Q, T, max_order=2, detail=False):

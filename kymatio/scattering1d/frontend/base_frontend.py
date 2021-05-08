@@ -83,13 +83,13 @@ class ScatteringBase1D(ScatteringBase):
         self.average_global = bool(self.T == mx)
 
         # Compute the minimum support to pad (ideally)
-        min_to_pad = compute_minimum_support_to_pad(
+        min_to_pad, N_ref = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, self.T, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize, pad_mode=self.pad_mode)
 
-        J_pad = int(np.ceil(np.log2(self.N + 2 * min_to_pad)))
+        J_pad = int(np.ceil(np.log2(N_ref + 2 * min_to_pad)))
         if self.max_pad_factor is None:
             self.J_pad = J_pad
         else:
@@ -712,11 +712,11 @@ class _FrequencyScatteringBase(ScatteringBase):
         return J_pad
 
     def _compute_J_pad(self, shape_fr, Q):
-        min_to_pad = compute_minimum_support_to_pad(
+        min_to_pad, N_ref = compute_minimum_support_to_pad(
             shape_fr, self.J_fr, Q, self.F,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                               'criterion_amplitude', 'normalize', 'pad_mode'))
-        J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+        J_pad = math.ceil(np.log2(N_ref + 2 * min_to_pad))
         return J_pad, min_to_pad
 
     def get_params(self, *args):
