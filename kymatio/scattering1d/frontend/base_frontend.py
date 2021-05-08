@@ -52,7 +52,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("shape must be an integer or a 1-tuple")
 
         # Compute the minimum support to pad (ideally)
-        min_to_pad = compute_minimum_support_to_pad(
+        min_to_pad, N_ref = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
             alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
@@ -60,7 +60,7 @@ class ScatteringBase1D(ScatteringBase):
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
         J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
-        self.J_pad = min(int(np.ceil(np.log2(self.N + 2 * min_to_pad))),
+        self.J_pad = min(int(np.ceil(np.log2(N_ref + 2 * min_to_pad))),
                          J_max_support)
         # compute the padding quantities:
         self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
