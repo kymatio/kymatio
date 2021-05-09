@@ -874,17 +874,17 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
             skip_psi = True
 
         if not skip_psi:
-            psi1_f_up.append(psi_f)
+            psi1_f_down.append(psi_f)
         else:
             n1_fr_skipped_psi = n1_fr
             break
 
     # compute spin down filters by conjugating spin up in frequency domain
-    for psi_ups in psi1_f_up:
-        psi_down = {}
-        for j0, psi_up in enumerate(psi_ups.values()):
-            psi_down[j0] = conj_fr(psi_up)
-        psi1_f_down.append(psi_down)
+    for psi_downs in psi1_f_down:
+        psi_up = {}
+        for j0, psi_down in enumerate(psi_downs.values()):
+            psi_up[j0] = conj_fr(psi_down)
+        psi1_f_up.append(psi_up)
 
     # Embed the meta information within the filters
     for (n1_fr, j1) in enumerate(j1s):
