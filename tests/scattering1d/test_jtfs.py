@@ -179,6 +179,26 @@ def test_up_vs_down():
     assert E_up / E_down > 17  # TODO reverse ratio after up/down fix
 
 
+def test_max_pad_factor_fr():
+    """Test that low `max_pad_factor_fr` works with high `F`."""
+    N = 2048
+    x = echirp(N)
+
+    for aligned in (True, False):
+        for resample_filters_fr in (True, False):
+            jtfs = TimeFrequencyScattering1D(
+                shape=N, J=10, Q=20, J_fr=4, Q_fr=1, F=256, max_pad_factor_fr=1,
+                aligned=aligned, resample_filters_fr=resample_filters_fr,
+                frontend=default_backend)
+
+            params_str = "aligned={}, resample_filters_fr={}".format(
+                aligned, resample_filters_fr)
+            try:
+                _ = jtfs(x)
+            except Exception as e:
+                raise Exception("Failed on %s with \n%s" % (params_str, e))
+
+
 def test_backends():
     for backend in ('tensorflow', 'torch'):
         if backend == 'torch':
@@ -401,6 +421,7 @@ if __name__ == '__main__':
         test_jtfs_vs_ts()
         test_freq_tp_invar()
         test_up_vs_down()
+        test_max_pad_factor_fr()
         test_backends()
         test_meta()
         test_output()
