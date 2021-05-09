@@ -66,7 +66,7 @@ def compute_padding(J_pad, T):
 
 def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
-                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
+                                       sigma0=1e-1, alpha=4., P_max=5, eps=1e-7):
 
 
     """
