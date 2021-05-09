@@ -410,7 +410,7 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase1D():
-    def __init__(self, J_fr=None, Q_fr=1, F=None, average_fr=False,
+    def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
                  pad_mode='zero', max_pad_factor_fr=None):
         self._J_fr = J_fr

@@ -427,6 +427,7 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
         - `'key'` : list
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
+        # TODO key will be determined after agreeing on coeff output order
     """
     xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
     xi_min_fr = (2 / 2**J_pad_fr_max)
@@ -468,11 +469,6 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
     # TODO -1 or inf doesn't make sense for `key`
     # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
     # TODO meta won't match output if non-CQT are dropped
-    # Frequential lowpass over first-order
-    meta['order']['phi_t * phi_f'].append(0)
-    for field in meta:
-        if field != 'order':
-            meta[field]['phi_t * phi_f'].append(())
 
     # `psi_t * psi_f` coeffs
     for spin in (1, -1):
@@ -483,7 +479,7 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
                 continue
             for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
                  ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-                meta['order'][k].append(1)
+                meta['order'][k].append(2)
                 meta['xi'   ][k].append((xi2, xi1_fr,))
                 meta['sigma'][k].append((sigma2, sigma1_fr,))
                 meta['j'    ][k].append((j2, j1_fr))
@@ -496,7 +492,7 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
     for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
         if j2 == 0:
             continue
-        meta['order']['psi_t * phi_f'].append(1)
+        meta['order']['psi_t * phi_f'].append(2)
         meta['xi'   ]['psi_t * phi_f'].append((xi2, 0))
         meta['sigma']['psi_t * phi_f'].append((sigma2, sigma_low_fr))
         meta['j'    ]['psi_t * phi_f'].append((j2, log2_F))
@@ -508,13 +504,22 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
     log2_T = math.floor(math.log2(T))
     for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
          ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-        meta['order']['phi_t * psi_f'].append(1)
+        meta['order']['phi_t * psi_f'].append(2)
         meta['xi'   ]['phi_t * psi_f'].append((0, xi1_fr,))
         meta['sigma']['phi_t * psi_f'].append((sigma_low, sigma1_fr,))
         meta['j'    ]['phi_t * psi_f'].append((log2_T, j1_fr))
         meta['n'    ]['phi_t * psi_f'].append((inf, n1_fr))
         meta['s'    ]['phi_t * psi_f'].append((0,))
         meta['key'  ]['phi_t * psi_f'].append((inf, n1_fr))
+
+    # `phi_t * phi_f` coeffs
+    meta['order']['phi_t * phi_f'].append(2)
+    meta['xi'   ]['phi_t * phi_f'].append((0, 0))
+    meta['sigma']['phi_t * phi_f'].append((sigma_low, sigma_low_fr))
+    meta['j'    ]['phi_t * phi_f'].append((log2_T, log2_F))
+    meta['n'    ]['phi_t * phi_f'].append((inf, inf))
+    meta['s'    ]['phi_t * phi_f'].append((0,))
+    meta['key'  ]['phi_t * phi_f'].append((inf, inf))
 
     pad_fields = ['xi', 'sigma', 'j', 'n']
     pad_len = 2

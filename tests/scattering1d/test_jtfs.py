@@ -106,10 +106,10 @@ def test_jtfs_vs_ts():
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    Q = 16
+    Q = (16, 2)
     kw = dict(max_pad_factor=1, frontend=default_backend)
-    ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", **kw)
-    jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
+    ts = Scattering1D(J=J, Q=Q[0], shape=N, pad_mode="zero", **kw)
+    jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=2, J_fr=4, shape=N,
                                      average_fr=True, out_type="array", **kw)
 
     # scatter
@@ -126,7 +126,7 @@ def test_jtfs_vs_ts():
 
     # max ratio limited by `N`; can do much better with longer input
     # and by comparing only against up & down
-    assert l2_jtfs / l2_ts > 14, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_jtfs / l2_ts > 25, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
 
 

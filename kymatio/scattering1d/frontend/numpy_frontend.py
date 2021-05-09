@@ -88,7 +88,7 @@ ScatteringNumPy1D._document()
 
 
 class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNumPy1D):
-    def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, T=None, F=None,
+    def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
                  average=True, average_fr=False, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
                  out_type="array", pad_mode='zero', max_pad_factor=2,

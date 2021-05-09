@@ -123,8 +123,10 @@ def timefrequency_scattering(
         S_1_fr = B.transpose(S_1_fr_T)
     else:
         S_1_fr = []
-    out_S_2['phi_t * phi_f'].append({'coef': S_1_fr, 'j': (), 'n': (), 's': ()})
-    # RFC: should we put placeholders for j1 and n1 instead of empty tuples?
+    out_S_2['phi_t * phi_f'].append({'coef': S_1_fr,
+                                     'j': (log2_T, sc_freq.log2_F),
+                                     'n': (-1, -1),
+                                     's': (0,)})
 
     ##########################################################################
     # Joint scattering: separable convolutions (along time & freq), and low-pass
