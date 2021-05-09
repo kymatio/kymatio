@@ -8,11 +8,10 @@ from .base_frontend import ScatteringBase1D
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', alpha=5.,
-            backend='numpy'):
+            oversampling=0, vectorize=True, out_type='array', backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
-                oversampling, vectorize, out_type, alpha, backend)
+                oversampling, vectorize, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
