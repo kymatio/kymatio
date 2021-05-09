@@ -102,12 +102,10 @@ class ScatteringBase1D(ScatteringBase):
         self.ind_start, self.ind_end = compute_border_indices(
             self.log2_T, self.pad_left, 2**self.J_pad - self.pad_right)
 
-        # check that we get any second-order coefficients if max_order==2
+        # record whether configuration yields second order filters
         meta = ScatteringBase1D.meta(self)
-        if self.max_order == 2 and np.isnan(meta['n'][-1][1]):
-            raise ValueError("configuration yields no second-order coefficients; "
-                             "try increasing `J`, or (`Scattering1D` only) "
-                             "set `max_order=1`.")
+        self._no_second_order_filters = (self.max_order < 2 or
+                                         bool(np.isnan(meta['n'][-1][1])))
 
     def create_filters(self):
         # Create the filters
@@ -433,6 +431,10 @@ class TimeFrequencyScatteringBase1D():
         if not self.aligned and self.out_type == "list":
             raise ValueError("`aligned=False` is only allowed with "
                              "`out_type` = 'array' or 'array-like'")
+        # if config yields no second order coeffs, we cannot do joint scattering
+        if self._no_second_order_filters:
+            raise ValueError("configuration yields no second-order filters; "
+                             "try increasing `J`")
 
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1

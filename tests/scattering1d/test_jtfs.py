@@ -199,6 +199,16 @@ def test_max_pad_factor_fr():
                 raise Exception("Failed on %s with \n%s" % (params_str, e))
 
 
+def test_no_second_order_filters():
+    """Reproduce edge case: configuration yields no second-order wavelets
+    so can't do JTFS.
+    """
+    with pytest.raises(ValueError) as record:
+        _ = TimeFrequencyScattering1D(shape=512, J=1, Q=1,
+                                      frontend=default_backend)
+        assert "no second-order filters" in record.value.args[0]
+
+
 def test_backends():
     for backend in ('tensorflow', 'torch'):
         if backend == 'torch':
@@ -425,6 +435,7 @@ if __name__ == '__main__':
         test_jtfs_vs_ts()
         test_freq_tp_invar()
         test_up_vs_down()
+        test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_backends()
         test_meta()
