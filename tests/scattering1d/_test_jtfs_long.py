@@ -73,7 +73,7 @@ def test_T_and_F():
 
                 jtfs = TimeFrequencyScattering1D(
                     shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, F=F, T=T,
-                    out_type=out_type, frontend=default_backend)
+                    average_fr=True, out_type=out_type, frontend=default_backend)
 
                 try:
                     _ = jtfs(x)

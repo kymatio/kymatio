@@ -412,7 +412,7 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase1D():
-    def __init__(self, J_fr=None, Q_fr=1, F=None, average_fr=True,
+    def __init__(self, J_fr=None, Q_fr=1, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
                  pad_mode='zero', max_pad_factor_fr=None):
         self._J_fr = J_fr
@@ -534,7 +534,7 @@ class _FrequencyScatteringBase(ScatteringBase):
     scattering part of JTFS.
     """
     def __init__(self, J_fr, shape_fr, Q_fr=2, F=None, max_order_fr=1,
-                 average=True, resample_psi_fr=True, resample_phi_fr=True,
+                 average=False, resample_psi_fr=True, resample_phi_fr=True,
                  vectorize=True, out_type='array', pad_mode='zero',
                  max_pad_factor_fr=None, n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
@@ -653,7 +653,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
                 # compute unpad indices for all possible subsamplings
                 ind_start, ind_end = [], []
-                for j in range(self.log2_F + 1):
+                for j in range(max(self.log2_F, self.J_fr) + 1):
                     if j == j0:
                         ind_start.append(0)
                         ind_end.append(shape_fr)

@@ -33,7 +33,7 @@ def test_alignment():
     # scatter ################################################################
     for out_type in ('array', 'list'):
         jtfs = TimeFrequencyScattering1D(
-            J, T, Q, J_fr=4, Q_fr=2, average=True,
+            J, T, Q, J_fr=4, Q_fr=2, average=True, average_fr=True,
             out_type=out_type, aligned=True, frontend=default_backend)
 
         Scx = jtfs(x)
@@ -72,8 +72,8 @@ def test_shapes():
       for oversampling_fr in (0, 1):
         for aligned in (True, False):
           jtfs = TimeFrequencyScattering1D(
-              J, T, Q, J_fr=4, Q_fr=2, average=True, out_type='array',
-              oversampling=oversampling, aligned=aligned,
+              J, T, Q, J_fr=4, Q_fr=2, average=True, average_fr=True,
+              out_type='array', oversampling=oversampling, aligned=aligned,
               frontend=default_backend)
           Scx = jtfs(x)
           Scx = drop_batch_dim_jtfs(Scx)
@@ -110,7 +110,7 @@ def test_jtfs_vs_ts():
     kw = dict(max_pad_factor=1, frontend=default_backend)
     ts = Scattering1D(J=J, Q=Q, shape=N, pad_mode="zero", **kw)
     jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, J_fr=4, shape=N,
-                                     out_type="array", **kw)
+                                     average_fr=True, out_type="array", **kw)
 
     # scatter
     ts_x  = ts(x)
@@ -150,7 +150,7 @@ def test_freq_tp_invar():
 
     for th, F in zip(th_all, F_all):
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
-                                         F=F, out_type="array",
+                                         F=F, average_fr=True, out_type="array",
                                          frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
@@ -171,7 +171,7 @@ def test_up_vs_down():
     x = echirp(N)
 
     jtfs = TimeFrequencyScattering1D(shape=N, J=10, Q=16, J_fr=4, Q_fr=1,
-                                     frontend=default_backend)
+                                     average_fr=True, frontend=default_backend)
     Scx = jtfs(x)
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
@@ -187,9 +187,9 @@ def test_max_pad_factor_fr():
     for aligned in (True, False):
         for resample_filters_fr in (True, False):
             jtfs = TimeFrequencyScattering1D(
-                shape=N, J=10, Q=20, J_fr=4, Q_fr=1, F=256, max_pad_factor_fr=1,
-                aligned=aligned, resample_filters_fr=resample_filters_fr,
-                frontend=default_backend)
+                shape=N, J=10, Q=20, J_fr=4, Q_fr=1, F=256, average_fr=True,
+                max_pad_factor_fr=1,aligned=aligned,
+                resample_filters_fr=resample_filters_fr, frontend=default_backend)
 
             params_str = "aligned={}, resample_filters_fr={}".format(
                 aligned, resample_filters_fr)
@@ -224,7 +224,7 @@ def test_backends():
              torch.from_numpy(x))
 
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=3, Q_fr=1,
-                                         frontend=backend)
+                                         average_fr=True, frontend=backend)
         Scx = jtfs(x)
 
         E_up   = energy(Scx['psi_t * psi_f_up'])
@@ -253,8 +253,8 @@ def test_meta():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
-    jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, shape=N, out_type="list",
-                                     frontend=default_backend)
+    jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, shape=N, average_fr=True,
+                                     out_type="list", frontend=default_backend)
 
     Scx = jtfs(x)
     meta = jtfs.meta()
@@ -273,7 +273,8 @@ def test_output():
         2. (aligned, out_type, average_fr) = (False, "array", True)
         3. (aligned, out_type, average_fr) = (True,  "list",  "global")
         4. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
-        5. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
+        5. (aligned, out_type, average_fr) = (True,  "array", False)
+        6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
             `(U1 * phi_t * psi_f) * phi_t * phi_f`.
@@ -329,7 +330,8 @@ def test_output():
             n_coef_out = sum(len(o) for o in out.values())
             n_coef_out_stored = len(out_stored)
         else:
-            n_coef_out = sum(o.shape[1] for o in out.values())
+            # TODO remove len(o) != 0 after adj
+            n_coef_out = sum(o.shape[1] for o in out.values() if len(o) != 0)
             n_coef_out_stored = sum(len(o) for o in out_stored)
         assert n_coef_out == n_coef_out_stored, (
             "out vs stored number of coeffs mismatch ({} != {})\n{}"
@@ -339,6 +341,8 @@ def test_output():
         for pair in out:
             for i, o in enumerate(out[pair]):
                 o = o if params['out_type'] == 'array' else o['coef']
+                if len(o) == 0:
+                    continue  # TODO
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
                 assert o.shape == o_stored.shape, (
                     "out[{0}][{1}].shape != out_stored[{2}].shape "

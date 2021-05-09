@@ -83,7 +83,7 @@ def timefrequency_scattering(
         # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
         # S_1_fr[:len(S_1_list)] = S_1_list
 
-    if sc_freq.average_global and average:
+    if sc_freq.average_global and average and average_fr:
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
     elif average_fr and average:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
@@ -91,7 +91,7 @@ def timefrequency_scattering(
         if aligned:
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
-            if 'array' in out_type:
+            if 'array' in out_type:  # TODO add cond if phi_t*phi_f cond changed
                 subsample_equiv_due_to_pad_min = 0
             elif out_type == 'list':
                 subsample_equiv_due_to_pad_min = (
@@ -112,14 +112,14 @@ def timefrequency_scattering(
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # unpad + transpose, append to out
-        if out_type == 'list':
-            S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start[-1][lowpass_subsample_fr],
-                             sc_freq.ind_end[-1][lowpass_subsample_fr])
-        elif 'array' in out_type:
+        if 'array' in out_type and average_fr:
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start_max[lowpass_subsample_fr],
                              sc_freq.ind_end_max[lowpass_subsample_fr])
+        else:
+            S_1_fr_T = unpad(S_1_fr_T,
+                             sc_freq.ind_start[-1][lowpass_subsample_fr],
+                             sc_freq.ind_end[-1][lowpass_subsample_fr])
         S_1_fr = B.transpose(S_1_fr_T)
     else:
         S_1_fr = []
@@ -135,7 +135,7 @@ def timefrequency_scattering(
             continue
 
         # preallocate output slice
-        if aligned and 'array' in out_type:
+        if aligned and 'array' in out_type and average_fr:
             pad_fr = sc_freq.J_pad_max
         else:
             pad_fr = sc_freq.J_pad[n2]
@@ -236,7 +236,15 @@ def timefrequency_scattering(
 
     if out_type == 'array':
         for k, v in out.items():
-            out[k] = B.concatenate([c['coef'] for c in v], axis=1)
+            if average_fr:
+                # stack joint slices, preserve 3D structure
+                out[k] = B.concatenate([c['coef'] for c in v], axis=1)
+            else:
+                # flatten joint slices, return 2D
+                if len(v) == 1 and len(v[0]['coef']) == 0:
+                    out[k] = []  # TODO return all pairs instead?
+                else:
+                    out[k] = B.concatenate_v2([c['coef'] for c in v], axis=1)
     return out
 
 
@@ -325,14 +333,14 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                    k1_plus_k2, commons):
     def unpad_fr(S_2_fr, total_subsample_fr):
-        if out_type == 'list':
-            return unpad(S_2_fr,
-                         sc_freq.ind_start[n2][total_subsample_fr],
-                         sc_freq.ind_end[n2][total_subsample_fr])
-        elif out_type == 'array':
+        if 'array' in out_type and average_fr:
             return unpad(S_2_fr,
                          sc_freq.ind_start_max[total_subsample_fr],
                          sc_freq.ind_end_max[total_subsample_fr])
+        else:
+            return unpad(S_2_fr,
+                         sc_freq.ind_start[n2][total_subsample_fr],
+                         sc_freq.ind_end[n2][total_subsample_fr])
 
     (B, sc_freq, aligned, oversampling_fr, average_fr, oversampling, average,
      out_type, unpad, log2_T, phi, ind_start, ind_end) = commons
@@ -344,9 +352,9 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     if aligned:
         # subsample as we would in min-padded case
         reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
-        if out_type == 'array':
+        if 'array' in out_type and average_fr:
             subsample_equiv_due_to_pad_min = 0
-        elif out_type == 'list':
+        else:
             subsample_equiv_due_to_pad_min = reference_subsample_equiv_due_to_pad
         reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
                                             n1_fr_subsample)
