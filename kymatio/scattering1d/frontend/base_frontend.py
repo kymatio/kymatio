@@ -11,7 +11,8 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, vectorize=True, out_type='array', alpha=5.,
+            backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -21,6 +22,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
+        self.alpha = alpha
         self.backend = backend
 
     def build(self):
@@ -34,7 +36,6 @@ class ScatteringBase1D(ScatteringBase):
         """
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
-        self.alpha = 5.
         self.P_max = 5
         self.eps = 1e-7
         self.criterion_amplitude = 1e-3
@@ -168,6 +169,10 @@ class ScatteringBase1D(ScatteringBase):
             coefficient). This parameter may be modified after object
             creation. Deprecated in favor of `out_type` (see below). Defaults
             to True.
+        alpha : float, optional
+            tolerance factor for filter aliasing after subsampling.
+            The larger alpha, the more conservative the value of maximal
+            subsampling is. Defaults to 5.
         out_type : str, optional
             The format of the output of a scattering transform. If set to
             `'list'`, then the output is a list containing each individual
