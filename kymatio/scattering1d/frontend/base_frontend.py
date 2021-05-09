@@ -51,13 +51,6 @@ class ScatteringBase1D(ScatteringBase):
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
 
-        # check that we get any second-order coefficients if max_order==2
-        meta = ScatteringBase1D.meta(self)
-        if self.max_order == 2 and np.isnan(meta['n'][-1][1]):
-            raise ValueError("configuration yields no second-order coefficients; "
-                             "try increasing `J`, or (`Scattering1D` only) "
-                             "set `max_order=1`.")
-
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, r_psi=self.r_psi, sigma0=self.sigma0,
@@ -74,6 +67,11 @@ class ScatteringBase1D(ScatteringBase):
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
             self.J, self.pad_left, self.pad_left + self.N)
+
+        # record whether configuration yields second order filters
+        meta = ScatteringBase1D.meta(self)
+        self._no_second_order_filters = (self.max_order < 2 or
+                                         bool(np.isnan(meta['n'][-1][1])))
 
     def create_filters(self):
         # Create the filters
