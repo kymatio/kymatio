@@ -42,7 +42,7 @@ class ScatteringBase1D(ScatteringBase):
         """
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
-        self.alpha = 5.
+        self.alpha = 4.
         self.P_max = 5
         self.eps = 1e-7
         self.criterion_amplitude = 1e-3
@@ -546,9 +546,9 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.resample_phi_fr = resample_phi_fr
         self.vectorize = vectorize
         self.out_type = out_type
-        self._n_psi1 = n_psi1
         self.pad_mode = pad_mode
         self.max_pad_factor_fr = max_pad_factor_fr
+        self._n_psi1 = n_psi1
         self.backend = backend
 
         self.build()
@@ -560,7 +560,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         """""" # TODO
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
-        self.alpha = 5.
+        self.alpha = 4.
         self.P_max = 5
         self.eps = 1e-7
         self.criterion_amplitude = 1e-3

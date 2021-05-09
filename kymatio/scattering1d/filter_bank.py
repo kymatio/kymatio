@@ -358,7 +358,7 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
     return N
 
 
-def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
+def get_max_dyadic_subsampling(xi, sigma, alpha=4.):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
     filter of frequency xi and width sigma
@@ -381,7 +381,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
         frequential width of the filter
     alpha : float, optional
         parameter controlling the error done in the aliasing.
-        The larger alpha, the smaller the error. Defaults to 5.
+        The larger alpha, the smaller the error. Defaults to 4.
 
     Returns
     -------
@@ -395,7 +395,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
     return j
 
 
-def move_one_dyadic_step(cv, Q, alpha=5.):
+def move_one_dyadic_step(cv, Q, alpha=4.):
     """
     Computes the parameters of the next wavelet on the low frequency side,
     based on the parameters of the current wavelet.
@@ -422,7 +422,7 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
         the frequency and width of the current wavelet and the next wavelet.
     alpha : float, optional
         tolerance parameter for the aliasing. The larger alpha,
-        the more conservative the algorithm is. Defaults to 5.
+        the more conservative the algorithm is. Defaults to 4.
 
     Returns
     -------
@@ -457,7 +457,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.,
+def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
                               xi_min=None):
     """
     Computes the parameters of a Morlet wavelet filterbank.
@@ -487,7 +487,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.,
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
+        subsampling is. Defaults to 4.
     xi_min : float, optional
         Lower bound on `xi` to ensure every bandpass is a valid wavelet
         (doesn't peak at FFT bin 1) within `2*len(x)` padding.
@@ -547,7 +547,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.,
 
 
 def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
-                                 alpha=5., xi_min=None):
+                                 alpha=4., xi_min=None):
     """
     Calibrates the parameters of the filters used at the 1st and 2nd orders
     of the scattering transform.
@@ -583,7 +583,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
+        subsampling is. Defaults to 4.
     xi_min : float, optional
         Lower bound on `xi` to ensure every bandpass is a valid wavelet
         (doesn't peak at FFT bin 1) within `2*len(x)` padding.
@@ -626,7 +626,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
 def scattering_filter_factory(J_support, J_scattering, Q, T,
                               r_psi=math.sqrt(0.5),
                               criterion_amplitude=1e-3, normalize='l1',
-                              max_subsampling=None, sigma0=0.1, alpha=5.,
+                              max_subsampling=None, sigma0=0.1, alpha=4.,
                               P_max=5, eps=1e-7, **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
@@ -679,7 +679,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
+        subsampling is. Defaults to 4.
     P_max : int, optional
         maximal number of periods to use to make sure that the Fourier
         transform of the filters is periodic. P_max = 5 is more than enough for

@@ -176,7 +176,7 @@ def test_up_vs_down():
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
     E_down = energy(Scx['psi_t * psi_f_down'])
-    assert E_down / E_up > 17
+    assert E_down / E_up > 15
 
 
 def test_max_pad_factor_fr():
@@ -229,7 +229,7 @@ def test_backends():
 
         E_up   = energy(Scx['psi_t * psi_f_up'])
         E_down = energy(Scx['psi_t * psi_f_down'])
-        assert E_down / E_up > 90
+        assert E_down / E_up > 80
         # TODO why is lower J, Q, and J_fr better for the ratio?
 
 
