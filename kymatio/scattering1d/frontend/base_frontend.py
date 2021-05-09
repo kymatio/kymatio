@@ -436,13 +436,11 @@ class TimeFrequencyScatteringBase1D():
 
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1
-        if self._J_fr is None:  # TODO set from shape_fr_max
-            self._J_fr = int(math.log2(self.Q[0]) + 1)
         # number of psi1 filters
         self._n_psi1 = len(self.psi1_f)
 
         self.sc_freq = _FrequencyScatteringBase(
-            self._J_fr, self._shape_fr, self._Q_fr, self._F, max_order_fr,
+            self._shape_fr, self._J_fr, self._Q_fr, self._F, max_order_fr,
             self._average_fr, self.resample_psi_fr, self.resample_phi_fr,
             self.vectorize, self.out_type, self.pad_mode, self.max_pad_factor_fr,
             self._n_psi1, self.backend)
@@ -533,13 +531,13 @@ class _FrequencyScatteringBase(ScatteringBase):
     """Attribute object for TimeFrequencyScatteringBase1D for frequential
     scattering part of JTFS.
     """
-    def __init__(self, J_fr, shape_fr, Q_fr=2, F=None, max_order_fr=1,
+    def __init__(self, shape_fr, J_fr=None, Q_fr=2, F=None, max_order_fr=1,
                  average=False, resample_psi_fr=True, resample_phi_fr=True,
                  vectorize=True, out_type='array', pad_mode='zero',
                  max_pad_factor_fr=None, n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
-        self.J_fr = J_fr
         self.shape_fr = shape_fr
+        self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
         self.max_order_fr = max_order_fr
@@ -573,7 +571,9 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # ensure 2**J_fr <= nextpow2(shape_fr_max)
         mx = 2**math.ceil(math.log2(self.shape_fr_max))
-        if 2**(self.J_fr) > mx:
+        if self.J_fr is None:
+            self.J_fr = int(math.log2(mx)) - 1
+        elif 2**(self.J_fr) > mx:
             raise ValueError(("2**J_fr cannot exceed maximum number of frequency "
                               "rows (rounded up to pow2) in joint scattering "
                               "(got {} > {})".format(2**(self.J_fr), mx)))

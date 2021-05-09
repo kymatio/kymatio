@@ -33,7 +33,7 @@ def test_alignment():
     # scatter ################################################################
     for out_type in ('array', 'list'):
         jtfs = TimeFrequencyScattering1D(
-            J, T, Q, J_fr=4, Q_fr=2, average=True, average_fr=True,
+            J, T, Q, Q_fr=2, average=True, average_fr=True,
             out_type=out_type, aligned=True, frontend=default_backend)
 
         Scx = jtfs(x)
