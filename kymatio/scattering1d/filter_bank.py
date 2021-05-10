@@ -510,7 +510,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
         number of wavelets per octave for the first order
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
+        time-shift invariance and maximum subsampling
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -587,7 +587,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         a value Q >= 12 is recommended in order to separate partials.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
+        time-shift invariance and maximum subsampling
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
