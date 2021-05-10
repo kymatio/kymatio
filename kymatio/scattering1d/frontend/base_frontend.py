@@ -511,8 +511,8 @@ class TimeFrequencyScatteringBase1D():
     @property
     def _fr_attributes(self):
         """Exposes `sc_freq`'s attributes via main object as read-only."""
-        return ('J_fr', 'Q_fr', 'shape_fr_max', 'J_pad_fr_max', 'average_fr',
-                'average_fr_global', 'F', 'log2_F', 'max_order_fr',
+        return ('J_fr', 'Q_fr', 'shape_fr', 'shape_fr_max', 'J_pad_fr_max',
+                'average_fr', 'average_fr_global', 'F', 'log2_F', 'max_order_fr',
                 'phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down')
 
     def __getattr__(self, name):
@@ -637,7 +637,7 @@ class TimeFrequencyScatteringBase1D():
     J_fr : int
         The maximum log-scale of frequential scattering in joint scattering
         transform, and number of octaves of frequential filters. That is,
-        the maximum scale is given by :math:`2^J_fr`.
+        the maximum (bandpass) scale is given by :math:`2^J_fr`.
         Default is determined at instantiation from longest frequential row
         in frequential scattering, set to `log2(nextpow2(shape_fr_max))`, i.e.
         maximum possible.
@@ -692,9 +692,10 @@ class TimeFrequencyScatteringBase1D():
         Whether to resample (True, default) frequential filters at different
         lengths, or subsample (False) them:
             - resample: preserve physical dimensionality (center frequeny, width)
-            at every length
+            at every length. E.g. `psi = psi_fn(N/2)`.
             - subsample: recalibrate filter to each length; center frequency is
-            preserved, but temporal support is narrowed (contraction)
+            preserved, but temporal support is narrowed (contraction).
+            E.g. `psi = psi[::2]`.
         Tuple can set separately `(resample_psi_fr, resample_phi_fr)`, else
         both set to same value.
 
@@ -761,7 +762,6 @@ class TimeFrequencyScatteringBase1D():
         Used to determine `J_pad_fr` if `resample_psi_fr or resample_phi_fr`.
         See `sc_freq.compute_J_pad()`.
 
-
     phi_f_fr : dictionary
         Dictionary containing the frequential lowpass filter at all resolutions.
         See `filter_bank.phi_fr_factory` for an exact description.
@@ -773,7 +773,6 @@ class TimeFrequencyScatteringBase1D():
     psi1_f_fr_down : list[dict]
         `psi1_f_fr_up`, but with "down" spin, forming a complementary pair.
 
-
     average_fr_global : bool
         True if `F == nextpow2(shape_fr_max)`, i.e. `F` is maximum possible
         and equivalent to global averaging, in which case lowpassing is replaced
@@ -782,6 +781,21 @@ class TimeFrequencyScatteringBase1D():
     log2_F : int
         Equal to `log2(prevpow2(F))`; is the maximum frequential subsampling
         factor if `average_fr=True` (otherwise that factor is up to `J_fr`).
+
+    subsampling_equiv_relative_to_max_padding : int
+        Amount of *equivalent subsampling* of frequential padding relative to
+        `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
+
+    max_subsampling_before_phi_fr : int
+        Maximum permitted frequential subsampling before convolving with
+        `phi_f_fr`; may differ from `log2_F` if `resample_phi_fr=True`.
+
+        If `resample_phi_fr=True`, the `log2_F` subsampling factor may not be
+        reached *by the filter*, as temporal width is preserved upon resampling
+        rather than halved as  with subsampling.
+        Subsampling by `log2_F` *after* convolving with `phi_f_fr` is fine, thus
+        the restriction is to not subsample by more than the most subsampled
+        `phi_f_fr` *before* convolving with it.
     """
 
     _doc_scattering = \
@@ -913,9 +927,9 @@ class _FrequencyScatteringBase(ScatteringBase):
     def create_phi_filters(self):
         """See `filter_bank.phi_fr_factory`."""
         self.phi_f_fr = phi_fr_factory(
-            self.F, self.log2_F, self.Q_fr, self.J_pad_fr_max,
-             **self.get_params('resample_phi_fr', 'criterion_amplitude',
-                               'sigma0', 'P_max', 'eps'))
+            self.J_pad_fr_max, self.F, self.log2_F,
+            **self.get_params('resample_phi_fr', 'criterion_amplitude',
+                              'sigma0', 'P_max', 'eps'))
 
         if self.resample_phi_fr and not self.average_fr_global:
             # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f_fr`)
@@ -937,7 +951,7 @@ class _FrequencyScatteringBase(ScatteringBase):
     def create_psi_filters(self):
         """See `filter_bank.psi_fr_factory`."""
         self.psi1_f_fr_up, self.psi1_f_fr_down = psi_fr_factory(
-            self.J_fr, self.Q_fr, self.J_pad_fr_max,
+            self.J_pad_fr_max, self.J_fr, self.Q_fr,
             self.subsampling_equiv_relative_to_max_padding,
             **self.get_params('resample_psi_fr', 'r_psi', 'normalize',
                               'sigma0', 'alpha', 'P_max', 'eps'))

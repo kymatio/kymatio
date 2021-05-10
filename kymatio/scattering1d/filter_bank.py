@@ -814,11 +814,57 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     return phi_f, psi1_f, psi2_f, t_max_phi
 
 
-def psi_fr_factory(J_fr, Q_fr, J_pad_fr_max,
+def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
                    subsampling_equiv_relative_to_max_padding,
                    resample_psi_fr=True, r_psi=math.sqrt(0.5), normalize='l1',
                    sigma0=0.1, alpha=5., P_max=5, eps=1e-7):
-    # TODO docs
+    """
+    Builds in Fourier the Morlet filters used for the scattering transform.
+
+    Each single filter is provided as a dictionary with the following keys:
+    * 'xi': central frequency, defaults to 0 for low-pass filters.
+    * 'sigma': frequential width
+    * k where k is an integer bounded below by 0. The maximal value for k
+        depends on the type of filter, it is dynamically chosen depending
+        on max_subsampling and the characteristics of the filters.
+        Each value for k is an array (or tensor) of size 2**(J_support - k)
+        containing the Fourier transform of the filter after subsampling by 2**k
+
+    Parameters
+    ----------
+    J_pad_fr_max : int
+        `2**J_pad_fr_max` is the desired support size (length) of the filters.
+    J_fr : int
+        The maximum log-scale of frequential scattering in joint scattering
+        transform, and number of octaves of frequential filters. That is,
+        the maximum (bandpass) scale is given by :math:`2^J_fr`.
+    Q_fr : int
+        Number of wavelets per octave for frequential scattering.
+    subsampling_equiv_relative_to_max_padding : int
+        Amount of *equivalent subsampling* of frequential padding relative to
+        `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
+    resample_psi_fr : bool (default True)
+        - True: preserve physical dimensionality (center frequeny, width)
+        at every length. E.g. `psi = psi_fn(N/2)`.
+        - False: recalibrate filter to each length; center frequency is
+        preserved, but temporal support is narrowed (contraction).
+        E.g. `psi = psi[::2]`.
+    r_psi, normalize, sigma0, alpha, P_max, eps:
+        See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
+
+    Returns
+    -------
+    psi1_f_fr_up : list[dict]
+        a list of dicts containing the band-pass filters of frequential scattering
+        with "up" spin at all possible subsamplings. Each element corresponds to
+        a dictionary for a single filter, see above for an exact description.
+        Subsampling factors are indexed by integers, where `2**index` is the
+        amount of subsampling, and the `'j'` key holds the value of maximum such
+        subsampling which can be performed without aliasing.
+    psi1_f_fr_down : list[dict]
+        Same as `psi1_f_fr_up` but with "down" spin (analytic, whereas "up"
+        is anti-analytic wavelet).
+    """
     # compute the spectral parameters of the filters
     T = 1  # for computing `sigma_low`, unused
     _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
@@ -847,11 +893,9 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_fr_max,
             j0_prev = j0
             if resample_psi_fr:
                 psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
-                                      normalize=normalize, P_max=P_max,
-                                      eps=eps)
+                                      normalize=normalize, P_max=P_max, eps=eps)
             else:
-                psi_f[j0] = periodize_filter_fourier(psi_f[0],
-                                                     nperiods=factor)
+                psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
         psi1_f_fr_down.append(psi_f)
 
     # compute spin down filters by conjugating spin up in frequency domain
@@ -872,9 +916,54 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_fr_max,
     return psi1_f_fr_up, psi1_f_fr_down
 
 
-def phi_fr_factory(F, log2_F, Q_fr, J_pad_fr_max, resample_phi_fr=True,
+def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
                    criterion_amplitude=1e-3, sigma0=0.1, P_max=5, eps=1e-7):
-    # TODO docs
+    """
+    Builds in Fourier the lowpass Gabor filters used for JTFS.
+
+    Each single filter is provided as a dictionary with the following keys:
+    * 'xi': central frequency, defaults to 0 for low-pass filters.
+    * 'sigma': frequential width
+    * 'j': subsampling factor from 0 to `log2_F` (or potentially less if
+      `resample_phi_fr=False`).
+
+    Parameters
+    ----------
+    J_pad_fr_max : int
+        `2**J_pad_fr_max` is the desired support size (length) of the filters.
+
+    F : int
+        temporal support of frequential low-pass filter, controlling amount of
+        imposed frequency transposition invariance and maximum frequential
+        subsampling.
+
+    log2_F : int
+        Equal to `log2(prevpow2(F))`, sets maximum subsampling factor.
+        If `resample_phi_fr=True`, this factor may not be reached *by the filter*,
+        as temporal width is preserved upon resampling rather than halved as
+        with subsampling. Subsampling by `log2_F` *after* convolving with
+        `phi_f_fr` is fine, thus the restriction is to not subsample by more than
+        the most subsampled `phi_f_fr` *before* convolving with it - set by
+        `max_subsampling_before_phi_fr`.
+
+    resample_phi_fr : bool (default True)
+        - True: preserve physical dimensionality (center frequeny, width)
+        at every length. E.g. `phi = phi_fn(N/2)`.
+        - False: recalibrate filter to each length; center frequency is
+        preserved, but temporal support is narrowed (contraction).
+        E.g. `phi = phi[::2]`.
+
+    criterion_amplitude, sigma, P_max, eps:
+        See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
+
+    Returns
+    -------
+    phi_f_fr : dictionary
+        a dictionary containing the low-pass filter at all possible
+        subsamplings. The possible subsamplings are controlled by the inputs
+        they can receive, which correspond to the subsamplings performed on top
+        of frequential scattering.
+    """
     # compute the spectral parameters of the filters
     sigma_low = sigma0 / F
     J_support = J_pad_fr_max
@@ -900,8 +989,8 @@ def phi_fr_factory(F, log2_F, Q_fr, J_pad_fr_max, resample_phi_fr=True,
             phi_f_fr[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max,
                                       eps=eps)
         else:
-            phi_f_fr[j_fr] = periodize_filter_fourier(
-                phi_f_fr[0], nperiods=factor)
+            phi_f_fr[j_fr] = periodize_filter_fourier(phi_f_fr[0],
+                                                      nperiods=factor)
 
     # embed meta info in filters
     phi_f_fr['xi'] = 0.
