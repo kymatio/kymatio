@@ -283,8 +283,8 @@ def test_output():
         1. (aligned, out_type, average_fr) = (True,  "array", True)
         2. (aligned, out_type, average_fr) = (False, "array", True)
         3. (aligned, out_type, average_fr) = (True,  "list",  "global")
-        4. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
-        5. (aligned, out_type, average_fr) = (True,  "array", False)
+        4. (aligned, out_type, average_fr) = (True,  "array", False)
+        5. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
         6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
@@ -341,8 +341,7 @@ def test_output():
             n_coef_out = sum(len(o) for o in out.values())
             n_coef_out_stored = len(out_stored)
         else:
-            # TODO remove len(o) != 0 after adj
-            n_coef_out = sum(o.shape[1] for o in out.values() if len(o) != 0)
+            n_coef_out = sum(o.shape[1] for o in out.values())
             n_coef_out_stored = sum(len(o) for o in out_stored)
         assert n_coef_out == n_coef_out_stored, (
             "out vs stored number of coeffs mismatch ({} != {})\n{}"
@@ -352,8 +351,6 @@ def test_output():
         for pair in out:
             for i, o in enumerate(out[pair]):
                 o = o if params['out_type'] == 'array' else o['coef']
-                if len(o) == 0:
-                    continue  # TODO
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
                 assert o.shape == o_stored.shape, (
                     "out[{0}][{1}].shape != out_stored[{2}].shape "

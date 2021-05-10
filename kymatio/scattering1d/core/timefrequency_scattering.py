@@ -76,16 +76,16 @@ def timefrequency_scattering(
 
     # Frequential averaging over time averaged coefficients ##################
     # `U1 * (phi_t * phi_f)` pair
-    if average_fr and average:
-        # zero-pad along frequency, map to Fourier domain
-        pad_fr = sc_freq.J_pad_fr_max
-        S_1_fr = _right_pad(S_1_list, pad_fr, B)
-        # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
-        # S_1_fr[:len(S_1_list)] = S_1_list
 
-    if sc_freq.average_fr_global and average and average_fr:
+    # zero-pad along frequency, map to Fourier domain
+    pad_fr = sc_freq.J_pad_fr_max
+    S_1_fr = _right_pad(S_1_list, pad_fr, B)
+    # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
+    # S_1_fr[:len(S_1_list)] = S_1_list
+
+    if sc_freq.average_fr_global:
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
-    elif average_fr and average:
+    else:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
 
         if aligned:
@@ -122,8 +122,6 @@ def timefrequency_scattering(
                              sc_freq.ind_start_fr[-1][lowpass_subsample_fr],
                              sc_freq.ind_end_fr[-1][lowpass_subsample_fr])
         S_1_fr = B.transpose(S_1_fr_T)
-    else:
-        S_1_fr = []
     out_S_2['phi_t * phi_f'].append({'coef': S_1_fr,
                                      'j': (log2_T, sc_freq.log2_F),
                                      'n': (-1, -1),
@@ -231,11 +229,11 @@ def timefrequency_scattering(
     out = {}
     out['S0'] = out_S_0
     out['S1'] = out_S_1
+    out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
+    out['phi_t * psi_f'] = out_S_2['phi_t * psi_f'][0]
+    out['psi_t * phi_f'] = out_S_2['psi_t * phi_f']
     out['psi_t * psi_f_up']   = out_S_2['psi_t * psi_f'][0]
     out['psi_t * psi_f_down'] = out_S_2['psi_t * psi_f'][1]
-    out['psi_t * phi_f'] = out_S_2['psi_t * phi_f']
-    out['phi_t * psi_f'] = out_S_2['phi_t * psi_f'][0]
-    out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
 
     if out_type == 'array':
         for k, v in out.items():
@@ -355,23 +353,23 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     total_subsample_fr_max = sc_freq.log2_F
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
-    if aligned:
-        # subsample as we would in min-padded case
-        reference_subsample_equiv_due_to_pad = max(
-            sc_freq.subsampling_equiv_relative_to_max_padding)
-        if 'array' in out_type and average_fr:
-            subsample_equiv_due_to_pad_min = 0
-        else:
-            subsample_equiv_due_to_pad_min = reference_subsample_equiv_due_to_pad
-        reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
-                                            n1_fr_subsample)
-    else:
-        # subsample regularly (relative to current padding)
-        reference_total_subsample_so_far = total_subsample_so_far
-
     if sc_freq.average_fr_global:
         pass
     elif average_fr:
+        if aligned:
+            # subsample as we would in min-padded case
+            reference_subsample_equiv_due_to_pad = max(
+                sc_freq.subsampling_equiv_relative_to_max_padding)
+            if 'array' in out_type and average_fr:
+                subsample_equiv_due_to_pad_min = 0
+            else:
+                subsample_equiv_due_to_pad_min = (
+                    reference_subsample_equiv_due_to_pad)
+            reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
+                                                n1_fr_subsample)
+        else:
+            # subsample regularly (relative to current padding)
+            reference_total_subsample_so_far = total_subsample_so_far
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)
@@ -379,8 +377,8 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         total_subsample_fr = total_subsample_so_far
 
+    # fetch frequential lowpass
     if average_fr and not sc_freq.average_fr_global:
-        # fetch frequential lowpass
         phi_fr = sc_freq.phi_f_fr[total_subsample_so_far]
 
     # do lowpassing ##########################################################
