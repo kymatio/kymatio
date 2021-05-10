@@ -14,17 +14,17 @@ from ..utils import (compute_border_indices, compute_padding,
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, T=None, vectorize=True, out_type='array',
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+            oversampling=0, vectorize=True, out_type='array',
             pad_mode='reflect', max_pad_factor=2, backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
         self.Q = Q if isinstance(Q, tuple) else (Q, 1)
+        self.T = T
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.T = T
         self.vectorize = vectorize
         self.out_type = out_type
         self.pad_mode = pad_mode

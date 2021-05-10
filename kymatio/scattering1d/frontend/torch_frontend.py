@@ -9,13 +9,12 @@ from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase1D
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, T=None, vectorize=True, out_type='array',
-            pad_mode='reflect', max_pad_factor=2, register_filters=True,
-            backend='torch'):
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+            oversampling=0, vectorize=True, out_type='array', pad_mode='reflect',
+            max_pad_factor=2, register_filters=True, backend='torch'):
         ScatteringTorch.__init__(self)
-        ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
-                oversampling, T, vectorize, out_type, pad_mode, max_pad_factor,
+        ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
+                oversampling, vectorize, out_type, pad_mode, max_pad_factor,
                 backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
@@ -166,7 +165,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         max_order_tm = 2
         _out_type = out_type if out_type != "array-like" else "array"
         ScatteringTorch1D.__init__(
-            self, J, shape, Q, max_order_tm, average, oversampling, T,
+            self, J, shape, Q, T, max_order_tm, average, oversampling,
             vectorize, _out_type, pad_mode, max_pad_factor,
             register_filters=False, backend=backend)
         self.out_type = _out_type

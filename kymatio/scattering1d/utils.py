@@ -35,18 +35,18 @@ def compute_border_indices(log2_T, i0, i1):
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
 
-def compute_padding(J_pad, T):
+def compute_padding(J_pad, N):
     """
     Computes the padding to be added on the left and on the right
     of the signal.
 
-    It should hold that 2**J_pad >= T
+    It should hold that 2**J_pad >= N
 
     Parameters
     ----------
     J_pad : int
         2**J_pad is the support of the padded signal
-    T : int
+    N : int
         original signal support size
 
     Returns
@@ -54,11 +54,11 @@ def compute_padding(J_pad, T):
     pad_left: amount to pad on the left ("beginning" of the support)
     pad_right: amount to pad on the right ("end" of the support)
     """
-    T_pad = 2**J_pad
-    if T_pad < T:
+    N_pad = 2**J_pad
+    if N_pad < N:
         raise ValueError('Padding support should be larger than the original '
                          'signal size!')
-    to_add = 2**J_pad - T
+    to_add = 2**J_pad - N
     pad_left = to_add // 2
     pad_right = to_add - pad_left
     return pad_left, pad_right
@@ -83,7 +83,7 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
         The number of first-order wavelets per octave.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
+        time-shift invariance and maximum subsampling
     Q2 : int >= 0  # TODO
         The number of second-order wavelets per octave.
         If 0, will exclude `psi2` from computation.
@@ -201,7 +201,7 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
         The number of first-order wavelets per octave.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
+        time-shift invariance and maximum subsampling
     Q2 : int >= 1
         The number of second-order wavelets per octave.
     max_order : int, optional
@@ -257,7 +257,7 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
         2**J_pad == amount of temporal padding
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
+        time-shift invariance and maximum subsampling
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
@@ -366,7 +366,7 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
         2**J_pad_fr_max == maximum amount of frequential padding
     T : int
         temporal support of temporal low-pass filter, controlling amount of
-        imposed time-shift invariance and subsampling
+        imposed time-shift invariance and maximum subsampling
     F : int
         temporal support of frequential low-pass filter, controlling amount of
         imposed frequency transposition invariance and subsampling
