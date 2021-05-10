@@ -9,7 +9,7 @@ from kymatio.toolkit import drop_batch_dim_jtfs
 # backend to use for most tests
 default_backend = 'numpy'
 # set True to execute all test functions without pytest
-run_without_pytest = 0
+run_without_pytest = 1
 
 
 def test_alignment():

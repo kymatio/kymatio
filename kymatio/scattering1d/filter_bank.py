@@ -337,22 +337,25 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
 
     Returns
     -------
-    N_min : int
+    N: int
         Minimum required number of samples for `fn(N)` to have temporal
-        support less than `N`. If `fn` ends up global averaging, will return -1
-        (no such `N` exists).
+        support less than `N`.
     """
     N = 2**math.ceil(math.log2(N_init))  # ensure pow 2
-    N_min = N
     while True:
-        p_fr = fn(N)
-        N_min = 2 * compute_temporal_support(
+        try:
+            p_fr = fn(N)
+        except ValueError:  # get_normalizing_factor()
+            N *= 2
+            continue
+
+        p_halfwidth = compute_temporal_support(
             p_fr.reshape(1, -1), criterion_amplitude=criterion_amplitude)
 
         if N > 1e9:  # avoid crash
             raise Exception("couldn't satisfy stop criterion before `N > 1e9`; "
                             "check `fn`")
-        if N_min < N or (max_N is not None and N > max_N):
+        if 2 * p_halfwidth < N or (max_N is not None and N > max_N):
             break
         N *= 2
     return N
@@ -512,7 +515,6 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
     xi = []
     sigma = []
     j = []
-    is_cqt = []
 
     if sigma_max <= sigma_min or xi_max <= xi_min:
         # in this exceptional case, we will not go through the loop, so
@@ -526,7 +528,6 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
-            is_cqt.append(True)
             current = move_one_dyadic_step(current, Q, alpha=alpha)
         # get the last key
         last_xi = xi[-1]
@@ -541,9 +542,8 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
         xi.append(new_xi)
         sigma.append(new_sigma)
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
-        is_cqt.append(False)
     # return results
-    return xi, sigma, j, is_cqt
+    return xi, sigma, j
 
 
 def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
@@ -604,6 +604,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     sigma2 : dictionary
         dictionary containing the frequential width of the second order
         filters. See above for a description of the keys.
+    # TODO j1 & j2
     """
     Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
     if Q1 < 1 or Q2 < 1:
@@ -613,14 +614,14 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     # for default T = 2**(J), this coincides with sigma_low
     sigma_min = sigma0 / math.pow(2, J)
 
-    xi1, sigma1, j1, is_cqt1 = compute_params_filterbank(
-        sigma_min, Q1, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
-    xi2, sigma2, j2, is_cqt2 = compute_params_filterbank(
-        sigma_min, Q2, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q1, r_psi=r_psi,
+                                                alpha=alpha, xi_min=xi_min)
+    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, Q2, r_psi=r_psi,
+                                                alpha=alpha, xi_min=xi_min)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
-    return sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2
+    return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T,
@@ -729,7 +730,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     N = 2**J_support
     xi_min = 2 / N  # minimal peak at bin 2
     # compute the spectral parameters of the filters
-    (sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2
+    (sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s
      ) = calibrate_scattering_filters(J_scattering, Q, T, r_psi=r_psi,
                                       sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
@@ -756,8 +757,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         # We first compute the filter without subsampling
         psi_f = {}
         psi_f[0] = morlet_1d(
-            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-            eps=eps)
+            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max, eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -768,19 +768,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
-    n1_skipped_psi = -1
     for (n1, j1) in enumerate(j1s):
-        try:
-            psi1_f.append({0: morlet_1d(
-                N, xi1[n1], sigma1[n1], normalize=normalize,
-                P_max=P_max, eps=eps)})
-        except ValueError as e:
-            if is_cqt1[n1]:
-                raise e
-            # TODO throw warning
-            # we don't care if non-CQT (intermediate) wavelet construction fails
-            n1_skipped_psi = n1
-            break
+        psi1_f.append({0: morlet_1d(
+            N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max, eps=eps)})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
@@ -804,8 +794,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 
     # Embed the meta information within the filters
     for (n1, j1) in enumerate(j1s):
-        if n1 == n1_skipped_psi:
-            break
         psi1_f[n1]['xi'] = xi1[n1]
         psi1_f[n1]['sigma'] = sigma1[n1]
         psi1_f[n1]['j'] = j1
@@ -832,7 +820,7 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
     # TODO docs
     # compute the spectral parameters of the filters
     T = 1  # for computing `sigma_low`, unused
-    _, xi1, sigma1, j1s, is_cqt1, *_ = calibrate_scattering_filters(
+    _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
         J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
@@ -840,7 +828,6 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
     psi1_f_down = []
 
     # loop params
-    n1_fr_skipped_psi = -1
     J_support = J_pad_max  # begin with longest
     N = 2**J_support
 
@@ -848,36 +835,23 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
     # filters at expected pad lengths
     for (n1_fr, j1) in enumerate(j1s):
         psi_f = {}
-        skip_psi = False
-        try:
-            psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
-                                 normalize=normalize, P_max=P_max, eps=eps)
-            # j0s is ordered greater to lower, so reverse
-            j0_prev = -1
-            for j0 in j0s[::-1]:
-                if j0 <= 0 or j0 == j0_prev:
-                    continue
-                factor = 2**j0
-                j0_prev = j0
-                if resample_psi_fr:
-                    psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
-                                          normalize=normalize, P_max=P_max,
-                                          eps=eps)
-                else:
-                    psi_f[j0] = periodize_filter_fourier(psi_f[0],
-                                                         nperiods=factor)
-        except ValueError as e:
-            if is_cqt1[n1_fr]:
-                raise e
-            # TODO throw warning
-            # we don't care if non-CQT wavelet construction fails
-            skip_psi = True
-
-        if not skip_psi:
-            psi1_f_down.append(psi_f)
-        else:
-            n1_fr_skipped_psi = n1_fr
-            break
+        psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
+                             normalize=normalize, P_max=P_max, eps=eps)
+        # j0s is ordered greater to lower, so reverse
+        j0_prev = -1
+        for j0 in j0s[::-1]:
+            if j0 <= 0 or j0 == j0_prev:
+                continue
+            factor = 2**j0
+            j0_prev = j0
+            if resample_psi_fr:
+                psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
+                                      normalize=normalize, P_max=P_max,
+                                      eps=eps)
+            else:
+                psi_f[j0] = periodize_filter_fourier(psi_f[0],
+                                                     nperiods=factor)
+        psi1_f_down.append(psi_f)
 
     # compute spin down filters by conjugating spin up in frequency domain
     for psi_downs in psi1_f_down:
@@ -888,8 +862,6 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
 
     # Embed the meta information within the filters
     for (n1_fr, j1) in enumerate(j1s):
-        if n1_fr == n1_fr_skipped_psi:
-            break
         for psi1_f in (psi1_f_up, psi1_f_down):
             psi1_f[n1_fr]['xi'] = xi1[n1_fr]
             psi1_f[n1_fr]['sigma'] = sigma1[n1_fr]

@@ -139,71 +139,45 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     N = 2 ** J_support
     xi_min = (2 / N)  # leftmost peak at bin 2
 
-    sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2 = \
+    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = \
         calibrate_scattering_filters(J_scattering, Q_temp, T, xi_min=xi_min)
-
-    def last_cqt(is_cqt):
-        """Begin iterating from last CQT wavelet."""
-        return (is_cqt.index(False) if False in is_cqt else len(is_cqt)) - 1
 
     # compute psi1_f with greatest time support, if requested
     if Q1 >= 1:
-        # TODO subsampled variant
-        n1_last_cqt = last_cqt(is_cqt1)
-        for n1 in range(n1_last_cqt, len(j1s)):
-            try:
-                psi1_f_fn = lambda N: morlet_1d(
-                    N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max,
-                    eps=eps)
-                _ = psi1_f_fn(N)
-            except ValueError as e:
-                if is_cqt1[n1]:
-                    raise e
-                break
-        psi1_f_fn_widest = psi1_f_fn
-
+        # TODO subsampled variant  # TODO no
+        psi1_f_fn = lambda N: morlet_1d(N, xi1[-1], sigma1[-1],
+                                        normalize=normalize, P_max=P_max, eps=eps)
     # compute psi2_f with greatest time support, if requested
     if Q2 >= 1:
-        n2_last_cqt = last_cqt(is_cqt2)
-        for n2 in range(n2_last_cqt, len(j2s)):
-            try:
-                psi2_f_fn = lambda N: morlet_1d(
-                    N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-                    eps=eps)
-                _ = psi2_f_fn(N)
-            except ValueError as e:
-                if is_cqt2[n2]:
-                    raise e
-                break
-        psi2_f_fn_widest = psi2_f_fn
-
+        psi2_f_fn = lambda N: morlet_1d(N, xi2[-1], sigma2[-1],
+                                        normalize=normalize, P_max=P_max, eps=eps)
     # compute lowpass
     phi_f_fn = lambda N: gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # compute for all cases as psi's time support might exceed phi's
-    kw = dict(N_init=N, criterion_amplitude=criterion_amplitude)
-    N_min_phi = compute_minimum_required_length(phi_f_fn, **kw)
+    kw = dict(criterion_amplitude=criterion_amplitude)
+    N_min_phi = compute_minimum_required_length(phi_f_fn, N_init=N, **kw)
+    phi_halfwidth = compute_temporal_support(
+        phi_f_fn(N_min_phi).reshape(1, -1), **kw)
+
     if Q1 >= 1:
-        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, **kw)
+        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, N_init=N, **kw)
+        psi1_halfwidth = compute_temporal_support(
+            psi1_f_fn(N_min_psi1).reshape(1, -1), **kw)
     else:
-        N_min_psi1 = -2  # placeholder
+        psi1_halfwidth = -1  # placeholder
     if Q2 >= 1:
-        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, **kw)
+        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, N_init=N, **kw)
+        psi2_halfwidth = compute_temporal_support(
+            psi2_f_fn(N_min_psi2).reshape(1, -1), **kw)
     else:
-        N_min_psi2 = -2
+        psi2_halfwidth = -1
 
     # take maximum
-    if N_min_phi == max(N_min_phi, N_min_psi1, N_min_psi2):
-        p_fr = phi_f_fn(N_min_phi)
-    elif N_min_psi1 == max(N_min_phi, N_min_psi1, N_min_psi2):
-        p_fr = psi1_f_fn_widest(N_min_psi1)
-    else:
-        p_fr = psi2_f_fn_widest(N_min_psi2)
-    t_max = compute_temporal_support(p_fr.reshape(1, -1),
-                                     criterion_amplitude=criterion_amplitude)
+    t_max = max(phi_halfwidth, psi1_halfwidth, psi2_halfwidth)
 
     # set min to pad based on maximum
-    min_to_pad = int(1.2 * t_max)
+    min_to_pad = int(1.2 * t_max)  # take a little extra to be safe
     if pad_mode == 'zero':
         min_to_pad //= 2
 
@@ -244,7 +218,7 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
         integer. If `True`, returns a tuple of size `max_order` containing
         the number of coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2 = \
+    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
         calibrate_scattering_filters(J, Q, T)
 
     size_order0 = 1
@@ -317,7 +291,7 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
     """
     xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
     # TODO meta won't match output if non-CQT are dropped
-    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
+    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
 
     meta = {}
@@ -431,7 +405,7 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
     """
     xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
     xi_min_fr = (2 / 2**J_pad_fr_max)
-    sigma_low, xi1s, sigma1s, j1s, _, xi2s, sigma2s, j2s, _ = \
+    sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
         calibrate_scattering_filters(J_fr, Q_fr, F, xi_min=xi_min_fr)
