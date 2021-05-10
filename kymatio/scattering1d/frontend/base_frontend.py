@@ -513,7 +513,7 @@ class TimeFrequencyScatteringBase1D():
         """Exposes `sc_freq`'s attributes via main object as read-only."""
         return ('J_fr', 'Q_fr', 'shape_fr_max', 'J_pad_fr_max', 'average_fr',
                 'average_fr_global', 'F', 'log2_F', 'max_order_fr',
-                'psi1_f_fr_up', 'psi1_f_fr_down')
+                'phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down')
 
     def __getattr__(self, name):
         # access key attributes via frequential class
@@ -525,8 +525,309 @@ class TimeFrequencyScatteringBase1D():
 
     @classmethod
     def _document(cls):
-        # TODO documentation
-        cls.__doc__ = """Joint time-frequency scattering"""
+        cls.__doc__ = TimeFrequencyScatteringBase1D._doc_class.format(
+            frontend_paragraph=cls._doc_frontend_paragraph,
+            alias_call=cls._doc_alias_call,
+            parameters=cls._doc_params,
+            attributes=cls._doc_attrs,
+            sample=cls._doc_sample.format(shape=cls._doc_shape),
+        )
+        cls.scattering.__doc__ = (
+            TimeFrequencyScatteringBase1D._doc_scattering.format(
+                array=cls._doc_array,
+                n=cls._doc_array_n,
+        ))
+
+    _doc_class = \
+    r"""
+    The 1D Joint Time-Frequency Scattering transform.
+
+    JTFS builds on time scattering by convolving first order coefficients
+    with joint 2D wavelets along time and frequency, increasing discriminability
+    while preserving time-shift invariance. Invariance to frequency transposition
+    can be imposed via frequential averaging, while preserving sensitivity to
+    frequency-dependent time shifts.
+
+    Joint wavelets are defined separably in time and frequency and permit fast
+    separable convolution. Convolutions are followed by complex modulus and
+    optionally averaging.
+
+    The JTFS of a 1D signal :math:`x(t)` may be written as
+
+        $S_J x = [S_J^{{(0)}} x, S_J^{{(1)}} x, S_J^{{(2)}} x]$
+
+    where
+
+        $S_J^{{(0)}} x(t) = x \star \phi_T(t)$,
+
+        $S_J^{{(1)}} x(t, \lambda) = |x \star \psi_\lambda^{{(1)}}| \star \phi_T$, and
+
+        $S_J^{{(2)}} x(t, \lambda, \mu, l, s) = |X \star \Psi_{{\mu, l, s}}| \star \Phi_J$.
+
+    $X$ is the unaveraged first-order scattering,
+
+        $X = |x \star \psi_\lambda^{{(1)}}|$
+
+    $\Psi_{{\mu, l, s}}$ comprises of five kinds of joint wavelets:
+
+        $\Psi_{{\mu, l, +1}}(t, \lambda) = \psi_\mu^{{(2)}}(t) \psi_\lambda(-\lambda)$ spin up bandpass
+
+        $\Psi_{{\mu, l, -1}}(t, \lambda) = \psi_\mu^{{(2)}}(t) \psi_\lambda(+\lambda)$ spin up bandpass
+
+        $\Psi_{{\mu, -\infty, 0}}(t, \lambda) = \psi_\mu^{{(2)}}(t) \phi_F(\lambda)$ frequential lowpass, temporal bandpass
+
+        $\Psi_{{-\infty, l, 0}} = \phi_T(t) \psi_\lambda(lambda)$ frequential bandpass, temporal lowpass
+
+        $\Psi_{{-\infty, -\infty, 0}} = \phi_T(t) \phi_F(\lambda)$ joint lowpass
+
+    and $\Phi_J$ optionally does temporal and/or frequential averaging:
+
+        $\Phi_J(t, \lambda) = \phi_T(t) \phi_F(\lambda)
+
+    In the above formulas, :math:`\star` denotes convolution in time. The
+    filters $\psi_\lambda^{{(1)}}(t)$ and $\psi_\mu^{{(2)}}(t)$ are analytic
+    wavelets with center frequencies $\lambda$ and $\mu$, while
+    $\phi_T(t)$ is a real lowpass filter centered at the zero frequency.
+    $\psi_\lambda(-\lambda)$ is like $\psi_\lambda^{{(1)}}(t)$ but with
+    its own parameters (length, center frequency, etc), and an anti-analytic
+    complement (spin down is analytic).
+
+    Filters are built at initialization. While the wavelets are fixed, other
+    parameters may be changed after the object is created, such as `out_type`.
+
+    {frontend_paragraph}
+    Example
+    -------
+    ::
+
+        # Set the parameters of the scattering transform.
+        J = 6
+        N = 2 ** 13
+        Q = 8
+
+        # Generate a sample signal.
+        x = {sample}
+
+        # Define a `TimeFrequencyScattering1D` object.
+        jtfs = TimeFrequencyScattering1D(J, N, Q)
+
+        # Calculate the scattering transform.
+        Sx = S.scattering(x)
+
+        # Equivalently, use the alias.
+        Sx = S{alias_call}(x)
+
+    Above, the length of the signal is :math:`N = 2^{{13}} = 8192`, while the
+    maximum scale of the scattering transform is set to :math:`2^J = 2^6 =
+    64`. The time-frequency resolution of the first-order wavelets
+    :math:`\psi_\lambda^{{(1)}}(t)` is set to `Q = 8` wavelets per octave.
+    The second-order wavelets :math:`\psi_\mu^{{(2)}}(t)` have one wavelet
+    per octave by default, but can be set like like `Q = (8, 2)`. Internally,
+    `J_fr` and `Q_fr`, the frequential variants of `J` and `Q`, are defaulted,
+    but can be specified as well.
+
+    {parameters}
+    {attributes}
+    """
+
+    _doc_params = \
+    """
+    Parameters
+    ----------
+    J_fr : int
+        The maximum log-scale of frequential scattering in joint scattering
+        transform, and number of octaves of frequential filters. That is,
+        the maximum scale is given by :math:`2^J_fr`.
+        Default is determined at instantiation from longest frequential row
+        in frequential scattering, set to `log2(nextpow2(shape_fr_max))`, i.e.
+        maximum possible.
+
+    Q_fr : int
+        Number of wavelets per octave for frequential scattering.
+        # TODO make recommendations on 1 vs 2 vs etc
+
+    F : int / str['global'] / None  # TODO update after updating outputs
+        temporal support of frequential low-pass filter, controlling amount of
+        imposed frequency transposition invariance and maximum frequential
+        subsampling. Defaults to `2**J_fr`.
+        If `'global'`, sets to maximum possible `F` based on `shape_fr_max`.
+
+    average_fr : bool (default False)
+        Whether to average (lowpass) along frequency axis.
+
+    oversampling_fr: int (default 0), optional
+        How much to oversample along frequency axis (with respect to
+        :math:`2^J_fr`).
+        Also see `oversampling` in `Scattering1D`.
+
+    aligned: bool (default True)
+        If True, rows of joint slices index to same frequency for all slices.
+        E.g. `S_2[3][5]` and `S_2[4][5]` (fifth row of third and fourth joint
+        slices) correspond to same frequency. Assuming `average_fr=True`:
+
+          - `out_type in ("array", "array-like")`: all slices are zero-padded to
+          have same number of rows. Earliest slices are likely to be mostly zero
+          per `psi2` convolving with minority of first-order coefficients.
+          - `out_type = "list"`: all slices are padded by minimal amount needed
+          to avert boundary effects. Number of rows will vary across slices
+          (but be same *per `psi2`*).
+
+        If `aligned=False` with `out_type in ("array", "array-like")`, will
+        subsample all slices to same minimum controlled by `log2_F`; this breaks
+        alignment but eliminates coeff redundancy (True oversamples relative
+        to False).
+
+        `aligned=True` works by forcing subsampling factors to be same in
+        frequential scattering and frequential lowpassing across all joint slices;
+        the factors are set to be same as in minimally padded case. This is
+        because different `shape_fr` correspond to *trimming* of same underlying
+        input (first order coeffs) rather than *subsampling*.
+
+        If `average_fr=False`, `aligned=True` still preserves alignment,
+        and `aligned=False` still discards it and subsamples maximally at each
+        stage, but the number of frequency rows will vary across joint slices,
+        preventing 3D concatenation.
+
+    resample_filters_fr: bool / tuple[bool]
+        Whether to resample (True, default) frequential filters at different
+        lengths, or subsample (False) them:
+            - resample: preserve physical dimensionality (center frequeny, width)
+            at every length
+            - subsample: recalibrate filter to each length; center frequency is
+            preserved, but temporal support is narrowed (contraction)
+        Tuple can set separately `(resample_psi_fr, resample_phi_fr)`, else
+        both set to same value.
+
+    max_pad_factor_fr : int / None (default), optional
+        `max_pad_factor` (see `Scattering1D`) for frequential axis in frequential
+        scattering, setting `J_pad_fr_max_user` from `shape_fr_max`.
+
+    out_type : str['list', 'array', 'array-like'], optional
+        Affects output structure and how coefficients are computed. Note no
+        option yields an actual array or list directly; output is always a dict.
+        See `help(scattering)` for further info.
+
+        **Structure**:
+            - 'list': coeffs are packed in a list of dictionaries, each dict
+            storing meta info, and output tensor keyed by `'coef.`.
+            - 'array': concatenated along slices (3D, `average_fr=True`) or mixed
+            slice-frequency dimension (2D, `average_fr=False`). Both require
+            `average=True`.
+            - "Coeffs" refers to coefficients *within* "pairs", e.g. tensors from
+            `'S1'` will not concatenate with those from `'phi_t * psi_f'`.
+
+        **Computation**:
+            - See `aligned` docs for all behavior controlled by `aligned`.
+            - Additionally, 'list' will unpad by exact amounts for each joint
+            slice, whereas 'array' will unpad by minimum amount common to all
+            slices at a given subsampling factor to enable concatenation
+            (see `sc_freq.compute_padding_fr()`).
+
+        'array-like': exactly same as 'array' but no concatenation step. Spares
+        compute overhead if a different concatenation structure is desired.
+    """
+
+    _doc_attrs = \
+    r"""
+    Attributes
+    ----------
+    shape_fr : list[int]
+        List of lengths of frequential rows in joint scattering, indexed
+        by `n2` (index of second-order temporal wavelet).
+
+    shape_fr_max : int
+        Equal to `max(shape_fr)`, used to set `J_pad_fr_max`.
+
+    J_pad_fr : list[int]
+        log2 of padding lengths of frequential rows in joint scattering
+        (row lengths given by `shape_fr`). See `sc_freq.compute_padding_fr()`.
+
+    J_pad_fr_max : int
+        Equal to `max(J_pad_fr)`; this is set first as reference for other
+        J_pad_fr.
+
+    J_pad_fr_max_user : int
+        User-imposed maximum on `J_pad_fr_max` computed from `max_pad_factor_fr`
+        and `shape_fr_max`.
+
+    pad_left_fr : int
+        Amount of padding to left  of frequential rows (or top of joint matrix).
+
+    pad_right_fr : int
+        Amount of padding to right of frequential rows (or top of joint matrix).
+
+    min_to_pad_fr_max : int
+        `min_to_pad` from `compute_minimum_support_to_pad(N=shape_fr_max)`.
+        Used to determine `J_pad_fr` if `resample_psi_fr or resample_phi_fr`.
+        See `sc_freq.compute_J_pad()`.
+
+
+    phi_f_fr : dictionary
+        Dictionary containing the frequential lowpass filter at all resolutions.
+        See `filter_bank.phi_fr_factory` for an exact description.
+
+    psi1_f_fr_up : list[dict]
+        List of dictionaries containing all frequential scattering filters
+        with "up" spin. See `filter_bank.psi_fr_factory` for an exact description.
+
+    psi1_f_fr_down : list[dict]
+        `psi1_f_fr_up`, but with "down" spin, forming a complementary pair.
+
+
+    average_fr_global : bool
+        True if `F == nextpow2(shape_fr_max)`, i.e. `F` is maximum possible
+        and equivalent to global averaging, in which case lowpassing is replaced
+        by simple arithmetic mean.
+
+    log2_F : int
+        Equal to `log2(prevpow2(F))`; is the maximum frequential subsampling
+        factor if `average_fr=True` (otherwise that factor is up to `J_fr`).
+    """
+
+    _doc_scattering = \
+    """
+    Apply the Joint Time-Frequency Scattering transform.
+
+    Given an input `{array}` of size `(B, N)`, where `B` is the batch size
+    and `N` is the length of the individual signals, computes its JTFS.
+
+    Output is always a dictionary of arrays or lists, keying time or joint
+    scattering coefficients (see `out_type` for exact behavior):
+        {{'S0': ...                # (time)  zeroth order
+          'S1': ...                # (time)  first order
+          'phi_t * phi_f': ...     # (joint) joint lowpass
+          'phi_t * psi_f': ...     # (joint) time lowpass (w/ freq bandpass)
+          'psi_t * phi_f': ...     # (joint) freq lowpass (w/ time bandpass)
+          'psi_t * psi_f_up': ...  # (joint) spin up
+          'psi_t * psi_f_up': ...  # (joint) spin down
+         }}
+
+    Coefficient structure depends on `average, average_fr, aligned, out_type`.
+    Assuming `aligned=True` and `out_type="array"` (where possible), then
+    for `average, average_fr`:
+        - `True, True`: the 'true' 3D structure for joint coeffs, shaped
+        `(n_coeffs, freq, time)`, where
+          - `n_coeffs`: number of joint slices from conv by joint wavelets
+          - `freq`: number of log-frequency rows per slice, derived from
+          first-order scattering rows
+        - `True, False`: 2D tensors for joint coeffs, where `freq` and
+        `n_coeffs` are flattened into one dimension, yielding
+        `(n_coeffs * freq, time)`. This breaks inter-wavelet spatial coherence
+        but is the standard used in classification.
+        - `False, True`: list of 1D tensors.
+        - `False, False`: list of 1D tensors.
+    For differences with `aligned, out_type`, see their docs.
+
+    Parameters
+    ----------
+    x : {array}
+        An input `{array}` of size `(B, N)` or `(N,)`.
+
+    Returns
+    -------
+    S : dict[tensor/list]
+        See above.
+    """
 
 
 class _FrequencyScatteringBase(ScatteringBase):
@@ -558,6 +859,13 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.create_psi_filters()
 
     def build(self):
+        """Set up padding and filters
+        Certain internal data, such as the amount of padding and the wavelet
+        filters to be used in the scattering transform, need to be computed
+        from the parameters given during construction. This function is called
+        automatically during object creation and no subsequent calls are
+        therefore needed.
+        """
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 4.
@@ -635,6 +943,28 @@ class _FrequencyScatteringBase(ScatteringBase):
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
     def compute_padding_fr(self):
+        """Builds padding logic of frequential scattering.
+
+        `pad_left_fr, ind_start_fr`: always zero since we right-pad
+        `pad_right_fr`: computed to avoid boundary effects *for each* `shape_fr.
+        `ind_end_fr`: computed to undo `pad_right_fr`
+        `subsampling_equiv_relative_to_max_padding`: indexed by `n2`, is the
+            amount of *equivalent subsampling* of padding relative to
+            `J_pad_fr_max`. E.g.:
+                - if max pad length is 128 and we pad to 64 at `n2 = 3`, then
+                `subsampling_equiv_relative_to_max_padding[3] == 1`.
+        `ind_end_fr_max`: maximum unpad index across all `n2` for a given
+            subsampling factor. E.g.:
+              - n2 = (0, 1, 2)
+              - J_fr = 4 --> j_fr = (0, 1, 2, 3)
+              - ind_end_fr = [[32, 16, 8, 4],
+                              [29, 14, 7, 3],
+                              [33, 16, 8, 4]]
+              - ind_end_fr_max = [33, 16, 8, 4]
+            Ensures same unpadded freq length for
+            `average_fr and out_type in ('array', 'array-like')` without losing
+            information. Unused for `not average_fr or out_type == "list"`.
+        """
         attrs = ('J_pad_fr', 'pad_left_fr', 'pad_right_fr',
                  'ind_start_fr', 'ind_end_fr',
                  'ind_start_fr_max', 'ind_end_fr_max',
@@ -697,6 +1027,16 @@ class _FrequencyScatteringBase(ScatteringBase):
                 getattr(self, attr).append(idxs_max)
 
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
+        """Depends on `shape_fr` and `(resample_phi_fr or resample_phi_fr)`:
+            True:  pad per `shape_fr` and `min_to_pad` of longest `shape_fr`
+            False: pad per `shape_fr` and `min_to_pad` of subsampled filters
+
+        `min_to_pad` is computed for both `phi_f_fr[0]` and `psi1_f_fr_up[-1]`
+        in case latter has greater time-domain support.
+
+        `recompute=True` will force computation from `shape_fr` alone, independent
+        of `J_pad_fr_max` and `min_to_pad_fr_max`, and per `resample_* == True`.
+        """
         if recompute:
             J_pad, _ = self._compute_J_pad(shape_fr, Q)
         elif self.resample_phi_fr or self.resample_psi_fr:

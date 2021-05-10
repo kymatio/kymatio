@@ -410,14 +410,15 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
 
     meta = {}
     inf = -1  # placeholder for infinity
-
-    coef_names = ('S0',                  # (time)  zeroth order
-                  'S1',                  # (time)  first order
-                  'psi_t * psi_f_up',    # (joint) spin up
-                  'psi_t * psi_f_down',  # (joint) spin down
-                  'psi_t * phi_f',       # (joint) freq lowpass
-                  'phi_t * psi_f',       # (joint) time lowpass
-                  'phi_t * phi_f')       # (joint) joint lowpass
+    coef_names = (
+        'S0',                  # (time)  zeroth order
+        'S1',                  # (time)  first order
+        'phi_t * phi_f',       # (joint) joint lowpass
+        'phi_t * psi_f',       # (joint) time lowpass
+        'psi_t * phi_f',       # (joint) freq lowpass
+        'psi_t * psi_f_up',    # (joint) spin up
+        'psi_t * psi_f_down',  # (joint) spin down
+    )
     for field in ('order', 'xi', 'sigma', 'j', 'n', 's', 'key'):
         meta[field] = {name: [] for name in coef_names}
 
