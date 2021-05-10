@@ -10,16 +10,16 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, T=None, vectorize=True, out_type='array', backend=None):
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+            oversampling=0, vectorize=True, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
         self.Q = Q
+        self.T = T
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.T = T
         self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
@@ -274,6 +274,9 @@ class ScatteringBase1D(ScatteringBase):
         {param_shape}Q : int >= 1
             The number of first-order wavelets per octave (second-order
             wavelets are fixed to one wavelet per octave). Defaults to `1`.
+        T : int
+            temporal support of low-pass filter, controlling amount of imposed
+            time-shift invariance and maximum subsampling
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
@@ -295,6 +298,9 @@ class ScatteringBase1D(ScatteringBase):
         {param_shape}Q : int
             The number of first-order wavelets per octave (second-order
             wavelets are fixed to one wavelet per octave).
+        T : int
+            temporal support of low-pass filter, controlling amount of imposed
+            time-shift invariance and maximum subsampling
         {attrs_shape}max_order : int
             The maximum scattering order of the transform.
         {attr_average}oversampling : int
