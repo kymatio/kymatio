@@ -814,9 +814,10 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     return phi_f, psi1_f, psi2_f, t_max_phi
 
 
-def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
-                   r_psi=math.sqrt(0.5), normalize='l1', sigma0=0.1, alpha=5.,
-                   P_max=5, eps=1e-7):
+def psi_fr_factory(J_fr, Q_fr, J_pad_fr_max,
+                   subsampling_equiv_relative_to_max_padding,
+                   resample_psi_fr=True, r_psi=math.sqrt(0.5), normalize='l1',
+                   sigma0=0.1, alpha=5., P_max=5, eps=1e-7):
     # TODO docs
     # compute the spectral parameters of the filters
     T = 1  # for computing `sigma_low`, unused
@@ -828,7 +829,7 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
     psi1_f_down = []
 
     # loop params
-    J_support = J_pad_max  # begin with longest
+    J_support = J_pad_fr_max  # begin with longest
     N = 2**J_support
 
     # for the 1st order filters, the input is trimmed, so we resample or subsample
@@ -839,7 +840,7 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
                              normalize=normalize, P_max=P_max, eps=eps)
         # j0s is ordered greater to lower, so reverse
         j0_prev = -1
-        for j0 in j0s[::-1]:
+        for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
             if j0 <= 0 or j0 == j0_prev:
                 continue
             factor = 2**j0
@@ -871,12 +872,12 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_max, j0s, resample_psi_fr=True,
     return psi1_f_up, psi1_f_down
 
 
-def phi_fr_factory(F, log2_F, Q_fr, J_pad_max, resample_phi_fr=True,
+def phi_fr_factory(F, log2_F, Q_fr, J_pad_fr_max, resample_phi_fr=True,
                    criterion_amplitude=1e-3, sigma0=0.1, P_max=5, eps=1e-7):
     # TODO docs
     # compute the spectral parameters of the filters
     sigma_low = sigma0 / F
-    J_support = J_pad_max
+    J_support = J_pad_fr_max
     N = 2**J_support
 
     # initial lowpass

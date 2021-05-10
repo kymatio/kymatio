@@ -78,7 +78,7 @@ def timefrequency_scattering(
     # `U1 * (phi_t * phi_f)` pair
     if average_fr and average:
         # zero-pad along frequency, map to Fourier domain
-        pad_fr = sc_freq.J_pad_max
+        pad_fr = sc_freq.J_pad_fr_max
         S_1_fr = _right_pad(S_1_list, pad_fr, B)
         # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
         # S_1_fr[:len(S_1_list)] = S_1_list
@@ -90,7 +90,8 @@ def timefrequency_scattering(
 
         if aligned:
             # subsample as we would in min-padded case
-            reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+            reference_subsample_equiv_due_to_pad = max(
+                sc_freq.subsampling_equiv_relative_to_max_padding)
             if 'array' in out_type:  # TODO add cond if phi_t*phi_f cond changed
                 subsample_equiv_due_to_pad_min = 0
             elif out_type == 'list':
@@ -114,12 +115,12 @@ def timefrequency_scattering(
         # unpad + transpose, append to out
         if 'array' in out_type and average_fr:
             S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start_max[lowpass_subsample_fr],
-                             sc_freq.ind_end_max[lowpass_subsample_fr])
+                             sc_freq.ind_start_fr_max[lowpass_subsample_fr],
+                             sc_freq.ind_end_fr_max[lowpass_subsample_fr])
         else:
             S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start[-1][lowpass_subsample_fr],
-                             sc_freq.ind_end[-1][lowpass_subsample_fr])
+                             sc_freq.ind_start_fr[-1][lowpass_subsample_fr],
+                             sc_freq.ind_end_fr[-1][lowpass_subsample_fr])
         S_1_fr = B.transpose(S_1_fr_T)
     else:
         S_1_fr = []
@@ -138,9 +139,9 @@ def timefrequency_scattering(
 
         # preallocate output slice
         if aligned and 'array' in out_type and average_fr:
-            pad_fr = sc_freq.J_pad_max
+            pad_fr = sc_freq.J_pad_fr_max
         else:
-            pad_fr = sc_freq.J_pad[n2]
+            pad_fr = sc_freq.J_pad_fr[n2]
         sub2_adj = min(j2, log2_T) if average else j2
         n2_time = U_0.shape[-1] // 2**max(sub2_adj - oversampling, 0)
         # Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
@@ -192,7 +193,7 @@ def timefrequency_scattering(
     j2 = log2_T
 
     # preallocate output slice
-    pad_fr = sc_freq.J_pad_max
+    pad_fr = sc_freq.J_pad_fr_max
     n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
     Y_2_list = []
     # Y_2_arr = B.zeros_like(U_1_c, (2**pad_fr, n2_time))
@@ -261,12 +262,13 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
-            subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
+            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max - pad_fr
 
             # determine subsampling reference
             if aligned:
                 # subsample as we would in min-padded case
-                reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+                reference_subsample_equiv_due_to_pad = max(
+                    sc_freq.subsampling_equiv_relative_to_max_padding)
             else:
                 # subsample regularly (relative to current padding)
                 reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
@@ -302,12 +304,14 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 
     if aligned:
         # subsample as we would in min-padded case
-        reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+        reference_subsample_equiv_due_to_pad = max(
+            sc_freq.subsampling_equiv_relative_to_max_padding)
     else:
         # subsample regularly (relative to current padding)
-        reference_subsample_equiv_due_to_pad = sc_freq.j0s[n2]
+        reference_subsample_equiv_due_to_pad = (
+            sc_freq.subsampling_equiv_relative_to_max_padding[n2])
 
-    subsample_equiv_due_to_pad = sc_freq.J_pad_max - pad_fr
+    subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max - pad_fr
     # take largest subsampling factor
     j1_fr = sc_freq.log2_F
     sub_adj = (j1_fr if not average_fr else
@@ -337,12 +341,12 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     def unpad_fr(S_2_fr, total_subsample_fr):
         if 'array' in out_type and average_fr:
             return unpad(S_2_fr,
-                         sc_freq.ind_start_max[total_subsample_fr],
-                         sc_freq.ind_end_max[total_subsample_fr])
+                         sc_freq.ind_start_fr_max[total_subsample_fr],
+                         sc_freq.ind_end_fr_max[total_subsample_fr])
         else:
             return unpad(S_2_fr,
-                         sc_freq.ind_start[n2][total_subsample_fr],
-                         sc_freq.ind_end[n2][total_subsample_fr])
+                         sc_freq.ind_start_fr[n2][total_subsample_fr],
+                         sc_freq.ind_end_fr[n2][total_subsample_fr])
 
     (B, sc_freq, aligned, oversampling_fr, average_fr, oversampling, average,
      out_type, unpad, log2_T, phi, ind_start, ind_end) = commons
@@ -353,7 +357,8 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     if aligned:
         # subsample as we would in min-padded case
-        reference_subsample_equiv_due_to_pad = max(sc_freq.j0s)
+        reference_subsample_equiv_due_to_pad = max(
+            sc_freq.subsampling_equiv_relative_to_max_padding)
         if 'array' in out_type and average_fr:
             subsample_equiv_due_to_pad_min = 0
         else:
