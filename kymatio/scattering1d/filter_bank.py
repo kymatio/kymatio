@@ -825,8 +825,8 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_fr_max,
         J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
 
     # instantiate the dictionaries which will contain the filters
-    psi1_f_up = []
-    psi1_f_down = []
+    psi1_f_fr_up = []
+    psi1_f_fr_down = []
 
     # loop params
     J_support = J_pad_fr_max  # begin with longest
@@ -852,24 +852,24 @@ def psi_fr_factory(J_fr, Q_fr, J_pad_fr_max,
             else:
                 psi_f[j0] = periodize_filter_fourier(psi_f[0],
                                                      nperiods=factor)
-        psi1_f_down.append(psi_f)
+        psi1_f_fr_down.append(psi_f)
 
     # compute spin down filters by conjugating spin up in frequency domain
-    for psi_downs in psi1_f_down:
+    for psi_downs in psi1_f_fr_down:
         psi_up = {}
         for j0, psi_down in enumerate(psi_downs.values()):
             psi_up[j0] = conj_fr(psi_down)
-        psi1_f_up.append(psi_up)
+        psi1_f_fr_up.append(psi_up)
 
     # Embed the meta information within the filters
     for (n1_fr, j1) in enumerate(j1s):
-        for psi1_f in (psi1_f_up, psi1_f_down):
+        for psi1_f in (psi1_f_fr_up, psi1_f_fr_down):
             psi1_f[n1_fr]['xi'] = xi1[n1_fr]
             psi1_f[n1_fr]['sigma'] = sigma1[n1_fr]
             psi1_f[n1_fr]['j'] = j1
 
     # return results
-    return psi1_f_up, psi1_f_down
+    return psi1_f_fr_up, psi1_f_fr_down
 
 
 def phi_fr_factory(F, log2_F, Q_fr, J_pad_fr_max, resample_phi_fr=True,
@@ -881,14 +881,14 @@ def phi_fr_factory(F, log2_F, Q_fr, J_pad_fr_max, resample_phi_fr=True,
     N = 2**J_support
 
     # initial lowpass
-    phi_f = {}
-    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    phi_f_fr = {}
+    phi_f_fr[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # lowpass filters at all possible input lengths
     for j_fr in range(1, 1 + log2_F):
         factor = 2**j_fr
         if resample_phi_fr:
-            prev_phi = phi_f[j_fr - 1].reshape(1, -1)
+            prev_phi = phi_f_fr[j_fr - 1].reshape(1, -1)
             prev_phi_halfwidth = compute_temporal_support(
                 prev_phi, criterion_amplitude=criterion_amplitude)
 
@@ -897,17 +897,19 @@ def phi_fr_factory(F, log2_F, Q_fr, J_pad_fr_max, resample_phi_fr=True,
                 # so lesser length will distort lowpass.
                 # Frontend will adjust "all possible input lengths" accordingly
                 break
-            phi_f[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max, eps=eps)
+            phi_f_fr[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max,
+                                      eps=eps)
         else:
-            phi_f[j_fr] = periodize_filter_fourier(phi_f[0], nperiods=factor)
+            phi_f_fr[j_fr] = periodize_filter_fourier(
+                phi_f_fr[0], nperiods=factor)
 
     # embed meta info in filters
-    phi_f['xi'] = 0.
-    phi_f['sigma'] = sigma_low
-    phi_f['j'] = 0
+    phi_f_fr['xi'] = 0.
+    phi_f_fr['sigma'] = sigma_low
+    phi_f_fr['j'] = 0
 
     # return results
-    return phi_f
+    return phi_f_fr
 
 
 def conj_fr(x):

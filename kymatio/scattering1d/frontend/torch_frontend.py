@@ -177,7 +177,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         saves those arrays as module's buffers."""
         n_final = self._register_filters(self, ('phi_f', 'psi1_f'))
         self._register_filters(self.sc_freq,
-                               ('phi_f', 'psi1_f_up', 'psi1_f_down'), n0=n_final)
+                               ('phi_f', 'psi1_f_fr_up', 'psi1_f_fr_down'), n0=n_final)
 
     def _register_filters(self, obj, filter_names, n0=0):
         n = n0
@@ -203,7 +203,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         """This function loads filters from the module's buffer """
         n_final = self._load_filters(self, ('phi_f', 'psi1_f'))
         self._load_filters(self.sc_freq,
-                           ('phi_f', 'psi1_f_up', 'psi1_f_down'), n0=n_final)
+                           ('phi_f', 'psi1_f_fr_up', 'psi1_f_fr_down'), n0=n_final)
 
     def _load_filters(self, obj, filter_names, n0=0):
         buffer_dict = dict(self.named_buffers())

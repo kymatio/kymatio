@@ -196,7 +196,8 @@ def test_max_pad_factor_fr():
             try:
                 _ = jtfs(x)
             except Exception as e:
-                raise Exception("Failed on %s with \n%s" % (params_str, e))
+                print("Failed on %s with" % params_str)
+                raise e
 
 
 def test_no_second_order_filters():

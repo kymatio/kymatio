@@ -94,13 +94,13 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                         max_f_bound=None):
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_up[f_idx]
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[f_idx]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", f_idx, 0)
         elif f_idx == -1:
-            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr
             psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
 
         if t_idx == -1 or f_idx == -1:
@@ -111,8 +111,8 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
             return Psi, title
 
         # else get spinned wavelets ##########################################
-        psi_spin = (jtfs.sc_freq.psi1_f_up if s_idx == 0 else
-                    jtfs.sc_freq.psi1_f_down)
+        psi_spin = (jtfs.sc_freq.psi1_f_fr_up if s_idx == 0 else
+                    jtfs.sc_freq.psi1_f_fr_down)
         psi_f = psi_spin[f_idx]
         psi_t = jtfs.psi2_f[t_idx]
 
@@ -167,7 +167,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=0, cmap=cmap)
 
     # get spinned wavelet arrays & metadata ##################################
-    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_up)
+    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_fr_up)
     imshow_data = {}
     for s_idx in (0, 1):
         for t_idx in range(n_rows):

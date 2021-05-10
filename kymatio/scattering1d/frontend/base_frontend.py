@@ -508,42 +508,20 @@ class TimeFrequencyScatteringBase1D():
         return compute_meta_jtfs(self.J, self.Q, self.J_pad, self.J_pad_fr_max,
                                  self.T, self.F, self.J_fr, self.Q_fr)
 
-    # access key attributes via frequential class
     @property
-    def J_fr(self):
-        return self.sc_freq.J_fr
+    def _fr_attributes(self):
+        """Exposes `sc_freq`'s attributes via main object as read-only."""
+        return ('J_fr', 'Q_fr', 'shape_fr_max', 'J_pad_fr_max', 'average_fr',
+                'average_fr_global', 'F', 'log2_F', 'max_order_fr',
+                'psi1_f_fr_up', 'psi1_f_fr_down')
 
-    @property
-    def Q_fr(self):
-        return self.sc_freq.Q_fr
-
-    @property
-    def shape_fr_max(self):
-        return self.sc_freq.shape_fr_max
-
-    @property
-    def J_pad_fr_max(self):
-        return self.sc_freq.J_pad_fr_max
-
-    @property
-    def average_fr(self):
-        return self.sc_freq.average
-
-    @property
-    def average_fr_global(self):
-        return self.sc_freq.average_global
-
-    @property
-    def F(self):
-        return self.sc_freq.F
-
-    @property
-    def log2_F(self):
-        return self.sc_freq.log2_F
-
-    @property
-    def max_order_fr(self):
-        return self.sc_freq.max_order_fr
+    def __getattr__(self, name):
+        # access key attributes via frequential class
+        # only called when default attribute lookup fails
+        if name in self._fr_attributes:
+            return getattr(self.sc_freq, name)
+        raise AttributeError(f"'{type(self).__name__}' object has no "
+                             f"attribute '{name}'")
 
     @classmethod
     def _document(cls):
@@ -580,7 +558,6 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.create_psi_filters()
 
     def build(self):
-        """""" # TODO
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 4.
@@ -613,7 +590,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                              "(rounded up to pow2) in joint scattering "
                              "(got {} > {})".format(self.F, mx))
         self.log2_F = math.floor(math.log2(self.F))
-        self.average_global = bool(self.F == mx)
+        self.average_fr_global = bool(self.F == mx)
 
         # restrict `J_pad_fr_max` if specified by user
         if self.max_pad_factor_fr is not None:
@@ -626,17 +603,18 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.shape_fr_max, (self.Q_fr, 0))
 
     def create_phi_filters(self):
-        self.phi_f = phi_fr_factory(
+        """See `filter_bank.phi_fr_factory`."""
+        self.phi_f_fr = phi_fr_factory(
             self.F, self.log2_F, self.Q_fr, self.J_pad_fr_max,
              **self.get_params('resample_phi_fr', 'criterion_amplitude',
                                'sigma0', 'P_max', 'eps'))
 
-        if self.resample_phi_fr and not self.average_global:
-            # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f`)
-            # is limited by `sc_freq.phi_f[0]`'s time width.
+        if self.resample_phi_fr and not self.average_fr_global:
+            # subsampling before `_joint_lowpass()` (namely `* sc_freq.phi_f_fr`)
+            # is limited by `sc_freq.phi_f_fr[0]`'s time width.
             # This is accounted for  in `scattering_filter_factory_fr` by
-            # not computing `sc_freq.phi_f` at such resampling lengths.
-            n_phi_f = max(k for k in self.phi_f if isinstance(k, int))
+            # not computing `sc_freq.phi_f_fr` at such resampling lengths.
+            n_phi_f = max(k for k in self.phi_f_fr if isinstance(k, int))
             self.max_subsampling_before_phi_fr = n_phi_f
         else:
             # usual behavior
@@ -645,20 +623,21 @@ class _FrequencyScatteringBase(ScatteringBase):
         # unused quantity; if this exceeds `J_pad_fr_max`, then `phi_t * psi_f`
         # and `phi_t * phi_f` pairs will incur boundary effects. Implem doesn't
         # account for this as the effect is rare and most often not great
-        self.J_pad_fr_fo = self.compute_J_pad(
-            self._n_psi1, recompute=True, Q=(0, 0))
+        self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1, recompute=True,
+                                              Q=(0, 0))
 
     def create_psi_filters(self):
-        self.psi1_f_up, self.psi1_f_down = psi_fr_factory(
+        """See `filter_bank.psi_fr_factory`."""
+        self.psi1_f_fr_up, self.psi1_f_fr_down = psi_fr_factory(
             self.J_fr, self.Q_fr, self.J_pad_fr_max,
             self.subsampling_equiv_relative_to_max_padding,
             **self.get_params('resample_psi_fr', 'r_psi', 'normalize',
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
     def compute_padding_fr(self):
-        """Long story"""  # TODO
         attrs = ('J_pad_fr', 'pad_left_fr', 'pad_right_fr',
                  'ind_start_fr', 'ind_end_fr',
+                 'ind_start_fr_max', 'ind_end_fr_max',
                  'subsampling_equiv_relative_to_max_padding')
         for attr in attrs:
             setattr(self, attr, [])
@@ -711,7 +690,6 @@ class _FrequencyScatteringBase(ScatteringBase):
             return getattr(self, attr.strip('_max'))
 
         for attr in ('ind_start_fr_max', 'ind_end_fr_max'):
-            setattr(self, attr, [])
             for j in range(self.log2_F + 1):
                 idxs_max = max(get_idxs(attr)[n2][j]
                                for n2 in range(len(self.shape_fr))
@@ -719,16 +697,6 @@ class _FrequencyScatteringBase(ScatteringBase):
                 getattr(self, attr).append(idxs_max)
 
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
-        """Depends on `shape_fr` and `(resample_phi_fr or resample_phi_fr)`:
-            True:  pad per `shape_fr` and `min_to_pad` of longest `shape_fr`
-            False: pad per `shape_fr` and `min_to_pad` of subsampled filters
-
-        `min_to_pad` is computed for both `phi_f[0]` and `psi1_f[-1]` in case
-        latter has greater time-domain support.
-
-        `recompute=True` will force computation from `shape_fr` alone, independent
-        of `J_pad_fr_max` and `min_to_pad_fr_max`, and per `resample_* == True`.
-        """
         if recompute:
             J_pad, _ = self._compute_J_pad(shape_fr, Q)
         elif self.resample_phi_fr or self.resample_psi_fr:
@@ -738,8 +706,8 @@ class _FrequencyScatteringBase(ScatteringBase):
             # if we subsample, the time support reduces by same factor
             J_tentative     = int(np.ceil(np.log2(shape_fr)))
             J_tentative_max = int(np.ceil(np.log2(self.shape_fr_max)))
-            min_to_pad = self.min_to_pad_fr_max // 2**(
-                J_tentative_max - J_tentative)
+            min_to_pad = self.min_to_pad_fr_max // 2**(J_tentative_max -
+                                                       J_tentative)
             J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
         # don't let J_pad drop below `J_pad_fr_max - max_sub...`

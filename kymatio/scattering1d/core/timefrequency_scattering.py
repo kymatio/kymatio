@@ -83,7 +83,7 @@ def timefrequency_scattering(
         # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
         # S_1_fr[:len(S_1_list)] = S_1_list
 
-    if sc_freq.average_global and average and average_fr:
+    if sc_freq.average_fr_global and average and average_fr:
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
     elif average_fr and average:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
@@ -108,7 +108,7 @@ def timefrequency_scattering(
                                    oversampling_fr, 0)
 
         # Low-pass filtering over frequency
-        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f[0])
+        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f_fr[0])
         S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
@@ -255,9 +255,9 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                           spin_down=True):
     B, sc_freq, aligned, oversampling_fr, average_fr, *_ = commons
 
-    psi1_fs = [sc_freq.psi1_f_up]
+    psi1_fs = [sc_freq.psi1_f_fr_up]
     if spin_down:
-        psi1_fs.append(sc_freq.psi1_f_down)
+        psi1_fs.append(sc_freq.psi1_f_fr_down)
 
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, psi1_f in enumerate(psi1_fs):
@@ -319,7 +319,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
                           oversampling_fr, 0)
 
-    Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f[subsample_equiv_due_to_pad])
+    Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f_fr[subsample_equiv_due_to_pad])
     Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
     Y_fr_c = B.ifft(Y_fr_hat)
 
@@ -369,7 +369,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         # subsample regularly (relative to current padding)
         reference_total_subsample_so_far = total_subsample_so_far
 
-    if sc_freq.average_global:
+    if sc_freq.average_fr_global:
         pass
     elif average_fr:
         lowpass_subsample_fr = max(total_subsample_fr_max -
@@ -379,12 +379,12 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         total_subsample_fr = total_subsample_so_far
 
-    if average_fr and not sc_freq.average_global:
+    if average_fr and not sc_freq.average_fr_global:
         # fetch frequential lowpass
-        phi_fr = sc_freq.phi_f[total_subsample_so_far]
+        phi_fr = sc_freq.phi_f_fr[total_subsample_so_far]
 
     # do lowpassing ##########################################################
-    if sc_freq.average_global:
+    if sc_freq.average_fr_global:
         S_2_fr = B.mean(U_2_m, axis=-1)
     elif average_fr:
         # Low-pass filtering over frequency
@@ -395,7 +395,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
     else:
         S_2_fr = U_2_m
 
-    if not sc_freq.average_global:
+    if not sc_freq.average_fr_global:
         S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
     # Swap time and frequency subscripts again
     S_2_fr = B.transpose(S_2_fr)
