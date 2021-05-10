@@ -627,6 +627,7 @@ class TimeFrequencyScatteringBase1D():
     but can be specified as well.
 
     {parameters}
+
     {attributes}
     """
 
@@ -666,11 +667,11 @@ class TimeFrequencyScatteringBase1D():
         slices) correspond to same frequency. Assuming `average_fr=True`:
 
           - `out_type in ("array", "array-like")`: all slices are zero-padded to
-          have same number of rows. Earliest slices are likely to be mostly zero
-          per `psi2` convolving with minority of first-order coefficients.
+            have same number of rows. Earliest slices are likely to be mostly zero
+            per `psi2` convolving with minority of first-order coefficients.
           - `out_type = "list"`: all slices are padded by minimal amount needed
-          to avert boundary effects. Number of rows will vary across slices
-          (but be same *per `psi2`*).
+            to avert boundary effects. Number of rows will vary across slices
+            (but be same *per `psi2`*).
 
         If `aligned=False` with `out_type in ("array", "array-like")`, will
         subsample all slices to same minimum controlled by `log2_F`; this breaks
@@ -692,10 +693,10 @@ class TimeFrequencyScatteringBase1D():
         Whether to resample (True, default) frequential filters at different
         lengths, or subsample (False) them:
             - resample: preserve physical dimensionality (center frequeny, width)
-            at every length. E.g. `psi = psi_fn(N/2)`.
+              at every length. E.g. `psi = psi_fn(N/2)`.
             - subsample: recalibrate filter to each length; center frequency is
-            preserved, but temporal support is narrowed (contraction).
-            E.g. `psi = psi[::2]`.
+              preserved, but temporal support is narrowed (contraction).
+              E.g. `psi = psi[::2]`.
         Tuple can set separately `(resample_psi_fr, resample_phi_fr)`, else
         both set to same value.
 
@@ -710,19 +711,19 @@ class TimeFrequencyScatteringBase1D():
 
         **Structure**:
             - 'list': coeffs are packed in a list of dictionaries, each dict
-            storing meta info, and output tensor keyed by `'coef.`.
+              storing meta info, and output tensor keyed by `'coef.`.
             - 'array': concatenated along slices (3D, `average_fr=True`) or mixed
-            slice-frequency dimension (2D, `average_fr=False`). Both require
-            `average=True`.
+              slice-frequency dimension (2D, `average_fr=False`). Both require
+              `average=True`.
             - "Coeffs" refers to coefficients *within* "pairs", e.g. tensors from
-            `'S1'` will not concatenate with those from `'phi_t * psi_f'`.
+              `'S1'` will not concatenate with those from `'phi_t * psi_f'`.
 
         **Computation**:
             - See `aligned` docs for all behavior controlled by `aligned`.
             - Additionally, 'list' will unpad by exact amounts for each joint
-            slice, whereas 'array' will unpad by minimum amount common to all
-            slices at a given subsampling factor to enable concatenation
-            (see `sc_freq.compute_padding_fr()`).
+              slice, whereas 'array' will unpad by minimum amount common to all
+              slices at a given subsampling factor to enable concatenation
+              (see `sc_freq.compute_padding_fr()`).
 
         'array-like': exactly same as 'array' but no concatenation step. Spares
         compute overhead if a different concatenation structure is desired.
@@ -807,27 +808,30 @@ class TimeFrequencyScatteringBase1D():
 
     Output is always a dictionary of arrays or lists, keying time or joint
     scattering coefficients (see `out_type` for exact behavior):
-        {{'S0': ...                # (time)  zeroth order
-          'S1': ...                # (time)  first order
-          'phi_t * phi_f': ...     # (joint) joint lowpass
-          'phi_t * psi_f': ...     # (joint) time lowpass (w/ freq bandpass)
-          'psi_t * phi_f': ...     # (joint) freq lowpass (w/ time bandpass)
-          'psi_t * psi_f_up': ...  # (joint) spin up
-          'psi_t * psi_f_up': ...  # (joint) spin down
+
+    ::
+
+        {{'S0': ...,                # (time)  zeroth order
+         'S1': ...,                # (time)  first order
+         'phi_t * phi_f': ...,     # (joint) joint lowpass
+         'phi_t * psi_f': ...,     # (joint) time lowpass (w/ freq bandpass)
+         'psi_t * phi_f': ...,     # (joint) freq lowpass (w/ time bandpass)
+         'psi_t * psi_f_up': ...,  # (joint) spin up
+         'psi_t * psi_f_up': ...,  # (joint) spin down
          }}
 
     Coefficient structure depends on `average, average_fr, aligned, out_type`.
     Assuming `aligned=True` and `out_type="array"` (where possible), then
     for `average, average_fr`:
         - `True, True`: the 'true' 3D structure for joint coeffs, shaped
-        `(n_coeffs, freq, time)`, where
-          - `n_coeffs`: number of joint slices from conv by joint wavelets
-          - `freq`: number of log-frequency rows per slice, derived from
-          first-order scattering rows
+          `(n_coeffs, freq, time)`, where
+            - `n_coeffs`: number of joint slices from conv by joint wavelets
+            - `freq`: number of log-frequency rows per slice, derived from
+              first-order scattering rows
         - `True, False`: 2D tensors for joint coeffs, where `freq` and
-        `n_coeffs` are flattened into one dimension, yielding
-        `(n_coeffs * freq, time)`. This breaks inter-wavelet spatial coherence
-        but is the standard used in classification.
+          `n_coeffs` are flattened into one dimension, yielding
+          `(n_coeffs * freq, time)`. This breaks inter-wavelet spatial coherence
+          but is the standard used in classification.
         - `False, True`: list of 1D tensors.
         - `False, False`: list of 1D tensors.
     For differences with `aligned, out_type`, see their docs.
