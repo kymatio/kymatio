@@ -31,7 +31,7 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         scale of the scattering
     log2_T : int
         (log2 of) temporal support of low-pass filter, controlling amount of
-        imposed time-shift invariance and subsampling
+        imposed time-shift invariance and maximum subsampling
     pad_left : int, optional
         how much to pad the signal on the left. Defaults to `0`
     pad_right : int, optional
