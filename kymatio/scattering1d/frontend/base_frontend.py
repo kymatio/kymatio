@@ -412,7 +412,7 @@ class ScatteringBase1D(ScatteringBase):
 class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
-                 pad_mode='zero', max_pad_factor_fr=None):
+                 max_pad_factor_fr=None):
         self._J_fr = J_fr
         self._Q_fr = Q_fr
         self._F = F
@@ -423,7 +423,6 @@ class TimeFrequencyScatteringBase1D():
             self.resample_psi_fr, self.resample_phi_fr = resample_filters_fr
         else:
             self.resample_psi_fr = self.resample_phi_fr = resample_filters_fr
-        self.pad_mode = pad_mode
         self.max_pad_factor_fr = max_pad_factor_fr
 
     def build(self):
@@ -444,8 +443,8 @@ class TimeFrequencyScatteringBase1D():
         self.sc_freq = _FrequencyScatteringBase(
             self._shape_fr, self._J_fr, self._Q_fr, self._F, max_order_fr,
             self._average_fr, self.resample_psi_fr, self.resample_phi_fr,
-            self.vectorize, self.out_type, self.pad_mode, self.max_pad_factor_fr,
-            self._n_psi1, self.backend)
+            self.vectorize, self.out_type, self.max_pad_factor_fr, self._n_psi1,
+            self.backend)
         self.finish_creating_filters()
 
     def get_shape_fr(self):
@@ -535,8 +534,8 @@ class _FrequencyScatteringBase(ScatteringBase):
     """
     def __init__(self, shape_fr, J_fr=None, Q_fr=2, F=None, max_order_fr=1,
                  average=False, resample_psi_fr=True, resample_phi_fr=True,
-                 vectorize=True, out_type='array', pad_mode='zero',
-                 max_pad_factor_fr=None, n_psi1=None, backend=None):
+                 vectorize=True, out_type='array', max_pad_factor_fr=None,
+                 n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.shape_fr = shape_fr
         self.J_fr = J_fr
@@ -548,7 +547,6 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.resample_phi_fr = resample_phi_fr
         self.vectorize = vectorize
         self.out_type = out_type
-        self.pad_mode = pad_mode
         self.max_pad_factor_fr = max_pad_factor_fr
         self._n_psi1 = n_psi1
         self.backend = backend
@@ -567,6 +565,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.eps = 1e-7
         self.criterion_amplitude = 1e-3
         self.normalize = 'l1'
+        self.pad_mode = 'zero'
 
         # longest obtainable frequency row w.r.t. which we calibrate filters
         self.shape_fr_max = max(self.shape_fr)

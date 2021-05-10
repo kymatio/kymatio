@@ -97,7 +97,7 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNu
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, pad_mode, max_pad_factor_fr)
+            resample_filters_fr, max_pad_factor_fr)
 
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
@@ -118,7 +118,7 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNu
 
         if 'array' in self.out_type and not self.average:
             raise ValueError("Options average=False and out_type='array' "
-                             "are mutually incompatible. "
+                             "or 'array-like' are mutually incompatible. "
                              "Please set out_type='list'.")
 
         if not self.out_type in ('array', 'list', 'array-like'):

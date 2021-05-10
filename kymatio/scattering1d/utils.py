@@ -144,7 +144,6 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
 
     # compute psi1_f with greatest time support, if requested
     if Q1 >= 1:
-        # TODO subsampled variant  # TODO no
         psi1_f_fn = lambda N: morlet_1d(N, xi1[-1], sigma1[-1],
                                         normalize=normalize, P_max=P_max, eps=eps)
     # compute psi2_f with greatest time support, if requested
@@ -290,7 +289,6 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
             in the non-vectorized output.
     """
     xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
-    # TODO meta won't match output if non-CQT are dropped
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
 
@@ -439,10 +437,8 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
         meta['s'    ]['S1'].append(())
         meta['key'  ]['S1'].append((n1,))
 
-    # TODO drop `order`?
     # TODO -1 or inf doesn't make sense for `key`
     # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
-    # TODO meta won't match output if non-CQT are dropped
 
     # `psi_t * psi_f` coeffs
     for spin in (1, -1):

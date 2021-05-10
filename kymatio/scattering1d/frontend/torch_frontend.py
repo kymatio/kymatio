@@ -147,18 +147,16 @@ ScatteringTorch1D._document()
 
 class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                                      ScatteringTorch1D):
-    def __init__(self, J, shape, Q, J_fr=None, Q_fr=1, T=None, F=None,
-                 average=True, average_fr=None, oversampling=0,
+    def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
+                 average=True, average_fr=False, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
                  out_type="array", pad_mode='zero', max_pad_factor=2,
-                 backend="torch"):
-        if average_fr is None:
-            average_fr = average
+                 max_pad_factor_fr=None, backend="torch"):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, pad_mode)
+            resample_filters_fr, max_pad_factor_fr)
 
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
@@ -231,14 +229,14 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if not (self.average and self.average_fr) and 'array' in self.out_type:
+        if 'array' in self.out_type and not self.average:
             raise ValueError("Options average=False and out_type='array' "
-                             "are mutually incompatible. "
+                             "or 'array-like' are mutually incompatible. "
                              "Please set out_type='list'.")
 
         if not self.out_type in ('array', 'list', 'array-like'):
-            raise RuntimeError("The out_type must be one of: array, list, "
-                               "array-like.")
+            raise RuntimeError("`out_type` must be one of: array, list, "
+                               "array-like (got %s)" % str(self.out_type))
 
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
