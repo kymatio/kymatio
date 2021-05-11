@@ -558,38 +558,46 @@ class TimeFrequencyScatteringBase1D():
 
     where
 
-        $S_J^{{(0)}} x(t) = x \star \phi_T(t)$,
+        $S_J^{{(0)}} x(t) = x \star \phi_T(t),$
 
-        $S_J^{{(1)}} x(t, \lambda) = |x \star \psi_\lambda^{{(1)}}| \star \phi_T$, and
+        $S_J^{{(1)}} x(t, \lambda) =
+        |x \star \psi_\lambda^{{(1)}}| \star \phi_T,$ and
 
-        $S_J^{{(2)}} x(t, \lambda, \mu, l, s) = |X \star \Psi_{{\mu, l, s}}| \star \Phi_J$.
-
-    $X$ is the unaveraged first-order scattering,
-
-        $X = |x \star \psi_\lambda^{{(1)}}|$
+        $S_J^{{(2)}} x(t, \lambda, \mu, l, s) =
+        ||x \star \psi_\lambda^{{(1)}}| \star \Psi_{{\mu, l, s}}| \star \Phi_J.$
 
     $\Psi_{{\mu, l, s}}$ comprises of five kinds of joint wavelets:
 
-        $\Psi_{{\mu, l, +1}}(t, \lambda) = \psi_\mu^{{(2)}}(t) \psi_\lambda(-\lambda)$ spin up bandpass
+        $\Psi_{{\mu, l, +1}}(t, \lambda) =
+        \psi_\mu^{{(2)}}(t) \psi_{{l, s}}(-\lambda)$
+        spin up bandpass
 
-        $\Psi_{{\mu, l, -1}}(t, \lambda) = \psi_\mu^{{(2)}}(t) \psi_\lambda(+\lambda)$ spin up bandpass
+        $\Psi_{{\mu, l, -1}}(t, \lambda) =
+        \psi_\mu^{{(2)}}(t) \psi_{{l, s}}(+\lambda)$
+        spin down bandpass
 
-        $\Psi_{{\mu, -\infty, 0}}(t, \lambda) = \psi_\mu^{{(2)}}(t) \phi_F(\lambda)$ frequential lowpass, temporal bandpass
+        $\Psi_{{\mu, -\infty, 0}}(t, \lambda) =
+        \psi_\mu^{{(2)}}(t) \phi_F(\lambda)$
+        temporal bandpass, frequential lowpass
 
-        $\Psi_{{-\infty, l, 0}} = \phi_T(t) \psi_\lambda(lambda)$ frequential bandpass, temporal lowpass
+        $\Psi_{{-\infty, l, 0}}(t, \lambda) =
+        \phi_T(t) \psi_{{l, s}}(\lambda)$
+        temporal lowpass, frequential bandpass
 
-        $\Psi_{{-\infty, -\infty, 0}} = \phi_T(t) \phi_F(\lambda)$ joint lowpass
+        $\Psi_{{-\infty, -\infty, 0}}(t, \lambda)
+        = \phi_T(t) \phi_F(\lambda)$
+        joint lowpass
 
     and $\Phi_J$ optionally does temporal and/or frequential averaging:
 
-        $\Phi_J(t, \lambda) = \phi_T(t) \phi_F(\lambda)
+        $\Phi_J(t, \lambda) = \phi_T(t) \phi_F(\lambda)$
 
-    In the above formulas, :math:`\star` denotes convolution in time. The
+    Above, :math:`\star` denotes convolution in time and/or frequency. The
     filters $\psi_\lambda^{{(1)}}(t)$ and $\psi_\mu^{{(2)}}(t)$ are analytic
     wavelets with center frequencies $\lambda$ and $\mu$, while
     $\phi_T(t)$ is a real lowpass filter centered at the zero frequency.
-    $\psi_\lambda(-\lambda)$ is like $\psi_\lambda^{{(1)}}(t)$ but with
-    its own parameters (length, center frequency, etc), and an anti-analytic
+    $\psi_{{l, s}}(-\lambda)$ is like $\psi_\lambda^{{(1)}}(t)$ but with
+    its own parameters (center frequency, support, etc), and an anti-analytic
     complement (spin down is analytic).
 
     Filters are built at initialization. While the wavelets are fixed, other
@@ -638,7 +646,7 @@ class TimeFrequencyScatteringBase1D():
     J_fr : int
         The maximum log-scale of frequential scattering in joint scattering
         transform, and number of octaves of frequential filters. That is,
-        the maximum (bandpass) scale is given by :math:`2^J_fr`.
+        the maximum (bandpass) scale is given by `2**J_fr`.
         Default is determined at instantiation from longest frequential row
         in frequential scattering, set to `log2(nextpow2(shape_fr_max))`, i.e.
         maximum possible.
@@ -657,8 +665,7 @@ class TimeFrequencyScatteringBase1D():
         Whether to average (lowpass) along frequency axis.
 
     oversampling_fr: int (default 0), optional
-        How much to oversample along frequency axis (with respect to
-        :math:`2^J_fr`).
+        How much to oversample along frequency axis (with respect to `2**J_fr`)
         Also see `oversampling` in `Scattering1D`.
 
     aligned: bool (default True)

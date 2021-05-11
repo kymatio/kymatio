@@ -14,12 +14,11 @@
 #
 import os
 import sys
-import kymatio
 from distutils.version import LooseVersion
 
 
-
 sys.path.insert(0, os.path.abspath('../..'))
+import kymatio
 
 
 
@@ -51,7 +50,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
     'sphinx.ext.coverage',
-    'sphinx.ext.imgmath',
+    'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
     'sphinxcontrib.bibtex',
