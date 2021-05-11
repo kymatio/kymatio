@@ -435,7 +435,7 @@ class ScatteringBase1D(ScatteringBase):
 class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
-                 max_pad_factor_fr=None):
+                 max_pad_factor_fr=None, out_3D=False):
         self._J_fr = J_fr
         self._Q_fr = Q_fr
         self._F = F
@@ -447,6 +447,7 @@ class TimeFrequencyScatteringBase1D():
         else:
             self.resample_psi_fr = self.resample_phi_fr = resample_filters_fr
         self.max_pad_factor_fr = max_pad_factor_fr
+        self.out_3D = out_3D
 
     def build(self):
         # don't allow untested and unneeded combination
@@ -700,10 +701,11 @@ class TimeFrequencyScatteringBase1D():
         Whether to resample (True, default) frequential filters at different
         lengths, or subsample (False) them:
             - resample: preserve physical dimensionality (center frequeny, width)
-              at every length. E.g. `psi = psi_fn(N/2)`.
+              at every length (trimming in time domain).
+              E.g. `psi = psi_fn(N/2) ~= psi_fn(N)[N/4:-N/4]`.
             - subsample: recalibrate filter to each length; center frequency is
-              preserved, but temporal support is narrowed (contraction).
-              E.g. `psi = psi[::2]`.
+              preserved, but temporal support is narrowed (contraction in time
+              domain). E.g. `psi = psi[::2]`.
         Tuple can set separately `(resample_psi_fr, resample_phi_fr)`, else
         both set to same value.
 
@@ -860,7 +862,7 @@ class _FrequencyScatteringBase(ScatteringBase):
     scattering part of JTFS.
     """
     def __init__(self, shape_fr, J_fr=None, Q_fr=2, F=None, max_order_fr=1,
-                 average=False, resample_psi_fr=True, resample_phi_fr=True,
+                 average_fr=False, resample_psi_fr=True, resample_phi_fr=True,
                  vectorize=True, out_type='array', max_pad_factor_fr=None,
                  n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
@@ -869,7 +871,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.Q_fr = Q_fr
         self.F = F
         self.max_order_fr = max_order_fr
-        self.average = average
+        self.average_fr = average_fr
         self.resample_psi_fr = resample_psi_fr
         self.resample_phi_fr = resample_phi_fr
         self.vectorize = vectorize

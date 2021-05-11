@@ -150,13 +150,13 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
                  average=True, average_fr=False, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
-                 out_type="array", pad_mode='zero', max_pad_factor=2,
+                 out_type="array", out_3D=False, pad_mode='zero', max_pad_factor=2,
                  max_pad_factor_fr=None, backend="torch"):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, max_pad_factor_fr)
+            resample_filters_fr, max_pad_factor_fr, out_3D)
 
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
@@ -234,6 +234,9 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                              "or 'array-like' are mutually incompatible. "
                              "Please set out_type='list'.")
 
+        if self.out_3D and not self.average_fr:
+            raise ValueError("`out_3D=True` requires `average_fr=True`.")
+
         if not self.out_type in ('array', 'list', 'array-like'):
             raise RuntimeError("`out_type` must be one of: array, list, "
                                "array-like (got %s)" % str(self.out_type))
@@ -259,6 +262,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             oversampling_fr=self.oversampling_fr,
             aligned=self.aligned,
             out_type=self.out_type,
+            out_3D=self.out_3D,
             pad_mode=self.pad_mode)
         return S
 

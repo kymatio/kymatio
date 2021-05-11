@@ -13,9 +13,7 @@ run_without_pytest = 1
 
 
 def test_alignment():
-    """Ensure A.M. cosine's peaks are aligned across `psi2` joint slices,
-    both spins, for `oversampling_fr='auto'`.
-    """
+    """Ensure A.M. cosine's peaks are aligned across joint spinned slices."""
     def max_row_idx(s):
         return np.argmax(np.sum(s**2, axis=-1))
 
@@ -31,10 +29,12 @@ def test_alignment():
     x = a * c
 
     # scatter ################################################################
-    for out_type in ('array', 'list'):
+    for out_3D in (True, False):
+        out_type = ("array" if out_3D else
+                    "list")  # preserve 3D idxing into slices dim for convenience
         jtfs = TimeFrequencyScattering1D(
-            J, T, Q, Q_fr=2, average=True, average_fr=True,
-            out_type=out_type, aligned=True, frontend=default_backend)
+            J, T, Q, Q_fr=2, average=True, average_fr=True, aligned=True,
+            out_type=out_type, out_3D=out_3D, frontend=default_backend)
 
         Scx = jtfs(x)
         Scx = drop_batch_dim_jtfs(Scx)
@@ -55,12 +55,13 @@ def test_alignment():
             for i, s in S_all[pair].items():
                 mx_idx_i = max_row_idx(s)
                 assert abs(mx_idx_i - mx_idx) < 2, (
-                    "{} != {} (Scx[{}][{}], out_type={})").format(
-                        mx_idx_i, mx_idx, pair, i, out_type)
+                    "{} != {} (Scx[{}][{}], out_3D={})").format(
+                        mx_idx_i, mx_idx, pair, i, out_3D)
 
 
 def test_shapes():
-    """Ensure `out_type == 'array'` joint coeff slices have same shape."""
+    """Ensure `out_3D=True` joint coeff slices have same shape."""
+    # TODO just concat internally and drop assert
     T = 1024
     J = 6
     Q = 16
@@ -73,7 +74,8 @@ def test_shapes():
         for aligned in (True, False):
           jtfs = TimeFrequencyScattering1D(
               J, T, Q, J_fr=4, Q_fr=2, average=True, average_fr=True,
-              out_type='array', oversampling=oversampling, aligned=aligned,
+              out_type='array', out_3D=True, aligned=aligned,
+              oversampling=oversampling, oversampling_fr=oversampling_fr,
               frontend=default_backend)
           Scx = jtfs(x)
           Scx = drop_batch_dim_jtfs(Scx)
@@ -83,13 +85,14 @@ def test_shapes():
           # namely, # of freq rows and time shifts is same across pairs
           ref_shape = Scx['psi_t * psi_f_up'][0].shape
           for pair in Scx:
-              if pair not in ('S0', 'S1'):
-                  for i, s in enumerate(Scx[pair]):
-                      assert s.shape == ref_shape, (
-                          "{} != {} | (oversampling, oversampling_fr, aligned, n)"
-                          " = ({}, {}, {}, {})").format(
-                              s.shape, ref_shape, oversampling, oversampling_fr,
-                              aligned, tuple(jmeta['n'][pair][i]))
+              if pair in ('S0', 'S1'):
+                  continue
+              for i, s in enumerate(Scx[pair]):
+                  assert s.shape == ref_shape, (
+                      "{} != {} | (oversampling, oversampling_fr, aligned, n)"
+                      " = ({}, {}, {}, {})").format(
+                          s.shape, ref_shape, oversampling, oversampling_fr,
+                          aligned, tuple(jmeta['n'][pair][i]))
 
 def test_jtfs_vs_ts():
     """Test JTFS sensitivity to FDTS (frequency-dependent time shifts), and that
@@ -107,10 +110,10 @@ def test_jtfs_vs_ts():
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = (16, 2)
-    kw = dict(max_pad_factor=1, frontend=default_backend)
+    kw = dict(max_pad_factor=1, out_type="array", frontend=default_backend)
     ts = Scattering1D(J=J, Q=Q[0], shape=N, pad_mode="zero", **kw)
     jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=2, J_fr=4, shape=N,
-                                     average_fr=True, out_type="array", **kw)
+                                     average_fr=True, out_3D=True, **kw)
 
     # scatter
     ts_x  = ts(x)
@@ -124,7 +127,7 @@ def test_jtfs_vs_ts():
     l2_ts = l2(ts_x, ts_xs)
     l2_jtfs = l2(jtfs_x, jtfs_xs)
 
-    # max ratio limited by `N`; can do much better with longer input
+    # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down
     assert l2_jtfs / l2_ts > 25, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
@@ -151,7 +154,7 @@ def test_freq_tp_invar():
     for th, F in zip(th_all, F_all):
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
                                          F=F, average_fr=True, out_type="array",
-                                         frontend=default_backend)
+                                         out_3D=True, frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
         jtfs_x1_all = jtfs(x1)
@@ -171,7 +174,8 @@ def test_up_vs_down():
     x = echirp(N)
 
     jtfs = TimeFrequencyScattering1D(shape=N, J=10, Q=16, J_fr=4, Q_fr=1,
-                                     average_fr=True, frontend=default_backend)
+                                     average_fr=True, out_3D=True,
+                                     frontend=default_backend)
     Scx = jtfs(x)
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
@@ -188,7 +192,7 @@ def test_max_pad_factor_fr():
         for resample_filters_fr in (True, False):
             jtfs = TimeFrequencyScattering1D(
                 shape=N, J=10, Q=20, J_fr=4, Q_fr=1, F=256, average_fr=True,
-                max_pad_factor_fr=1,aligned=aligned,
+                max_pad_factor_fr=1, aligned=aligned, out_3D=True,
                 resample_filters_fr=resample_filters_fr, frontend=default_backend)
 
             params_str = "aligned={}, resample_filters_fr={}".format(
@@ -232,10 +236,11 @@ def test_backends():
         x = echirp(N)
         x = np.vstack([x, x, x])
         x = (tf.constant(x) if backend == 'tensorflow' else
-             torch.from_numpy(x))
+              torch.from_numpy(x))
 
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=3, Q_fr=1,
-                                         average_fr=True, frontend=backend)
+                                         average_fr=True, out_3D=True,
+                                         frontend=backend)
         Scx = jtfs(x)
 
         E_up   = energy(Scx['psi_t * psi_f_up'])
@@ -265,7 +270,8 @@ def test_meta():
     J = int(np.log2(N) - 1)  # have 2 time units at output
     Q = 16
     jtfs = TimeFrequencyScattering1D(J=J, Q=Q, Q_fr=1, shape=N, average_fr=True,
-                                     out_type="list", frontend=default_backend)
+                                     out_type="list", out_3D=False,
+                                     frontend=default_backend)
 
     Scx = jtfs(x)
     meta = jtfs.meta()
@@ -279,6 +285,7 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
+        # TODO out_3D
         0. (aligned, out_type, average_fr) = (True,  "list",  True)
         1. (aligned, out_type, average_fr) = (True,  "array", True)
         2. (aligned, out_type, average_fr) = (False, "array", True)
@@ -332,9 +339,7 @@ def test_output():
     for test_num in range(num_tests):
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
-
-        jtfs = TimeFrequencyScattering1D(**params, max_pad_factor=1,
-                                         frontend=default_backend)
+        jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         out = jtfs(x)
 
         if params['out_type'] == 'list':
