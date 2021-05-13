@@ -548,7 +548,7 @@ class TimeFrequencyScatteringBase1D():
         if name in self.fr_attributes:
             return getattr(self.sc_freq, name)
         raise AttributeError(f"'{type(self).__name__}' object has no "
-                             f"attribute '{name}'")
+                             f"attribute '{name}'")  # standard attribute error
 
     # docs ###################################################################
     @classmethod
