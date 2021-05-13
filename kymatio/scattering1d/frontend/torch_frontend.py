@@ -5,7 +5,8 @@ from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase1D
+from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
+                            _check_runtime_args_jtfs)
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
@@ -177,7 +178,8 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         saves those arrays as module's buffers."""
         n_final = self._register_filters(self, ('phi_f', 'psi1_f'))
         self._register_filters(self.sc_freq,
-                               ('phi_f', 'psi1_f_fr_up', 'psi1_f_fr_down'), n0=n_final)
+                               ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
+                               n0=n_final)
 
     def _register_filters(self, obj, filter_names, n0=0):
         n = n0
@@ -203,7 +205,8 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         """This function loads filters from the module's buffer """
         n_final = self._load_filters(self, ('phi_f', 'psi1_f'))
         self._load_filters(self.sc_freq,
-                           ('phi_f', 'psi1_f_fr_up', 'psi1_f_fr_down'), n0=n_final)
+                           ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
+                           n0=n_final)
 
     def _load_filters(self, obj, filter_names, n0=0):
         buffer_dict = dict(self.named_buffers())
@@ -229,17 +232,8 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if 'array' in self.out_type and not self.average:
-            raise ValueError("Options average=False and out_type='array' "
-                             "or 'array-like' are mutually incompatible. "
-                             "Please set out_type='list'.")
-
-        if self.out_3D and not self.average_fr:
-            raise ValueError("`out_3D=True` requires `average_fr=True`.")
-
-        if not self.out_type in ('array', 'list', 'array-like'):
-            raise RuntimeError("`out_type` must be one of: array, list, "
-                               "array-like (got %s)" % str(self.out_type))
+        _check_runtime_args_jtfs(self.average, self.average_fr, self.out_type,
+                                 self.out_3D)
 
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
@@ -265,6 +259,14 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             out_3D=self.out_3D,
             pad_mode=self.pad_mode)
         return S
+
+    def sc_freq_compute_padding_fr(self):
+        raise NotImplementedError("Here for docs; implemented in "
+                                  "`_FrequencyScatteringBase`.")
+
+    def sc_freq_compute_J_pad(self):
+        raise NotImplementedError("Here for docs; implemented in "
+                                  "`_FrequencyScatteringBase`.")
 
 TimeFrequencyScatteringTorch1D._document()
 

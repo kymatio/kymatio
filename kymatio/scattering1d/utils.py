@@ -80,13 +80,14 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     J : int
         scale of the scattering
     Q : int >= 1
-        The number of first-order wavelets per octave.
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
+          - If `Q1==0`, will exclude `psi1_f` from computation.
+          - If `Q2==0`, will exclude `psi2_f` from computation.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    Q2 : int >= 0  # TODO
-        The number of second-order wavelets per octave.
-        If 0, will exclude `psi2` from computation.
     normalize : string, optional
         normalization type for the wavelets.
         Only `'l2'` or `'l1'` normalizations are supported.
@@ -196,8 +197,10 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
     J : int
         The maximum log-scale of the scattering transform.
         In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1
-        The number of first-order wavelets per octave.
+    Q : int >= 1 / tuple[int]
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
@@ -250,8 +253,10 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
     J : int
         The maximum log-scale of the scattering transform.
         In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1
-        The number of first-order wavelets per octave.
+    Q : int >= 1 / tuple[int]
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
     J_pad : int
         2**J_pad == amount of temporal padding
     T : int
@@ -345,33 +350,50 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
     return meta
 
 
-def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
+def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
+                      resample_filters_fr, average, sc_freq):
     """Get metadata on the Joint Time-Frequency Scattering transform.
 
     This information specifies the content of each scattering coefficient,
     which order, which frequencies, which filters were used, and so on.
+    See below for more info.
 
     Parameters
     ----------
+    J_pad : int
+        2**J_pad == amount of temporal padding.
     J : int
         The maximum log-scale of the scattering transform.
         In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1
-        The number of first-order wavelets per octave.
-    J_pad : int
-        2**J_pad == amount of temporal padding
-    J_pad_fr_max: int
-        2**J_pad_fr_max == maximum amount of frequential padding
-    T : int
-        temporal support of temporal low-pass filter, controlling amount of
-        imposed time-shift invariance and maximum subsampling
-    F : int
-        temporal support of frequential low-pass filter, controlling amount of
-        imposed frequency transposition invariance and subsampling
-    Q2 : int >= 1
-        The number of second-order wavelets per octave.
+    Q : int >= 1 / tuple[int]
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
+            - Q1: For audio signals, a value of `>= 12` is recommended in
+              order to separate partials.
+            - Q2: Recommended `2` or `1` for most applications.
     J_fr, Q_fr: int, int
         `J` and `Q` for frequential scattering.
+    T : int
+        Temporal support of temporal low-pass filter, controlling amount of
+        imposed time-shift invariance and maximum subsampling
+    F : int
+        Temporal support of frequential low-pass filter, controlling amount of
+        imposed frequency transposition invariance and subsampling
+    out_type : str
+         - `'dict:list'` or `'dict:array'`: meta is packed
+           into respective pairs (e.g. `meta['n']['psi_t * phi_f'][1]`)
+         - `'list'` or `'array'`: meta is flattened (e.g. `meta['n'][15]`).
+    out_3D : bool
+        - True: will reshape meta fields to match output structure:
+          `(n_coeffs, n_freqs, meta_len)`.
+        - False: pack flattened: `(n_coeffs * n_freqs, meta_len)`.
+    resample_filters_fr : tuple[bool]
+        See `help(TimeFrequencyScattering1D)`. Affects `xi`, `sigma`, and `j`.
+    average : bool
+        Only affects `S0`'s meta.
+    sc_freq : `scattering1d.frontend.base_frontend._FrequencyScatteringBase`
+        Frequential scattering object, storing pertinent attributes and filters.
 
     Returns
     -------
@@ -382,27 +404,163 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
             A Tensor of length `C`, the total number of scattering
             coefficients, specifying the scattering order.
         - `'xi'` : tensor
-            A Tensor of size `(C, 2)`, specifying the center
+            A Tensor of size `(C, 3)`, specifying the center
             frequency of the filter used at each order (padded with NaNs).
         - `'sigma'` : tensor
-            A Tensor of size `(C, 2)`, specifying the frequency
+            A Tensor of size `(C, 3)`, specifying the frequency
             bandwidth of the filter used at each order (padded with NaNs).
         - `'j'` : tensor
-            A Tensor of size `(C, 2)`, specifying the dyadic scale
+            A Tensor of size `(C, 3)`, specifying the dyadic scale
             of the filter used at each order (padded with NaNs).
         - `'n'` : tensor
-            A Tensor of size `(C, 2)`, specifying the indices of
+            A Tensor of size `(C, 3)`, specifying the indices of
             the filters used at each order (padded with NaNs).
+            Lowpass filters in `phi_*` pairs are denoted via `-1`.
         - `'s'` : tensor
             A Tensor of length `C`, specifying the spin of
             each frequency scattering filter (+1=up, -1=down, 0=none).
         - `'key'` : list
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
-        # TODO key will be determined after agreeing on coeff output order
+
+    Computation and Structure
+    -------------------------
+    Computation replicates logic in `timefrequency_scattering()`. Meta values
+    depend on:
+        - out_3D (True only possible with average_fr=True)
+        - average (only affects `S0`)
+        - average_fr
+        - average_fr_global
+        - oversampling_fr
+        - max_padding_fr
+        - aligned (False meaningful (and tested) only with out_3D=True)
+        - resample_psi_fr
+        - resample_phi_fr
+    and some of their interactions.
     """
+    def _get_compute_params(n2, n1_fr):
+        """Reproduce exact logic in `timefrequency_scattering.py`."""
+        # `n2 == -1` correctly indexes maximal amount of padding and unpadding
+        pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
+                  sc_freq.J_pad_fr[n2])
+        shape_fr_padded = 2**pad_fr
+
+        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max - pad_fr
+
+        # determine subsampling reference
+        if aligned:
+            # subsample as we would in min-padded case
+            reference_subsample_equiv_due_to_pad = max(
+                sc_freq.subsampling_equiv_relative_to_max_padding)
+        else:
+            # subsample regularly (relative to current padding)
+            reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
+
+        j1_fr = j1s_fr[n1_fr] if (n1_fr != -1) else log2_F
+        sub_adj = (j1_fr if not sc_freq.average_fr else
+                   min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
+        n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
+                              sc_freq.oversampling_fr, 0)
+
+        total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
+        if sc_freq.average_fr:
+            if aligned:
+                # subsample as we would in min-padded case
+                reference_subsample_equiv_due_to_pad = max(
+                    sc_freq.subsampling_equiv_relative_to_max_padding)
+                if out_3D:
+                    subsample_equiv_due_to_pad_min = 0
+                else:
+                    subsample_equiv_due_to_pad_min = (
+                        reference_subsample_equiv_due_to_pad)
+                reference_total_subsample_so_far = (
+                    subsample_equiv_due_to_pad_min + n1_fr_subsample)
+            else:
+                # subsample regularly (relative to current padding)
+                reference_total_subsample_so_far = total_subsample_so_far
+            total_subsample_fr_max = log2_F
+            lowpass_subsample_fr = max(total_subsample_fr_max -
+                                       reference_total_subsample_so_far -
+                                       sc_freq.oversampling_fr, 0)
+            total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
+        else:
+            total_subsample_fr = total_subsample_so_far
+
+        if out_3D:
+            ind_start_fr = sc_freq.ind_start_fr_max[total_subsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr_max[total_subsample_fr]
+        else:
+            ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr[n2][total_subsample_fr]
+        return (shape_fr_padded, n1_fr_subsample, total_subsample_fr,
+                subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr)
+
+    def _fill_n1_info(pair, n2, n1_fr, spin):
+        # track S1 from padding to `_joint_lowpass()`
+        (shape_fr_padded, n1_fr_subsample, total_subsample_fr,
+         subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
+         ) = _get_compute_params(n2, n1_fr)
+
+        # fetch xi, sigma for n2, n1_fr
+        if n2 != -1:
+            xi2, sigma2, j2 = xi2s[n2], sigma2s[n2], j2s[n2]
+        else:
+            xi2, sigma2, j2 = 0, sigma_low, log2_T
+        if n1_fr != -1:
+            xi1_fr, sigma1_fr, j1_fr = (xi1s_fr[n1_fr], sigma1s_fr[n1_fr],
+                                        j1s_fr[n1_fr])
+        else:
+            xi1_fr, sigma1_fr, j1_fr = 0, sigma_low_fr, log2_F
+        # account for resampling (trimming) vs subsampling
+        if ((n1_fr != -1 and not resample_psi_fr) or
+            (n1_fr == -1 and not resample_phi_fr)):
+            # subsampling has the physical effect of contraction on the wavelet
+            # when convolving with non-subsampled input
+            sigma1_fr *= 2**subsample_equiv_due_to_pad
+            xi1_fr    *= 2**subsample_equiv_due_to_pad
+            j1_fr     -= subsample_equiv_due_to_pad
+
+        # distinguish between `key` and `n`
+        n1_fr_n   = n1_fr if (n1_fr != -1) else inf
+        n1_fr_key = n1_fr if (n1_fr != -1) else 0
+        n2_n      = n2    if (n2    != -1) else inf
+        n2_key    = n2    if (n2    != -1) else 0
+
+        # global average pooling, all S1 collapsed into single point
+        if sc_freq.average_fr_global:
+            meta['order'][pair].append(2)
+            meta['s'    ][pair].append((spin,))
+            meta['j'    ][pair].append((j2,     j1_fr,     math.nan))
+            meta['xi'   ][pair].append((xi2,    xi1_fr,    math.nan))
+            meta['sigma'][pair].append((sigma2, sigma1_fr, math.nan))
+            meta['n'    ][pair].append((n2_n,   n1_fr_n,   math.nan))
+            meta['key'  ][pair].append((n2_key, n1_fr_key, 0))
+            return
+
+        fr_max = sc_freq.shape_fr[n2] if (n2 != -1) else len(xi1s)
+        n1_step = 2 ** total_subsample_fr  # simulate subsampling
+        for n1 in range(0, shape_fr_padded, n1_step):
+            # simulate unpadding
+            if n1 / n1_step < ind_start_fr:
+                continue
+            elif n1 / n1_step >= ind_end_fr:
+                break
+
+            if n1 >= fr_max:  # equivalently `j1 >= j2`
+                # these are padded rows, no associated filters
+                xi1, sigma1, j1 = math.nan, math.nan, math.nan
+            else:
+                xi1, sigma1, j1 = xi1s[n1], sigma1s[n1], j1s[n1]
+            meta['order'][pair].append(2)
+            meta['s'    ][pair].append((spin,))
+            meta['j'    ][pair].append((j2,     j1_fr,     j1))
+            meta['xi'   ][pair].append((xi2,    xi1_fr,    xi1))
+            meta['sigma'][pair].append((sigma2, sigma1_fr, sigma1))
+            meta['n'    ][pair].append((n2_n,   n1_fr_n,   n1))
+            meta['key'  ][pair].append((n2_key, n1_fr_key, n1))
+
     xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
-    xi_min_fr = (2 / 2**J_pad_fr_max)
+    xi_min_fr = (2 / 2**sc_freq.J_pad_fr_max)
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
@@ -410,6 +568,7 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
 
     meta = {}
     inf = -1  # placeholder for infinity
+    nan = math.nan
     coef_names = (
         'S0',                  # (time)  zeroth order
         'S1',                  # (time)  first order
@@ -424,86 +583,85 @@ def compute_meta_jtfs(J, Q, J_pad, J_pad_fr_max, T, F, J_fr, Q_fr):
 
     # Zeroth-order
     meta['order']['S0'].append(0)
-    for field in meta:
-        if field != 'order':
-            meta[field]['S0'].append(())
+    meta['xi'   ]['S0'].append((nan, nan, 0         if average else nan))
+    meta['sigma']['S0'].append((nan, nan, sigma_low if average else nan))
+    meta['j'    ]['S0'].append((nan, nan, J         if average else nan))
+    meta['n'    ]['S0'].append((nan, nan, inf       if average else nan))
+    meta['s'    ]['S0'].append((nan,))
+    meta['key'  ]['S0'].append((0, 0, 0))
 
     # First-order coeffs
     for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
         meta['order']['S1'].append(1)
-        meta['xi'   ]['S1'].append((xi1,))
-        meta['sigma']['S1'].append((sigma1,))
-        meta['j'    ]['S1'].append((j1,))
-        meta['n'    ]['S1'].append((n1,))
-        meta['s'    ]['S1'].append(())
-        meta['key'  ]['S1'].append((n1,))
+        meta['xi'   ]['S1'].append((nan, nan, xi1))
+        meta['sigma']['S1'].append((nan, nan, sigma1))
+        meta['j'    ]['S1'].append((nan, nan, j1))
+        meta['n'    ]['S1'].append((nan, nan, n1))
+        meta['s'    ]['S1'].append((nan,))
+        meta['key'  ]['S1'].append((0, 0, n1))
 
-    # TODO -1 or inf doesn't make sense for `key`
-    # TODO drop `key`? no "non-vectorized" output, and it doesn't do as stated
+    S1_len = len(meta['n']['S1'])
+    assert S1_len >= sc_freq.shape_fr_max
+
+    # `phi_t * phi_f` coeffs
+    log2_T = math.floor(math.log2(T))
+    log2_F = math.floor(math.log2(F))
+    resample_psi_fr, resample_phi_fr = resample_filters_fr
+    _fill_n1_info('phi_t * phi_f', n2=-1, n1_fr=-1, spin=0)
+
+    # `phi_t * psi_f` coeffs
+    for n1_fr in range(len(j1s_fr)):
+        _fill_n1_info('phi_t * psi_f', n2=-1, n1_fr=n1_fr, spin=0)
+
+    # `psi_t * phi_f` coeffs
+    for n2, j2 in enumerate(j2s):
+        if j2 == 0:
+            continue
+        _fill_n1_info('psi_t * phi_f', n2, n1_fr=-1, spin=0)
 
     # `psi_t * psi_f` coeffs
     for spin in (1, -1):
-        k = ('psi_t * psi_f_up' if spin == 1 else
-             'psi_t * psi_f_down')
-        for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
+        pair = ('psi_t * psi_f_up' if spin == 1 else
+                'psi_t * psi_f_down')
+        for n2, j2 in enumerate(j2s):
             if j2 == 0:
                 continue
-            for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
-                 ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-                meta['order'][k].append(2)
-                meta['xi'   ][k].append((xi2, xi1_fr,))
-                meta['sigma'][k].append((sigma2, sigma1_fr,))
-                meta['j'    ][k].append((j2, j1_fr))
-                meta['n'    ][k].append((n2, n1_fr))
-                meta['s'    ][k].append((spin,))
-                meta['key'  ][k].append((n2, n1_fr))
-
-    # `psi_t * phi_f` coeffs
-    log2_F = math.floor(math.log2(F))
-    for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
-        if j2 == 0:
-            continue
-        meta['order']['psi_t * phi_f'].append(2)
-        meta['xi'   ]['psi_t * phi_f'].append((xi2, 0))
-        meta['sigma']['psi_t * phi_f'].append((sigma2, sigma_low_fr))
-        meta['j'    ]['psi_t * phi_f'].append((j2, log2_F))
-        meta['n'    ]['psi_t * phi_f'].append((n2, inf))
-        meta['s'    ]['psi_t * phi_f'].append((0,))
-        meta['key'  ]['psi_t * phi_f'].append((n2, inf))
-
-    # `phi_t * psi_f` coeffs
-    log2_T = math.floor(math.log2(T))
-    for (n1_fr, (xi1_fr, sigma1_fr, j1_fr)
-         ) in enumerate(zip(xi1s_fr, sigma1s_fr, j1s_fr)):
-        meta['order']['phi_t * psi_f'].append(2)
-        meta['xi'   ]['phi_t * psi_f'].append((0, xi1_fr,))
-        meta['sigma']['phi_t * psi_f'].append((sigma_low, sigma1_fr,))
-        meta['j'    ]['phi_t * psi_f'].append((log2_T, j1_fr))
-        meta['n'    ]['phi_t * psi_f'].append((inf, n1_fr))
-        meta['s'    ]['phi_t * psi_f'].append((0,))
-        meta['key'  ]['phi_t * psi_f'].append((inf, n1_fr))
-
-    # `phi_t * phi_f` coeffs
-    meta['order']['phi_t * phi_f'].append(2)
-    meta['xi'   ]['phi_t * phi_f'].append((0, 0))
-    meta['sigma']['phi_t * phi_f'].append((sigma_low, sigma_low_fr))
-    meta['j'    ]['phi_t * phi_f'].append((log2_T, log2_F))
-    meta['n'    ]['phi_t * phi_f'].append((inf, inf))
-    meta['s'    ]['phi_t * phi_f'].append((0,))
-    meta['key'  ]['phi_t * phi_f'].append((inf, inf))
-
-    pad_fields = ['xi', 'sigma', 'j', 'n']
-    pad_len = 2
-    for field in pad_fields:
-        for name, v in meta[field].items():
-            meta[field][name] = [x + (math.nan,) * (pad_len - len(x)) for x in v]
-    # spin is of pad_len=1
-    for name, v in meta['s'].items():
-        meta['s'][name] = [(math.nan,) if s == () else s for s in v]
+            for n1_fr, j1_fr in enumerate(j1s_fr):
+                _fill_n1_info(pair, n2, n1_fr, spin=spin)
 
     array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's']
     for field in array_fields:
-        for name, v in meta[field].items():
-            meta[field][name] = np.array(v)
+        for pair, v in meta[field].items():
+            meta[field][pair] = np.array(v)
 
+    if out_3D:
+      # reorder for 3D
+      for field in array_fields:#meta:
+        meta_len = 3 if field not in ('s', 'order') else 1
+        for pair in meta[field]:
+          if pair in ('S0', 'S1'):
+              # simply expand dim for consistency, no 3D structure
+              meta[field][pair] = meta[field][pair].reshape(-1, 1, meta_len)
+              continue
+          elif 'up' in pair or 'down' in pair:
+              number_of_n2 = sum(j2 != 0 for j2 in j2s)
+              number_of_n1_fr = len(j1s_fr)
+          elif pair == 'psi_t * phi_f':
+              number_of_n2 = sum(j2 != 0 for j2 in j2s)
+              number_of_n1_fr = 1
+          elif pair == 'phi_t * psi_f':
+              number_of_n2 = 1
+              number_of_n1_fr = len(j1s_fr)
+          elif pair == 'phi_t * phi_f':
+              number_of_n2 = 1
+              number_of_n1_fr = 1
+          n_coeffs = number_of_n2 * number_of_n1_fr
+          meta[field][pair] = meta[field][pair].reshape(n_coeffs, -1, meta_len)
+
+    if not out_type.startswith('dict'):
+        # join pairs
+        meta_flat = {f: np.concatenate([v for v in meta[f].values()], axis=0)
+                     for f in meta if f not in ('key',)}
+        meta_flat['key'] = meta['key']
+        meta = meta_flat
     return meta

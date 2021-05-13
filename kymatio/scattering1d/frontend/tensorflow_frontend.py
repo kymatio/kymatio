@@ -5,7 +5,8 @@ from ...frontend.tensorflow_frontend import ScatteringTensorFlow
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase1D
+from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
+                            _check_runtime_args_jtfs)
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
@@ -95,7 +96,8 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
                  average=True, average_fr=False, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
                  out_type="array", out_3D=False, pad_mode='zero', max_pad_factor=2,
-                 max_pad_factor_fr=None, backend="tensorflow"):
+                 max_pad_factor_fr=None, backend='tensorflow',
+                 name='TimeFrequencyScattering1D'):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         TimeFrequencyScatteringBase1D.__init__(
@@ -119,17 +121,8 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if 'array' in self.out_type and not self.average:
-            raise ValueError("Options average=False and out_type='array' "
-                             "or 'array-like' are mutually incompatible. "
-                             "Please set out_type='list'.")
-
-        if self.out_3D and not self.average_fr:
-            raise ValueError("`out_3D=True` requires `average_fr=True`.")
-
-        if not self.out_type in ('array', 'list', 'array-like'):
-            raise RuntimeError("`out_type` must be one of: array, list, "
-                               "array-like (got %s)" % str(self.out_type))
+        _check_runtime_args_jtfs(self.average, self.average_fr, self.out_type,
+                                 self.out_3D)
 
         signal_shape = tf.shape(x)[-1:]
         x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
@@ -153,6 +146,14 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
             out_3D=self.out_3D,
             pad_mode=self.pad_mode)
         return S
+
+    def sc_freq_compute_padding_fr(self):
+        raise NotImplementedError("Here for docs; implemented in "
+                                  "`_FrequencyScatteringBase`.")
+
+    def sc_freq_compute_J_pad(self):
+        raise NotImplementedError("Here for docs; implemented in "
+                                  "`_FrequencyScatteringBase`.")
 
 TimeFrequencyScatteringTensorFlow1D._document()
 

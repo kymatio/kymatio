@@ -565,13 +565,16 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     ----------
     J : int
         maximal scale of the scattering (controls the number of wavelets)
-    Q : int
-        number of wavelets per octave for the first order (Q1)
+    Q : int / tuple[int]
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
+            - Q1: For audio signals, a value of `>= 12` is recommended in
+              order to separate partials.
+            - Q2: Recommended `2` or `1` for most applications.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    Q2: int
-        number of wavelets per octave for the second order
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -649,15 +652,16 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     J_scattering : int
         parameter for the scattering transform (2**J_scattering
         corresponds to maximal temporal support of any filter)
-    Q : int
-        number of wavelets per octave at the first order. For audio signals,
-        a value Q >= 12 is recommended in order to separate partials.
+    Q : int >= 1 / tuple[int]
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
+            - Q1: For audio signals, a value of `>= 12` is recommended in
+              order to separate partials.
+            - Q2: Recommended `1` for most (`Scattering1D)` applications.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    Q2 : int
-        number of wavelets per octave at the second order. Recommended Q2 = 1
-        for most (`Scattering1D`) applications.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -845,10 +849,10 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
     resample_psi_fr : bool (default True)
         - True: preserve physical dimensionality (center frequeny, width)
-        at every length. E.g. `psi = psi_fn(N/2)`.
+          at every length. E.g. `psi = psi_fn(N/2) == psi_fn(N)[N/4:-N/4]`.
         - False: recalibrate filter to each length; center frequency is
-        preserved, but temporal support is narrowed (contraction).
-        E.g. `psi = psi[::2]`.
+          preserved, but temporal support is narrowed (contraction).
+          E.g. `psi = psi[::2]`.
     r_psi, normalize, sigma0, alpha, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
@@ -931,12 +935,10 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
     ----------
     J_pad_fr_max : int
         `2**J_pad_fr_max` is the desired support size (length) of the filters.
-
     F : int
         temporal support of frequential low-pass filter, controlling amount of
         imposed frequency transposition invariance and maximum frequential
         subsampling.
-
     log2_F : int
         Equal to `log2(prevpow2(F))`, sets maximum subsampling factor.
         If `resample_phi_fr=True`, this factor may not be reached *by the filter*,
@@ -945,14 +947,12 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
         `phi_f_fr` is fine, thus the restriction is to not subsample by more than
         the most subsampled `phi_f_fr` *before* convolving with it - set by
         `max_subsampling_before_phi_fr`.
-
     resample_phi_fr : bool (default True)
         - True: preserve physical dimensionality (center frequeny, width)
-        at every length. E.g. `phi = phi_fn(N/2)`.
+          at every length. E.g. `psi = psi_fn(N/2) == psi_fn(N)[N/4:-N/4]`.
         - False: recalibrate filter to each length; center frequency is
-        preserved, but temporal support is narrowed (contraction).
-        E.g. `phi = phi[::2]`.
-
+          preserved, but temporal support is narrowed (contraction).
+          E.g. `phi = phi[::2]`.
     criterion_amplitude, sigma, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
