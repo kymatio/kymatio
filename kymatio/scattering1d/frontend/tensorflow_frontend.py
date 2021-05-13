@@ -100,19 +100,17 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
                  name='TimeFrequencyScattering1D'):
         if oversampling_fr is None:
             oversampling_fr = oversampling
-        TimeFrequencyScatteringBase1D.__init__(
-            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, max_pad_factor_fr, out_3D)
-
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
         max_order_tm = 2
-        _out_type = out_type if out_type != "array-like" else "array"
+        scattering_out_type = out_type.lstrip('dict:')
         ScatteringTensorFlow1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            vectorize, _out_type, pad_mode, max_pad_factor, backend)
-        self.out_type = _out_type
+            vectorize, scattering_out_type, pad_mode, max_pad_factor, backend)
 
+        TimeFrequencyScatteringBase1D.__init__(
+            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
+            resample_filters_fr, max_pad_factor_fr, out_3D, out_type)
         TimeFrequencyScatteringBase1D.build(self)
 
     def scattering(self, x):

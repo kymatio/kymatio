@@ -68,7 +68,6 @@ def test_alignment():
 
 def test_shapes():
     """Ensure `out_3D=True` joint coeff slices have same shape."""
-    # TODO just concat internally and drop assert
     T = 1024
     J = 6
     Q = 16
@@ -84,22 +83,14 @@ def test_shapes():
               out_type='dict:array', out_3D=True, aligned=aligned,
               oversampling=oversampling, oversampling_fr=oversampling_fr,
               frontend=default_backend)
-          Scx = jtfs(x)
-          Scx = drop_batch_dim_jtfs(Scx)
-          jmeta = jtfs.meta()
+          try:
+              _ = jtfs(x)  # shapes must equal for this not to error
+          except Exception as e:
+              print(("(oversampling, oversampling_fr, aligned) "
+                     "= ({}, {}, {})").format(
+                         oversampling, oversampling_fr, aligned))
+              raise e
 
-          # assert slice shapes are equal ####################################
-          # namely, # of freq rows and time shifts is same across pairs
-          ref_shape = Scx['psi_t * psi_f_up'][0].shape
-          for pair in Scx:
-              if pair in ('S0', 'S1'):
-                  continue
-              for i, s in enumerate(Scx[pair]):
-                  assert s.shape == ref_shape, (
-                      "{} != {} | (oversampling, oversampling_fr, aligned, n)"
-                      " = ({}, {}, {}, {})").format(
-                          s.shape, ref_shape, oversampling, oversampling_fr,
-                          aligned, tuple(jmeta['n'][pair][i]))
 
 def test_jtfs_vs_ts():
     """Test JTFS sensitivity to FDTS (frequency-dependent time shifts), and that
@@ -375,12 +366,14 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-        # TODO out_3D
-        0. (aligned, out_type, average_fr) = (True,  'dict:list',  True)
-        1. (aligned, out_type, average_fr) = (True,  'dict:array', True)
-        2. (aligned, out_type, average_fr) = (False, 'dict:array', True)
-        3. (aligned, out_type, average_fr) = (True,  'dict:list',  "global")
-        4. (aligned, out_type, average_fr) = (True,  'dict:array', False)
+
+          (aligned, average_fr, out_3D, out_type,     F)
+        0. True     True        False   'dict:list'   8
+        1. True     True        True    'dict:array'  8
+        2. False    True        True    'dict:array'  8
+        3. True     True        False   'dict:list'   'global'
+        4. True     False       False   'dict:array'  8
+
         5. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
         6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of

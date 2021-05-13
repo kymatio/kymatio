@@ -438,19 +438,20 @@ class ScatteringBase1D(ScatteringBase):
 class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, resample_filters_fr=True,
-                 max_pad_factor_fr=None, out_3D=False):
+                 max_pad_factor_fr=None, out_3D=False, out_type='array'):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
         self.average_fr = average_fr
         self.oversampling_fr = oversampling_fr
-        self.aligned = aligned  # TODO make all these private? access via sc_freq
+        self.aligned = aligned
         if isinstance(resample_filters_fr, tuple):
             self.resample_psi_fr, self.resample_phi_fr = resample_filters_fr
         else:
             self.resample_psi_fr = self.resample_phi_fr = resample_filters_fr
         self.max_pad_factor_fr = max_pad_factor_fr
         self.out_3D = out_3D
+        self.out_type = out_type
 
     def build(self):
         """Check args and instantiate `_FrequencyScatteringBase` object
