@@ -2,16 +2,16 @@
 def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
-        oversampling=0, oversampling_fr=0, aligned=True,
-        average=True, average_global=None, out_type='array', pad_mode='zero'):
+        oversampling=0, oversampling_fr=0, aligned=True, average=True,
+        average_global=None, out_type='array', out_3D=False, pad_mode='zero'):
     """
     Main function implementing the joint time-frequency scattering transform.
     """
     # pack for later
     B = backend
-    average_fr = sc_freq.average
+    average_fr = sc_freq.average_fr
     commons = (B, sc_freq, aligned, oversampling_fr, average_fr, oversampling,
-               average, out_type, unpad, log2_T, phi, ind_start, ind_end)
+               average, unpad, log2_T, phi, ind_start, ind_end, out_3D)
 
     out_S_0 = []
     out_S_1 = []
@@ -34,7 +34,10 @@ def timefrequency_scattering(
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S_0.append({'coef': S_0, 'j': (), 'n': (), 's': ()})
+    out_S_0.append({'coef': S_0,
+                    'j': (log2_T,) if average else (),
+                    'n': (-1,) if average else (),
+                    's': ()})
 
     # First order ############################################################
     U_1_hat_list, S_1_list, S_1_c_list = [], [], []
@@ -92,9 +95,10 @@ def timefrequency_scattering(
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(
                 sc_freq.subsampling_equiv_relative_to_max_padding)
-            if 'array' in out_type:  # TODO add cond if phi_t*phi_f cond changed
+            # TODO add cond if phi_t*phi_f cond changed
+            if out_3D:
                 subsample_equiv_due_to_pad_min = 0
-            elif out_type == 'list':
+            else:
                 subsample_equiv_due_to_pad_min = (
                     reference_subsample_equiv_due_to_pad)
             reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
@@ -113,7 +117,7 @@ def timefrequency_scattering(
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # unpad + transpose, append to out
-        if 'array' in out_type and average_fr:
+        if out_3D:
             S_1_fr_T = unpad(S_1_fr_T,
                              sc_freq.ind_start_fr_max[lowpass_subsample_fr],
                              sc_freq.ind_end_fr_max[lowpass_subsample_fr])
@@ -136,7 +140,7 @@ def timefrequency_scattering(
             continue
 
         # preallocate output slice
-        if aligned and 'array' in out_type and average_fr:
+        if aligned and out_3D:
             pad_fr = sc_freq.J_pad_fr_max
         else:
             pad_fr = sc_freq.J_pad_fr[n2]
@@ -235,17 +239,31 @@ def timefrequency_scattering(
     out['psi_t * psi_f_up']   = out_S_2['psi_t * psi_f'][0]
     out['psi_t * psi_f_down'] = out_S_2['psi_t * psi_f'][1]
 
-    if out_type == 'array':
+    if out_type == 'dict:array':
         for k, v in out.items():
-            if average_fr:
+            if out_3D:
                 # stack joint slices, preserve 3D structure
                 out[k] = B.concatenate([c['coef'] for c in v], axis=1)
             else:
                 # flatten joint slices, return 2D
-                if len(v) == 1 and len(v[0]['coef']) == 0:
-                    out[k] = []  # TODO return all pairs instead?
-                else:
-                    out[k] = B.concatenate_v2([c['coef'] for c in v], axis=1)
+                out[k] = B.concatenate_v2([c['coef'] for c in v], axis=1)
+    elif out_type == 'dict:list':
+        pass  # already done
+    elif out_type == 'array':
+        if out_3D:
+            # cannot concatenate `S0` & `S1` with joint slices, return two arrays
+            out_0 = B.concatenate_v2([c['coef'] for k, v in out.items()
+                                      for c in v if k in ('S0', 'S1')], axis=1)
+            out_1 = B.concatenate([c['coef'] for k, v in out.items()
+                                   for c in v if k not in ('S0', 'S1')], axis=1)
+            out = (out_0, out_1)
+        else:
+            # flatten all and concat along `freq` dim
+            out = B.concatenate_v2([c['coef'] for v in out.values()
+                                    for c in v], axis=1)
+    elif out_type == 'list':
+        out = [c for v in out.values() for c in v]
+
     return out
 
 
@@ -291,6 +309,8 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                                  n1_fr_subsample, k1_plus_k2, commons)
 
             spin = (1, -1)[s1_fr] if spin_down else 0
+            if not sc_freq.resample_psi_fr:
+                j1_fr -= subsample_equiv_due_to_pad  # physical scale contraction
             out_S_2[s1_fr].append({'coef': S_2,
                                    'j': (j2, j1_fr),
                                    'n': (n2, n1_fr),
@@ -328,6 +348,8 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          k1_plus_k2, commons)
 
+    if not sc_freq.resample_phi_fr:
+        j1_fr -= subsample_equiv_due_to_pad  # physical scale contraction
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
                     'n': (n2, -1),
@@ -337,7 +359,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
 def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                    k1_plus_k2, commons):
     def unpad_fr(S_2_fr, total_subsample_fr):
-        if 'array' in out_type and average_fr:
+        if out_3D:
             return unpad(S_2_fr,
                          sc_freq.ind_start_fr_max[total_subsample_fr],
                          sc_freq.ind_end_fr_max[total_subsample_fr])
@@ -347,10 +369,9 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          sc_freq.ind_end_fr[n2][total_subsample_fr])
 
     (B, sc_freq, aligned, oversampling_fr, average_fr, oversampling, average,
-     out_type, unpad, log2_T, phi, ind_start, ind_end) = commons
+     unpad, log2_T, phi, ind_start, ind_end, out_3D) = commons
 
     # compute subsampling logic ##############################################
-    total_subsample_fr_max = sc_freq.log2_F
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
     if sc_freq.average_fr_global:
@@ -360,7 +381,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(
                 sc_freq.subsampling_equiv_relative_to_max_padding)
-            if 'array' in out_type and average_fr:
+            if out_3D:
                 subsample_equiv_due_to_pad_min = 0
             else:
                 subsample_equiv_due_to_pad_min = (
@@ -370,6 +391,7 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         else:
             # subsample regularly (relative to current padding)
             reference_total_subsample_so_far = total_subsample_so_far
+        total_subsample_fr_max = sc_freq.log2_F
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)

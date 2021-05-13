@@ -4,7 +4,8 @@ from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
-from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase1D
+from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
+                            _check_runtime_args_jtfs)
 
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
@@ -87,27 +88,26 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 ScatteringNumPy1D._document()
 
 
-class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNumPy1D):
+class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
+                                     ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
                  average=True, average_fr=False, oversampling=0,
                  oversampling_fr=None, aligned=True, resample_filters_fr=True,
-                 out_type="array", pad_mode='zero', max_pad_factor=2,
-                 max_pad_factor_fr=None, backend="numpy"):
+                 out_type="array", out_3D=False, pad_mode='zero',
+                 max_pad_factor=2, max_pad_factor_fr=None, backend="numpy"):
         if oversampling_fr is None:
             oversampling_fr = oversampling
-        TimeFrequencyScatteringBase1D.__init__(
-            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, max_pad_factor_fr)
-
         # Second-order scattering object for the time variable
         vectorize = True # for compatibility, will be removed in 0.3
         max_order_tm = 2
-        _out_type = out_type if out_type != "array-like" else "array"
+        scattering_out_type = out_type.lstrip('dict:')
         ScatteringNumPy1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            vectorize, _out_type, pad_mode, max_pad_factor, backend)
-        self.out_type = _out_type
+            vectorize, scattering_out_type, pad_mode, max_pad_factor, backend)
 
+        TimeFrequencyScatteringBase1D.__init__(
+            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
+            resample_filters_fr, max_pad_factor_fr, out_3D, out_type)
         TimeFrequencyScatteringBase1D.build(self)
 
     def scattering(self, x):
@@ -116,14 +116,8 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNu
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if 'array' in self.out_type and not self.average:
-            raise ValueError("Options average=False and out_type='array' "
-                             "or 'array-like' are mutually incompatible. "
-                             "Please set out_type='list'.")
-
-        if not self.out_type in ('array', 'list', 'array-like'):
-            raise RuntimeError("`out_type` must be one of: array, list, "
-                               "array-like (got %s)" % str(self.out_type))
+        _check_runtime_args_jtfs(self.average, self.average_fr, self.out_type,
+                                 self.out_3D)
 
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
@@ -144,8 +138,17 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D, ScatteringNu
             oversampling_fr=self.oversampling_fr,
             aligned=self.aligned,
             out_type=self.out_type,
+            out_3D=self.out_3D,
             pad_mode=self.pad_mode)
         return S
+
+    def sc_freq_compute_padding_fr(self):
+        raise NotImplementedError("Here for docs; implemented in "
+                                  "`_FrequencyScatteringBase`.")
+
+    def sc_freq_compute_J_pad(self):
+        raise NotImplementedError("Here for docs; implemented in "
+                                  "`_FrequencyScatteringBase`.")
 
 TimeFrequencyScatteringNumPy1D._document()
 

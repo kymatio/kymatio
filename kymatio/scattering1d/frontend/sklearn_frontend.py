@@ -11,4 +11,12 @@ class ScatteringTransformer1D(ScatteringTransformerMixin, ScatteringNumPy1D):
 ScatteringTransformer1D._document()
 
 
-__all__ = ['ScatteringTransformer1D']
+class TimeFrequencyScatteringTransformer1D(ScatteringTransformerMixin,
+                                           ScatteringNumPy1D):
+    pass
+
+
+TimeFrequencyScatteringTransformer1D._document()
+
+
+__all__ = ['ScatteringTransformer1D', 'TimeFrequencyScatteringTransformer1D']
