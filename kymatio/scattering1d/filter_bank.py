@@ -869,6 +869,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         Same as `psi1_f_fr_up` but with "down" spin (analytic, whereas "up"
         is anti-analytic wavelet).
     """
+    criterion_amplitude = 1e-3
     # compute the spectral parameters of the filters
     T = 1  # for computing `sigma_low`, unused
     _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
@@ -884,7 +885,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
 
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
-    for (n1_fr, j1) in enumerate(j1s):
+    for (n1_fr, j1_fr) in enumerate(j1s):
         psi_f = {}
         psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
                              normalize=normalize, P_max=P_max, eps=eps)
@@ -895,11 +896,28 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
                 continue
             factor = 2**j0
             j0_prev = j0
-            if resample_psi_fr:
-                psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
-                                      normalize=normalize, P_max=P_max, eps=eps)
-            else:
-                psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
+            Nj0 = N // factor
+            sigma = (sigma1[n1_fr] if (resample_psi_fr or j0 > j1_fr) else
+                     sigma1[n1_fr] * factor)
+            psi_f[j0] = morlet_1d(Nj0, xi1[n1_fr], sigma, normalize=normalize,
+                                  P_max=P_max, eps=eps)
+            if not resample_psi_fr and j1_fr != 0 and j1_fr >= j0:
+                # check if this will alias since we increased sigma
+                # (skip j1_fr == 0 since that's not subsampled)
+                reps = 0
+                while (psi_f[j0][Nj0 // 2**((j1_fr - j0) + 1)] >
+                       psi_f[j0].max() * criterion_amplitude):
+                    # if yes, resample as successively smaller sigma
+                    # (but no smaller than original)
+                    sigma *= .95
+                    sigma = max(sigma, sigma1[n1_fr])
+                    reps += 1
+                    if reps > 100:
+                        print(sigma)
+                    psi_f[j0] = morlet_1d(Nj0, xi1[n1_fr], sigma,
+                                          normalize=normalize, P_max=P_max,
+                                          eps=eps)
+                # psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
         psi1_f_fr_down.append(psi_f)
 
     # compute spin down filters by conjugating spin up in frequency domain
@@ -981,7 +999,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
             prev_phi_halfwidth = compute_temporal_support(
                 prev_phi, criterion_amplitude=criterion_amplitude)
 
-            if prev_phi_halfwidth == prev_phi.size // 2:
+            if prev_phi_halfwidth == prev_phi.size // 2:  # TODO need for psi?
                 # This means width is already too great for own length,
                 # so lesser length will distort lowpass.
                 # Frontend will adjust "all possible input lengths" accordingly

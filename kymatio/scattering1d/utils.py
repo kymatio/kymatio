@@ -492,12 +492,17 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
             ind_end_fr   = sc_freq.ind_end_fr[n2][total_subsample_fr]
-        return (shape_fr_padded, n1_fr_subsample, total_subsample_fr,
-                subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr)
+
+        # this determines actual stride over first-order coeffs
+        total_subsample_fr_due_to_subsample = (total_subsample_fr -
+                                               subsample_equiv_due_to_pad)
+        return (shape_fr_padded, n1_fr_subsample,
+                total_subsample_fr_due_to_subsample, subsample_equiv_due_to_pad,
+                ind_start_fr, ind_end_fr)
 
     def _fill_n1_info(pair, n2, n1_fr, spin):
         # track S1 from padding to `_joint_lowpass()`
-        (shape_fr_padded, n1_fr_subsample, total_subsample_fr,
+        (shape_fr_padded, n1_fr_subsample, total_subsample_fr_due_to_subsample,
          subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
          ) = _get_compute_params(n2, n1_fr)
 
@@ -538,7 +543,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             return
 
         fr_max = sc_freq.shape_fr[n2] if (n2 != -1) else len(xi1s)
-        n1_step = 2 ** total_subsample_fr  # simulate subsampling
+        n1_step = 2 ** total_subsample_fr_due_to_subsample  # simulate subsampling
         for n1 in range(0, shape_fr_padded, n1_step):
             # simulate unpadding
             if n1 / n1_step < ind_start_fr:
@@ -656,7 +661,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
               number_of_n2 = 1
               number_of_n1_fr = 1
           n_coeffs = number_of_n2 * number_of_n1_fr
-          meta[field][pair] = meta[field][pair].reshape(n_coeffs, -1, meta_len)
 
     if not out_type.startswith('dict'):
         # join pairs

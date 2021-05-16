@@ -268,7 +268,7 @@ def test_meta():
     """
     def assert_equal_lengths(Scx, jmeta, field, pair, out_3D, test_params_str):
         """Assert that number of coefficients and frequency rows for each match"""
-        if out_3D:
+        if out_3D:  # TODO else?
             out_n_coeffs  = len(Scx[pair])
             out_n_freqs   = sum(len(c['coef'][0]) for c in Scx[pair])
             meta_n_coeffs = len(jmeta[field][pair])
