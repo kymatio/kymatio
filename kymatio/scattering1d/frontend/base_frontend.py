@@ -5,7 +5,8 @@ import numbers
 import numpy as np
 
 from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
-                           psi_fr_factory, phi_fr_factory)
+                           psi_fr_factory, phi_fr_factory,
+                           calibrate_scattering_filters)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -1023,6 +1024,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.criterion_amplitude = 1e-3
         self.normalize = 'l1'
         self.pad_mode = 'zero'
+        self.sigma_max_to_min_max_ratio = 1.2
 
         # longest obtainable frequency row w.r.t. which we calibrate filters
         self.shape_fr_max = max(self.shape_fr)
@@ -1055,6 +1057,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                 self.shape_fr_max * 2**self.max_pad_factor_fr)))
         else:
             self.J_pad_fr_max_user = None
+
         # compute maximum amount of padding
         self.J_pad_fr_max, self.min_to_pad_fr_max = self._compute_J_pad(
             self.shape_fr_max, (self.Q_fr, 0))
@@ -1077,12 +1080,6 @@ class _FrequencyScatteringBase(ScatteringBase):
             # usual behavior
             self.max_subsampling_before_phi_fr = self.log2_F
 
-        # unused quantity; if this exceeds `J_pad_fr_max`, then `phi_t * psi_f`
-        # and `phi_t * phi_f` pairs will incur boundary effects. Implem doesn't
-        # account for this as the effect is rare and most often not great
-        self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1, recompute=True,
-                                              Q=(0, 0))
-
     def create_psi_filters(self):
         """See `filter_bank.psi_fr_factory`."""
         self.psi1_f_fr_up, self.psi1_f_fr_down = psi_fr_factory(
@@ -1093,6 +1090,25 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
+        # compute minimum amount of padding
+        if not self.resample_psi_fr:
+            xi_min = 2 / 2**self.J_pad_fr_max
+            _, _, sigma1_fr, *_ = calibrate_scattering_filters(
+                self.J_fr, self.Q_fr, T=self.F, r_psi=self.r_psi,
+                sigma0=self.sigma0, alpha=self.alpha, xi_min=xi_min)
+            sigma_min_max = max(sigma1_fr) / self.sigma_max_to_min_max_ratio
+            # restrict maximum downsampling relative to `J_pad_fr_max`
+            # such that the second-highest `xi` wavelet meets `sigma_min_max`
+            self.downsampling_max_due_to_sigma = math.floor(
+                math.log2(sigma_min_max / sigma1_fr[1]))
+        else:
+            self.downsampling_max_due_to_sigma = -1
+        # TODO doc
+        # TODO rename max_subsamp -> max_downsamp
+        self.J_pad_fr_min = (self.J_pad_fr_max -
+                             max(self.downsampling_max_due_to_sigma,
+                                 self.max_subsampling_before_phi_fr))
+
         attrs = ('J_pad_fr', 'pad_left_fr', 'pad_right_fr',
                  'ind_start_fr', 'ind_end_fr',
                  'ind_start_fr_max', 'ind_end_fr_max',
@@ -1149,6 +1165,12 @@ class _FrequencyScatteringBase(ScatteringBase):
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
 
+        # unused quantity; if this exceeds `J_pad_fr_max`, then `phi_t * psi_f`
+        # and `phi_t * phi_f` pairs will incur boundary effects. Implem doesn't
+        # account for this as the effect is rare and most often not great
+        self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1, recompute=True,
+                                              Q=(0, 0))
+
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
         """Docs in `TimeFrequencyScatteringBase1D`."""
         if recompute:
@@ -1164,8 +1186,8 @@ class _FrequencyScatteringBase(ScatteringBase):
                                                        J_tentative)
             J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
-        # don't let J_pad drop below `J_pad_fr_max - max_sub...`
-        J_pad = max(J_pad, self.J_pad_fr_max - self.max_subsampling_before_phi_fr)
+        # don't let J_pad drop below minimum
+        J_pad = max(J_pad, self.J_pad_fr_min)
         # don't let J_pad exceed user-set max
         if self.max_pad_factor_fr is not None:
             J_pad = min(J_pad, self.J_pad_fr_max_user)

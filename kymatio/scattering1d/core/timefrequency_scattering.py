@@ -290,7 +290,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                 reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
 
             # compute subsampling and fetch filter
-            j1_fr = psi1_f[n1_fr]['j']
+            j1_fr = psi1_f[n1_fr]['j'][subsample_equiv_due_to_pad]
             sub_adj = (j1_fr if not average_fr else
                        min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
             n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -

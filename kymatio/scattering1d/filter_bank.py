@@ -873,31 +873,18 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         Same as `psi1_f_fr_up` but with "down" spin (analytic, whereas "up"
         is anti-analytic wavelet).
     """
-    criterion_amplitude = 1e-3
     # compute the spectral parameters of the filters
+    J_support = J_pad_fr_max  # begin with longest
+    N = 2**J_support
+    xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
     _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
-        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
     psi1_f_fr_down = []
 
-    # loop params
-    J_support = J_pad_fr_max  # begin with longest
-    N = 2**J_support
-
-    # get sigma based on `resample_psi_fr`
-    def get_sigma(n1_fr, j0):
-        if resample_psi_fr:
-            # same wavelet parameters, different wavelet length
-            return sigma1[n1_fr]
-        else:
-            # contract largest temporal width of any wavelet by 2**j0,
-            # but not above sigma_max/2
-            sigma_min_max = max(sigma1) / 2
-            sigma_min_j0 = min(min(sigma1) * 2**j0, sigma_min_max)
-            return max(sigma1[n1_fr], sigma_min_j0)
 
     if not resample_psi_fr:
         # recalibrate filterbank to each j0
@@ -912,21 +899,10 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             j0_prev = j0
 
             # contract largest temporal width of any wavelet by 2**j0,
-            # but not above sigma_max/2
-            sigma_min_max = max(sigma1) / 1.2
+            # but not above sigma_max/1.2
+            sigma_max_to_min_max_ratio = 1.2
+            sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
             sigma_min_j0 = min(min(sigma1) * 2**j0, sigma_min_max)
-
-            # find index of first wavelet whose sigma is unaffected
-            sigma_same_idx = np.where(np.array(sigma1[::-1]) > sigma_min_j0)[0][0]
-            # set wavelets whose sigmas changed as as intermediates whose
-            num_intermediate = sigma_same_idx + 1
-            # last xi is first unchaged wavelet
-            last_xi = xi1[::-1][sigma_same_idx]
-
-            # same params
-            # for n1_fr in range(len(sigma1) - sigma_same_idx):
-            #     sigma1_new[j0].append(sigma1[n1_fr])
-            #     j1_new[j0].append(j1s[n1_fr])
 
             # halve distance from existing xi_max to .5 (theoretical max)
             new_xi_max = .5 - (.5 - max(xi1)) / 2**j0
@@ -941,40 +917,20 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             for i, xi in enumerate(new_xi):
                 j1_new[j0].append(get_max_dyadic_subsampling(xi, sigma_min_j0,
                                                              alpha=alpha))
-            # new
-            # for q in range(1, num_intermediate + 1):
-            #     factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
-            #     new_xi = factor * last_xi
-            #     new_sigma = sigma_min_j0
-            #     xi1_new[j0].append(new_xi)
-            #     sigma1_new[j0].append(new_sigma)
-            #     j1_new[j0].append(get_max_dyadic_subsampling(new_xi, new_sigma,
-            #                                                  alpha=alpha))
 
     def get_params(n1_fr, j0):
-        if resample_psi_fr == 'drop':
-            pass
-        elif resample_psi_fr:
+        if resample_psi_fr:
             return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
-
-        sigma_min_j0 = min(max(sigma1), min(sigma1) * 2**j0)
-        sigma_same_idx = np.where(np.array(sigma1[::-1]) > sigma_min_j0)[0][0]
-        sigma_same_idx = len(sigma1) - sigma_same_idx
-        if n1_fr >= sigma_same_idx:
-            return xi1[sigma_same_idx], sigma1[sigma_same_idx], j1s[
-                sigma_same_idx]
-        else:
-            return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
-
         return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1_new[j0][n1_fr]
 
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
+    # TODO ^
     for (n1_fr, j1_fr) in enumerate(j1s):
         psi_f = {}
         psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
                              normalize=normalize, P_max=P_max, eps=eps)
-        # j0s is ordered greater to lower, so reverse
+        # j0 is ordered greater to lower, so reverse
         j0_prev = -1
         for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
             if j0 <= 0 or j0 == j0_prev:
@@ -983,7 +939,6 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             j0_prev = j0
 
             xi, sigma, _ = get_params(n1_fr, j0)
-            # print(j0, n1_fr, xi, sigma)
             psi_f[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
                                   P_max=P_max, eps=eps)
         psi1_f_fr_down.append(psi_f)
@@ -995,12 +950,10 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             psi_up[j0] = conj_fr(psi_down)
         psi1_f_fr_up.append(psi_up)
 
-    # number of subsamplings per wavelet
-    n_subsamplings = len(psi1_f_fr_up[0])
-
     # Embed the meta information within the filters
     for (n1_fr, j1) in enumerate(j1s):
         for psi1_f in (psi1_f_fr_up, psi1_f_fr_down):
+            n_subsamplings = len(psi1_f[n1_fr])
             for field in ('xi', 'sigma', 'j'):
                 psi1_f[n1_fr][field] = []
             for j0 in range(n_subsamplings):
