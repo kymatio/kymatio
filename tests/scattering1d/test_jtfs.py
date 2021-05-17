@@ -124,6 +124,7 @@ def test_jtfs_vs_ts():
 
     l2_ts = l2(ts_x, ts_xs)
     l2_jtfs = l2(jtfs_x, jtfs_xs)
+    print(l2_ts, l2_jtfs)
 
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down

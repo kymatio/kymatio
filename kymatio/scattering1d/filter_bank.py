@@ -156,9 +156,9 @@ def get_normalizing_factor(h_f, normalize='l1'):
         such that h_f * norm_factor is the adequately normalized vector.
     """
     h_real = ifft(h_f)
-    if np.abs(h_real).sum() < 1e-7:
-        raise ValueError('Zero division error is very likely to occur, ' +
-                         'aborting computations now.')
+    # if np.abs(h_real).sum() < 1e-7:
+    #     raise ValueError('Zero division error is very likely to occur, ' +
+    #                      'aborting computations now.')
     if normalize == 'l1':
         norm_factor = 1. / (np.abs(h_real).sum())
     elif normalize == 'l2':
@@ -306,6 +306,10 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3, warn=False):
     if len(meets_criterion_idxs) != 0:
         # if it is possible
         N = meets_criterion_idxs.min() + 1
+        # in this case pretend it's 1 less so external computations don't
+        # have to double support since this is close enough
+        if N == half_support:
+            N -= 1
     else:
         # if there are none
         N = half_support
@@ -883,6 +887,87 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
     J_support = J_pad_fr_max  # begin with longest
     N = 2**J_support
 
+    # get sigma based on `resample_psi_fr`
+    def get_sigma(n1_fr, j0):
+        if resample_psi_fr:
+            # same wavelet parameters, different wavelet length
+            return sigma1[n1_fr]
+        else:
+            # contract largest temporal width of any wavelet by 2**j0,
+            # but not above sigma_max/2
+            sigma_min_max = max(sigma1) / 2
+            sigma_min_j0 = min(min(sigma1) * 2**j0, sigma_min_max)
+            return max(sigma1[n1_fr], sigma_min_j0)
+
+    if not resample_psi_fr:
+        # recalibrate filterbank to each j0
+        # j0=0 is the original length, no change needed
+        xi1_new, sigma1_new, j1_new = {0: xi1}, {0: sigma1}, {0: j1s}
+        j0_prev = -1
+        for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
+            if j0 <= 0 or j0 == j0_prev:
+                continue
+            xi1_new[j0], sigma1_new[j0], j1_new[j0] = [], [], []
+            factor = 2**j0
+            j0_prev = j0
+
+            # contract largest temporal width of any wavelet by 2**j0,
+            # but not above sigma_max/2
+            sigma_min_max = max(sigma1) / 1.2
+            sigma_min_j0 = min(min(sigma1) * 2**j0, sigma_min_max)
+
+            # find index of first wavelet whose sigma is unaffected
+            sigma_same_idx = np.where(np.array(sigma1[::-1]) > sigma_min_j0)[0][0]
+            # set wavelets whose sigmas changed as as intermediates whose
+            num_intermediate = sigma_same_idx + 1
+            # last xi is first unchaged wavelet
+            last_xi = xi1[::-1][sigma_same_idx]
+
+            # same params
+            # for n1_fr in range(len(sigma1) - sigma_same_idx):
+            #     sigma1_new[j0].append(sigma1[n1_fr])
+            #     j1_new[j0].append(j1s[n1_fr])
+
+            # halve distance from existing xi_max to .5 (theoretical max)
+            new_xi_max = .5 - (.5 - max(xi1)) / 2**j0
+            new_xi_min = 2 / (N / 2**j0)
+            # logarithmically distribute
+            new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
+                                 len(xi1), endpoint=True)[::-1]
+            xi1_new[j0].extend(new_xi)
+            new_sigma = np.logspace(np.log10(sigma_min_j0), np.log10(max(sigma1)),
+                                    len(xi1), endpoint=True)[::-1]
+            sigma1_new[j0].extend(new_sigma)
+            for i, xi in enumerate(new_xi):
+                j1_new[j0].append(get_max_dyadic_subsampling(xi, sigma_min_j0,
+                                                             alpha=alpha))
+            # new
+            # for q in range(1, num_intermediate + 1):
+            #     factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
+            #     new_xi = factor * last_xi
+            #     new_sigma = sigma_min_j0
+            #     xi1_new[j0].append(new_xi)
+            #     sigma1_new[j0].append(new_sigma)
+            #     j1_new[j0].append(get_max_dyadic_subsampling(new_xi, new_sigma,
+            #                                                  alpha=alpha))
+
+    def get_params(n1_fr, j0):
+        if resample_psi_fr == 'drop':
+            pass
+        elif resample_psi_fr:
+            return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
+
+        sigma_min_j0 = min(max(sigma1), min(sigma1) * 2**j0)
+        sigma_same_idx = np.where(np.array(sigma1[::-1]) > sigma_min_j0)[0][0]
+        sigma_same_idx = len(sigma1) - sigma_same_idx
+        if n1_fr >= sigma_same_idx:
+            return xi1[sigma_same_idx], sigma1[sigma_same_idx], j1s[
+                sigma_same_idx]
+        else:
+            return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
+
+        return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1_new[j0][n1_fr]
+
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
     for (n1_fr, j1_fr) in enumerate(j1s):
@@ -896,28 +981,11 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
                 continue
             factor = 2**j0
             j0_prev = j0
-            Nj0 = N // factor
-            sigma = (sigma1[n1_fr] if (resample_psi_fr or j0 > j1_fr) else
-                     sigma1[n1_fr] * factor)
-            psi_f[j0] = morlet_1d(Nj0, xi1[n1_fr], sigma, normalize=normalize,
+
+            xi, sigma, _ = get_params(n1_fr, j0)
+            # print(j0, n1_fr, xi, sigma)
+            psi_f[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
                                   P_max=P_max, eps=eps)
-            if not resample_psi_fr and j1_fr != 0 and j1_fr >= j0:
-                # check if this will alias since we increased sigma
-                # (skip j1_fr == 0 since that's not subsampled)
-                reps = 0
-                while (psi_f[j0][Nj0 // 2**((j1_fr - j0) + 1)] >
-                       psi_f[j0].max() * criterion_amplitude):
-                    # if yes, resample as successively smaller sigma
-                    # (but no smaller than original)
-                    sigma *= .95
-                    sigma = max(sigma, sigma1[n1_fr])
-                    reps += 1
-                    if reps > 100:
-                        print(sigma)
-                    psi_f[j0] = morlet_1d(Nj0, xi1[n1_fr], sigma,
-                                          normalize=normalize, P_max=P_max,
-                                          eps=eps)
-                # psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
         psi1_f_fr_down.append(psi_f)
 
     # compute spin down filters by conjugating spin up in frequency domain
@@ -927,12 +995,19 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             psi_up[j0] = conj_fr(psi_down)
         psi1_f_fr_up.append(psi_up)
 
+    # number of subsamplings per wavelet
+    n_subsamplings = len(psi1_f_fr_up[0])
+
     # Embed the meta information within the filters
     for (n1_fr, j1) in enumerate(j1s):
         for psi1_f in (psi1_f_fr_up, psi1_f_fr_down):
-            psi1_f[n1_fr]['xi'] = xi1[n1_fr]
-            psi1_f[n1_fr]['sigma'] = sigma1[n1_fr]
-            psi1_f[n1_fr]['j'] = j1
+            for field in ('xi', 'sigma', 'j'):
+                psi1_f[n1_fr][field] = []
+            for j0 in range(n_subsamplings):
+                xi, sigma, j = get_params(n1_fr, j0)
+                psi1_f[n1_fr]['xi'].append(xi)
+                psi1_f[n1_fr]['sigma'].append(sigma)
+                psi1_f[n1_fr]['j'].append(j)
 
     # return results
     return psi1_f_fr_up, psi1_f_fr_down
