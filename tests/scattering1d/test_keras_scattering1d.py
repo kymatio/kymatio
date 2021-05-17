@@ -26,33 +26,33 @@ class TestScattering1DKeras:
         Sx0 = data['Sx']
 
         # default
-        inputs1 = Input(shape=(x.shape[-1]))        
-        scat1 = Scattering1D(J=J, Q=Q)(inputs1)
-        
-        model1 = Model(inputs1, scat1)        
-        model1.compile(optimizer='adam',
+        inputs0 = Input(shape=(x.shape[-1]))
+        scat0 = Scattering1D(J=J, Q=Q)(inputs0)
+
+        model0 = Model(inputs0, scat0)
+        model0.compile(optimizer='adam',
                       loss='sparse_categorical_crossentropy',
                       metrics=['accuracy'])
-        Sg1 = model1.predict(x)
-        assert np.allclose(Sg1, Sx0)
-        
+        Sg0 = model0.predict(x)
+        assert np.allclose(Sg0, Sx0)
+
         # adjust T
         sigma_low_scale_factor = 2
         T=2**(J-sigma_low_scale_factor)
 
-        inputs2 = Input(shape=(x.shape[-1]))        
-        scat2 = Scattering1D(J=J, Q=Q, T=T)(inputs2)
+        inputs1 = Input(shape=(x.shape[-1]))
+        scat1 = Scattering1D(J=J, Q=Q, T=T)(inputs1)
 
-        model2 = Model(inputs2, scat2)        
-        model2.compile(optimizer='adam',
+        model1 = Model(inputs1, scat1)
+        model1.compile(optimizer='adam',
                       loss='sparse_categorical_crossentropy',
                       metrics=['accuracy'])
-        Sg2 = model2.predict(x)
-        
+        Sg1 = model1.predict(x)
+
         # for now, just be sure that the output shape is different from default
         # should we add this new result to the test data?
         #print('Sx1 shape: ' + str(Sx1.shape) + ' Sx2.shape: ' + str(Sx2.shape))
-        assert Sg2.shape == (Sg1.shape[0], Sg1.shape[1], Sg1.shape[2]*2**(sigma_low_scale_factor))
+        assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
 
 
 if __name__ == '__main__':
