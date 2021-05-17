@@ -103,7 +103,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         # treat the arguments
         if self.vectorize:
             size_scattering = precompute_size_scattering(
-                self.J, self.Q, max_order=self.max_order, detail=True)
+                self.J, self.Q, self.T, max_order=self.max_order, detail=True)
         else:
             size_scattering = 0
 
