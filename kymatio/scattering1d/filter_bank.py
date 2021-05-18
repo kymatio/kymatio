@@ -1017,6 +1017,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
             phi_f_fr[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max,
                                       eps=eps)
         else:
+            # same as `gauss_1d(N // factor, sigma_low * factor)` when not aliased
             phi_f_fr[j_fr] = periodize_filter_fourier(phi_f_fr[0],
                                                       nperiods=factor)
 
@@ -1061,6 +1062,7 @@ def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
         for xi, sigma in zip(new_xi, new_sigma):
             j1s_new[j0].append(get_max_dyadic_subsampling(xi, sigma, alpha=alpha))
     return xi1_new, sigma1_new, j1s_new
+
 
 def conj_fr(x):
     """Conjugate in frequency domain by swapping all bins (except dc);

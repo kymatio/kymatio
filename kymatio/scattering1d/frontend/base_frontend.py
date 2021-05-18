@@ -892,7 +892,7 @@ class TimeFrequencyScatteringBase1D():
 
         If `resample_phi_fr=True`, the `log2_F` subsampling factor may not be
         reached *by the filter*, as temporal width is preserved upon resampling
-        rather than halved as  with subsampling.
+        rather than halved as with subsampling.
 
         Subsampling by `log2_F` *after* convolving with `phi_f_fr` is fine, thus
         the restriction is to not subsample by more than the most subsampled

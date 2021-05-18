@@ -5,7 +5,43 @@ def timefrequency_scattering(
         oversampling=0, oversampling_fr=0, aligned=True, average=True,
         average_global=None, out_type='array', out_3D=False, pad_mode='zero'):
     """
-    Main function implementing the joint time-frequency scattering transform.
+    Main function implementing the Joint Time-Frequency Scattering transform.
+
+    Frequential scattering variables
+    --------------------------------
+    Explanation of variable naming and roles. For `sc_freq`'s attributes see
+    full Attributes docs in `TimeFrequencyScattering1D`.
+
+    subsample_equiv_due_to_pad
+        Equivalent amount of subsampling due to padding, relative to
+        `J_pad_fr_max_init`.
+        Distinguishes differences in input lengths (to `_frequency_scattering()`
+        and `_joint_lowpass()`) due to padding and conv subsampling.
+        This is needed to tell whether input is *trimmed* (pad difference)
+        or *subsampled*.
+
+    "conv subsampling"
+        Refers to `subsample_fourier()` after convolution (as opposed to
+        equivalent subsampling due to padding). i.e. "actual" subsampling
+
+    reference_subsample_equiv_due_to_pad
+        If `aligned=True`, we must subsample as we did in minimally padded case;
+        this equals `subsample_equiv_due_to_pad` in minimally padded case, and
+        controls subsequent subsamplings. This is needed to preserve alignment
+        of (first order) frequency rows by making conv stride the same for all
+        input lengths.
+
+    n1_fr_subsample
+        Amount of conv subsampling done in `_frequency_scattering()`.
+
+    reference_total_subsample_so_far
+        `_joint_lowpass()`'s version of `reference_subsample_equiv_due_to_pad`,
+        additionally accounting for `n1_fr_subsample` to determine amount of
+        subsampling after lowpass.
+
+    total_subsample_fr
+        Total amount of subsampling, conv and equivalent, relative to
+        `J_pad_fr_max_init`. Controls fr unpadding.
     """
     # pack for later
     B = backend
