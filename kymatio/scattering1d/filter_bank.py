@@ -156,9 +156,9 @@ def get_normalizing_factor(h_f, normalize='l1'):
         such that h_f * norm_factor is the adequately normalized vector.
     """
     h_real = ifft(h_f)
-    # if np.abs(h_real).sum() < 1e-7:
-    #     raise ValueError('Zero division error is very likely to occur, ' +
-    #                      'aborting computations now.')
+    if np.abs(h_real).sum() < 1e-7:
+        raise ValueError('Zero division error is very likely to occur, ' +
+                          'aborting computations now.')
     if normalize == 'l1':
         norm_factor = 1. / (np.abs(h_real).sum())
     elif normalize == 'l2':

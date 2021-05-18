@@ -346,8 +346,6 @@ def test_meta():
           if not aligned and not out_3D:
               continue  # invalid option
           for resample_psi_fr in (True, False):
-            if resample_psi_fr:
-                continue
             for resample_phi_fr in (True, False):
                 test_params = dict(
                     out_3D=out_3D, average_fr=average_fr, aligned=aligned,

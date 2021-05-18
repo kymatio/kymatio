@@ -126,8 +126,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         psi_t = to_time(psi_t)
 
         # compute joint wavelet in time
-        # TODO fix up & down instead of conjugating
-        Psi = np.conj(psi_f)[:, None] * psi_t[None]
+        Psi = psi_f[:, None] * psi_t[None]
         # title
         spin = '+1' if s_idx == 0 else '-1'
         psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, f_idx, spin)
@@ -287,12 +286,12 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False, sample_idx=0
         kup = 'psi_t * psi_f_up'
         kdn = 'psi_t * psi_f_down'
         sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
-        fig, axes = plt.subplots(1, 1, figsize=(7, 7))
+        fig, axes = plt.subplots(1, 2, figsize=(7, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
         imshow(sup, ax=axes, **kw, title=_title(meta, i, kup, '+1'))
-        # imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, '-1'))
-        # plt.subplots_adjust(wspace=0.01)
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, '-1'))
+        plt.subplots_adjust(wspace=0.01)
         plt.show()
 
     def _viz_simple(coef, pair, meta, i, norm):
