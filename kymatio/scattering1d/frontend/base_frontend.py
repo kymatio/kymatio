@@ -1051,7 +1051,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.log2_F = math.floor(math.log2(self.F))
         self.average_fr_global = bool(self.F == mx)
 
-        # restrict `J_pad_fr_max` if specified by user
+        # restrict `J_pad_fr_max` (and `J_pad_fr_max_init`) if specified by user
         if self.max_pad_factor_fr is not None:
             self.J_pad_fr_max_user = int(round(np.log2(
                 self.shape_fr_max * 2**self.max_pad_factor_fr)))
@@ -1059,13 +1059,13 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.J_pad_fr_max_user = None
 
         # compute maximum amount of padding
-        self.J_pad_fr_max, self.min_to_pad_fr_max = self._compute_J_pad(
+        self.J_pad_fr_max_init, self.min_to_pad_fr_max = self._compute_J_pad(
             self.shape_fr_max, (self.Q_fr, 0))
 
     def create_phi_filters(self):
         """See `filter_bank.phi_fr_factory`."""
         self.phi_f_fr = phi_fr_factory(
-            self.J_pad_fr_max, self.F, self.log2_F,
+            self.J_pad_fr_max_init, self.F, self.log2_F,
             **self.get_params('resample_phi_fr', 'criterion_amplitude',
                               'sigma0', 'P_max', 'eps'))
 
@@ -1083,7 +1083,7 @@ class _FrequencyScatteringBase(ScatteringBase):
     def create_psi_filters(self):
         """See `filter_bank.psi_fr_factory`."""
         self.psi1_f_fr_up, self.psi1_f_fr_down = psi_fr_factory(
-            self.J_pad_fr_max, self.J_fr, self.Q_fr,
+            self.J_pad_fr_max_init, self.J_fr, self.Q_fr,
             self.subsampling_equiv_relative_to_max_padding,
             **self.get_params('resample_psi_fr', 'r_psi', 'normalize',
                               'sigma0', 'alpha', 'P_max', 'eps'))
@@ -1092,12 +1092,12 @@ class _FrequencyScatteringBase(ScatteringBase):
         """Docs in `TimeFrequencyScatteringBase1D`."""
         # compute minimum amount of padding
         if not self.resample_psi_fr:
-            xi_min = 2 / 2**self.J_pad_fr_max
+            xi_min = 2 / 2**self.J_pad_fr_max_init
             _, _, sigma1_fr, *_ = calibrate_scattering_filters(
                 self.J_fr, self.Q_fr, T=self.F, r_psi=self.r_psi,
                 sigma0=self.sigma0, alpha=self.alpha, xi_min=xi_min)
             sigma_min_max = max(sigma1_fr) / self.sigma_max_to_min_max_ratio
-            # restrict maximum downsampling relative to `J_pad_fr_max`
+            # restrict maximum downsampling relative to `J_pad_fr_max_init`
             # such that the second-highest `xi` wavelet meets `sigma_min_max`
             self.downsampling_max_due_to_sigma = math.floor(
                 math.log2(sigma_min_max / sigma1_fr[1]))
@@ -1105,7 +1105,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.downsampling_max_due_to_sigma = -1
         # TODO doc
         # TODO rename max_subsamp -> max_downsamp
-        self.J_pad_fr_min = (self.J_pad_fr_max -
+        self.J_pad_fr_min = (self.J_pad_fr_max_init -
                              max(self.downsampling_max_due_to_sigma,
                                  self.max_subsampling_before_phi_fr))
 
@@ -1125,7 +1125,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                 # compute the padding quantities
                 pad_left = 0
                 pad_right = 2**J_pad - pad_left - shape_fr
-                j0 = self.J_pad_fr_max - J_pad
+                j0 = self.J_pad_fr_max_init - J_pad
 
                 # compute unpad indices for all possible subsamplings
                 ind_start, ind_end = [], []
@@ -1152,6 +1152,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         for attr in attrs:
             getattr(self, attr).reverse()
+        self.J_pad_fr_max = max(self.J_pad_fr)
 
         # compute maximum ind_start and ind_end across all subsampling factors
         # to use as common for out_type='array'
@@ -1165,9 +1166,10 @@ class _FrequencyScatteringBase(ScatteringBase):
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
 
-        # unused quantity; if this exceeds `J_pad_fr_max`, then `phi_t * psi_f`
-        # and `phi_t * phi_f` pairs will incur boundary effects. Implem doesn't
-        # account for this as the effect is rare and most often not great
+        # unused quantity; if this exceeds `J_pad_fr_max_init`, then
+        # `phi_t * psi_f` and `phi_t * phi_f` pairs will incur boundary effects.
+        # Implem doesn't account for this as the effect is rare and most often
+        # not great
         self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1, recompute=True,
                                               Q=(0, 0))
 
@@ -1180,9 +1182,9 @@ class _FrequencyScatteringBase(ScatteringBase):
         else:
             # reproduce `compute_minimum_support_to_pad`'s logic
             # if we subsample, the time support reduces by same factor
-            # `min_to_pad_fr_max` is set w.r.t. a `2**J_pad_fr_max` filter
+            # `min_to_pad_fr_max` is set w.r.t. a `2**J_pad_fr_max_init` filter
             J_tentative = int(np.ceil(np.log2(shape_fr)))
-            min_to_pad = self.min_to_pad_fr_max // 2**(self.J_pad_fr_max -
+            min_to_pad = self.min_to_pad_fr_max // 2**(self.J_pad_fr_max_init -
                                                        J_tentative)
             J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 

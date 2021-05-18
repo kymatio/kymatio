@@ -888,48 +888,27 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
 
     if not resample_psi_fr:
         # recalibrate filterbank to each j0
-        # j0=0 is the original length, no change needed
-        xi1_new, sigma1_new, j1_new = {0: xi1}, {0: sigma1}, {0: j1s}
-        j0_prev = -1
-        for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
-            if j0 <= 0 or j0 == j0_prev:
-                continue
-            xi1_new[j0], sigma1_new[j0], j1_new[j0] = [], [], []
-            factor = 2**j0
-            j0_prev = j0
-
-            # contract largest temporal width of any wavelet by 2**j0,
-            # but not above sigma_max/1.2
-            sigma_max_to_min_max_ratio = 1.2
-            sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
-            sigma_min_j0 = min(min(sigma1) * 2**j0, sigma_min_max)
-
-            # halve distance from existing xi_max to .5 (theoretical max)
-            new_xi_max = .5 - (.5 - max(xi1)) / 2**j0
-            new_xi_min = 2 / (N / 2**j0)
-            # logarithmically distribute
-            new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
-                                 len(xi1), endpoint=True)[::-1]
-            xi1_new[j0].extend(new_xi)
-            new_sigma = np.logspace(np.log10(sigma_min_j0), np.log10(max(sigma1)),
-                                    len(xi1), endpoint=True)[::-1]
-            sigma1_new[j0].extend(new_sigma)
-            for i, xi in enumerate(new_xi):
-                j1_new[j0].append(get_max_dyadic_subsampling(xi, sigma_min_j0,
-                                                             alpha=alpha))
+        xi1_new, sigma1_new, j1s_new = _recalibrate_psi_fr(
+            xi1, sigma1, j1s, N, alpha, subsampling_equiv_relative_to_max_padding)
 
     def get_params(n1_fr, j0):
         if resample_psi_fr:
             return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
-        return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1_new[j0][n1_fr]
+        try:
+            return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1s_new[j0][n1_fr]
+        except:
+            xi1_new[j0][n1_fr]
+            _recalibrate_psi_fr(
+                xi1, sigma1, j1s, N, alpha, subsampling_equiv_relative_to_max_padding)
 
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
     # TODO ^
     for (n1_fr, j1_fr) in enumerate(j1s):
-        psi_f = {}
-        psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
-                             normalize=normalize, P_max=P_max, eps=eps)
+        psi_down = {}
+        psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
+                                P_max=P_max, eps=eps)
+
         # j0 is ordered greater to lower, so reverse
         j0_prev = -1
         for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
@@ -938,29 +917,32 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             factor = 2**j0
             j0_prev = j0
 
-            xi, sigma, _ = get_params(n1_fr, j0)
-            psi_f[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
-                                  P_max=P_max, eps=eps)
-        psi1_f_fr_down.append(psi_f)
+            xi, sigma, j = get_params(n1_fr, j0)
+            psi_down[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
+                                     P_max=P_max, eps=eps)
 
-    # compute spin down filters by conjugating spin up in frequency domain
-    for psi_downs in psi1_f_fr_down:
+        psi1_f_fr_down.append(psi_down)
+        # compute spin up
         psi_up = {}
-        for j0, psi_down in enumerate(psi_downs.values()):
-            psi_up[j0] = conj_fr(psi_down)
+        for j0 in psi_down:
+            # compute spin up by conjugating spin down in frequency domain
+            psi_up[j0] = conj_fr(psi_down[j0])
         psi1_f_fr_up.append(psi_up)
 
-    # Embed the meta information within the filters
-    for (n1_fr, j1) in enumerate(j1s):
-        for psi1_f in (psi1_f_fr_up, psi1_f_fr_down):
-            n_subsamplings = len(psi1_f[n1_fr])
-            for field in ('xi', 'sigma', 'j'):
-                psi1_f[n1_fr][field] = []
-            for j0 in range(n_subsamplings):
+    # Embed meta information within the filters
+    for (n1_fr, j1_fr) in enumerate(j1s):
+        for psi_f in (psi1_f_fr_down, psi1_f_fr_up):
+            # create initial meta
+            meta = {'xi': xi1[n1_fr], 'sigma': sigma1[n1_fr], 'j': j1_fr}
+            for field, value in meta.items():
+                psi_f[n1_fr][field] = {0: value}
+            # fill for j0s
+            j0s = [k for k in psi_f[n1_fr] if (isinstance(k, int) and k != 0)]
+            for j0 in j0s:
                 xi, sigma, j = get_params(n1_fr, j0)
-                psi1_f[n1_fr]['xi'].append(xi)
-                psi1_f[n1_fr]['sigma'].append(sigma)
-                psi1_f[n1_fr]['j'].append(j)
+                psi_f[n1_fr]['xi'][j0] = xi
+                psi_f[n1_fr]['sigma'][j0] = sigma
+                psi_f[n1_fr]['j'][j0] = j
 
     # return results
     return psi1_f_fr_up, psi1_f_fr_down
@@ -1046,6 +1028,39 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
     # return results
     return phi_f_fr
 
+
+def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
+                        subsampling_equiv_relative_to_max_padding):
+    # recalibrate filterbank to each j0
+    # j0=0 is the original length, no change needed
+    xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
+    j0_prev = -1
+    for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
+        if j0 <= 0 or j0 == j0_prev:
+            continue
+        xi1_new[j0], sigma1_new[j0], j1s_new[j0] = [], [], []
+        factor = 2**j0
+        j0_prev = j0
+
+        # contract largest temporal width of any wavelet by 2**j0,
+        # but not above sigma_max/1.2
+        sigma_max_to_min_max_ratio = 1.2
+        sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
+        sigma_min_j0 = min(min(sigma1) * factor, sigma_min_max)
+
+        # halve distance from existing xi_max to .5 (theoretical max)
+        new_xi_max = .5 - (.5 - max(xi1)) / factor
+        new_xi_min = 2 / (N // factor)
+        # logarithmically distribute
+        new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
+                             len(xi1), endpoint=True)[::-1]
+        xi1_new[j0].extend(new_xi)
+        new_sigma = np.logspace(np.log10(sigma_min_j0), np.log10(max(sigma1)),
+                                len(xi1), endpoint=True)[::-1]
+        sigma1_new[j0].extend(new_sigma)
+        for xi, sigma in zip(new_xi, new_sigma):
+            j1s_new[j0].append(get_max_dyadic_subsampling(xi, sigma, alpha=alpha))
+    return xi1_new, sigma1_new, j1s_new
 
 def conj_fr(x):
     """Conjugate in frequency domain by swapping all bins (except dc);

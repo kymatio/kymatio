@@ -1,7 +1,8 @@
 import numpy as np
 import math
 from .filter_bank import (calibrate_scattering_filters, compute_temporal_support,
-                          compute_minimum_required_length, gauss_1d, morlet_1d)
+                          compute_minimum_required_length, gauss_1d, morlet_1d,
+                          _recalibrate_psi_fr)
 
 def compute_border_indices(log2_T, i0, i1):
     """
@@ -445,7 +446,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                   sc_freq.J_pad_fr[n2])
         shape_fr_padded = 2**pad_fr
 
-        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max - pad_fr
+        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
         # determine subsampling reference
         if aligned:
@@ -456,20 +457,29 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             # subsample regularly (relative to current padding)
             reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
 
-        j1_fr = j1s_fr[n1_fr] if (n1_fr != -1) else log2_F
-        sub_adj = (j1_fr if not sc_freq.average_fr else
-                   min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
-        n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
-                              sc_freq.oversampling_fr, 0)
+        if (n2 == -1 and n1_fr == -1):
+            n1_fr_subsample = 0
+        else:
+            if n1_fr == -1:
+                j1_fr = log2_F
+            else:
+                j1_fr = (j1s_fr[n1_fr] if resample_psi_fr else
+                         j1s_fr_new[subsample_equiv_due_to_pad][n1_fr])
+            sub_adj = (j1_fr if not sc_freq.average_fr else
+                       min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
+            n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
+                                  sc_freq.oversampling_fr, 0)
 
         total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
-        if sc_freq.average_fr:
+        if sc_freq.average_fr or n1_fr == -1:  # TODO private method in core?
             if aligned:
                 # subsample as we would in min-padded case
                 reference_subsample_equiv_due_to_pad = max(
                     sc_freq.subsampling_equiv_relative_to_max_padding)
                 if out_3D:
-                    subsample_equiv_due_to_pad_min = 0
+                    # this is usually 0
+                    subsample_equiv_due_to_pad_min = (sc_freq.J_pad_fr_max_init -
+                                                      sc_freq.J_pad_fr_max)
                 else:
                     subsample_equiv_due_to_pad_min = (
                         reference_subsample_equiv_due_to_pad)
@@ -496,13 +506,25 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         # this determines actual stride over first-order coeffs
         total_subsample_fr_due_to_subsample = (total_subsample_fr -
                                                subsample_equiv_due_to_pad)
-        return (shape_fr_padded, n1_fr_subsample,
-                total_subsample_fr_due_to_subsample, subsample_equiv_due_to_pad,
-                ind_start_fr, ind_end_fr)
+        return (shape_fr_padded, total_subsample_fr_due_to_subsample,
+                subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr)
+
+    def _get_fr_params(n1_fr, subsample_equiv_due_to_pad):
+        if n1_fr != -1:
+            if resample_psi_fr:
+                p = xi1s_fr[n1_fr], sigma1s_fr[n1_fr], j1s_fr[n1_fr]
+            else:
+                k = subsample_equiv_due_to_pad
+                p = (xi1s_fr_new[k][n1_fr], sigma1s_fr_new[k][n1_fr],
+                     j1s_fr_new[k][n1_fr])
+        else:
+            p = 0, sigma_low_fr, log2_F
+        xi1_fr, sigma1_fr, j1_fr = p
+        return xi1_fr, sigma1_fr, j1_fr
 
     def _fill_n1_info(pair, n2, n1_fr, spin):
         # track S1 from padding to `_joint_lowpass()`
-        (shape_fr_padded, n1_fr_subsample, total_subsample_fr_due_to_subsample,
+        (shape_fr_padded, total_subsample_fr_due_to_subsample,
          subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
          ) = _get_compute_params(n2, n1_fr)
 
@@ -511,19 +533,11 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             xi2, sigma2, j2 = xi2s[n2], sigma2s[n2], j2s[n2]
         else:
             xi2, sigma2, j2 = 0, sigma_low, log2_T
-        if n1_fr != -1:
-            xi1_fr, sigma1_fr, j1_fr = (xi1s_fr[n1_fr], sigma1s_fr[n1_fr],
-                                        j1s_fr[n1_fr])
-        else:
-            xi1_fr, sigma1_fr, j1_fr = 0, sigma_low_fr, log2_F
-        # account for resampling (trimming) vs subsampling
-        if ((n1_fr != -1 and not resample_psi_fr) or
-            (n1_fr == -1 and not resample_phi_fr)):
-            # subsampling has the physical effect of contraction on the wavelet
-            # when convolving with non-subsampled input
-            sigma1_fr *= 2**subsample_equiv_due_to_pad
-            xi1_fr    *= 2**subsample_equiv_due_to_pad
-            j1_fr     -= subsample_equiv_due_to_pad
+        xi1_fr, sigma1_fr, j1_fr = _get_fr_params(n1_fr,
+                                                  subsample_equiv_due_to_pad)
+
+        if n1_fr == -1 and not resample_phi_fr:
+            sigma1_fr *= 2**subsample_equiv_due_to_pad  # TODO make this happen?
 
         # distinguish between `key` and `n`
         n1_fr_n   = n1_fr if (n1_fr != -1) else inf
@@ -564,12 +578,19 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             meta['n'    ][pair].append((n2_n,   n1_fr_n,   n1))
             meta['key'  ][pair].append((n2_key, n1_fr_key, n1))
 
-    xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
-    xi_min_fr = (2 / 2**sc_freq.J_pad_fr_max)
+    N, N_fr = 2**J_pad, 2**sc_freq.J_pad_fr_max_init
+    xi_min = (2 / N)  # leftmost peak at bin 2
+    xi_min_fr = (2 / 2**N_fr)
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, *_ = \
         calibrate_scattering_filters(J_fr, Q_fr, F, xi_min=xi_min_fr)
+
+    resample_psi_fr, resample_phi_fr = resample_filters_fr
+    if not resample_psi_fr:
+        xi1s_fr_new, sigma1s_fr_new, j1s_fr_new = _recalibrate_psi_fr(
+            xi1s_fr, sigma1s_fr, j1s_fr, N_fr, sc_freq.alpha,
+            sc_freq.subsampling_equiv_relative_to_max_padding)
 
     meta = {}
     inf = -1  # placeholder for infinity
@@ -611,7 +632,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     # `phi_t * phi_f` coeffs
     log2_T = math.floor(math.log2(T))
     log2_F = math.floor(math.log2(F))
-    resample_psi_fr, resample_phi_fr = resample_filters_fr
     _fill_n1_info('phi_t * phi_f', n2=-1, n1_fr=-1, spin=0)
 
     # `phi_t * psi_f` coeffs

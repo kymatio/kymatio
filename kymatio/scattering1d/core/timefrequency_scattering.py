@@ -91,13 +91,18 @@ def timefrequency_scattering(
     else:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
 
+        # this is usually 0
+        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+        total_subsample_so_far = subsample_equiv_due_to_pad
+
         if aligned:
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(
                 sc_freq.subsampling_equiv_relative_to_max_padding)
-            # TODO add cond if phi_t*phi_f cond changed
             if out_3D:
-                subsample_equiv_due_to_pad_min = 0
+                # this is usually 0
+                subsample_equiv_due_to_pad_min = (sc_freq.J_pad_fr_max_init -
+                                                  sc_freq.J_pad_fr_max)
             else:
                 subsample_equiv_due_to_pad_min = (
                     reference_subsample_equiv_due_to_pad)
@@ -105,26 +110,28 @@ def timefrequency_scattering(
                                                 0)
         else:
             # subsample regularly (relative to current padding)
-            reference_total_subsample_so_far = 0
+            reference_total_subsample_so_far = total_subsample_so_far
         total_subsample_fr_max = sc_freq.log2_F
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)
+        total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
 
         # Low-pass filtering over frequency
-        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, sc_freq.phi_f_fr[0])
+        phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad]
+        S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, phi_fr)
         S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
 
         # unpad + transpose, append to out
         if out_3D:
             S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start_fr_max[lowpass_subsample_fr],
-                             sc_freq.ind_end_fr_max[lowpass_subsample_fr])
+                             sc_freq.ind_start_fr_max[total_subsample_fr],
+                             sc_freq.ind_end_fr_max[total_subsample_fr])
         else:
             S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start_fr[-1][lowpass_subsample_fr],
-                             sc_freq.ind_end_fr[-1][lowpass_subsample_fr])
+                             sc_freq.ind_start_fr[-1][total_subsample_fr],
+                             sc_freq.ind_end_fr[-1][total_subsample_fr])
         S_1_fr = B.transpose(S_1_fr_T)
     out_S_2['phi_t * phi_f'].append({'coef': S_1_fr,
                                      'j': (log2_T, sc_freq.log2_F),
@@ -278,7 +285,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
-            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max - pad_fr
+            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
             # determine subsampling reference
             if aligned:
@@ -308,9 +315,9 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad,
                                  n1_fr_subsample, k1_plus_k2, commons)
 
+            if n2 == -1 and n1_fr == 5:
+                1==1
             spin = (1, -1)[s1_fr] if spin_down else 0
-            if not sc_freq.resample_psi_fr:
-                j1_fr -= subsample_equiv_due_to_pad  # physical scale contraction
             out_S_2[s1_fr].append({'coef': S_2,
                                    'j': (j2, j1_fr),
                                    'n': (n2, n1_fr),
@@ -329,7 +336,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
         reference_subsample_equiv_due_to_pad = (
             sc_freq.subsampling_equiv_relative_to_max_padding[n2])
 
-    subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max - pad_fr
+    subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
     # take largest subsampling factor
     j1_fr = sc_freq.log2_F
     sub_adj = (j1_fr if not average_fr else
@@ -348,8 +355,8 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          k1_plus_k2, commons)
 
-    if not sc_freq.resample_phi_fr:
-        j1_fr -= subsample_equiv_due_to_pad  # physical scale contraction
+    # if not sc_freq.resample_phi_fr:  # TODO
+    #     j1_fr -= subsample_equiv_due_to_pad  # physical scale contraction
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
                     'n': (n2, -1),
@@ -382,7 +389,9 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
             reference_subsample_equiv_due_to_pad = max(
                 sc_freq.subsampling_equiv_relative_to_max_padding)
             if out_3D:
-                subsample_equiv_due_to_pad_min = 0
+                # this is usually 0
+                subsample_equiv_due_to_pad_min = (sc_freq.J_pad_fr_max_init -
+                                                  sc_freq.J_pad_fr_max)
             else:
                 subsample_equiv_due_to_pad_min = (
                     reference_subsample_equiv_due_to_pad)

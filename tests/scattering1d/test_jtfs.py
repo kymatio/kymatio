@@ -266,9 +266,10 @@ def test_meta():
         - oversampling_fr
         - max_padding_fr
     """
-    def assert_equal_lengths(Scx, jmeta, field, pair, out_3D, test_params_str):
+    def assert_equal_lengths(Scx, jmeta, field, pair, out_3D, test_params_str,
+                             jtfs):
         """Assert that number of coefficients and frequency rows for each match"""
-        if out_3D:  # TODO else?
+        if out_3D:
             out_n_coeffs  = len(Scx[pair])
             out_n_freqs   = sum(len(c['coef'][0]) for c in Scx[pair])
             meta_n_coeffs = len(jmeta[field][pair])
@@ -278,16 +279,20 @@ def test_meta():
                 "len(out[{0}]), len(jmeta[{1}][{0}]) = {2}, {3}\n{4}"
                 ).format(pair, field, out_n_coeffs, meta_n_coeffs,
                          test_params_str)
-            assert out_n_freqs == meta_n_freqs, (
-                "out vs meta n_freqs mismatch for {}, {}: {} != {}\n{}".format(
-                    pair, field, out_n_freqs, meta_n_freqs, test_params_str))
+        else:
+            out_n_freqs  = sum(c['coef'].shape[1] for c in Scx[pair])
+            meta_n_freqs = len(jmeta[field][pair])
+
+        assert out_n_freqs == meta_n_freqs, (
+            "out vs meta n_freqs mismatch for {}, {}: {} != {}\n{}".format(
+                pair, field, out_n_freqs, meta_n_freqs, test_params_str))
 
     def assert_equal_values(Scx, jmeta, field, pair, i, meta_idx, out_3D,
                             test_params_str, jtfs):
         """Assert that non-NaN values are equal."""
         a, b = Scx[pair][i][field], jmeta[field][pair][meta_idx[0]]
         errmsg = ("(out[{0}][{1}][{2}], jmeta[{2}][{0}][{3}]) = ({4}, {5})\n{6}"
-                  ).format(pair, i, field, meta_idx, a, b, test_params_str)
+                  ).format(pair, i, field, meta_idx[0], a, b, test_params_str)
 
         meta_len = b.shape[-1]
         if field != 's':
@@ -341,7 +346,7 @@ def test_meta():
           if not aligned and not out_3D:
               continue  # invalid option
           for resample_psi_fr in (True, False):
-            if not resample_psi_fr:
+            if resample_psi_fr:
                 continue
             for resample_phi_fr in (True, False):
                 test_params = dict(
@@ -355,11 +360,17 @@ def test_meta():
                 Scx = jtfs(x)
                 jmeta = jtfs.meta()
 
+                # ensure no output shape was completely reduced
+                for pair in Scx:
+                    for i, c in enumerate(Scx[pair]):
+                        assert not np.any(c['coef'].shape == 0), (pair, i)
+
+                # meta test
                 for field in ('j', 'n', 's'):
                   for pair in jmeta[field]:
                     meta_idx = [0]
                     assert_equal_lengths(Scx, jmeta, field, pair, out_3D,
-                                         test_params_str)
+                                         test_params_str, jtfs)
                     for i in range(len(Scx[pair])):
                         assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
                                             out_3D, test_params_str, jtfs)
