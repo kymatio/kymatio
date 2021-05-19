@@ -7,8 +7,13 @@ def timefrequency_scattering(
     """
     Main function implementing the Joint Time-Frequency Scattering transform.
 
-    Frequential scattering variables
-    --------------------------------
+    Below is implementation documentation for developers.
+
+    Frequential scattering
+    ======================
+
+    Variables
+    ---------
     Explanation of variable naming and roles. For `sc_freq`'s attributes see
     full Attributes docs in `TimeFrequencyScattering1D`.
 
@@ -22,7 +27,13 @@ def timefrequency_scattering(
 
     "conv subsampling"
         Refers to `subsample_fourier()` after convolution (as opposed to
-        equivalent subsampling due to padding). i.e. "actual" subsampling
+        equivalent subsampling due to padding). i.e. "actual" subsampling.
+        Refers to `total_convolutional_stride_over_U1`.
+
+    total_convolutional_stride_over_U1
+        See above. Alt name: `total_convolutional_stride_fr`; `over_U1` seeks
+        to emphasize that it's the absolute stride over first order coefficients
+        that matters rather than equivalent/relative quantities w.r.t. padded etc
 
     reference_subsample_equiv_due_to_pad
         If `aligned=True`, we must subsample as we did in minimally padded case;
@@ -42,6 +53,57 @@ def timefrequency_scattering(
     total_subsample_fr
         Total amount of subsampling, conv and equivalent, relative to
         `J_pad_fr_max_init`. Controls fr unpadding.
+
+    Subsampling, padding
+    --------------------
+    Controlled by `aligned`, `out_3D`, `average_fr`, `log2_F`, and
+    `resample_psi_fr` & `resample_phi_fr`.
+
+    - `freq` == number of frequential rows (originating from U1), e.g. as in
+      `(n1_fr, freq, time)` for joint slice shapes per `n2` (with `out_3D=True`).
+    - `n1_fr` == number of frequential joint slices, or `psi1_f_fr_*`, per `n2`
+    - `n2` == number of `psi2` wavelets, together with `n1_fr` controlling
+      total number of joint slices
+
+    aligned=True:  # TODO do these hold for `* phi_f` pairs?
+        Imposes:
+          - `total_convolutional_stride_over_U1` to be same for all joint
+            coefficients. Otherwise, row-to-row log-frequency differences,
+            `dw,2*dw,...`, will vary across joint slices, which breaks alignment.
+          - `resample_psi_fr==True`: center frequencies must be same
+          - `resample_phi_fr`: not necessarily restricted, as alignment is
+            preserved under different amounts of frequential smoothing, but
+            bins may blur together (rather unblur since `False` is finer);
+            for same fineness/coarseness across slices, `True` is required.
+            - greater `log2_F` won't necessarily yield greater conv stride,
+              via `reference_total_subsample_so_far`
+
+        average_fr=False:
+            Additionally imposes that `total_convolutional_stride_over_U1==0`,
+            since `psi_fr[0]['j'][0] == 0` and `_joint_lowpass()` can no longer
+            compensate for variable `j_fr`.
+
+        out_3D=True:
+            Additionally imposes that all frequential padding is the same
+            (maximum), since otherwise same `total_convolutional_stride_over_U1`
+            yields variable `freq` across `n2`.
+
+        average_fr_global=True:
+            Stride logic in `_joint_lowpass()` is relaxed since all U1 are
+            collapsed into one point; will no longer check
+            `total_convolutional_stride_over_U1`  # TODO makes sense?
+
+    out_3D=True:
+        Imposes:
+            - `freq`  to be same for all `n2` (can differ due to padding
+              or convolutional stride)
+            - `n1_fr` to be same for all `n2` -> `sampling_psi_fr != 'exclude'`
+
+    log2_F:
+        Larger -> smaller `freq`
+        Larger -> greater `max_subsampling_before_phi_fr`
+        Larger -> greater `J_pad_fr_max` (only if `log2_F > J_fr`)
+        # TODO ^ check this against `prev_psi_halfwidth == prev_psi.size // 2`
     """
     # pack for later
     B = backend
@@ -130,7 +192,9 @@ def timefrequency_scattering(
         # this is usually 0
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
         total_subsample_so_far = subsample_equiv_due_to_pad
+        n1_fr_subsample = 0  # no intermediate scattering
 
+        # TODO duplication?
         if aligned:
             # subsample as we would in min-padded case
             reference_subsample_equiv_due_to_pad = max(
@@ -143,7 +207,7 @@ def timefrequency_scattering(
                 subsample_equiv_due_to_pad_min = (
                     reference_subsample_equiv_due_to_pad)
             reference_total_subsample_so_far = (subsample_equiv_due_to_pad_min +
-                                                0)
+                                                n1_fr_subsample)
         else:
             # subsample regularly (relative to current padding)
             reference_total_subsample_so_far = total_subsample_so_far
@@ -173,6 +237,9 @@ def timefrequency_scattering(
                                      'j': (log2_T, sc_freq.log2_F),
                                      'n': (-1, -1),
                                      's': (0,)})
+    # set reference for later
+    sc_freq.__total_convolutional_stride_over_U1 = (n1_fr_subsample +
+                                                    lowpass_subsample_fr)
 
     ##########################################################################
     # Joint scattering: separable convolutions (along time & freq), and low-pass
@@ -334,8 +401,10 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
 
             # compute subsampling and fetch filter
             j1_fr = psi1_f[n1_fr]['j'][subsample_equiv_due_to_pad]
-            sub_adj = (j1_fr if not average_fr else
-                       min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
+            if average_fr:
+                sub_adj = min(j1_fr, sc_freq.max_subsampling_before_phi_fr)
+            else:
+                sub_adj = j1_fr if not aligned else 0
             n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
                                   oversampling_fr, 0)
 
@@ -347,12 +416,10 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             # Modulus
             U_2_m = B.modulus(Y_fr_c)
 
-            # Convolve by Phi = phi_t * phi_f
+            # Convolve by Phi = phi_t * phi_f, unpad
             S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad,
                                  n1_fr_subsample, k1_plus_k2, commons)
 
-            if n2 == -1 and n1_fr == 5:
-                1==1
             spin = (1, -1)[s1_fr] if spin_down else 0
             out_S_2[s1_fr].append({'coef': S_2,
                                    'j': (j2, j1_fr),
@@ -372,9 +439,17 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
         reference_subsample_equiv_due_to_pad = (
             sc_freq.subsampling_equiv_relative_to_max_padding[n2])
 
+    # TODO what exactly is log2_F?
+    # is it maximum permitted subsampling relative to J_pad_fr_max_init?
+    # is that what it *should* be, or should it be w.r.t. nextpow2(shape_fr_max)?
+    # can (and should) we end up subsampling by more than log2_F
+    # (in e.g. resample_=True)?
+
     subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
-    # take largest subsampling factor
-    j1_fr = sc_freq.log2_F
+    # take largest permissible subsampling factor given input length
+    # (always log2_F if `resample_phi_fr=True`,
+    # else less by `subsample_equiv_due_to_pad`)
+    j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad]
     sub_adj = (j1_fr if not average_fr else
                min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
     n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
@@ -391,8 +466,6 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                          k1_plus_k2, commons)
 
-    # if not sc_freq.resample_phi_fr:  # TODO
-    #     j1_fr -= subsample_equiv_due_to_pad  # physical scale contraction
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
                     'n': (n2, -1),
@@ -440,9 +513,9 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         lowpass_subsample_fr = max(total_subsample_fr_max -
                                    reference_total_subsample_so_far -
                                    oversampling_fr, 0)
-        total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
     else:
-        total_subsample_fr = total_subsample_so_far
+        lowpass_subsample_fr = 0
+    total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
 
     # fetch frequential lowpass
     if average_fr and not sc_freq.average_fr_global:
@@ -479,6 +552,19 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
 
     S_2 = unpad(S_2_r, ind_start[total_subsample_tm],
                 ind_end[total_subsample_tm])
+
+    # sanity checks (see "Subsampling, padding")
+    if aligned and not sc_freq.average_fr_global:
+        total_convolutional_stride_over_U1 = (n1_fr_subsample +
+                                              lowpass_subsample_fr)
+        assert (total_convolutional_stride_over_U1 ==
+                sc_freq.__total_convolutional_stride_over_U1)
+        if not average_fr:
+            assert total_convolutional_stride_over_U1 == 0
+        elif out_3D:
+            max_init_diff = sc_freq.J_pad_fr_max_init - sc_freq.J_pad_fr_max
+            assert (total_convolutional_stride_over_U1 ==
+                    sc_freq.log2_F - max_init_diff)
     return S_2
 
 

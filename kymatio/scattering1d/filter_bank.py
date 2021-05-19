@@ -811,7 +811,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         psi2_f[n2]['j'] = j2
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
-    phi_f['j'] = 0
+    phi_f['j'] = log2_T
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
@@ -884,7 +884,6 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
     psi1_f_fr_down = []
-
 
     if not resample_psi_fr:
         # recalibrate filterbank to each j0
@@ -1022,9 +1021,18 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
                                                       nperiods=factor)
 
     # embed meta info in filters
-    phi_f_fr['xi'] = 0.
-    phi_f_fr['sigma'] = sigma_low
-    phi_f_fr['j'] = 0
+    phi_f_fr['xi'] = {0: 0.}
+    phi_f_fr['sigma'] = {0: sigma_low}
+    phi_f_fr['j'] = {0: log2_F}
+    j1_frs = [k for k in phi_f_fr if isinstance(k, int) and k != 0]
+    for j1_fr in j1_frs:
+        phi_f_fr['xi'][j1_fr] = 0.
+        phi_f_fr['sigma'][j1_fr] = (sigma_low if resample_phi_fr else
+                                    sigma_low * 2**j1_fr)
+        phi_f_fr['j'][j1_fr] = (log2_F if resample_phi_fr else
+                                log2_F - j1_fr)
+    assert not any(j < 0       for j     in phi_f_fr['j'])
+    assert not any(sigma > 0.1 for sigma in phi_f_fr['sigma'])
 
     # return results
     return phi_f_fr
