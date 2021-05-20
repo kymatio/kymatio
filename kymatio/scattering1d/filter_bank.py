@@ -158,7 +158,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
     h_real = ifft(h_f)
     if np.abs(h_real).sum() < 1e-7:
         raise ValueError('Zero division error is very likely to occur, ' +
-                          'aborting computations now.')
+                         'aborting computations now.')
     if normalize == 'l1':
         norm_factor = 1. / (np.abs(h_real).sum())
     elif normalize == 'l2':
@@ -1031,8 +1031,8 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
                                     sigma_low * 2**j1_fr)
         phi_f_fr['j'][j1_fr] = (log2_F if resample_phi_fr else
                                 log2_F - j1_fr)
-    assert not any(j < 0       for j     in phi_f_fr['j'])
-    assert not any(sigma > 0.1 for sigma in phi_f_fr['sigma'])
+    assert not any(j < 0          for j     in phi_f_fr['j'].values())
+    assert not any(sigma > sigma0 for sigma in phi_f_fr['sigma'].values())
 
     # return results
     return phi_f_fr

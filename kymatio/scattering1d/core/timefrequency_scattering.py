@@ -104,6 +104,13 @@ def timefrequency_scattering(
         Larger -> greater `max_subsampling_before_phi_fr`
         Larger -> greater `J_pad_fr_max` (only if `log2_F > J_fr`)
         # TODO ^ check this against `prev_psi_halfwidth == prev_psi.size // 2`
+
+    Debug tips
+    ----------
+      - Check following sc_freq attributes:
+          - shape_fr
+          - J_pad_fr, J_pad_fr_max_init
+          - ind_end_fr, ind_end_fr_max
     """
     # pack for later
     B = backend
@@ -225,21 +232,23 @@ def timefrequency_scattering(
 
         # unpad + transpose, append to out
         if out_3D:
-            S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start_fr_max[total_subsample_fr],
-                             sc_freq.ind_end_fr_max[total_subsample_fr])
+            ind_start_fr = sc_freq.ind_start_fr_max[total_subsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr_max[  total_subsample_fr]
         else:
-            S_1_fr_T = unpad(S_1_fr_T,
-                             sc_freq.ind_start_fr[-1][total_subsample_fr],
-                             sc_freq.ind_end_fr[-1][total_subsample_fr])
+            ind_start_fr = sc_freq.ind_start_fr[-1][total_subsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr[-1][  total_subsample_fr]
+        S_1_fr_T = unpad(S_1_fr_T, ind_start_fr, ind_end_fr)
         S_1_fr = B.transpose(S_1_fr_T)
+    j1_fr = (sc_freq.log2_F if sc_freq.average_fr_global else
+             sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad])
     out_S_2['phi_t * phi_f'].append({'coef': S_1_fr,
-                                     'j': (log2_T, sc_freq.log2_F),
+                                     'j': (log2_T, j1_fr),
                                      'n': (-1, -1),
                                      's': (0,)})
-    # set reference for later
-    sc_freq.__total_convolutional_stride_over_U1 = (n1_fr_subsample +
-                                                    lowpass_subsample_fr)
+    # set reference for later  # TODO
+    sc_freq.__total_convolutional_stride_over_U1 = -1
+    # sc_freq.__total_convolutional_stride_over_U1 = (n1_fr_subsample +
+    #                                                 lowpass_subsample_fr)
 
     ##########################################################################
     # Joint scattering: separable convolutions (along time & freq), and low-pass
@@ -417,7 +426,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             U_2_m = B.modulus(Y_fr_c)
 
             # Convolve by Phi = phi_t * phi_f, unpad
-            S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad,
+            S_2 = _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad,
                                  n1_fr_subsample, k1_plus_k2, commons)
 
             spin = (1, -1)[s1_fr] if spin_down else 0
@@ -430,22 +439,26 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
 def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     B, sc_freq, aligned, oversampling_fr, average_fr, *_ = commons
 
+    subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
     if aligned:
         # subsample as we would in min-padded case
         reference_subsample_equiv_due_to_pad = max(
             sc_freq.subsampling_equiv_relative_to_max_padding)
     else:
         # subsample regularly (relative to current padding)
-        reference_subsample_equiv_due_to_pad = (
-            sc_freq.subsampling_equiv_relative_to_max_padding[n2])
+        reference_subsample_equiv_due_to_pad = subsample_equiv_due_to_pad
+            # sc_freq.subsampling_equiv_relative_to_max_padding[n2])  # TODO
+
+    # TODO average_fr_global?
 
     # TODO what exactly is log2_F?
     # is it maximum permitted subsampling relative to J_pad_fr_max_init?
     # is that what it *should* be, or should it be w.r.t. nextpow2(shape_fr_max)?
     # can (and should) we end up subsampling by more than log2_F
-    # (in e.g. resample_=True)?
+    # (in e.g. resample_=True)? # [1]
 
-    subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+    # [1] not a worry for `out_3D and aligned`, we pad to common max
+
     # take largest permissible subsampling factor given input length
     # (always log2_F if `resample_phi_fr=True`,
     # else less by `subsample_equiv_due_to_pad`)
@@ -463,27 +476,17 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     U_2_m = B.modulus(Y_fr_c)
 
     # Convolve by Phi = phi_t * phi_f
-    S_2 = _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
-                         k1_plus_k2, commons)
+    S_2 = _joint_lowpass(U_2_m, n2, -1, subsample_equiv_due_to_pad,
+                         n1_fr_subsample, k1_plus_k2, commons)
 
     out_S_2.append({'coef': S_2,
                     'j': (j2, j1_fr),
                     'n': (n2, -1),
                     's': (0,)})
 
-
-def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
+# TODO remove n1_fr
+def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample,
                    k1_plus_k2, commons):
-    def unpad_fr(S_2_fr, total_subsample_fr):
-        if out_3D:
-            return unpad(S_2_fr,
-                         sc_freq.ind_start_fr_max[total_subsample_fr],
-                         sc_freq.ind_end_fr_max[total_subsample_fr])
-        else:
-            return unpad(S_2_fr,
-                         sc_freq.ind_start_fr[n2][total_subsample_fr],
-                         sc_freq.ind_end_fr[n2][total_subsample_fr])
-
     (B, sc_freq, aligned, oversampling_fr, average_fr, oversampling, average,
      unpad, log2_T, phi, ind_start, ind_end, out_3D) = commons
 
@@ -515,7 +518,6 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                                    oversampling_fr, 0)
     else:
         lowpass_subsample_fr = 0
-    total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
 
     # fetch frequential lowpass
     if average_fr and not sc_freq.average_fr_global:
@@ -534,7 +536,14 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
         S_2_fr = U_2_m
 
     if not sc_freq.average_fr_global:
-        S_2_fr = unpad_fr(S_2_fr, total_subsample_fr)
+        total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
+        if out_3D:
+            ind_start_fr = sc_freq.ind_start_fr_max[total_subsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr_max[  total_subsample_fr]
+        else:
+            ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr[  n2][total_subsample_fr]
+        S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr)
     # Swap time and frequency subscripts again
     S_2_fr = B.transpose(S_2_fr)
 
@@ -554,17 +563,30 @@ def _joint_lowpass(U_2_m, n2, subsample_equiv_due_to_pad, n1_fr_subsample,
                 ind_end[total_subsample_tm])
 
     # sanity checks (see "Subsampling, padding")
-    if aligned and not sc_freq.average_fr_global:
+    if aligned and not sc_freq.average_fr_global and n1_fr != -1:
         total_convolutional_stride_over_U1 = (n1_fr_subsample +
                                               lowpass_subsample_fr)
-        assert (total_convolutional_stride_over_U1 ==
-                sc_freq.__total_convolutional_stride_over_U1)
+        if sc_freq.__total_convolutional_stride_over_U1 == -1:
+            sc_freq.__total_convolutional_stride_over_U1 = (
+                total_convolutional_stride_over_U1)
+        try:
+            assert (total_convolutional_stride_over_U1 ==
+                    sc_freq.__total_convolutional_stride_over_U1)
+        except:
+            print(total_convolutional_stride_over_U1,
+                  sc_freq.__total_convolutional_stride_over_U1)
+            for k in ('average_fr_global', 'F', 'log2_F', 'shape_fr', 'J_pad_fr'):
+                print(getattr(sc_freq, k), '--', k)
+            1/0
+
         if not average_fr:
             assert total_convolutional_stride_over_U1 == 0
         elif out_3D:
             max_init_diff = sc_freq.J_pad_fr_max_init - sc_freq.J_pad_fr_max
+            expected_common_stride = max(sc_freq.log2_F - max_init_diff -
+                                         oversampling_fr, 0)
             assert (total_convolutional_stride_over_U1 ==
-                    sc_freq.log2_F - max_init_diff)
+                    expected_common_stride)
     return S_2
 
 
