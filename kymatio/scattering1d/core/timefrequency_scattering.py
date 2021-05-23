@@ -605,6 +605,11 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
               we can subsample by more than `log2_F`, which is accounted for
               by `max_subsampling_before_phi_fr`
 
+    `total_subsample_fr` refers to total subsampling (equivalent due to padding
+    less, and due to convolutional stride) relative to `J_pad_fr_max_init`.
+    That is, `total_subsample_fr == freq / J_pad_fr_max_init`, where `freq`
+    is length of frequential dimension *before* unpadding.
+
     ############################################################################
     X. aligned==True:
       __________________________________________________________________________
@@ -612,9 +617,8 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         resample_psi_fr, resample_phi_fr:
         1. True, True:
            `lowpass_subsample_fr == log2_F - n1_fr_subsample`. Because:
-            a. `lowpass_subsample_fr` cannot exceed `log2_F` because
-               we always have `pad_fr == J_pad_fr_max`
-               (and `J_pad_fr_max != J_pad_fr_max_init` isn't possible)
+            a. `lowpass_subsample_fr` cannot exceed `log2_F` because `log2_F`
+                is the maximum subsampling factor of any `phi_fr`.
             b. `lowpass_subsample_fr` can be less than `log2_F` because must
                subsample less to get same `freq` with different `n1_fr_subsample`
             c. `lowpass_subsample_fr` and `n1_fr_subsample` must sum to the same
@@ -625,36 +629,66 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                (`J_pad_fr` will be restricted by `max_subsampling_before_phi_fr`
                 to ensure this).
 
+           `total_subsample_fr == log2_F`.
+            f. `total_subsample_fr` cannot exceed `log2_F` because we always
+               have `pad_fr == J_pad_fr_max == J_pad_fr_max_init`.
+
         2. False, True:
            Same as 1. Because:
-            a. Same as 1's. `J_pad_fr_max != J_pad_fr_max_init` is possible,
+            a. Same as 1's. `J_pad_fr_max < J_pad_fr_max_init` is possible,
+               but 1e applies.
+            b,c,d,e: same as 1's.
 
-            a,b,c,d: same as 1's.
-           `lowpass_subsample_fr == (log2_F + diff) - n1_fr_subsample`, where
-           `diff == J_pad_fr_max_init - J_pad_fr_max`. Because:
-            a,b,c,d: same as 1's, except we replace `log2_F` by `log2_F + diff`
-               since we can have `J_pad_fr_max < J_pad_fr_max_init`.
-               Note that total subsampling (equiv due to pad + conv stride)
-               relative to `J_pad_fr_max_init` remains `log2_F`.  # TODO move this
+           `total_subsample_fr == log2_F + diff`, where
+           `diff == J_pad_fr_max_init - J_pad_fr_max`.
+            f. `total_subsample_fr` can exceed `log2_F` because we can have
+               `pad_fr == J_pad_fr_max < J_pad_fr_max_init`, and `_, True`
+               will keep the `< 2**J_pad_fr_max_init` length `phi_fr`'s
+               subsampling factor at `log2_F`.
 
         3. True, False:
-           Same as 1.
-            a,b,c,d: same as 1's, because `_, False` limits
-            `lowpass_subsample_fr` to `log2_F`, regardless of `pad_fr`.
+           `lowpass_subsample_fr == (log2_F - diff) - n1_fr_subsample`. Because:
+            a,b,c: same as 1's.
+            d. same as 1's except `log2_F` -> `log2_F - diff` (see 3e).
+            e. `phi_fr` will not be subsample-able by `log2_F` for all `pad_fr`s.
+               `phi_fr` with `j=log2_F` is sampled at `2**J_pad_fr_max_init`,
+               and subsequently has `j<log2_F` (see 3f).
+               That is, `_, False` makes `phi_fr`'s `j` directly depend on input
+               length, so both `n1_fr_subsample` and `subsample_equiv_due_to_pad`
+               (which sum to `total_subsample_fr`) lower `j`.
+
+            `total_subsample_fr == log2_F`. Because,
+             f. Per 3e, exceeding `log2_F` would mean subsampling `phi_fr`
+                beyond `log2_F`.
 
         4. False, False:
-           Same as 1 (+3's reasoning).
-            a,b,c,d: same as 1's. `False, _` only affects `J_pad_fr`.
+           Same as 3.
+            a,b,c,d,e,f: same as 3's. `False, _` only affects `J_pad_fr`
+            (but `pad_fr` is always `J_pad_fr_max`) and `J_pad_fr_max`
+            (and 3 accounts for this).
 
         ```
-        lowpass_subsample_fr == (min(log2_F + diff, phi_fr_sub_max) -
-                                 n1_fr_subsample)
-        # phi_fr_sub_max == maximum phi_fr['j']
+        lowpass_subsample_fr == phi_fr_sub_max - n1_fr_subsample
+        phi_fr_sub_max == phi_fr['j'][J_pad_fr_max]
+        # ^ maximum "realizable" subsampling after `phi_fr`
         ```
         accounts for 1-4.
-          - `phi_fr_sub_max == log2_F` for 1,3,4, and we reduce to
+          - `phi_fr_sub_max == log2_F` for 1,2 and we reduce to
             `lowpass_subsample_fr == log2_F - n1_fr_subsample`
-          - `phi_fr_sub_max == log2_F + diff` for 2.
+          - `phi_fr_sub_max == log2_F - diff` for 3,4.
+
+        ```
+        total_subsample_fr == log2_F + (diff - j_diff)
+        j_diff == phi_fr['j'][J_pad_fr_max_init] - phi_fr['j'][J_pad_fr_max]
+        ```
+        accounts for 1-4.
+          - 1: `J_pad_fr_max == J_pad_fr_max_init` -> `diff == j_diff == 0`
+               -> `total_subsample_fr == log2_F`
+          - 2: `J_pad_fr_max <= J_pad_fr_max_init` -> `diff >= 0`, `j_diff == 0`
+               -> `total_subsample_fr == log2_F + diff
+          - 3: `J_pad_fr_max <= J_pad_fr_max_init` -> `diff == j_diff >= 0`
+               -> `total_subsample_fr == log2_F`
+          - 4: same as 3.
 
         A "silent" condition has been obeyed via `J_pad_fr == J_pad_fr_max`:
         Y.1.e.
@@ -772,7 +806,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         ```
         accounts for 1-4.
     """
-
+    # TODO psi_fr's subsampling must additionally be constrained by log2_F
     if sc_freq.average_fr_global:
         pass
     elif average_fr:

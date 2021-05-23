@@ -1052,6 +1052,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
             # `n1_fr_subsample` so just copy pointers
             phi_f_fr[j_fr] = [phi_f_fr[0][j_fr_sub]
                               for j_fr_sub in range(j_fr, 1 + log2_F)]
+            # TODO instead reindex as sum?
 
     # embed meta info in filters
     phi_f_fr = {field: {} for field in ('xi', 'sigma', 'j')}
