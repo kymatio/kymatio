@@ -589,6 +589,8 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     _joint_lowpass()
     ----------------
 
+    **Conditions**:
+
     `phi_fr[subsample_equiv_due_to_pad][n1_fr_subsample]` indexing for all cases.
     What differs is subsampling afterwards, determined by:
         C1) `j` of the `phi_fr`
@@ -605,10 +607,18 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
               we can subsample by more than `log2_F`, which is accounted for
               by `max_subsampling_before_phi_fr`
 
-    `total_subsample_fr` refers to total subsampling (equivalent due to padding
-    less, and due to convolutional stride) relative to `J_pad_fr_max_init`.
-    That is, `total_subsample_fr == freq / J_pad_fr_max_init`, where `freq`
-    is length of frequential dimension *before* unpadding.
+    **Definitions**:
+        D1) `total_subsample_fr` refers to total subsampling (equivalent due to
+            padding less, and due to convolutional stride) relative to
+            `J_pad_fr_max_init`. That is,
+            `total_subsample_fr == freq / J_pad_fr_max_init`, where `freq` is
+            length of frequential dimension *before* unpadding. It is also ==
+            `lowpass_subsample_fr + n1_fr_subsample + subsample_equiv_due_to_pad`.
+        D2) `log2_N_fr == nextpow2(shape_fr_max)` is the maximum possible
+            `total_conv_stride_over_U1` for any configuration.
+            (Exceeding would imply `freq` < 0 over unpadded `shape_fr_max`).
+              - `log2_N_fr + diff == J_pad_fr_max_init` is the maximum possible
+                `total_subsample_fr` for any configuration.
 
     ############################################################################
     X. aligned==True:
@@ -624,10 +634,14 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             c. `lowpass_subsample_fr` and `n1_fr_subsample` must sum to the same
                (`total_conv_stride_over_U1`)
             d. `total_conv_stride_over_U1` cannot exceed `log2_F` because minimum
-               `n1_fr_subsample == 0`. (For same reason, it cannot be less).
+               `n1_fr_subsample == 0`, and max `lowpass_subsample_fr == log2_F`.
+            d+. `lowpass_subsample_fr == log2_F` will happen along
+                `n1_fr_subsample == 0`. Per c, `total_conv_stride_over_U1` hence
+                also cannot be less, and must `== log2_F`.
             e. `phi_fr` will be subsample-able by `log2_F` for any `pad_fr`
                (`J_pad_fr` will be restricted by `max_subsampling_before_phi_fr`
                 to ensure this).
+            f.
 
            `total_subsample_fr == log2_F`.
             f. `total_subsample_fr` cannot exceed `log2_F` because we always
@@ -644,7 +658,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             f. `total_subsample_fr` can exceed `log2_F` because we can have
                `pad_fr == J_pad_fr_max < J_pad_fr_max_init`, and `_, True`
                will keep the `< 2**J_pad_fr_max_init` length `phi_fr`'s
-               subsampling factor at `log2_F`.
+               subsampling factor at `log2_F` (i.e. 1e).
 
         3. True, False:
            `lowpass_subsample_fr == (log2_F - diff) - n1_fr_subsample`. Because:
@@ -656,6 +670,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                That is, `_, False` makes `phi_fr`'s `j` directly depend on input
                length, so both `n1_fr_subsample` and `subsample_equiv_due_to_pad`
                (which sum to `total_subsample_fr`) lower `j`.
+               `_, False` (or `False, _`) enables `diff > 0`.
 
             `total_subsample_fr == log2_F`. Because,
              f. Per 3e, exceeding `log2_F` would mean subsampling `phi_fr`
@@ -691,28 +706,37 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
           - 4: same as 3.
 
         A "silent" condition has been obeyed via `J_pad_fr == J_pad_fr_max`:
-        Y.1.e.
+        Y.1.e. # TODO
       __________________________________________________________________________
       B. out_3D==False:
         resample_psi_fr, resample_phi_fr:
         1. True, True
-           `lowpass_subsample_fr == (log2_F + diff) - n1_fr_subsample`. Because:
-            a. `lowpass_subsample_fr` can exceed `log2_F` because we can have
-               `pad_fr < J_pad_fr_max`.
+           `lowpass_subsample_fr == log2_F - n1_fr_subsample`. Because:
+            a. == A1a.
             b. `lowpass_subsample_fr` does not need to be less than
-               `log2_F + diff`, because we no longer care for same `freq`.
-            c. == 1c. This overrides b.
-            d. == 1d except `log2_F -> log2_F + diff`
+               `log2_F`, because we no longer care for same `freq`.
+            c. == A1c. This overrides b.
+            d. == A1d.
+            e. == A1e.
+
+           `total_subsample_fr == log2_F + subsample_equiv_due_to_pad`
+           f. `total_subsample_fr` can exceed `log2_F` because we can have
+              `pad_fr < J_pad_fr_max == J_pad_fr_max_init`.
 
         2. False, True:
            Same as 1.
-            a,b,c,d: same as 1's. `False, _` only affects `J_pad_fr` (and
+            a,b,c,d,e,f: same as 1's. `False, _` only affects `J_pad_fr` (and
             `J_pad_fr_max`).
 
         3. True, False:
-           `lowpass_subsample_fr == log2_F - n1_fr_subsample`. Because:
-            a. `lowpass_subsample_fr` cannot exceed `log2_F` due to `_, False`.
-            b,c,d: same as 1's, except `log2_F + diff -> log2_F`.
+           `lowpass_subsample_fr == ((log2_F - subsample_equiv_due_to_pad) -
+                                     n1_fr_subsample)`. Because:
+            a,b,c,d,f: same as 1's.
+            e: same as 1's. `subsample_equiv_due_to_pad` is the generalization
+               of `diff` for `pad_fr < J_pad_fr_max`, i.e. not just
+               `pad_fr == J_pad_fr_max < J_pad_fr_max_init`.
+
+            `total_subsample_fr
 
         4. False, False:
             Same as 3.
