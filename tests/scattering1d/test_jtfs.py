@@ -43,6 +43,14 @@ def test_alignment():
         Scx = drop_batch_dim_jtfs(Scx)
         jmeta = jtfs.meta()
 
+        # some `psi2` won't capture peak
+        n2_min = 4
+        # assert J_pad_fr differs from max at this point
+        # (which is where alignment most easily breaks)
+        # assert jtfs.J_pad_fr[n2_min] != jtfs.J_pad_fr_max  # TODO
+
+        # TODO test phi pairs too
+
         # assert peaks share an index ########################################
         S_all = {}
         for pair in ('psi_t * psi_f_up', 'psi_t * psi_f_down'):
@@ -50,12 +58,12 @@ def test_alignment():
             if 'array' in out_type:
                 for i in range(len(jmeta['n'][pair])):
                     n2 = jmeta['n'][pair][i][0][0]
-                    if n2 >= 4:  # some `psi2` won't capture peak
+                    if n2 >= n2_min:
                         S_all[pair][i] = Scx[pair][i]
             else:
                 for i in range(len(Scx[pair])):  # more convenient
                     n2 = Scx[pair][i]['n'][0]
-                    if n2 >= 4:  # some `psi2` won't capture peak
+                    if n2 >= n2_min:
                         S_all[pair][i] = Scx[pair][i]['coef']
 
         first_coef = list(list(S_all.values())[0].values())[0]
@@ -355,11 +363,30 @@ def test_meta():
                 test_params_str = '\n'.join(f'{k}={v}' for k, v in
                                             test_params.items())
 
+                # TODO
+                if not (out_3D == False and
+                        average_fr == False and
+                        aligned == True and
+                        resample_psi_fr == True and
+                        resample_phi_fr == False):
+                    continue
+
                 jtfs = TimeFrequencyScattering1D(**params, **test_params,
-                                         frontend=default_backend)
-                Scx = jtfs(x)
+                                                 frontend=default_backend)
+                try:
+                    Scx = jtfs(x)
+                except:
+                    print(out_3D, average_fr, aligned, resample_psi_fr,
+                          resample_phi_fr)
+                    Scx = jtfs(x)
                 jmeta = jtfs.meta()
-                # TODO assert for resample_=False we get variable J_pad_fr
+
+                # if not resample_psi_fr:
+                #     # assert not all J_pad_fr are same so test covers this case
+                #     # TODO "aligned compat with False" etc
+                #     assert not all(J_pad_fr == jtfs.J_pad_fr_max
+                #                    for J_pad_fr in jtfs.J_pad_fr
+                #                    if J_pad_fr != -1)
 
                 # ensure no output shape was completely reduced
                 for pair in Scx:
@@ -441,6 +468,7 @@ def test_output():
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         out = jtfs(x)
 
+        # assert equal total number of coefficients
         if params['out_type'] == 'dict:list':
             n_coef_out = sum(len(o) for o in out.values())
             n_coef_out_stored = len(out_stored)
@@ -463,6 +491,8 @@ def test_output():
                                    params_str)
                 if output_test_print_mode and o.shape != o_stored.shape:
                     print(errmsg)
+                    i_s += 1
+                    continue
                 else:
                     assert o.shape == o_stored.shape, errmsg
 
@@ -542,15 +572,15 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
-        test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_up_vs_down()
-        test_no_second_order_filters()
-        test_max_pad_factor_fr()
-        test_backends()
+        # test_alignment()
+        # test_shapes()
+        # test_jtfs_vs_ts()
+        # test_freq_tp_invar()
+        # test_up_vs_down()
+        # test_no_second_order_filters()
+        # test_max_pad_factor_fr()
+        # test_backends()
         test_meta()
-        test_output()
+        # test_output()
     else:
         pytest.main([__file__, "-s"])

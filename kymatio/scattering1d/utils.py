@@ -511,9 +511,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             ind_end_fr   = sc_freq.ind_end_fr[n2][total_subsample_fr]
 
         # this determines actual stride over first-order coeffs
-        total_subsample_fr_due_to_subsample = (total_subsample_fr -
-                                               subsample_equiv_due_to_pad)
-        return (shape_fr_padded, total_subsample_fr_due_to_subsample,
+        total_conv_stride_over_U1 = (total_subsample_fr -
+                                     subsample_equiv_due_to_pad)
+        return (shape_fr_padded, total_conv_stride_over_U1,
                 subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr)
 
     def _get_fr_params(n1_fr, subsample_equiv_due_to_pad):
@@ -534,9 +534,8 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     def _fill_n1_info(pair, n2, n1_fr, spin):
         # track S1 from padding to `_joint_lowpass()`
-        (shape_fr_padded, total_subsample_fr_due_to_subsample,
-         subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
-         ) = _get_compute_params(n2, n1_fr)
+        (shape_fr_padded, total_conv_stride_over_U1, subsample_equiv_due_to_pad,
+         ind_start_fr, ind_end_fr) = _get_compute_params(n2, n1_fr)
 
         # fetch xi, sigma for n2, n1_fr
         if n2 != -1:
@@ -545,9 +544,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             xi2, sigma2, j2 = 0, sigma_low, log2_T
         xi1_fr, sigma1_fr, j1_fr = _get_fr_params(n1_fr,
                                                   subsample_equiv_due_to_pad)
-
-        if n1_fr == -1 and not resample_phi_fr:
-            sigma1_fr *= 2**subsample_equiv_due_to_pad  # TODO make this happen?
 
         # distinguish between `key` and `n`
         n1_fr_n   = n1_fr if (n1_fr != -1) else inf
@@ -567,7 +563,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             return
 
         fr_max = sc_freq.shape_fr[n2] if (n2 != -1) else len(xi1s)
-        n1_step = 2 ** total_subsample_fr_due_to_subsample  # simulate subsampling
+        n1_step = 2 ** total_conv_stride_over_U1  # simulate subsampling
         for n1 in range(0, shape_fr_padded, n1_step):
             # simulate unpadding
             if n1 / n1_step < ind_start_fr:
