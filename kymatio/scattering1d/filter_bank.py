@@ -547,7 +547,7 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
 
     sigma_low = sigma0 / math.pow(2, J)  # width of the low pass
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_low, Q, r_psi=r_psi,
+    xi1, sigma1, j1 = compute_params_filterbank(sigma_low, Q1, r_psi=r_psi,
                                             alpha=alpha)
     xi2, sigma2, j2 = compute_params_filterbank(sigma_low, Q2, r_psi=r_psi,
                                             alpha=alpha)

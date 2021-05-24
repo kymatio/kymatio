@@ -7,16 +7,15 @@ from tensorflow.python.framework import tensor_shape
 
 
 class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
-    def __init__(self, J, Q=1, Q2=1, max_order=2, oversampling=0):
+    def __init__(self, J, Q=1, max_order=2, oversampling=0):
         ScatteringKeras.__init__(self)
-        ScatteringBase1D.__init__(self, J, None, Q, Q2, max_order, True,
+        ScatteringBase1D.__init__(self, J, None, Q, max_order, True,
                 oversampling, True, 'array', None)
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
         self.S = ScatteringTensorFlow1D(J=self.J, shape=shape,
-                                        Q=self.Q, Q2=self.Q2,
-                                        max_order=self.max_order,
+                                        Q=self.Q, max_order=self.max_order,
                                         oversampling=self.oversampling)
         ScatteringKeras.build(self, input_shape)
 
