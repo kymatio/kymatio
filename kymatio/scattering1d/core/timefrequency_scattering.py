@@ -621,6 +621,11 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                 `total_subsample_fr` for any configuration.
               - `log2_F <= log2_N_fr` for all configurations.
 
+    **Observations**:
+        O1) With `aligned==True`, `lowpass_subsample_fr` must be a deterministic
+            function of `n1_fr_subsample` (i.e. have same value at `n1_fr` for
+            all `n2`), otherwise `total_conv_stride_over_U1` will vary over `n2`.
+
     ############################################################################
     X. aligned==True:
       __________________________________________________________________________
@@ -643,9 +648,11 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                `pad_fr == J_pad_fr_max == J_pad_fr_max_init` (or equivalently
                `pad_fr == J_pad_fr_max <= J_pad_fr_max_init` if not `True, True`,
                where `J_pad_fr_max >= log2_N_fr`, and `log2_F <= log2_N_fr` (D2)).
+            g. `max(..., 0)` isn't necessary since `n1_fr_subsample <= log2_F`
+               is enforced (also avoids requiring aliased `phi_fr`).
 
            `total_subsample_fr == log2_F`.
-            g. `total_subsample_fr` cannot exceed `log2_F` due to
+            h. `total_subsample_fr` cannot exceed `log2_F` due to
                `pad_fr == J_pad_fr_max == J_pad_fr_max_init`.
 
            `total_conv_stride_over_U1 == log2_F`
@@ -657,12 +664,12 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
            Same as 1. Because:
             a. Same as 1's. `J_pad_fr_max < J_pad_fr_max_init` is possible,
                but 1e applies.
-            b,c,d,e: same as 1's.
+            b,c,d,e,g: same as 1's.
             f. Same as 1's (`pad_fr == J_pad_fr_max >= log2_N_fr`).
 
            `total_subsample_fr == log2_F + diff`, where
            `diff == J_pad_fr_max_init - J_pad_fr_max`.
-            g. `total_subsample_fr` can exceed `log2_F` because we can have
+            h. `total_subsample_fr` can exceed `log2_F` because we can have
                `pad_fr == J_pad_fr_max < J_pad_fr_max_init`, and `_, True`
                will keep the `< 2**J_pad_fr_max_init` length `phi_fr`'s
                subsampling factor at `log2_F` (i.e. 1e).
@@ -681,18 +688,19 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                length, so both `n1_fr_subsample` and `subsample_equiv_due_to_pad`
                lower `j`. `_, False` (or `False, _`) enables
                `J_pad_fr_max < J_pad_fr_max_init`.
-            f. Same as 1's (+2's reasoning).
+            f. same as 1's (+2's reasoning).
+            g. same as 1's, except `n1_fr_subsample <= log2_F - diff` is enforced
+               per c and 3d+.
 
             `total_subsample_fr == log2_F`. Because,
-             g. Per 3e, exceeding `log2_F` would mean subsampling `phi_fr`
+             h. Per 3e, exceeding `log2_F` would mean subsampling `phi_fr`
                 beyond `log2_F`.
 
             `total_conv_stride_over_U1 == log2_F - diff`
              d+. Same as 1's, except `log2_F` -> `log2_F - diff` per 3e.
 
         4. False, False:
-           Same as 3.
-            a,b,c,d,e,f: same as 3's. `False, _` only affects `J_pad_fr`
+           Same as 3. `False, _` only affects `J_pad_fr`
             (but `pad_fr == J_pad_fr_max`, always) and `J_pad_fr_max`
             (and 3 accounts for this).
 
@@ -734,21 +742,29 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
 
         resample_psi_fr, resample_phi_fr:
         1. True, True
-           `lowpass_subsample_fr == min(log2_F - n1_fr_subsample, pad_fr)`.
-           `lowpass_subsample_fr == max(0, min(log2_F, J_pad_fr_min) -
-                                           n1_fr_subsample)`
+           `lowpass_subsample_fr == min(log2_F, J_pad_fr_min) - n1_fr_subsample`.
            Because:
             a. == A1a.
             b. `lowpass_subsample_fr` does not need to be less than `log2_F`
                due to B^2.
             c. == A1c. This overrides b.
-            d. == A1d.
+            d. differs from A1d (in "max `lowpass_subsample_fr`"). See B1d+.
             e. == A1e.
             f. `freq` <= 0 is possible without `min` per B^1. `freq` <= 0 will
                occur upon `lowpass_subsample_fr > pad_fr`, so max `== pad_fr`.
+            g. == A1g, except `n1_fr_subsample <= min(log2_F, J_pad_fr_min)`
+               is enforced per c and B1d+.
 
-           `total_subsample_fr == log2_F + subsample_equiv_due_to_pad`
-            g. `total_subsample_fr` can exceed `log2_F` because we can have
+            g. `max(..., 0)` is necessary since `n1_fr_subsample == log2_F`
+               enables `lowpass_subsample_fr < 0` (if `log2_F > J_pad_fr_min`).
+               Could enforce `n1_fr_subsample <= min(log2_F, J_pad_fr_min)`
+               instead, but that's slower.
+               # TODO may be relevant with `aligned=False`
+
+           `total_subsample_fr == (total_conv_stride_over_U1 +
+                                   subsample_equiv_due_to_pad)`
+           (this holds by definition; can plug expressions, but this is cleaner)
+            h. `total_subsample_fr` can exceed `log2_F` because we can have
                `pad_fr < J_pad_fr_max == J_pad_fr_max_init` (or equivalently
                `pad_fr < J_pad_fr_max <= J_pad_fr_max_init` for not `True, True`).
                (`subsample_equiv_due_to_pad == J_pad_fr_max_init - pad_fr` is
@@ -765,20 +781,30 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                 c then forbids exceeding this (and can't lower since this is min).
 
         2. False, True:
-           Same as 1.
-            a. Same as 1's. `J_pad_fr_max < J_pad_fr_max_init` is possible,
-               but 1e applies.
-            b,c,d,e,f,g: same as 1's.
+           Same as 1. `J_pad_fr_max < J_pad_fr_max_init` doesn't change any
+           expression (but values within expressions might).
 
         3. True, False:
-           `lowpass_subsample_fr == ((log2_F - subsample_equiv_due_to_pad) -
-                                     n1_fr_subsample)`. Because:
-            a,b,c,d,f: same as 1's.
-            e: same as 1's. `subsample_equiv_due_to_pad` is the generalization
-               of `diff` for `pad_fr < J_pad_fr_max`, i.e. not just
-               `pad_fr == J_pad_fr_max < J_pad_fr_max_init`.
+           `lowpass_subsample_fr == (log2_F - diffmin) - n1_fr_subsample`, where
+           `diffmin == J_pad_fr_max_init - J_pad_fr_min`. Because:
+            a,b,c,d: same as 1's.
+            e: same as A3's.
+            f. `freq` <= 0 is prevented by `total_conv_stride_over_U1 ==`
+               `log2_F - diffmin <= J_pad_fr_min`.
+            g. same as A1's except `log2_F` -> `log2_F - diffmin`.
 
-            `total_subsample_fr
+            `total_subsample_fr` # TODO
+
+            `total_conv_stride_over_U1 == log2_F - diffmin`.
+            d+. == 1d+, except `lowpass_subsample_fr`'s maximum at `J_pad_fr_min`
+                is `log2_F - diffmin`, and we always have
+                `log2_F - diff <= J_pad_fr_min`.
+                (Since `log2_F` occurs at J_pad_fr_max_init`, if
+                `log2_F == log2_N_fr` (where `log2_N_fr <= J_pad_fr_max_init`),
+                then at `J_pad_fr_min` it's
+                `log2_N_fr - diffmin <= J_pad_fr_max_init - diffmin`
+                `== J_pad_fr_min`. If `log2_F < log2_N_fr`, then
+                `log2_F - diffmin < J_pad_fr_min` (instead of <=).)
 
         4. False, False:
             Same as 3.
