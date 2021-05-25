@@ -30,8 +30,11 @@ class TorchBackend1D(TorchBackend):
             tensor of size x.shape[-2] // k along that dimension.
         """
         cls.complex_check(x)
+        N = x.shape[-1]
 
-        res = x.view(x.shape[:-1] + (k, x.shape[-1] // k)).mean(dim=-2)
+        x = torch.view_as_real(x)
+        res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+        res = torch.view_as_complex(res)
 
         return res
 

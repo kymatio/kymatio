@@ -7,7 +7,7 @@ import io
 import numpy as np
 
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 
 
 backends = []
