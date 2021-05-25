@@ -426,7 +426,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
     Parameters
     ----------
     sigma_min : float
-        This acts as a lower-bound on the frequential widths of the band-pass
+        This acts as a lower bound on the frequential widths of the band-pass
         filters. The low-pass filter may be wider (if T < 2**J_scattering), making
         invariants over shorter time scales than longest band-pass filter.
     Q : int
