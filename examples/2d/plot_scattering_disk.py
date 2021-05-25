@@ -123,7 +123,8 @@ gs_order_2 = gridspec.GridSpecFromSubplotSpec(window_rows, window_columns, subpl
 ax = plt.subplot(gs[0])
 ax.set_xticks([])
 ax.set_yticks([])
-ax.imshow(255 - src_img, cmap='gray', interpolation='nearest', aspect='auto')
+ax.imshow(src_img,cmap='gray',interpolation='nearest', aspect='auto')
+ax.axis('off')
 
 # Plot first-order scattering coefficients
 ax = plt.subplot(gs[1])
