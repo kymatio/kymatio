@@ -1,5 +1,3 @@
-import warnings
-
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..utils import precompute_size_scattering
@@ -8,10 +6,10 @@ from .base_frontend import ScatteringBase1D
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend='numpy'):
+            oversampling=0, out_type='array', backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
-                oversampling, vectorize, out_type, backend)
+                oversampling, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -37,7 +35,7 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 
         # get the arguments before calling the scattering
         # treat the arguments
-        if self.vectorize:
+        if self.average:
             size_scattering = precompute_size_scattering(
                 self.J, self.Q, max_order=self.max_order, detail=True)
         else:
@@ -47,7 +45,6 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling,
-                         vectorize=self.vectorize,
                          size_scattering=size_scattering,
                          out_type=self.out_type)
 

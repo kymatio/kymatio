@@ -1,7 +1,7 @@
 def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
 

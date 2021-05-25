@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -19,7 +19,6 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
 
