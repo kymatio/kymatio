@@ -710,7 +710,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     if max_subsampling is None:
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
-        log2_T = math.floor(math.log2(T))
         max_sub_phi = min(max(max_subsampling_after_psi1,
                               max_subsampling_after_psi2), log2_T)
     else:
