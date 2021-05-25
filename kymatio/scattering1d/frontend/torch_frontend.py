@@ -108,12 +108,12 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                        size_scattering=size_scattering,
                        out_type=self.out_type)
 
-        if self.out_type == 'array' and self.average:
+        if self.out_type == 'array':
             scattering_shape = S.shape[-2:]
             new_shape = batch_shape + scattering_shape
 
             S = S.reshape(new_shape)
-        elif self.out_type == 'list':
+        else:
             for x in S:
                 scattering_shape = x['coef'].shape[-1:]
                 new_shape = batch_shape + scattering_shape

@@ -52,12 +52,12 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                          size_scattering=size_scattering,
                          out_type=self.out_type)
 
-        if self.out_type == 'array' and self.average:
+        if self.out_type == 'array':
             scattering_shape = tf.shape(S)[-2:]
             new_shape = tf.concat((batch_shape, scattering_shape), 0)
 
             S = tf.reshape(S, new_shape)
-        elif self.out_type == 'list':
+        else:
             for x in S:
                 scattering_shape = tf.shape(x['coef'])[-1:]
                 new_shape = tf.concat((batch_shape, scattering_shape), 0)
