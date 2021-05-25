@@ -1,5 +1,4 @@
 import torch
-import warnings
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
@@ -11,12 +10,11 @@ from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', pad_mode='reflect',
+            oversampling=0, out_type='array', pad_mode='reflect',
             max_pad_factor=2, register_filters=True, backend='torch'):
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
-                oversampling, vectorize, out_type, pad_mode, max_pad_factor,
-                backend)
+                oversampling, out_type, pad_mode, max_pad_factor, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -83,8 +81,9 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                     len(x.shape)))
 
         if self.out_type == 'array' and not self.average:
-            raise RuntimeError("out_type=='array' and average==False are "
-                               "incompatible")
+            raise ValueError("out_type=='array' and average==False are mutually "
+                             "incompatible. Please set out_type='list'.")
+
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
 
@@ -97,7 +96,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 
         # get the arguments before calling the scattering
         # treat the arguments
-        if self.vectorize:
+        if self.average:
             size_scattering = precompute_size_scattering(
                 self.J, self.Q, self.T, max_order=self.max_order, detail=True)
         else:
@@ -107,26 +106,16 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling,
-                         vectorize=self.vectorize,
                          size_scattering=size_scattering,
                          out_type=self.out_type,
                          pad_mode=self.pad_mode)
 
         if self.out_type == 'array':
-            if self.average:
                 scattering_shape = S.shape[-2:]
                 new_shape = batch_shape + scattering_shape
 
                 S = S.reshape(new_shape)
-            else:
-                for k, v in S.items():
-                    # NOTE: Have to get the shape for each one since we may have
-                    # average == False.
-                    scattering_shape = v.shape[-2:]
-                    new_shape = batch_shape + scattering_shape
-
-                    S[k] = v.reshape(new_shape)
-        elif self.out_type == 'list':
+        else:
             for x in S:
                 scattering_shape = x['coef'].shape[-1:]
                 new_shape = batch_shape + scattering_shape
@@ -148,12 +137,11 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         if oversampling_fr is None:
             oversampling_fr = oversampling
         # Second-order scattering object for the time variable
-        vectorize = True # for compatibility, will be removed in 0.3
         max_order_tm = 2
         scattering_out_type = out_type.lstrip('dict:')
         ScatteringTorch1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            vectorize, scattering_out_type, pad_mode, max_pad_factor,
+            scattering_out_type, pad_mode, max_pad_factor,
             register_filters=False, backend=backend)
 
         TimeFrequencyScatteringBase1D.__init__(

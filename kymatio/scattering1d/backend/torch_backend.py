@@ -31,7 +31,11 @@ class TorchBackend1D(TorchBackend):
         """
         cls.complex_check(x)
 
-        res = x.view(x.shape[:-1] + (k, x.shape[-1] // k)).mean(dim=-2)
+        N = x.shape[-1]
+
+        x = torch.view_as_real(x)
+        res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+        res = torch.view_as_complex(res)
 
         return res
 
@@ -108,7 +112,7 @@ class TorchBackend1D(TorchBackend):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.fft.ifft(x, dim=axis)
+        return torch.fft.ifft(x, dim=axis).real
 
     @classmethod
     def ifft(cls, x, axis=-1):

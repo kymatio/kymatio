@@ -16,8 +16,8 @@ from ..utils import (compute_border_indices, compute_padding,
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array',
-            pad_mode='reflect', max_pad_factor=2, backend=None):
+            oversampling=0, out_type='array', pad_mode='reflect',
+            max_pad_factor=2, backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -26,7 +26,6 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.vectorize = vectorize
         self.out_type = out_type
         self.pad_mode = pad_mode
         self.max_pad_factor = max_pad_factor
@@ -149,7 +148,7 @@ class ScatteringBase1D(ScatteringBase):
         """
 
         return precompute_size_scattering(
-            self.J, self.Q, max_order=self.max_order, detail=detail)
+            self.J, self.Q, self.T, max_order=self.max_order, detail=detail)
 
     _doc_shape = 'N'
 
@@ -481,9 +480,8 @@ class TimeFrequencyScatteringBase1D():
         self.sc_freq = _FrequencyScatteringBase(
             self._shape_fr, self.J_fr, self.Q_fr, self.F, max_order_fr,
             self.average_fr, self.aligned, self.oversampling_fr,
-            self.resample_psi_fr, self.resample_phi_fr, self.vectorize,
-            self.out_type, self.out_3D, self.max_pad_factor_fr, self._n_psi1,
-            self.backend)
+            self.resample_psi_fr, self.resample_phi_fr, self.out_type,
+            self.out_3D, self.max_pad_factor_fr, self._n_psi1, self.backend)
         self.finish_creating_filters()
 
         # detach __init__ args, instead access `sc_freq`'s via `__getattr__`
@@ -988,9 +986,8 @@ class _FrequencyScatteringBase(ScatteringBase):
     """
     def __init__(self, shape_fr, J_fr=None, Q_fr=2, F=None, max_order_fr=1,
                  average_fr=False, aligned=True, oversampling_fr=0,
-                 resample_psi_fr=True, resample_phi_fr=True, vectorize=True,
-                 out_type='array', out_3D=False, max_pad_factor_fr=None,
-                 n_psi1=None, backend=None):
+                 resample_psi_fr=True, resample_phi_fr=True, out_type='array',
+                 out_3D=False, max_pad_factor_fr=None, n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.shape_fr = shape_fr
         self.J_fr = J_fr
@@ -1003,7 +1000,6 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.resample_filters_fr = (resample_psi_fr, resample_phi_fr)
         self.resample_psi_fr = resample_psi_fr
         self.resample_phi_fr = resample_phi_fr
-        self.vectorize = vectorize
         self.out_type = out_type
         self.out_3D = out_3D
         self.max_pad_factor_fr = max_pad_factor_fr

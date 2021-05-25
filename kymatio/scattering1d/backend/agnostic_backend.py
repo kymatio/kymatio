@@ -37,11 +37,10 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', backend_name='numpy'):
     out = backend.zeros(x.shape[:-1] + (N + pad_left + pad_right,), **kw)
     if backend_name == 'tensorflow':  # TODO
         out = out.numpy()
-    out[..., pad_left:-pad_right] = x
+    out[..., pad_left:(-pad_right if pad_right != 0 else None)] = x
 
     if pad_mode == 'zero':
-        out[..., :pad_left] = 0
-        out[..., -pad_right:] = 0
+        pass  # already done
     elif pad_mode == 'reflect':
         xflip = _flip(x, backend, backend_name)
         out = _pad_reflect(x, xflip, out, pad_left, pad_right, N)

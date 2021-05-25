@@ -105,44 +105,6 @@ def test_pad_tensorflow():
     _test_padding('tensorflow')
 
 
-def test_torch_vs_numpy():
-    """Test they produce same outputs within float precision."""
-    import torch
-
-    N = 2048
-    Jmax = int(np.log2(N))
-    J = Jmax - 2
-    Q = (8, 2)
-
-    for pad_mode in ('zero', 'reflect'):
-        for average in (0, 1):
-            kw = dict(J=J, Q=Q, shape=N, pad_mode=pad_mode, average=average,
-                      out_type='array' if average else 'list')
-
-            ts_torch = Scattering1D(**kw, frontend='torch')
-            ts_numpy = Scattering1D(**kw, frontend='numpy')
-
-            x = np.random.randn(N).astype('float32')
-            xt = torch.from_numpy(x)
-
-            out_torch = ts_torch(xt)
-            out_numpy = ts_numpy(x)
-
-            if average:
-                ae_avg = np.abs(out_torch - out_numpy).mean()
-                ae_max = np.abs(out_torch - out_numpy).max()
-                assert np.allclose(out_torch, out_numpy), (
-                    "ae_avg={:.2e}, ae_max={:.2e}".format(ae_avg, ae_max))
-            else:
-                for i, (ot, on) in enumerate(zip(out_torch, out_numpy)):
-                    ot, on = ot['coef'].cpu().numpy(), on['coef']
-                    ae_avg = np.abs(ot - on).mean()
-                    ae_max = np.abs(ot - on).max()
-                    assert np.allclose(ot, on, atol=1e-7), (
-                        "idx={}, ae_avg={:.2e}, ae_max={:.2e}"
-                        ).format(i, ae_avg, ae_max)
-
-
 def _l2(x):
     return np.sqrt(np.sum(np.abs(x)**2))
 
@@ -159,6 +121,5 @@ if __name__ == '__main__':
         test_pad_numpy()
         test_pad_torch()
         test_pad_tensorflow()
-        test_torch_vs_numpy()
     else:
         pytest.main([__file__, "-s"])

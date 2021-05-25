@@ -2,7 +2,7 @@
 def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array', pad_mode='reflect'):
+        out_type='array', pad_mode='reflect'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -167,15 +167,8 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
 
-    if out_type == 'array':
-        if average:
-            out_S = concatenate([x['coef'] for x in out_S])
-        else:
-            out_S = {x['n']: x['coef'] for x in out_S}
-    elif out_type == 'list':
-        # NOTE: This overrides the vectorize flag.
-        for x in out_S:
-            x.pop('n')
+    if out_type == 'array' and average:
+        out_S = concatenate([x['coef'] for x in out_S])
 
     return out_S
 

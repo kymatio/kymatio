@@ -825,7 +825,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
                    subsampling_equiv_relative_to_max_padding,
                    resample_psi_fr=True, r_psi=math.sqrt(0.5), normalize='l1',
-                   criterion_amplitude=1e-3, sigma0=0.1, alpha=5., P_max=5,
+                   criterion_amplitude=1e-3, sigma0=0.1, alpha=4., P_max=5,
                    eps=1e-7):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
