@@ -167,10 +167,11 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
 
-    if out_type == 'array' and vectorize:
-        out_S = concatenate([x['coef'] for x in out_S])
-    elif out_type == 'array' and not vectorize:
-        out_S = {x['n']: x['coef'] for x in out_S}
+    if out_type == 'array':
+        if average:
+            out_S = concatenate([x['coef'] for x in out_S])
+        else:
+            out_S = {x['n']: x['coef'] for x in out_S}
     elif out_type == 'list':
         # NOTE: This overrides the vectorize flag.
         for x in out_S:

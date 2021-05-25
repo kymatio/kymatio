@@ -27,19 +27,12 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
+        if self.out_type == 'array' and not self.average:
+            raise RuntimeError("out_type=='array' and average==False are "
+                               "incompatible")
+
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
-
-        if not self.average and self.out_type == 'array' and self.vectorize:
-            raise ValueError("Options average=False, out_type='array' and "
-                             "vectorize=True are mutually incompatible. "
-                             "Please set out_type to 'list' or vectorize to "
-                             "False.")
-        if not self.vectorize:
-            warnings.warn("The vectorize option is deprecated and will be "
-                          "removed in version 0.3. Please set "
-                          "out_type='list' for equivalent functionality.",
-                          DeprecationWarning)
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
@@ -63,19 +56,20 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                          out_type=self.out_type,
                          pad_mode=self.pad_mode)
 
-        if self.out_type == 'array' and self.vectorize:
-            scattering_shape = S.shape[-2:]
-            new_shape = batch_shape + scattering_shape
-
-            S = S.reshape(new_shape)
-        elif self.out_type == 'array' and not self.vectorize:
-            for k, v in S.items():
-                # NOTE: Have to get the shape for each one since we may have
-                # average == False.
-                scattering_shape = v.shape[-2:]
+        if self.out_type == 'array':
+            if self.average:
+                scattering_shape = S.shape[-2:]
                 new_shape = batch_shape + scattering_shape
 
-                S[k] = v.reshape(new_shape)
+                S = S.reshape(new_shape)
+            else:
+                for k, v in S.items():
+                    # NOTE: Have to get the shape for each one since we may have
+                    # average == False.
+                    scattering_shape = v.shape[-2:]
+                    new_shape = batch_shape + scattering_shape
+
+                    S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':
             for x in S:
                 scattering_shape = x['coef'].shape[-1:]

@@ -1,5 +1,4 @@
 import torch
-from skcuda import cublas
 
 
 class TorchSkcudaBackend:
@@ -7,11 +6,11 @@ class TorchSkcudaBackend:
 
     @staticmethod
     def _is_complex(x):
-        return x.shape[-1] == 2
+        return torch.is_complex(x)
 
     @staticmethod
     def _is_real(x):
-        return x.shape[-1] == 1
+        return 'float' in str(x.dtype)
 
     @classmethod
     def cdgmm(cls, A, B):
@@ -50,17 +49,14 @@ class TorchSkcudaBackend:
 
         """
         if not cls._is_complex(A):
-            raise TypeError('The input should be complex (i.e. last dimension is 2).')
+            raise TypeError('The input should be complex (got %s).' % A.dtype)
 
-        if not cls._is_complex(B) and not cls._is_real(B):
+        if not (cls._is_complex(B) or cls._is_real(B)):
             raise TypeError('The filter should be complex or real, indicated by a '
                             'last dimension of size 2 or 1, respectively.')
 
-        if A.shape[-len(B.shape):-1] != B.shape[:-1]:
+        if A.shape[-B.ndim:-1] != B.shape[:-1]:
             raise RuntimeError('The filters are not compatible for multiplication.')
-
-        if A.dtype is not B.dtype:
-            raise TypeError('Input and filter must be of the same dtype.')
 
         if not A.is_cuda or not B.is_cuda:
             raise TypeError('Input and filter must be CUDA tensors.')
@@ -68,19 +64,4 @@ class TorchSkcudaBackend:
         if A.device.index != B.device.index:
             raise TypeError('Input and filter must be on the same GPU.')
 
-        if cls._is_real(B):
-            return A * B
-        else:
-            if not A.is_contiguous() or not B.is_contiguous():
-                raise RuntimeError('Tensors must be contiguous.')
-
-            C = torch.empty_like(A)
-            m, n = B.nelement() // 2, A.nelement() // B.nelement()
-            lda = m
-            ldc = m
-            incx = 1
-            handle = torch.cuda.current_blas_handle()
-            stream = torch.cuda.current_stream()._as_parameter_
-            cublas.cublasSetStream(handle, stream)
-            cublas.cublasCdgmm(handle, 'l', m, n, A.data_ptr(), lda, B.data_ptr(), incx, C.data_ptr(), ldc)
-            return C
+        return A * B

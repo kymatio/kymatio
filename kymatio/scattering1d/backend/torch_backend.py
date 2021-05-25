@@ -1,6 +1,5 @@
 import torch
 import torch.fft
-import torch.nn.functional as F
 from ...backend.torch_backend import TorchBackend
 from .agnostic_backend import pad as agnostic_pad
 
@@ -32,9 +31,7 @@ class TorchBackend1D(TorchBackend):
         """
         cls.complex_check(x)
 
-        N = x.shape[-2]
-
-        res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+        res = x.view(x.shape[:-1] + (k, x.shape[-1] // k)).mean(dim=-2)
 
         return res
 
@@ -62,7 +59,7 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'torch')[..., None]
+        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'torch')
 
     @staticmethod
     def unpad(x, i0, i1):
@@ -84,8 +81,6 @@ class TorchBackend1D(TorchBackend):
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        x = x.reshape(x.shape[:-1])
-
         return x[..., i0:i1]
 
     @classmethod
@@ -102,28 +97,25 @@ class TorchBackend1D(TorchBackend):
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
-    def rfft(cls, x):
+    def rfft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.real_check(x)
 
-        x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
-        x_r[..., 0] = x[..., 0]
-
-        return torch.fft.fft(x_r, 1)
+        return torch.fft.fft(x, dim=axis)
 
     @classmethod
-    def irfft(cls, x):
+    def irfft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.fft.ifft(x, 1, norm='forward')[..., :1]
+        return torch.fft.ifft(x, dim=axis)
 
     @classmethod
-    def ifft(cls, x):
+    def ifft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.fft.ifft(x, 1, norm='forward')
+        return torch.fft.ifft(x, dim=axis)
 
     @classmethod
     def transpose(cls, x):

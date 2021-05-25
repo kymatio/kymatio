@@ -27,66 +27,6 @@ def get_dtype(t):
     elif isinstance(t, torch.cuda.DoubleTensor):
         return 'double'
 
-class Modulus(object):
-    """Stable complex modulus
-
-    This class implements a modulus transform for complex numbers which is
-    stable with respect to very small inputs (z close to 0), avoiding
-    returning nans in all cases.
-
-    Usage
-    -----
-    modulus = ModulusStable.apply  # apply inherited from Function
-    x_mod = modulus(x)
-
-    Parameters
-    ---------
-    x : tensor
-        The complex tensor (i.e., whose last dimension is two) whose modulus
-        we want to compute.
-
-    Returns
-    -------
-    output : tensor
-        A tensor of same size as the input tensor, except for the last
-        dimension, which is removed. This tensor is differentiable with respect
-        to the input in a stable fashion (so gradent of the modulus at zero is
-        zero).
-    """
-
-    def __init__(self, backend='skcuda'):
-        self.CUDA_NUM_THREADS = 1024
-        self.backend = backend
-
-    def get_blocks(self, N):
-        return (N + self.CUDA_NUM_THREADS - 1) // self.CUDA_NUM_THREADS
-
-    def __call__(self, x):
-        if not x.is_cuda and self.backend=='skcuda':
-            raise TypeError('Use the torch backend (without skcuda) for CPU tensors.')
-
-        out = torch.empty(x.shape[:-1] + (1,), device=x.device, layout=x.layout, dtype=x.dtype)
-
-        # abs_complex_value takes in a complex array and returns the real
-        # modulus of the input array
-        kernel = """
-        extern "C"
-        __global__ void abs_complex_value(const ${dtype} * x, ${dtype} * z, int n)
-        {
-            int i = blockIdx.x * blockDim.x + threadIdx.x;
-        if (i >= n)
-            return;
-        z[i] = normf(2, x + 2*i);
-
-        }
-        """
-        fabs = load_kernel('abs_complex_value', kernel, dtype=get_dtype(x))
-        fabs(grid=(self.get_blocks(int(out.nelement())), 1, 1),
-             block=(self.CUDA_NUM_THREADS, 1, 1),
-             args=[x.data_ptr(), out.data_ptr(), out.numel()],
-             stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
-
-        return out
 
 class SubsampleFourier(object):
     """Subsampling in the Fourier domain
@@ -167,7 +107,6 @@ class SubsampleFourier(object):
 
 
 class TorchSkcudaBackend1D(TorchSkcudaBackend, TorchBackend1D):
-    _modulus_complex = Modulus()
     _subsample_fourier = SubsampleFourier()
 
     @classmethod
@@ -189,9 +128,8 @@ class TorchSkcudaBackend1D(TorchSkcudaBackend, TorchBackend1D):
                 A tensor with the same dimensions as x, such that norm[..., 0] contains
                 the complex modulus of x, while norm[..., 1] = 0.
         """
-        cls.contiguous_check(x)
         cls.complex_check(x)
-        return cls._modulus_complex(x)
+        return torch.abs(x)
 
     @classmethod
     def subsample_fourier(cls, x, k):

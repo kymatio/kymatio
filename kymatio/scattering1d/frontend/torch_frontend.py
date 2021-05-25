@@ -33,7 +33,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             if type(k) != str:
                 # view(-1, 1).repeat(1, 2) because real numbers!
                 self.phi_f[k] = torch.from_numpy(
-                    self.phi_f[k]).float().view(-1, 1)
+                    self.phi_f[k]).float()
                 self.register_buffer('tensor' + str(n), self.phi_f[k])
                 n += 1
         for psi_f in self.psi1_f:
@@ -41,7 +41,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
+                        psi_f[sub_k]).float()
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
         for psi_f in self.psi2_f:
@@ -49,7 +49,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 if type(sub_k) != str:
                     # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
+                        psi_f[sub_k]).float()
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
                     n += 1
 
@@ -82,20 +82,11 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
+        if self.out_type == 'array' and not self.average:
+            raise RuntimeError("out_type=='array' and average==False are "
+                               "incompatible")
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")
-
-        if not self.average and self.out_type == 'array' and self.vectorize:
-            raise ValueError("Options average=False, out_type='array' and "
-                             "vectorize=True are mutually incompatible. "
-                             "Please set out_type to 'list' or vectorize to "
-                             "False.")
-
-        if not self.vectorize:
-            warnings.warn("The vectorize option is deprecated and will be "
-                          "removed in version 0.3. Please set "
-                          "out_type='list' for equivalent functionality.",
-                          DeprecationWarning)
 
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
@@ -121,19 +112,20 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                          out_type=self.out_type,
                          pad_mode=self.pad_mode)
 
-        if self.out_type == 'array' and self.vectorize:
-            scattering_shape = S.shape[-2:]
-            new_shape = batch_shape + scattering_shape
-
-            S = S.reshape(new_shape)
-        elif self.out_type == 'array' and not self.vectorize:
-            for k, v in S.items():
-                # NOTE: Have to get the shape for each one since we may have
-                # average == False.
-                scattering_shape = v.shape[-2:]
+        if self.out_type == 'array':
+            if self.average:
+                scattering_shape = S.shape[-2:]
                 new_shape = batch_shape + scattering_shape
 
-                S[k] = v.reshape(new_shape)
+                S = S.reshape(new_shape)
+            else:
+                for k, v in S.items():
+                    # NOTE: Have to get the shape for each one since we may have
+                    # average == False.
+                    scattering_shape = v.shape[-2:]
+                    new_shape = batch_shape + scattering_shape
+
+                    S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':
             for x in S:
                 scattering_shape = x['coef'].shape[-1:]
@@ -186,14 +178,14 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             if isinstance(p_f, dict):
                 for k in p_f:
                     if isinstance(k, int):
-                        p_f[k] = torch.from_numpy(p_f[k]).float().view(-1, 1)
+                        p_f[k] = torch.from_numpy(p_f[k]).float()
                         self.register_buffer(f'tensor{n}', p_f[k])
             else:  # list
                 for p_f_sub in p_f:
                     for k in p_f_sub:
                         if isinstance(k, int):
                             p_f_sub[k] = torch.from_numpy(p_f_sub[k]
-                                                          ).float().view(-1, 1)
+                                                          ).float()
                             self.register_buffer(f'tensor{n}', p_f_sub[k])
             n += 1
         n_final = n
