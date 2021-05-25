@@ -286,10 +286,13 @@ class ScatteringBase1D(ScatteringBase):
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by `2 ** J`.
-        {param_shape}Q : int
-            The number of first-order wavelets per octave.
-        Q2 : int
-            The number of second-order wavelets per octave.
+        {param_shape}Q : int >= 1 / tuple[int]
+            The number of first-order wavelets per octave. Defaults to `1`.
+            If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+            second-order wavelets per octave (which defaults to `1`).
+                - Q1: For audio signals, a value of `>= 12` is recommended in
+                order to separate partials.
+                - Q2: Recommended `== 1` for most (`Scattering1D`) applications.
         {attrs_shape}max_order : int
             The maximum scattering order of the transform.
         {attr_average}oversampling : int
