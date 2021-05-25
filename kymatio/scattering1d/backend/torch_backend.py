@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import torch.fft
 from ...backend.torch_backend import TorchBackend
 
 
@@ -30,9 +31,7 @@ class TorchBackend1D(TorchBackend):
         """
         cls.complex_check(x)
 
-        N = x.shape[-2]
-
-        res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+        res = x.view(x.shape[:-1] + (k, x.shape[-1] // k)).mean(dim=-2)
 
         return res
 
@@ -62,7 +61,6 @@ class TorchBackend1D(TorchBackend):
             raise ValueError('Indefinite padding size (larger than tensor).')
 
         res = F.pad(x, (pad_left, pad_right), mode='reflect')
-        res = res[..., None]
 
         return res
 
@@ -86,35 +84,29 @@ class TorchBackend1D(TorchBackend):
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        x = x.reshape(x.shape[:-1])
-
         return x[..., i0:i1]
 
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
-    def rfft(cls, x):
+    def rfft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.real_check(x)
 
-        x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
-        x_r[..., 0] = x[..., 0]
-
-        return torch.fft(x_r, 1, normalized=False)
+        return torch.fft.fft(x, dim=axis)
 
     @classmethod
-    def irfft(cls, x):
+    def irfft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.ifft(x, 1, normalized=False)[..., :1]
+        return torch.fft.ifft(x, dim=axis).real
 
     @classmethod
-    def ifft(cls, x):
+    def ifft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.ifft(x, 1, normalized=False)
-
+        return torch.fft.ifft(x, dim=axis)
 
 backend = TorchBackend1D
