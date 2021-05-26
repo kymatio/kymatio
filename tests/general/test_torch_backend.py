@@ -1,26 +1,23 @@
 import torch
 import pytest
-from kymatio.backend.torch_backend import ModulusStable, TorchBackend
 
 
 def test_modulus(random_state=42):
     """
     Tests the stability and differentiability of modulus
     """
-    backend = TorchBackend
-    x = torch.randn(100, 4, 128, 2, requires_grad=True)
-    x_grad = x.clone()
-    x_abs = backend.modulus(x)[..., 0]
+    x = torch.randn(1000, 40, 128, dtype=torch.complex128, requires_grad=True)
+    xd = x.detach()
+    xv = torch.view_as_real(xd)
+    x_abs = torch.abs(xd)
 
-    x_grad[..., 0] = x[..., 0] / x_abs
-    x_grad[..., 1] = x[..., 1] / x_abs
+    xv_grad = xv.clone()
+    xv_grad[..., 0] = xv[..., 0] / x_abs
+    xv_grad[..., 1] = xv[..., 1] / x_abs
+    xv_grad = torch.view_as_complex(xv_grad)
 
-    class FakeContext:
-        def save_for_backward(self, *args):
-            self.saved_tensors = args
-
-    ctx = FakeContext()
-    y = ModulusStable.forward(ctx, x)
+    y = torch.abs(x)
     y_grad = torch.ones_like(y)
-    x_grad_manual = ModulusStable.backward(ctx, y_grad)
-    assert torch.allclose(x_grad_manual, x_grad)
+    y.backward(gradient=y_grad)
+    x_grad_manual = x.grad
+    assert torch.allclose(x_grad_manual, xv_grad)
