@@ -1,5 +1,3 @@
-import pytest
-from kymatio import Scattering1D
 from kymatio.scattering1d.filter_bank import scattering_filter_factory
 import os
 import numpy as np
