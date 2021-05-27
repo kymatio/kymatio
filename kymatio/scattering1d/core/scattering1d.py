@@ -1,5 +1,5 @@
 
-def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
+def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
         vectorize=False, out_type='array'):
