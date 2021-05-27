@@ -625,6 +625,8 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         O1) With `aligned==True`, `lowpass_subsample_fr` must be a deterministic
             function of `n1_fr_subsample` (i.e. have same value at `n1_fr` for
             all `n2`), otherwise `total_conv_stride_over_U1` will vary over `n2`.
+        O2) With `out_3D==True`, by similar logic, `total_subsample_fr` must
+            be same for all `n1_fr, n2` to get same `freq`.
 
     ############################################################################
     X. aligned==True:
@@ -759,7 +761,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                occur upon `lowpass_subsample_fr > pad_fr`, so max `== pad_fr`.
                (namely `== J_pad_fr_min` per c).
             g. == A1g, except `n1_fr_subsample <= min(log2_F, J_pad_fr_min)`
-               is enforced per c and B1d+.
+               is enforced per c and B1d+ (or to avoid `lowpass_subsample_fr < 0`)
             h. N/A per B^2.
 
            `total_subsample_fr == (total_conv_stride_over_U1 +
@@ -854,12 +856,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     min padded case, and set that as maximum permissible `lowpass_subsample_fr`.
     (# TODO so we should be able to write it as such?)
 
-            g. `max(..., 0)` is necessary since `n1_fr_subsample == log2_F`
-               enables `lowpass_subsample_fr < 0` (if `log2_F > J_pad_fr_min`).
-               Could enforce `n1_fr_subsample <= min(log2_F, J_pad_fr_min)`
-               instead, but that's slower.
-               # TODO may be relevant with `aligned=False`
-
     ############################################################################
     Y. aligned==False:
 
@@ -872,23 +868,136 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         B^1. `pad_fr == J_pad_fr_max` for all `n1_fr, n2` is only needed
              with `aligned and out_3D`.
 
+           `lowpass_subsample_fr == min(log2_F, pad_fr) - n1_fr_subsample`.
       __________________________________________________________________________
       A. out_3D==True:
         resample_psi_fr, resample_phi_fr:
         1. True, True:
-           `lowpass_subsample_fr == min(log2_F, pad_fr) - n1_fr_subsample`.
-           Because:
-            a,b,e,g,h: same as X.A.1's.
+           `lowpass_subsample_fr = total_conv_stride_over_U1 - n1_fr_subsample`.
+           This holds by definition; see j. Rationale:
+            a,b,e: same as X.A.1's.
             f. == XB1f, except max is now `pad_fr` (varies over `n2`) rather
-              than `J_pad_fr_min` (fixed) per relaxing c.
+               than `J_pad_fr_min` (fixed) per relaxing c.
+            g. See j.
+            h. == XA1h, except `subsample_equiv_due_to_pad` varies. Thus
+              `total_conv_stride_over_U1` must compensate.
 
            `total_subsample_fr == (total_conv_stride_over_U1 +
                                    subsample_equiv_due_to_pad)
-            i. == XB1i.
+            i. == XB1i. See j.
+
+           `total_conv_stride_over_U1 = (min(log2_F, J_pad_fr_max) -
+                                         (J_pad_fr_max - pad_fr))`
+            j. max `total_conv_stride_over_U1` is determined in `J_pad_fr_max`
+               case; for each `pad_fr` we can still subsample by up to `log2_F`,
+               so lesser `pad_fr` -> greater `total_subsample_fr`, yielding
+               different `freq`. To compensate, adjust `total_conv_stride_over_U1`
+               relative to max padded case, to subsample less w/ lesser `pad_fr`.
+               Expanding `lowpass_subsample_fr`:
+                 `lowpass_subsample_fr = (min(log2_F, J_pad_fr_max) -
+                                          (J_pad_fr_max - pad_fr) -
+                                          n1_fr_subsample)`
+               Thus we enforce `n1_fr_subsample <= (min(log2_F, J_pad_fr_max) -
+                                                    (J_pad_fr_max - pad_fr))`
+               to avoid `lowpass_subsample_fr < 0`.
+
+        2. False, True
+           Same as 1. See XB2.
+
+        3. True, False
+           We enforce:
+             `n1_fr_subsample <= (
+                 min(log2_F - subsample_equiv_due_to_pad, J_pad_fr_max) -
+                 (J_pad_fr_max - pad_fr))`
+
+           because `subsample_equiv_due_to_pad` and `n1_fr_subsample` both lower
+           `phi_fr`'s `j` and thus can't sum above `log2_F`. At the same time
+           1j's logic is satisfied via `- (J_pad_fr_max - pad_fr)`.
+           Retroactively:
+             `lowpass_subsample_fr = (
+                 min(log2_F - subsample_equiv_due_to_pad, J_pad_fr_max) -
+                 (J_pad_fr_max - pad_fr) - n1_fr_subsample)`
+
+        4. False, False
+           Same as 3.
+
+    Case 1:
+        J_pad_fr_min = 7
+        J_pad_fr_max = 10
+        J_pad_fr_max_init = 11
+        log2_F = 5
+        j1_fr_max = 6
+
+        pad_fr == J_pad_fr_min == 7:
+            subsample_equiv_due_to_pad = 11 - 7 = 4
+            j1_fr == 6:
+                n1_fr_subsample = 5
+                lowpass_subsample_fr = 5 - 5 = 0
+                total_conv_stride_over_U1 = 5 + 0 = 5
+                total_subsample_fr = 5 + 4 = 9
+
+            j1_fr == 0:
+                n1_fr_subsample = 0
+                lowpass_subsample_fr = 5
+                total_conv_stride_over_U1 = 0 + 5 = 5
+                total_subsample_fr = 5 + 4 = 9
+
+        pad_fr == J_pad_fr_max == 10:
+            subsample_equiv_due_to_pad = 1
+            j1_fr == 6:
+                n1_fr_subsample = 5
+                lowpass_subsample_fr = 0
+                total_conv_stride_over_U1 = 5 + 0 = 5
+                total_subsample_fr = 5 + 1 = 6
+
+            j1_fr == 0:
+                n1_fr_subsample = 0
+                lowpass_subsample_fr = 5
+                total_conv_stride_over_U1 = 0 + 5 = 5
+                total_subsample_fr = 5 + 1 = 6
+
+        adj: `lowpass_subsample_fr = (min(log2_F, pad_fr) - n1_fr_subsample -
+                                          (subsample_equiv_due_to_pad -
+                                           subsample_equiv_due_to_pad_min))`
+        `total_conv_stride_over_U1 = (min(log2_F, J_pad_fr_max) -
+                                      (J_pad_fr_max - pad_fr))`
+
+        `total_conv_stride_over_U1` will be bounded from above in `J_pad_fr_max`
+        case; for each `pad_fr` we can still subsample by up to `log2_F`,
+        so lesser `pad_fr` -> greater `total_subsample_fr`, yielding different
+        `freq`. To compensate, adjust `total_conv_stride_over_U1` relative to
+        max padded case, to subsample less with lesser `pad_fr`.
+
+        `lowpass_subsample_fr = total_conv_stride_over_U1 - n1_fr_subsample`
+        This holds by definition. Expanding,
+        `lowpass_subsample_fr = (min(log2_F, J_pad_fr_max) -
+                                 (J_pad_fr_max - pad_fr) - n1_fr_subsample)`
+        Thus we enforce `n1_fr_subsample <= (min(log2_F, J_pad_fr_max) -
+                                             (J_pad_fr_max - pad_fr))`.
+
+        pad_fr == J_pad_fr_min == 7:
+            subsample_equiv_due_to_pad = 11 - 7 = 4
+            J_pad_fr_max - pad_fr = 3
+
+            j1_fr == 6:
+                n1_fr_subsample = 5 - 3 = 2
+                lowpass_subsample_fr = 5 - 3 - 2 = 0
+                total_conv_stride_over_U1 = 2 + 0 = 2
+                total_subsample_fr = 2 + 4 = 6
+
+            j1_fr == 0:
+                n1_fr_subsample = 0
+                lowpass_subsample_fr = 5 - 3 - 2 = 2
+                total_conv_stride_over_U1 = 0 + 2 = 2
+                total_subsample_fr = 2 + 4 = 6
+
+
+
+
 
            `total_conv_stride_over_U1 == min(log2_F, pad_fr)`
             d+. Can vary per relaxing c, now constrained only by "same `freq`"
-                and "not `freq` <= 0". per ... # TODO
+                and "not `freq` <= 0".
 
         2. False, True:
            Same as X.A.2.
