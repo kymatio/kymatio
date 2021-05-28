@@ -68,8 +68,8 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
-    kJ = max(log2_T - oversampling, 0)
-    temporal_size = ind_end[kJ] - ind_start[kJ]
+    klog2_T = max(log2_T - oversampling, 0)
+    temporal_size = ind_end[klog2_T] - ind_start[klog2_T]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
@@ -149,13 +149,14 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
                         U_2_hat = rfft(U_2_m)
 
                         # Convolve with phi_J
-                        k2_J = max(log2_T - k2 - k1 - oversampling, 0)
+                        k2_log2_T = max(log2_T - k2 - k1 - oversampling, 0)
 
                         S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
-                        S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
+                        S_2_hat = subsample_fourier(S_2_c, 2**k2_log2_T)
                         S_2_r = irfft(S_2_hat)
 
-                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
+                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_log2_T],
+                                    ind_end[k1 + k2 + k2_log2_T])
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
