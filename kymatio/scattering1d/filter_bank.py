@@ -332,22 +332,25 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
 
     Returns
     -------
-    N_min : int
+    N: int
         Minimum required number of samples for `fn(N)` to have temporal
-        support less than `N`. If `fn` ends up global averaging, will return -1
-        (no such `N` exists).
+        support less than `N`.
     """
     N = 2**math.ceil(math.log2(N_init))  # ensure pow 2
-    N_min = N
     while True:
-        p_fr = fn(N)
-        N_min = 2 * compute_temporal_support(
+        try:
+            p_fr = fn(N)
+        except ValueError:  # get_normalizing_factor()
+            N *= 2
+            continue
+
+        p_halfwidth = compute_temporal_support(
             p_fr.reshape(1, -1), criterion_amplitude=criterion_amplitude)
 
         if N > 1e9:  # avoid crash
             raise Exception("couldn't satisfy stop criterion before `N > 1e9`; "
                             "check `fn`")
-        if N_min < N or (max_N is not None and N > max_N):
+        if 2 * p_halfwidth < N or (max_N is not None and N > max_N):
             break
         N *= 2
     return N

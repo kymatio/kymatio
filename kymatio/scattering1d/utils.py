@@ -83,13 +83,14 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     J : int
         scale of the scattering
     Q : int >= 1
-        The number of first-order wavelets per octave.
+        The number of first-order wavelets per octave. Defaults to `1`.
+        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
+        second-order wavelets per octave (which defaults to `1`).
+          - If `Q1==0`, will exclude `psi1_f` from computation.
+          - If `Q2==0`, will exclude `psi2_f` from computation.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and subsampling
-    Q2 : int >= 0  # TODO
-        The number of second-order wavelets per octave.
-        If 0, will exclude `psi2` from computation.
+        time-shift invariance and maximum subsampling
     normalize : string, optional
         normalization type for the wavelets.
         Only `'l2'` or `'l1'` normalizations are supported.
@@ -142,71 +143,44 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     N = 2 ** J_support
     xi_min = (2 / N)  # leftmost peak at bin 2
 
-    sigma_low, xi1, sigma1, j1s, is_cqt1, xi2, sigma2, j2s, is_cqt2 = \
+    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = \
         calibrate_scattering_filters(J_scattering, Q_temp, T, xi_min=xi_min)
-
-    def last_cqt(is_cqt):
-        """Begin iterating from last CQT wavelet."""
-        return (is_cqt.index(False) if False in is_cqt else len(is_cqt)) - 1
 
     # compute psi1_f with greatest time support, if requested
     if Q1 >= 1:
-        # TODO subsampled variant
-        n1_last_cqt = last_cqt(is_cqt1)
-        for n1 in range(n1_last_cqt, len(j1s)):
-            try:
-                psi1_f_fn = lambda N: morlet_1d(
-                    N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max,
-                    eps=eps)
-                _ = psi1_f_fn(N)
-            except ValueError as e:
-                if is_cqt1[n1]:
-                    raise e
-                break
-        psi1_f_fn_widest = psi1_f_fn
-
+        psi1_f_fn = lambda N: morlet_1d(N, xi1[-1], sigma1[-1],
+                                        normalize=normalize, P_max=P_max, eps=eps)
     # compute psi2_f with greatest time support, if requested
     if Q2 >= 1:
-        n2_last_cqt = last_cqt(is_cqt2)
-        for n2 in range(n2_last_cqt, len(j2s)):
-            try:
-                psi2_f_fn = lambda N: morlet_1d(
-                    N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-                    eps=eps)
-                _ = psi2_f_fn(N)
-            except ValueError as e:
-                if is_cqt2[n2]:
-                    raise e
-                break
-        psi2_f_fn_widest = psi2_f_fn
-
+        psi2_f_fn = lambda N: morlet_1d(N, xi2[-1], sigma2[-1],
+                                        normalize=normalize, P_max=P_max, eps=eps)
     # compute lowpass
     phi_f_fn = lambda N: gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # compute for all cases as psi's time support might exceed phi's
-    kw = dict(N_init=N, criterion_amplitude=criterion_amplitude)
-    N_min_phi = compute_minimum_required_length(phi_f_fn, **kw)
+    kw = dict(criterion_amplitude=criterion_amplitude)
+    N_min_phi = compute_minimum_required_length(phi_f_fn, N_init=N, **kw)
+    phi_halfwidth = compute_temporal_support(
+        phi_f_fn(N_min_phi).reshape(1, -1), **kw)
+
     if Q1 >= 1:
-        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, **kw)
+        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, N_init=N, **kw)
+        psi1_halfwidth = compute_temporal_support(
+            psi1_f_fn(N_min_psi1).reshape(1, -1), **kw)
     else:
-        N_min_psi1 = -2  # placeholder
+        psi1_halfwidth = -1  # placeholder
     if Q2 >= 1:
-        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, **kw)
+        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, N_init=N, **kw)
+        psi2_halfwidth = compute_temporal_support(
+            psi2_f_fn(N_min_psi2).reshape(1, -1), **kw)
     else:
-        N_min_psi2 = -2
+        psi2_halfwidth = -1
 
     # take maximum
-    if N_min_phi == max(N_min_phi, N_min_psi1, N_min_psi2):
-        p_fr = phi_f_fn(N_min_phi)
-    elif N_min_psi1 == max(N_min_phi, N_min_psi1, N_min_psi2):
-        p_fr = psi1_f_fn_widest(N_min_psi1)
-    else:
-        p_fr = psi2_f_fn_widest(N_min_psi2)
-    t_max = compute_temporal_support(p_fr.reshape(1, -1),
-                                     criterion_amplitude=criterion_amplitude)
+    t_max = max(phi_halfwidth, psi1_halfwidth, psi2_halfwidth)
 
     # set min to pad based on maximum
-    min_to_pad = int(1.2 * t_max)
+    min_to_pad = int(1.2 * t_max)  # take a little extra to be safe
     if pad_mode == 'zero':
         min_to_pad //= 2
 
