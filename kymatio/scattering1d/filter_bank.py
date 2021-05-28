@@ -48,7 +48,7 @@ def adaptive_choice_P(sigma, eps=1e-7):
     return P
 
 
-def periodize_filter_fourier(h_f, nperiods=1, upscale=True):
+def periodize_filter_fourier(h_f, nperiods=1, aggregation_method='sum'):
     """
     Computes a periodization of a filter provided in the Fourier domain.
 
@@ -56,11 +56,12 @@ def periodize_filter_fourier(h_f, nperiods=1, upscale=True):
     ----------
     h_f : array_like
         complex numpy array of shape (N*n_periods,)
-    n_periods: int, optional
+    n_periods : int, optional
         Number of periods which should be used to periodize
-    upscale: bool (default True)
-        Whether to multiply time-domain signal by subsampling factor
-        to conserve energy.
+    aggregation_method : str['sum', 'mean']
+        'mean' will only subsample. 'sum' will multiply subsampled time-domain
+        signal by subsampling factor to conserve energy in strided convolution
+        (otherwise subsampling is "double-accounted").
 
     Returns
     -------
@@ -71,7 +72,7 @@ def periodize_filter_fourier(h_f, nperiods=1, upscale=True):
     """
     N = h_f.shape[0] // nperiods
     h_f_re = h_f.reshape(nperiods, N)
-    v_f = (h_f_re.sum(axis=0) if upscale else
+    v_f = (h_f_re.sum(axis=0) if aggregation_method == 'sum' else
            h_f_re.mean(axis=0))
     return v_f
 
