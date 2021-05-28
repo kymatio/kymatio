@@ -929,10 +929,18 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
            Same as 3.
 
         ```
-        lowpass_subsample_fr == (min(log2_F + diff, phi_fr_sub_max) -
-                                 n1_fr_subsample)
+        lowpass_subsample_fr == (min(j_phi, J_pad_fr_max) -
+                                 (J_pad_fr_max - pad_fr) - n1_fr_subsample)
+        j_phi = phi_fr['j'][subsample_equiv_due_to_pad]
         ```
         accounts for 1-4.
+
+        ```
+        total_conv_stride_over_U1 = (min(j_fr, J_pad_fr_max) -
+                                     (J_pad_fr_max - pad_fr))`
+        total_subsample_fr = (total_conv_stride_over_U1 -
+                              subsample_equiv_due_to_pad)
+        ```
 
     Example w/ `True, True`:
         J_pad_fr_min = 7
@@ -973,37 +981,38 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
 
       __________________________________________________________________________
       B. out_3D==False:
-        resample_psi_fr, resample_phi_fr:
-        1. True, True
-           `lowpass_subsample_fr == log2_F + diff`. Because:
-            a. `lowpass_subsample_fr` can exceed `log2_F` because we can have
-               `pad_fr < J_pad_fr_max`.
-            b. `lowpass_subsample_fr` does not need to be less than
-               `log2_F + diff`, because we no longer care for same `freq`.
-            e. `lowpass_subsample_fr`, `n1_fr_subsample`, and
-               `subsample_equiv_due_to_pad` no longer need to sum to the same
-               value (`total_subsample_fr`) for all `n2, n1_fr`, since we don't
-               care to get the same `freq`.
+         XB^2 relaxed.
 
-        2. False, True:
-           Same as 1.
-            a,b: same as 1's. `False, _` only affects `J_pad_fr` (and
-            `J_pad_fr_max`).
+         This leaves only one condition: "not `freq` <= 0". We can now subsample
+         maximally at every stage:
 
-        3. True, False:
-           `lowpass_subsample_fr == log2_F`. Because:
-            a. `lowpass_subsample_fr` cannot exceed `log2_F` due to `_, False`.
-            b,e. same as 1's, except `log2_F + diff -> log2_F`.
+         ```
+         lowpass_subsample_fr = j_phi - n1_fr_subsample
+         total_conv_stride_over_U1 = j_phi
+         total_subsample_fr = j_phi + subsample_equiv_due_to_pad
+         n1_fr_subsample <= j_phi
+         ```
+         accounts for 1-4.
 
-        4. False, False:
-            Same as 3.
-             a,b,e: same as 3's. `False, _` only affects `pad_fr` via  `J_pad_fr`.
+    ############################################################################
 
-        ```
-        lowpass_subsample_fr == (min(log2_F + diff, phi_fr_sub_max) -
-                                 n1_fr_subsample)
-        ```
-        accounts for 1-4.
+    Accounting for X and Y:
+
+    ```
+    k = subsample_equiv_due_to_pad
+    if aligned:
+        if out_3D:
+            lowpass_subsample_fr = phi_fr['j'][k] - n1_fr_subsample
+        else:
+            lowpass_subsample_fr = (min(phi_fr['j'][J_pad_fr_min], J_pad_fr_min) -
+                                    n1_fr_subsample)
+    else:
+        if out_3D:
+            lowpass_subsample_fr = (min(phi_fr['j'][k], J_pad_fr_max) -
+                                    (J_pad_fr_max - pad_fr) - n1_fr_subsample)
+        else:
+            lowpass_subsample_fr = phi_fr['j'][k] - n1_fr_subsample
+    ```
     """
     # TODO psi_fr's subsampling must additionally be constrained by log2_F
     if sc_freq.average_fr_global:
