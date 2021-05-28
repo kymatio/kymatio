@@ -368,7 +368,7 @@ def test_batch_shape_agnostic(device, backend):
     for test_shape in test_shapes:
         x = torch.zeros(test_shape).to(device)
 
-        S.vectorize = True
+        S.out_type = 'array'
         Sx = S(x)
 
         assert Sx.dim() == len(test_shape)+1
@@ -376,11 +376,10 @@ def test_batch_shape_agnostic(device, backend):
         assert Sx.shape[-2] == n_coeffs
         assert Sx.shape[:-2] == test_shape[:-1]
 
-        S.vectorize = False
+        S.out_type = 'list'
         Sx = S(x)
 
         assert len(Sx) == n_coeffs
-        for k, v in Sx.items():
-            assert v.shape[-1] == length_ds
-            assert v.shape[-2] == 1
-            assert v.shape[:-2] == test_shape[:-1]
+        for c in Sx:
+            assert c['coef'].shape[-1] == length_ds
+            assert c['coef'].shape[:-1] == test_shape[:-1]
