@@ -1020,7 +1020,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
     def compute_all_subsamplings(phi_f_fr, j_fr):
         for j_fr_sub in range(1, 1 + log2_F):
             phi_f_fr[j_fr].append(periodize_filter_fourier(
-                phi_f_fr[j_fr], nperiods=2**j_fr_sub))
+                phi_f_fr[j_fr][0], nperiods=2**j_fr_sub))
 
     compute_all_subsamplings(phi_f_fr, j_fr=0)
 
