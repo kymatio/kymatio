@@ -2,8 +2,70 @@ import torch
 import warnings
 
 from collections import namedtuple
+from packaging import version
 
 from ...backend.torch_backend import TorchBackend
+
+
+if version.parse(torch.__version__) >= version.parse('1.8'):
+    def _fft(input, inverse=False):
+        """Interface with torch FFT routines for 3D signals.
+            fft of a 3d signal
+            Example
+            -------
+            x = torch.randn(128, 32, 32, 32, 2)
+
+            x_fft = fft(x)
+            x_ifft = fft(x, inverse=True)
+            Parameters
+            ----------
+            x : tensor
+                Complex input for the FFT.
+            inverse : bool
+                True for computing the inverse FFT.
+
+            Raises
+            ------
+            TypeError
+                In the event that x does not have a final dimension 2 i.e. not
+                complex.
+
+            Returns
+            -------
+            output : tensor
+                Result of FFT or IFFT.
+        """
+        if inverse:
+            return torch.view_as_real(torch.fft.ifftn(torch.view_as_complex(input), dim=[-1, -2, -3]))
+        return torch.view_as_real(torch.fft.fftn(torch.view_as_complex(input), dim=[-1, -2, -3]))
+else:
+    def _fft(input, inverse=False):
+        """Interface with torch FFT routines for 3D signals.
+            fft of a 3d signal
+            Example
+            -------
+            x = torch.randn(128, 32, 32, 32, 2)
+            x_fft = fft(x)
+            x_ifft = fft(x, inverse=True)
+            Parameters
+            ----------
+            x : tensor
+                Complex input for the FFT.
+            inverse : bool
+                True for computing the inverse FFT.
+            Raises
+            ------
+            TypeError
+                In the event that x does not have a final dimension 2 i.e. not
+                complex.
+            Returns
+            -------
+            output : tensor
+                Result of FFT or IFFT.
+        """
+        if inverse:
+            return torch.ifft(input, 3)
+        return torch.fft(input, 3)
 
 
 class TorchBackend3D(TorchBackend):
@@ -23,14 +85,14 @@ class TorchBackend3D(TorchBackend):
         x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
         x_r[..., 0] = x[..., 0]
 
-        return torch.fft(x_r, 3, normalized=False)
+        return _fft(x_r)
 
     @classmethod
     def ifft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.ifft(x, 3, normalized=False)
+        return _fft(x, inverse=True)
 
     @classmethod
     def cdgmm3d(cls, A, B):

@@ -19,14 +19,12 @@ from distutils.version import LooseVersion
 
 
 
-sys.path.insert(0, os.path.abspath('../..'))
-
-
+autodoc_mock_imports = ['torch', 'tensorflow', 'sklearn']
 
 # -- Project information -----------------------------------------------------
 
 project = 'kymatio'
-copyright = '2018–2020, The Kymatio Developers'
+copyright = '2018–2021, The Kymatio Developers'
 author = 'The Kymatio Developers'
 
 # The short X.Y version
@@ -58,10 +56,10 @@ extensions = [
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
     'texext',
-    'm2r'
+    'm2r2'
 ]
 
-bibtex_bibfiles = ['_static/bibtex.bib']
+bibtex_bibfiles = ["_static/bibtex.bib"]
 
 html_favicon = '_static/kymatio.ico'
 
