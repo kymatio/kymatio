@@ -93,7 +93,7 @@ def test_modulus(device, backend, random_state=42):
     """
     Tests the stability and differentiability of modulus
     """
-    if backend.name.endswith('_skcuda') and device == "cpu":
+    if backend.name == "torch_skcuda" and device == "cpu":
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.modulus(x_bad)
@@ -117,7 +117,7 @@ def test_modulus(device, backend, random_state=42):
         backend.modulus(x_bad)
     assert "should be complex" in te.value.args[0]
 
-    if backend.name.endswith('_skcuda'):
+    if backend.name == "torch_skcuda":
         pytest.skip("The skcuda backend does not pass differentiability"
             "tests, but that's ok (for now).")
 
@@ -143,7 +143,7 @@ def test_subsample_fourier(backend, device, random_state=42):
     Tests whether the periodization in Fourier performs a good subsampling
     in time
     """
-    if backend.name.endswith('_skcuda') and device == 'cpu':
+    if backend.name == 'torch_skcuda' and device == 'cpu':
         with pytest.raises(TypeError) as re:
             x_bad = torch.randn((4, 2)).cpu()
             backend.subsample_fourier(x_bad, 1)
@@ -246,9 +246,6 @@ def test_fft(backend, device):
     z_1 = backend.ifft(z)
     assert torch.allclose(x_r[..., 0], z_1[..., 0])
 
-    print(z.shape)
-
     z_2 = backend.irfft(z)
-    print(z_2.shape)
     assert not z_2.shape[-1] == 2
     assert torch.allclose(x_r, z_2)

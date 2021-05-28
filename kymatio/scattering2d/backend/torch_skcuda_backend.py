@@ -171,6 +171,7 @@ class Modulus(object):
              stream=Stream(ptr=torch.cuda.current_stream().cuda_stream))
         return out
 
+
 class TorchSkcudaBackend2D(TorchSkcudaBackend, TorchBackend2D):
     _modulus_complex = Modulus()
     _subsample_fourier = SubsampleFourier()

@@ -2,17 +2,6 @@ import torch
 import torch.nn.functional as F
 from ...backend.torch_backend import TorchBackend
 
-from packaging import version
-
-if version.parse(torch.__version__) >= version.parse('1.8'):
-    _fft = lambda x: torch.view_as_real(torch.fft.fft(torch.view_as_complex(x)))
-    _ifft = lambda x: torch.view_as_real(torch.fft.ifft(torch.view_as_complex(x)))
-    _irfft = lambda x: torch.fft.ifft(torch.view_as_complex(x)).real[..., None]
-else:
-    _fft = lambda x: torch.fft(x, 1, normalized=False)
-    _ifft = lambda x: torch.ifft(x, 1, normalized=False)
-    _irfft = lambda x: torch.irfft(x, 1, normalized=False, onesided=False)[..., None]
-
 
 class TorchBackend1D(TorchBackend):
     @classmethod
@@ -111,21 +100,21 @@ class TorchBackend1D(TorchBackend):
         x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
         x_r[..., 0] = x[..., 0]
 
-        return _fft(x_r)
+        return torch.fft(x_r, 1, normalized=False)
 
     @classmethod
     def irfft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return _irfft(x)
+        return torch.ifft(x, 1, normalized=False)[..., :1]
 
     @classmethod
     def ifft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return _ifft(x)
+        return torch.ifft(x, 1, normalized=False)
 
 
 backend = TorchBackend1D
