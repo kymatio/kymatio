@@ -415,7 +415,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
 
     This family is defined by constant ratios between the frequencies and
     width of adjacent filters, up to a minimum frequency where the frequencies
-    are translated. sigma_min specifies the smallest frequential width
+    are translated. sigma_min limits the smallest frequential width
     among all filters, while preserving the coverage of the whole frequency
     axis.
 
