@@ -1065,21 +1065,9 @@ class _FrequencyScatteringBase(ScatteringBase):
             **self.get_params('resample_phi_fr', 'criterion_amplitude',
                               'sigma0', 'P_max', 'eps'))
 
-        self.max_subsampling_before_phi_fr = []
-        for n2, shape_fr in enumerate(self.shape_fr):
-            if self.resample_phi_fr and not self.average_fr_global:
-                # subsampling before `_joint_lowpass()` (namely
-                # `* sc_freq.phi_f_fr`) is limited by `sc_freq.phi_f_fr[0]`'s
-                # time width.
-                # This is accounted for  in `scattering_filter_factory_fr` by
-                # not computing `sc_freq.phi_f_fr` at such resampling lengths.
-                k = self.subsampling_equiv_relative_to_max_padding[n2]
-                sub = (-1 if shape_fr == -1 else
-                       max(j for j in self.phi_f_fr[k] if isinstance(j, int)))
-            else:
-                # usual behavior
-                sub = self.log2_F
-            self.max_subsampling_before_phi_fr.append(sub)
+        # max `subsample_equiv_due_to_pad + n1_fr_subsample`
+        # if we subsample more, `phi_f_fr[subsample_equiv_due_to_pad]` fails
+        self.max_total_subsampling_before_phi_fr = len(self.phi_f_fr) - 1
 
     def create_psi_filters(self):
         """See `filter_bank.psi_fr_factory`."""
@@ -1091,7 +1079,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
         # TODO consistent naming, `subsample` vs `subsampling` etc
-        # repeat logic of `max_subsampling_before_phi_fr` for psi
+        # repeat logic of `max_total_subsampling_before_phi_fr` for psi
         if self.max_subsample_equiv_before_psi_fr is not None:
             self.J_pad_fr_min = max(
                 self.J_pad_fr_min,
@@ -1106,7 +1094,11 @@ class _FrequencyScatteringBase(ScatteringBase):
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
         # compute minimum amount of padding
-        if not self.resample_psi_fr:
+        if self.resample_psi_fr:
+            self.J_pad_fr_min = (self.J_pad_fr_max_init -
+                                 self.max_total_subsampling_before_phi_fr)
+            self.downsampling_max_due_to_sigma = -1
+        else:
             xi_min = 2 / 2**self.J_pad_fr_max_init
             _, _, sigma1_fr, *_ = calibrate_scattering_filters(
                 self.J_fr, self.Q_fr, T=self.F, r_psi=self.r_psi,
@@ -1118,11 +1110,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                 math.log2(sigma_min_max / sigma1_fr[1]))
             self.J_pad_fr_min = (self.J_pad_fr_max_init -
                                  min(self.downsampling_max_due_to_sigma,
-                                     self.max_subsampling_before_phi_fr))
-        else:
-            self.J_pad_fr_min = (self.J_pad_fr_max_init -
-                                 self.max_subsampling_before_phi_fr)
-            self.downsampling_max_due_to_sigma = -1
+                                     self.max_total_subsampling_before_phi_fr))
         # TODO doc
         # TODO rename max_subsamp -> max_downsamp
 
@@ -1146,7 +1134,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
                 # compute unpad indices for all possible subsamplings
                 ind_start, ind_end = [], []
-                for j in range(max(self.log2_F, self.J_fr) + 1):
+                for j in range(self.J_pad_fr_max_init + 1):
                     if j == j0:  # no actual subsampling done, unpad original
                         ind_start.append(0)
                         ind_end.append(shape_fr)
@@ -1182,6 +1170,16 @@ class _FrequencyScatteringBase(ScatteringBase):
                                for n2 in range(len(self.shape_fr))
                                if len(get_idxs(attr)[n2]) != 0)
                 getattr(self, attr).append(idxs_max)
+
+        # max `n1_fr_subsample`; this may vary with `subsample_equiv_due_to_pad`
+        self.max_subsampling_before_phi_fr = []
+        for n2, shape_fr in enumerate(self.shape_fr):
+            if self.resample_phi_fr and not self.average_fr_global:  # TODO global?
+                sub = len(self.phi_f_fr) - 1
+            else:
+                sub = (len(self.phi_f_fr) - 1  -
+                       self.subsampling_equiv_relative_to_max_padding[n2])
+            self.max_subsampling_before_phi_fr.append(sub)
 
         # unused quantity; if this exceeds `J_pad_fr_max_init`, then
         # `phi_t * psi_f` and `phi_t * phi_f` pairs will incur boundary effects.

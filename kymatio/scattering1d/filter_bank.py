@@ -1028,7 +1028,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
     for j_fr in range(1, 1 + log2_F):
         factor = 2**j_fr
         if resample_phi_fr:
-            prev_phi = phi_f_fr[j_fr - 1].reshape(1, -1)
+            prev_phi = phi_f_fr[j_fr - 1][0].reshape(1, -1)
             prev_phi_halfwidth = compute_temporal_support(
                 prev_phi, criterion_amplitude=criterion_amplitude)
 
@@ -1037,8 +1037,8 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
                 # so lesser length will distort lowpass.
                 # Frontend will adjust "all possible input lengths" accordingly
                 break
-            phi_f_fr[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max,
-                                      eps=eps)
+            phi_f_fr[j_fr] = [gauss_1d(N // factor, sigma_low, P_max=P_max,
+                                       eps=eps)]
             # dedicate separate filters for *subsampled* as opposed to *trimmed*
             # inputs (i.e. `n1_fr_subsample` vs `J_pad_fr_max_init - J_pad_fr`)
             # note this increases maximum subsampling of phi_fr relative to
@@ -1055,18 +1055,20 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
             # TODO instead reindex as sum?
 
     # embed meta info in filters
-    phi_f_fr = {field: {} for field in ('xi', 'sigma', 'j')}
+    phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j')})
     j_frs = [j for j in phi_f_fr if isinstance(j, int)]
     for j_fr in j_frs:
-        phi_f_fr['xi'][j_fr] = [0.]
-        phi_f_fr['sigma'][j_fr] = [sigma_low if resample_phi_fr else
-                                   sigma_low * 2**j_fr]
-        phi_f_fr['j'][j_fr] = [log2_F if resample_phi_fr else
-                               log2_F - j_fr]
-        for j_fr_sub in range(1, len(phi_f_fr[j_fr])):
-            phi_f_fr['xi'][j_fr].append(0.)
-            phi_f_fr['sigma'][j_fr].append(phi_f_fr['sigma'][j_fr] * 2**j_fr_sub)
-            phi_f_fr['j'][j_fr].append(phi_f_fr['j'][j_fr] - j_fr_sub)
+        xi_fr_0 = 0.
+        sigma_fr_0 = (sigma_low if resample_phi_fr else
+                      sigma_low * 2**j_fr)
+        j_fr_0 = (log2_F if resample_phi_fr else
+                  log2_F - j_fr)
+        for field in ('xi', 'sigma', 'j'):
+            phi_f_fr[field][j_fr] = []
+        for j_fr_sub in range(len(phi_f_fr[j_fr])):
+            phi_f_fr['xi'][j_fr].append(xi_fr_0)
+            phi_f_fr['sigma'][j_fr].append(sigma_fr_0 * 2**j_fr_sub)
+            phi_f_fr['j'][j_fr].append(j_fr_0 - j_fr_sub)
 
     for j_fr in j_frs:
         for j_fr_sub in range(len(phi_f_fr[j_fr])):

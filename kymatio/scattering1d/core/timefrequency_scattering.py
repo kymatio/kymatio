@@ -420,7 +420,8 @@ def timefrequency_scattering(
         ```
         lowpass_subsample_fr == (min(phi_fr_sub_min, J_pad_fr_min) -
                                  n1_fr_subsample)
-        phi_fr_sub_min == phi_fr['j'][J_pad_fr_min] <= log2_F
+        phi_fr_sub_min == phi_fr['j'][k_min] <= log2_F;
+        k_min = J_pad_fr_max_init - J_pad_fr_min
         # ^ subsampling after `phi_fr` in min-padded case
         ```
         accounts for 1-4.
@@ -605,7 +606,8 @@ def timefrequency_scattering(
         if out_3D:
             total_conv_stride_over_U1 = phi_fr['j'][k]
         else:
-            total_conv_stride_over_U1 = min(phi_fr['j'][J_pad_fr_min],
+            k_min = J_pad_fr_max_init - J_pad_fr_min
+            total_conv_stride_over_U1 = min(phi_fr['j'][k_min],
                                             J_pad_fr_min)
     else:
         if out_3D:
@@ -695,35 +697,29 @@ def timefrequency_scattering(
     # zero-pad along frequency, map to Fourier domain
     pad_fr = sc_freq.J_pad_fr_max
     S_1_fr = _right_pad(S_1_list, pad_fr, B)
+    n1_fr_subsample = 0  # no intermediate scattering
     # S_1_fr = B.zeros_like(S_1_list[-1], (2**pad_fr, S_1_list[-1].shape[-1]))
     # S_1_fr[:len(S_1_list)] = S_1_list
 
     if sc_freq.average_fr_global:
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
-        stride = sc_freq.log2_F
+        lowpass_subsample_fr = sc_freq.log2_F
     else:
         S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
 
         # this is usually 0
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
-        n1_fr_subsample = 0  # no intermediate scattering
-        total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
-        # subsample as in min-padded case, or regularly, based on `aligned`
-        reference_subsample_equiv_due_to_pad = _get_ref_sub(
-            subsample_equiv_due_to_pad, aligned, out_3D, sc_freq)
-        reference_total_subsample_so_far = (reference_subsample_equiv_due_to_pad +
-                                            n1_fr_subsample)
-
-        total_subsample_fr_max = sc_freq.log2_F
-        lowpass_subsample_fr = max(total_subsample_fr_max -
-                                   reference_total_subsample_so_far -
+        j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
+        total_conv_stride_over_U1 = _get_stride(
+            j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq, average_fr=True)
+        lowpass_subsample_fr = max(total_conv_stride_over_U1 - n1_fr_subsample -
                                    oversampling_fr, 0)
+        total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
         total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
-        stride = n1_fr_subsample + lowpass_subsample_fr
 
         # Low-pass filtering over frequency
-        phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad]
+        phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad][n1_fr_subsample]
         S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, phi_fr)
         S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
         S_1_fr_T = B.irfft(S_1_fr_T_hat)
@@ -738,14 +734,16 @@ def timefrequency_scattering(
         S_1_fr_T = unpad(S_1_fr_T, ind_start_fr, ind_end_fr)
         S_1_fr = B.transpose(S_1_fr_T)
     j1_fr = (sc_freq.log2_F if sc_freq.average_fr_global else
-             sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad])
+             sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][n1_fr_subsample])
     out_S_2['phi_t * phi_f'].append({'coef': S_1_fr,
                                      'j': (log2_T, j1_fr),
                                      'n': (-1, -1),
                                      's': (0,)})
     # set reference for later
-    sc_freq.__total_conv_stride_over_U1_phi = stride
-    sc_freq.__total_conv_stride_over_U1 = stride if average_fr else -1
+    total_conv_stride_over_U1 = n1_fr_subsample + lowpass_subsample_fr
+    sc_freq.__total_conv_stride_over_U1_phi = total_conv_stride_over_U1
+    sc_freq.__total_conv_stride_over_U1 = (-1 if not average_fr else
+                                           total_conv_stride_over_U1)
 
     ##########################################################################
     # Joint scattering: separable convolutions (along time & freq), and low-pass
@@ -920,9 +918,10 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             # n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
             #                       oversampling_fr, 0)
 
-
+            total_conv_stride_over_U1 = _get_stride(
+                j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq, average_fr)
             n1_fr_subsample = max(min(j1_fr, total_conv_stride_over_U1,
-                                      sc_freq.max_subsampling_before_phi_fr) -
+                                      sc_freq.max_subsampling_before_phi_fr[n2]) -
                                   oversampling_fr, 0)
 
             """
@@ -984,17 +983,18 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
         # take largest permissible subsampling factor given input length
         # (always log2_F if `resample_phi_fr=True`,
         # else less by `subsample_equiv_due_to_pad`)
-        j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad]
-        total_conv_stride_over_U1 = _get_stride(j1_fr, subsample_equiv_due_to_pad,
-                                                sc_freq, average_fr=True)
+        # treat phi as psi where no `n1_fr_subsample` has been done yet
+        j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
+        total_conv_stride_over_U1 = _get_stride(
+            j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq, average_fr=True)
         if average_fr:
             sub_adj = min(j1_fr, total_conv_stride_over_U1,
-                          sc_freq.max_subsampling_before_phi_fr)
+                          sc_freq.max_subsampling_before_phi_fr[n2])
         else:
             sub_adj = min(j1_fr, total_conv_stride_over_U1)
         n1_fr_subsample = max(sub_adj - oversampling_fr, 0)
 
-        Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f_fr[subsample_equiv_due_to_pad])
+        Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f_fr[subsample_equiv_due_to_pad][0])
         Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
         Y_fr_c = B.ifft(Y_fr_hat)
 
@@ -1020,8 +1020,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     # compute subsampling logic ##############################################
     total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
 
-
-    # TODO psi_fr's subsampling must additionally be constrained by log2_F
     if sc_freq.average_fr_global:
         pass
     elif average_fr:
@@ -1029,7 +1027,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                                    oversampling_fr, 0)
     else:
         lowpass_subsample_fr = 0
-    total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
 
     # fetch frequential lowpass
     if average_fr and not sc_freq.average_fr_global:
@@ -1049,6 +1046,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         S_2_fr = U_2_m
 
     if not sc_freq.average_fr_global:
+        total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
         if out_3D:
             ind_start_fr = sc_freq.ind_start_fr_max[total_subsample_fr]
             ind_end_fr   = sc_freq.ind_end_fr_max[  total_subsample_fr]
@@ -1081,8 +1079,15 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             if sc_freq.__total_conv_stride_over_U1 == -1:
                 # set if not set yet
                 sc_freq.__total_conv_stride_over_U1 = total_conv_stride_over_U1
-            assert (total_conv_stride_over_U1 ==
-                    sc_freq.__total_conv_stride_over_U1)
+            try:
+                assert (total_conv_stride_over_U1 ==
+                        sc_freq.__total_conv_stride_over_U1)
+            except:
+                print(aligned, out_3D, average_fr, oversampling_fr)
+                print(total_conv_stride_over_U1,
+                      sc_freq.__total_conv_stride_over_U1)
+                print(n2, n1_fr, n1_fr_subsample, lowpass_subsample_fr)
+                1/0
 
             if not average_fr:
                 assert total_conv_stride_over_U1 == 0
@@ -1135,25 +1140,31 @@ def _get_ref_sub(subsample_equiv_due_to_pad, aligned, out_3D, sc_freq):
     return reference_subsample_equiv_due_to_pad
 
 
-def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq, average_fr):
+def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq,
+                average_fr):
+    """Actual conv stride may differ due to `oversampling_fr`, so this really
+    fetches the reference value. True value computed after convs as
+    `n1_fr_subsample + lowpass_subsample_fr`.
+    """
     k = subsample_equiv_due_to_pad
 
     if average_fr:
         phi_fr = sc_freq.phi_f_fr
         if sc_freq.aligned:
             if sc_freq.out_3D:
-                total_conv_stride_over_U1 = phi_fr['j'][k]
+                total_conv_stride_over_U1 = phi_fr['j'][k][0]
             else:
-                J_pad_fr_min = sc_freq.J_pad_fr_min
-                total_conv_stride_over_U1 = min(phi_fr['j'][J_pad_fr_min],
-                                                J_pad_fr_min)
+                k_min = sc_freq.J_pad_fr_max_init - sc_freq.J_pad_fr_min
+                total_conv_stride_over_U1 = min(phi_fr['j'][k_min][0],
+                                                sc_freq.J_pad_fr_min)
         else:
             if sc_freq.out_3D:
                 J_pad_fr_max = sc_freq.J_pad_fr_max
-                total_conv_stride_over_U1 = (min(phi_fr['j'][k], J_pad_fr_max) -
-                                             (J_pad_fr_max - pad_fr))
+                total_conv_stride_over_U1 = (
+                    min(phi_fr['j'][k][0], J_pad_fr_max) -
+                    (J_pad_fr_max - pad_fr))
             else:
-                total_conv_stride_over_U1 = phi_fr['j'][k]
+                total_conv_stride_over_U1 = phi_fr['j'][k][0]
     else:
         if sc_freq.aligned:
             total_conv_stride_over_U1 = 0

@@ -157,7 +157,7 @@ def test_freq_tp_invar():
     J = int(np.log2(N) - 1)  # have 2 time units at output
     J_fr = 4
     F_all = [2**(J_fr), 2**(J_fr + 1)]
-    th_all = [.19, .14]
+    th_all = [.21, .14]
 
     for th, F in zip(th_all, F_all):
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
@@ -190,7 +190,7 @@ def test_up_vs_down():
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
     E_down = energy(Scx['psi_t * psi_f_down'])
-    assert E_down / E_up > 15
+    assert E_down / E_up > 19
 
 
 def test_max_pad_factor_fr():
@@ -226,9 +226,6 @@ def test_no_second_order_filters():
 
 def test_backends():
     for backend in ('tensorflow', 'torch'):
-        if backend == 'torch':
-            continue  # TODO
-
         if backend == 'tensorflow':
             try:
                 import tensorflow as tf
@@ -579,8 +576,8 @@ if __name__ == '__main__':
         # test_up_vs_down()
         # test_no_second_order_filters()
         # test_max_pad_factor_fr()
-        # test_backends()
-        test_meta()
+        test_backends()
+        # test_meta()
         # test_output()
     else:
         pytest.main([__file__, "-s"])

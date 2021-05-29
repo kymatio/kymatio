@@ -460,16 +460,17 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         if (n2 == -1 and n1_fr == -1):
             n1_fr_subsample = 0
         else:
+            max_sub_before_phi = sc_freq.max_total_subsampling_before_phi_fr
             if n1_fr == -1:
                 j1_fr = (log2_F if resample_phi_fr else
                          j1s_fr_phi[subsample_equiv_due_to_pad])
                 sub_adj = (j1_fr if not sc_freq.average_fr else
-                           min(j1_fr, sc_freq.max_subsampling_before_phi_fr))
+                           min(j1_fr, max_sub_before_phi))
             else:
                 j1_fr = (j1s_fr[n1_fr] if resample_psi_fr else
                          j1s_fr_new[subsample_equiv_due_to_pad][n1_fr])
                 if sc_freq.average_fr:
-                    sub_adj = min(j1_fr, sc_freq.max_subsampling_before_phi_fr)
+                    sub_adj = min(j1_fr, max_sub_before_phi)
                 else:
                     sub_adj = j1_fr if not aligned else 0
             n1_fr_subsample = max(sub_adj - reference_subsample_equiv_due_to_pad -
