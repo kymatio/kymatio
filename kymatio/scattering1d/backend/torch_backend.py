@@ -41,9 +41,9 @@ class TorchBackend1D(TorchBackend):
 
     @staticmethod
     def pad(x, pad_left, pad_right, axis=-1, pad_mode='reflect'):
-        """Pad N-dim tensor.
+        """Pad N-dim tensor along one dimension.
 
-        N-dim implementation of the padding function for real PyTorch tensors.
+        Pads PyTorch tensor by `pad_left` and `pad_right` along one axis.
 
         Parameters
         ----------
@@ -69,9 +69,9 @@ class TorchBackend1D(TorchBackend):
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):
-        """Unpad N-dim tensor.
+        """Unpad N-dim tensor along one dimension.
 
-        Slices the input tensor at indices between i0 and i1 along any axis.
+        Slices the input tensor at indices between i0 and i1 along any one axis.
 
         Parameters
         ----------

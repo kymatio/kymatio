@@ -50,19 +50,13 @@ def test_T():
 
 
 def _test_padding(backend_name):
+    """Test that agnostic implementation matches numpy's."""
     def _arange(N):
         if backend_name == 'tensorflow':
             return backend.range(N)
         return backend.arange(N)
 
-    if backend_name == 'numpy':
-        backend = np
-    elif backend_name == 'torch':
-        import torch
-        backend = torch
-    elif backend_name == 'tensorflow':
-        import tensorflow as tf
-        backend = tf
+    backend = _get_backend(backend_name)
 
     for N in (128, 129):  # even, odd
         x = backend.reshape(_arange(6 * N), (2, 3, N))
@@ -83,8 +77,28 @@ def _test_padding(backend_name):
                     ).format(backend_name, N, pad_mode, pad_left, pad_right)
 
 
+def _test_pad_axis(backend_name):
+    """Test that padding any N-dim axis works as expected."""
+    backend = _get_backend(backend_name)
+    x = backend.zeros((5, 6, 7, 8, 9, 10, 11))
+
+    pad_left, pad_right = 4, 5
+    kw = dict(pad_left=pad_left, pad_right=pad_right, pad_mode='reflect',
+              backend_name=backend_name)
+
+    for axis in range(x.ndim):
+        shape0 = list(x.shape)
+        shape0[axis] += (pad_left + pad_right)
+        shape1 = pad(x, axis=axis, **kw).shape
+        shape2 = pad(x, axis=axis - x.ndim, **kw).shape  # negative axis version
+
+        assert np.allclose(shape0, shape1)
+        assert np.allclose(shape0, shape2)
+
+
 def test_pad_numpy():
     _test_padding('numpy')
+    _test_pad_axis('numpy')
 
 
 def test_pad_torch():
@@ -94,6 +108,7 @@ def test_pad_torch():
         warnings.warn("Failed to import torch")
         return
     _test_padding('torch')
+    _test_pad_axis('torch')
 
 
 def test_pad_tensorflow():
@@ -103,6 +118,19 @@ def test_pad_tensorflow():
         warnings.warn("Failed to import tensorflow")
         return
     _test_padding('tensorflow')
+    _test_pad_axis('tensorflow')
+
+
+def _get_backend(backend_name):
+    if backend_name == 'numpy':
+        backend = np
+    elif backend_name == 'torch':
+        import torch
+        backend = torch
+    elif backend_name == 'tensorflow':
+        import tensorflow as tf
+        backend = tf
+    return backend
 
 
 def _l2(x):

@@ -46,8 +46,9 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1,
     if backend_name == 'tensorflow':  # TODO
         out = out.numpy()
 
-    pad_right_idx = pad_right if pad_right != 0 else None
-    out[index_axis(pad_left, pad_right_idx), axis] = x
+    pad_right_idx = (out.shape[axis] -
+                     (pad_right if pad_right != 0 else None))
+    out[index_axis(pad_left, pad_right_idx, axis, x.ndim)] = x
 
     if pad_mode == 'zero':
         pass  # already done
@@ -65,7 +66,7 @@ def _flip(x, backend, axis, backend_name='numpy'):
         return x[flip_axis(axis, x.ndim)]
     elif backend_name == 'torch':
         axis = axis if axis >= 0 else (x.ndim + axis)
-        return backend.flip(x, axis)
+        return backend.flip(x, (axis,))
 
 
 def _pad_reflect(x, xflip, out, pad_left, pad_right, N, axis):
