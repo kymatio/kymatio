@@ -570,13 +570,13 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_no_second_order_filters()
-        # test_max_pad_factor_fr()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_no_second_order_filters()
+        test_max_pad_factor_fr()
         # test_backends()
         # test_meta()
         test_output()

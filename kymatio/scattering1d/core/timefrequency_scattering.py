@@ -920,9 +920,12 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
 
             total_conv_stride_over_U1 = _get_stride(
                 j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq, average_fr)
-            n1_fr_subsample = max(min(j1_fr, total_conv_stride_over_U1,
-                                      sc_freq.max_subsampling_before_phi_fr[n2]) -
-                                  oversampling_fr, 0)
+            if average_fr:
+                sub_adj = min(j1_fr, total_conv_stride_over_U1,
+                              sc_freq.max_subsampling_before_phi_fr[n2])
+            else:
+                sub_adj = min(j1_fr, total_conv_stride_over_U1)
+            n1_fr_subsample = max(sub_adj - oversampling_fr, 0)
 
             """
               - `j1_fr = psi1_f[subs...]` is how much we can subsample at most
@@ -1053,7 +1056,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         else:
             ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
             ind_end_fr   = sc_freq.ind_end_fr[  n2][total_subsample_fr]
-        pre = S_2_fr.shape
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr)
     # Swap time and frequency subscripts again
     S_2_fr = B.transpose(S_2_fr)
