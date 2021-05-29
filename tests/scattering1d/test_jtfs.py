@@ -461,8 +461,6 @@ def test_output():
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
-        if test_num != 0:  # TODO
-            continue
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
@@ -490,7 +488,7 @@ def test_output():
                           ).format(pair, i, o_stored_key, o.shape, o_stored.shape,
                                    params_str)
                 if output_test_print_mode and o.shape != o_stored.shape:
-                    1#print(errmsg)
+                    print(errmsg)
                     i_s += 1
                     continue
                 else:
@@ -503,7 +501,7 @@ def test_output():
                           ).format(pair, i, o_stored_key, adiff.mean(),
                                    adiff.max(), params_str)
                 if output_test_print_mode and not np.allclose(o, o_stored):
-                    1#print(errmsg)
+                    print(errmsg)
                 else:
                     assert np.allclose(o, o_stored), errmsg
                 i_s += 1
