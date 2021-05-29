@@ -226,6 +226,9 @@ def test_no_second_order_filters():
 
 def test_backends():
     for backend in ('tensorflow', 'torch'):
+        if backend == 'torch':
+            continue  # TODO
+
         if backend == 'tensorflow':
             try:
                 import tensorflow as tf
@@ -407,7 +410,7 @@ def test_output():
 
           (aligned, average_fr, out_3D, out_type,     F)
         0. True     True        False   'dict:list'   8
-        1. True     True        True    'dict:array'  8
+        1. True     True        True    'dict:array'  8  # TODO make this test 0
         2. False    True        True    'dict:array'  8
         3. True     True        False   'dict:list'   'global'
         4. True     False       False   'dict:array'  8
@@ -458,8 +461,8 @@ def test_output():
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
-        if test_num == 4:  # TODO
-            continue
+        # if test_num == 4:  # TODO
+        #     continue
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
@@ -576,8 +579,8 @@ if __name__ == '__main__':
         # test_up_vs_down()
         # test_no_second_order_filters()
         # test_max_pad_factor_fr()
-        test_backends()
+        # test_backends()
         # test_meta()
-        # test_output()
+        test_output()
     else:
         pytest.main([__file__, "-s"])

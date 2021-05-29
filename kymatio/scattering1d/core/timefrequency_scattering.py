@@ -1155,8 +1155,12 @@ def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq,
                 total_conv_stride_over_U1 = phi_fr['j'][k][0]
             else:
                 k_min = sc_freq.J_pad_fr_max_init - sc_freq.J_pad_fr_min
-                total_conv_stride_over_U1 = min(phi_fr['j'][k_min][0],
-                                                sc_freq.J_pad_fr_min)
+                try:
+                    total_conv_stride_over_U1 = min(phi_fr['j'][k_min][0],
+                                                    sc_freq.J_pad_fr_min)
+                except:
+                    print(len(phi_fr['j']), k_min)
+                    1/0
         else:
             if sc_freq.out_3D:
                 J_pad_fr_max = sc_freq.J_pad_fr_max

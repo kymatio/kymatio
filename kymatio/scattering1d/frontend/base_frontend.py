@@ -475,13 +475,13 @@ class TimeFrequencyScatteringBase1D():
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1
         # number of psi1 filters
-        self._n_psi1 = len(self.psi1_f)
+        self._n_psi1_f = len(self.psi1_f)
 
         self.sc_freq = _FrequencyScatteringBase(
             self._shape_fr, self.J_fr, self.Q_fr, self.F, max_order_fr,
             self.average_fr, self.aligned, self.oversampling_fr,
             self.resample_psi_fr, self.resample_phi_fr, self.out_type,
-            self.out_3D, self.max_pad_factor_fr, self._n_psi1, self.backend)
+            self.out_3D, self.max_pad_factor_fr, self._n_psi1_f, self.backend)
         self.finish_creating_filters()
 
         # detach __init__ args, instead access `sc_freq`'s via `__getattr__`
@@ -1003,7 +1003,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.out_type = out_type
         self.out_3D = out_3D
         self.max_pad_factor_fr = max_pad_factor_fr
-        self._n_psi1 = n_psi1
+        self._n_psi1_f = n_psi1
         self.backend = backend
 
         self.build()
@@ -1067,7 +1067,8 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # max `subsample_equiv_due_to_pad + n1_fr_subsample`
         # if we subsample more, `phi_f_fr[subsample_equiv_due_to_pad]` fails
-        self.max_total_subsampling_before_phi_fr = len(self.phi_f_fr) - 1
+        self._n_phi_f_fr = len([k for k in self.phi_f_fr if isinstance(k, int)])
+        self.max_total_subsampling_before_phi_fr = self._n_phi_f_fr - 1
 
     def create_psi_filters(self):
         """See `filter_bank.psi_fr_factory`."""
@@ -1175,9 +1176,9 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.max_subsampling_before_phi_fr = []
         for n2, shape_fr in enumerate(self.shape_fr):
             if self.resample_phi_fr and not self.average_fr_global:  # TODO global?
-                sub = len(self.phi_f_fr) - 1
+                sub = self._n_phi_f_fr - 1
             else:
-                sub = (len(self.phi_f_fr) - 1  -
+                sub = (self._n_phi_f_fr - 1  -
                        self.subsampling_equiv_relative_to_max_padding[n2])
             self.max_subsampling_before_phi_fr.append(sub)
 
@@ -1185,7 +1186,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # `phi_t * psi_f` and `phi_t * phi_f` pairs will incur boundary effects.
         # Implem doesn't account for this as the effect is rare and most often
         # not great
-        self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1, recompute=True,
+        self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1_f, recompute=True,
                                               Q=(0, 0))
 
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):

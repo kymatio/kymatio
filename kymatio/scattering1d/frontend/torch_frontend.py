@@ -29,7 +29,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         # prepare for pytorch
         for k in self.phi_f.keys():
             if type(k) != str:
-                # view(-1, 1).repeat(1, 2) because real numbers!
                 self.phi_f[k] = torch.from_numpy(
                     self.phi_f[k]).float()
                 self.register_buffer('tensor' + str(n), self.phi_f[k])
@@ -37,7 +36,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         for psi_f in self.psi1_f:
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).float()
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
@@ -45,7 +43,6 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         for psi_f in self.psi2_f:
             for sub_k in psi_f.keys():
                 if type(sub_k) != str:
-                    # view(-1, 1).repeat(1, 2) because real numbers!
                     psi_f[sub_k] = torch.from_numpy(
                         psi_f[sub_k]).float()
                     self.register_buffer('tensor' + str(n), psi_f[sub_k])
@@ -166,16 +163,23 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             if isinstance(p_f, dict):
                 for k in p_f:
                     if isinstance(k, int):
-                        p_f[k] = torch.from_numpy(p_f[k]).float()
-                        self.register_buffer(f'tensor{n}', p_f[k])
+                        if isinstance(p_f[k], list):
+                            for k_sub in range(len(p_f[k])):
+                                p_f[k][k_sub] = torch.from_numpy(
+                                    p_f[k][k_sub]).float()
+                                self.register_buffer(f'tensor{n}', p_f[k][k_sub])
+                                n += 1
+                        else:
+                            p_f[k] = torch.from_numpy(p_f[k]).float()
+                            self.register_buffer(f'tensor{n}', p_f[k])
+                            n += 1
             else:  # list
                 for p_f_sub in p_f:
                     for k in p_f_sub:
                         if isinstance(k, int):
-                            p_f_sub[k] = torch.from_numpy(p_f_sub[k]
-                                                          ).float()
+                            p_f_sub[k] = torch.from_numpy(p_f_sub[k]).float()
                             self.register_buffer(f'tensor{n}', p_f_sub[k])
-            n += 1
+                            n += 1
         n_final = n
         return n_final
 
@@ -194,13 +198,19 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             if isinstance(p_f, dict):
                 for k in p_f:
                     if isinstance(k, int):
-                        p_f[k] = buffer_dict[f'tensor{n}']
+                        if isinstance(p_f[k], list):
+                            for k_sub in range(len(p_f[k])):
+                                p_f[k][k_sub] = buffer_dict[f'tensor{n}']
+                                n += 1
+                        else:
+                            p_f[k] = buffer_dict[f'tensor{n}']
+                            n += 1
             else:  # list
                 for p_f_sub in p_f:
                     for k in p_f_sub:
                         if isinstance(k, int):
                             p_f_sub[k] = buffer_dict[f'tensor{n}']
-            n += 1
+                            n += 1
         n_final = n
         return n_final
 
