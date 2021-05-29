@@ -1053,7 +1053,9 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         else:
             ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
             ind_end_fr   = sc_freq.ind_end_fr[  n2][total_subsample_fr]
+        pre = S_2_fr.shape
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr)
+        print(n2, n1_fr, '--', pre, S_2_fr.shape)
     # Swap time and frequency subscripts again
     S_2_fr = B.transpose(S_2_fr)
 
