@@ -897,7 +897,6 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         try:
             return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1s_new[j0][n1_fr]
         except:
-            xi1_new[j0][n1_fr]
             _recalibrate_psi_fr(
                 xi1, sigma1, j1s, N, alpha, subsampling_equiv_relative_to_max_padding)
 

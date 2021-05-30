@@ -83,7 +83,7 @@ class ScatteringBase1D(ScatteringBase):
         self.average_global = bool(self.T == mx)
 
         # Compute the minimum support to pad (ideally)
-        min_to_pad = compute_minimum_support_to_pad(
+        min_to_pad, *_ = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, self.T, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
@@ -1036,7 +1036,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         # check F or set default
         if self.F is None:
-            self.F = 2**(self.J_fr)
+            self.F = 2**min(self.J_fr, 2)  # TODO docs
         elif self.F == 'global':
             self.F = mx
         elif self.F > mx:
@@ -1055,8 +1055,9 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.J_pad_fr_max_user = None
 
         # compute maximum amount of padding
-        self.J_pad_fr_max_init, self.min_to_pad_fr_max = self._compute_J_pad(
-            self.shape_fr_max, (self.Q_fr, 0))
+        (self.J_pad_fr_max_init, self.min_to_pad_fr_max, self._pad_fr_phi,
+         self._pad_fr_psi) = self._compute_J_pad(self.shape_fr_max,
+                                                 (self.Q_fr, 0))
 
     def create_phi_filters(self):
         """See `filter_bank.phi_fr_factory`."""
@@ -1107,8 +1108,9 @@ class _FrequencyScatteringBase(ScatteringBase):
             sigma_min_max = max(sigma1_fr) / self.sigma_max_to_min_max_ratio
             # restrict maximum downsampling relative to `J_pad_fr_max_init`
             # such that the second-highest `xi` wavelet meets `sigma_min_max`
+            # such that lowest `sigma` wavelet meets `sigma_min_max`  # TODO docs
             self.downsampling_max_due_to_sigma = math.floor(
-                math.log2(sigma_min_max / sigma1_fr[1]))
+                math.log2(sigma_min_max / min(sigma1_fr)))
             self.J_pad_fr_min = (self.J_pad_fr_max_init -
                                  min(self.downsampling_max_due_to_sigma,
                                      self.max_total_subsampling_before_phi_fr))
@@ -1191,18 +1193,25 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
         """Docs in `TimeFrequencyScatteringBase1D`."""
+        # for later
+        shape_fr_scale = int(np.ceil(np.log2(shape_fr)))
+        factor = 2**(self.J_pad_fr_max_init - shape_fr_scale)
+
         if recompute:
-            J_pad, _ = self._compute_J_pad(shape_fr, Q)
+            J_pad, *_ = self._compute_J_pad(shape_fr, Q)
         elif self.resample_phi_fr or self.resample_psi_fr:
-            # TODO treat separately
-            J_pad = math.ceil(np.log2(shape_fr + 2 * self.min_to_pad_fr_max))
+            if self.resample_phi_fr and self.resample_psi_fr:
+                min_to_pad = self.min_to_pad_fr_max
+            elif self.resample_phi_fr:
+                min_to_pad = max(self._pad_fr_phi, self._pad_fr_psi // factor)
+            else:
+                min_to_pad = max(self._pad_fr_psi, self._pad_fr_phi // factor)
+            J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
         else:
             # reproduce `compute_minimum_support_to_pad`'s logic
             # if we subsample, the time support reduces by same factor
             # `min_to_pad_fr_max` is set w.r.t. a `2**J_pad_fr_max_init` filter
-            J_tentative = int(np.ceil(np.log2(shape_fr)))
-            min_to_pad = self.min_to_pad_fr_max // 2**(self.J_pad_fr_max_init -
-                                                       J_tentative)
+            min_to_pad = self.min_to_pad_fr_max // factor
             J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
         # don't let J_pad drop below minimum
@@ -1213,7 +1222,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         return J_pad
 
     def _compute_J_pad(self, shape_fr, Q):
-        min_to_pad = compute_minimum_support_to_pad(
+        min_to_pad, pad_phi, pad_psi1, _ = compute_minimum_support_to_pad(
             shape_fr, self.J_fr, Q, self.F,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                               'criterion_amplitude', 'normalize', 'pad_mode'))
@@ -1221,7 +1230,7 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         if self.max_pad_factor_fr is not None:
             J_pad = min(J_pad, self.J_pad_fr_max_user)
-        return J_pad, min_to_pad
+        return J_pad, min_to_pad, pad_phi, pad_psi1
 
     def get_params(self, *args):
         return {k: getattr(self, k) for k in args}

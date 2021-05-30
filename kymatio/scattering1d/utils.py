@@ -174,16 +174,21 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     else:
         psi2_halfwidth = -1
 
-    # take maximum
-    t_max = max(phi_halfwidth, psi1_halfwidth, psi2_halfwidth)
+    # set min to pad based on each; take a little extra on each to be safe
+    pads = [int(1.2 * hw) for hw in
+            (phi_halfwidth, psi1_halfwidth, psi2_halfwidth)]
+
+    # set main quantity as the max of all
+    min_to_pad = max(pads)
 
     # set min to pad based on maximum
-    min_to_pad = int(1.2 * t_max)  # take a little extra to be safe
     if pad_mode == 'zero':
         min_to_pad //= 2
+        pads = [p//2 for p in pads]
+    phi_pad, psi1_pad, psi2_pad = pads
 
     # return results
-    return min_to_pad
+    return min_to_pad, phi_pad, psi1_pad, psi2_pad
 
 
 def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
@@ -455,11 +460,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
 
+        _average_fr = (True if n1_fr == -1 else sc_freq.average_fr)
+        if n2 == 9 and n1_fr == -1:
+            1==1
         total_conv_stride_over_U1 = _get_stride(j1_fr, pad_fr,
                                                 subsample_equiv_due_to_pad,
-                                                sc_freq, sc_freq.average_fr)
+                                                sc_freq, _average_fr)
 
-        if (n2 == -1 and n1_fr == -1):
+        if n2 == -1 and n1_fr == -1:
             n1_fr_subsample = 0
         else:
             if sc_freq.average_fr:
@@ -489,10 +497,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
         # TODO ref?
         total_conv_stride_over_U1 = n1_fr_subsample + lowpass_subsample_fr
-        return (shape_fr_padded, total_conv_stride_over_U1,
+        return (shape_fr_padded, total_conv_stride_over_U1, n1_fr_subsample,
                 subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr)
 
-    def _get_fr_params(n1_fr, subsample_equiv_due_to_pad):
+    def _get_fr_params(n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample):
         k = subsample_equiv_due_to_pad
         if n1_fr != -1:
             if resample_psi_fr:
@@ -501,25 +509,27 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 p = (xi1s_fr_new[k][n1_fr], sigma1s_fr_new[k][n1_fr],
                      j1s_fr_new[k][n1_fr])
         else:
-            if resample_phi_fr:
-                p = 0, sigma_low, log2_F
-            else:
-                p = (xi1s_fr_phi[k], sigma1_fr_phi[k], j1s_fr_phi[k])
+            if n1_fr == -1:
+                n1_fr_subsample = 0
+            p = [m[k][n1_fr_subsample] for m in (xi1s_fr_phi, sigma1_fr_phi,
+                                                 j1s_fr_phi)]
         xi1_fr, sigma1_fr, j1_fr = p
         return xi1_fr, sigma1_fr, j1_fr
 
     def _fill_n1_info(pair, n2, n1_fr, spin):
         # track S1 from padding to `_joint_lowpass()`
-        (shape_fr_padded, total_conv_stride_over_U1, subsample_equiv_due_to_pad,
-         ind_start_fr, ind_end_fr) = _get_compute_params(n2, n1_fr)
+        (shape_fr_padded, total_conv_stride_over_U1, n1_fr_subsample,
+         subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
+         ) = _get_compute_params(n2, n1_fr)
 
         # fetch xi, sigma for n2, n1_fr
         if n2 != -1:
             xi2, sigma2, j2 = xi2s[n2], sigma2s[n2], j2s[n2]
         else:
             xi2, sigma2, j2 = 0, sigma_low, log2_T
-        xi1_fr, sigma1_fr, j1_fr = _get_fr_params(n1_fr,
-                                                  subsample_equiv_due_to_pad)
+
+        xi1_fr, sigma1_fr, j1_fr = _get_fr_params(
+            n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample)
 
         # distinguish between `key` and `n`
         n1_fr_n   = n1_fr if (n1_fr != -1) else inf
@@ -531,10 +541,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         if sc_freq.average_fr_global:
             meta['order'][pair].append(2)
             meta['s'    ][pair].append((spin,))
-            meta['j'    ][pair].append((j2,     j1_fr,     math.nan))
-            meta['xi'   ][pair].append((xi2,    xi1_fr,    math.nan))
-            meta['sigma'][pair].append((sigma2, sigma1_fr, math.nan))
-            meta['n'    ][pair].append((n2_n,   n1_fr_n,   math.nan))
+            meta['j'    ][pair].append((j2,     j1_fr,     nan))
+            meta['xi'   ][pair].append((xi2,    xi1_fr,    nan))
+            meta['sigma'][pair].append((sigma2, sigma1_fr, nan))
+            meta['n'    ][pair].append((n2_n,   n1_fr_n,   nan))
             meta['key'  ][pair].append((n2_key, n1_fr_key, 0))
             return
 
@@ -549,7 +559,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
             if n1 >= fr_max:  # equivalently `j1 >= j2`
                 # these are padded rows, no associated filters
-                xi1, sigma1, j1 = math.nan, math.nan, math.nan
+                xi1, sigma1, j1 = nan, nan, nan
             else:
                 xi1, sigma1, j1 = xi1s[n1], sigma1s[n1], j1s[n1]
             meta['order'][pair].append(2)
@@ -563,7 +573,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     # set params
     N, N_fr = 2**J_pad, 2**sc_freq.J_pad_fr_max_init
     xi_min = (2 / N)  # leftmost peak at bin 2
-    xi_min_fr = (2 / 2**N_fr)
+    xi_min_fr = (2 / N_fr)
     log2_T = math.floor(math.log2(T))
     log2_F = math.floor(math.log2(F))
     # extract filter meta
@@ -578,13 +588,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         xi1s_fr_new, sigma1s_fr_new, j1s_fr_new = _recalibrate_psi_fr(
             xi1s_fr, sigma1s_fr, j1s_fr, N_fr, sc_freq.alpha,
             sc_freq.subsampling_equiv_relative_to_max_padding)
-    if not resample_phi_fr:
-        phi_j1_frs = list(range(log2_F + 1))
-        xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi = {}, {}, {}
-        for j1_fr in phi_j1_frs:
-            xi1s_fr_phi[j1_fr] = 0
-            sigma1_fr_phi[j1_fr] = sigma_low * 2**j1_fr
-            j1s_fr_phi[j1_fr] = log2_F - j1_fr
+
+    # fetch phi meta; must access `phi_f_fr` as `j1_frs` requires sampling phi
+    meta_phi = {}
+    for field in ('xi', 'sigma', 'j'):
+        meta_phi[field] = {}
+        for k in sc_freq.phi_f_fr[field]:
+            meta_phi[field][k] = [v for v in sc_freq.phi_f_fr[field][k]]
+    xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi = list(meta_phi.values())
 
     meta = {}
     inf = -1  # placeholder for infinity
@@ -628,7 +639,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     # `phi_t * psi_f` coeffs
     for n1_fr in range(len(j1s_fr)):
-        _fill_n1_info('phi_t * psi_f', n2=-1, n1_fr=n1_fr, spin=0)
+        try:
+            _fill_n1_info('phi_t * psi_f', n2=-1, n1_fr=n1_fr, spin=0)
+        except:
+            1/0
 
     # `psi_t * phi_f` coeffs
     for n2, j2 in enumerate(j2s):

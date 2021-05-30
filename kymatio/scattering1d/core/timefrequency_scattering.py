@@ -488,6 +488,9 @@ def timefrequency_scattering(
                                    subsample_equiv_due_to_pad)
             i. == XB1i. See j.
 
+            # TODO why is min introduced here?
+            # can we ever have `J_pad_fr_max < log2_F` w/ `True, True`?
+
            `total_conv_stride_over_U1 = (min(log2_F, J_pad_fr_max) -
                                          (J_pad_fr_max - pad_fr))`
             j. max `total_conv_stride_over_U1` is determined in `J_pad_fr_max`
@@ -506,41 +509,37 @@ def timefrequency_scattering(
         2. False, True
            Same as 1. See XB2.
 
-        3. True, False
-           `lowpass_subsample_fr = (
-               min(log2_F - subsample_equiv_due_to_pad, J_pad_fr_max) -
-               (J_pad_fr_max - pad_fr) - n1_fr_subsample)`.
-
-           We enforce:
              `n1_fr_subsample <= (
-                 min(log2_F - subsample_equiv_due_to_pad, J_pad_fr_max) -
-                 (J_pad_fr_max - pad_fr))`
-           because `subsample_equiv_due_to_pad` and `n1_fr_subsample` both lower
-           `phi_fr`'s `j` and thus can't sum above `log2_F`. At the same time
-           1j's logic is satisfied via `- (J_pad_fr_max - pad_fr)`.
-           Retroactively, expression for `lowpass_subsample_fr` follows, and
+                 min(log2_F, J_pad_fr_max) -
+                 subsample_equiv_due_to_pad`
+                 # == max(J_pad_fr_max - pad_fr, subsample_equiv_due_to_pad))
 
-           `total_conv_stride_over_U1 = (
-               min(log2_F - subsample_equiv_due_to_pad, J_pad_fr_max) -
-               (J_pad_fr_max - pad_fr))`
+        3. True, False
+           `lowpass_subsample_fr = (min(log2_F, J_pad_fr_max) -
+                                    subsample_equiv_due_to_pad -
+                                    n1_fr_subsample)`.
+           This is simply 1 with `J_pad_fr_max_init - pad_fr`. It then follows:
 
-           `total_subsample_fr == (total_conv_stride_over_U1 +
-                                   subsample_equiv_due_to_pad)`
+           `n1_fr_subsample <= (min(log2_F, J_pad_fr_max) -
+                                subsample_equiv_due_to_pad)`
+
+           `total_conv_stride_over_U1 = (min(log2_F, J_pad_fr_max) -
+                                         subsample_equiv_due_to_pad)`
 
         4. False, False
            Same as 3.
 
         ```
-        lowpass_subsample_fr == (min(j_phi, J_pad_fr_max) -
+        lowpass_subsample_fr == (min(phi_fr_sub_max, J_pad_fr_max) -
                                  (J_pad_fr_max - pad_fr) - n1_fr_subsample)
-        j_phi = phi_fr['j'][subsample_equiv_due_to_pad]
+        phi_fr_sub_max == phi_fr['j'][J_pad_fr_max]
         ```
         accounts for 1-4.
 
         ```
-        total_conv_stride_over_U1 = (min(j_fr, J_pad_fr_max) -
+        total_conv_stride_over_U1 = (min(phi_fr_sub_max, J_pad_fr_max) -
                                      (J_pad_fr_max - pad_fr))`
-        total_subsample_fr = (total_conv_stride_over_U1 -
+        total_subsample_fr = (total_conv_stride_over_U1 +
                               subsample_equiv_due_to_pad)
         ```
 
@@ -1167,19 +1166,18 @@ def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq,
         else:
             if sc_freq.out_3D:
                 J_pad_fr_max = sc_freq.J_pad_fr_max
+                phi_fr_sub_max = phi_fr['j'][sc_freq.J_pad_fr_max_init -
+                                             J_pad_fr_max][0]
                 total_conv_stride_over_U1 = (
-                    min(phi_fr['j'][k][0], J_pad_fr_max) -
-                    (J_pad_fr_max - pad_fr))
+                    min(phi_fr_sub_max, J_pad_fr_max) -
+                    (J_pad_fr_max - pad_fr)
+                )
             else:
                 total_conv_stride_over_U1 = phi_fr['j'][k][0]
     else:
         if sc_freq.aligned:
             total_conv_stride_over_U1 = 0
         else:
-            # if n1_fr != -1:
-            #     j1_fr = sc_freq.psi1_f_up[n1_fr]['j'][k]
-            # else:
-            #     j1_fr = sc_freq.phi_f_fr['j'][k]
             total_conv_stride_over_U1 = j1_fr
     return total_conv_stride_over_U1
 
