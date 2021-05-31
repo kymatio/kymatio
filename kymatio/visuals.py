@@ -286,10 +286,10 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False, sample_idx=0
         kup = 'psi_t * psi_f_up'
         kdn = 'psi_t * psi_f_down'
         sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
-        fig, axes = plt.subplots(1, 2, figsize=(7, 7))
+        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
-        imshow(sup, ax=axes, **kw, title=_title(meta, i, kup, '+1'))
+        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, '+1'))
         imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, '-1'))
         plt.subplots_adjust(wspace=0.01)
         plt.show()
@@ -299,6 +299,10 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False, sample_idx=0
                title=_title(meta, i, pair, '0'))
 
     out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
+    out_list = bool(isinstance(Scx['S0'], list))
+    if not (out_3D or out_list):
+        raise NotImplementedError("`out_type` must be 'dict:array' with "
+                                  "`out_3D=True`, or 'dict:list'.")
 
     if isinstance(norms, (list, tuple)):
         norms = [(0, n) for n in norms]
@@ -313,8 +317,6 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False, sample_idx=0
 
     if not skip_spins:
         for i in range(len(Scx['psi_t * psi_f_up'][sample_idx])):
-            if meta['n']['psi_t * psi_f_up'][i][0] > 2:
-                return
             _viz_spins(Scx, meta, i, norms[0])
 
     pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
@@ -345,6 +347,13 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
         return (np.abs(x).sum() if kind == 'L1' else
                 (np.abs(x)**2).sum())
 
+    if not isinstance(Scx, dict):
+        raise NotImplementedError("input must be dict. Set out_type='dict:array' "
+                                  "or 'dict:list'.")
+
+    # TODO `norm` logic is wrong for joint pairs, must scale per
+    # `total_conv_stride_over_U1`
+    # TODO coeffs collapsed into one per pair for some reason
     # TODO reverse coeff ordering low to high freq
     # extract energy info
     energies = []

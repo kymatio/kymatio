@@ -1070,7 +1070,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # if we subsample more, `phi_f_fr[subsample_equiv_due_to_pad]` fails
         self._n_phi_f_fr = len([k for k in self.phi_f_fr if isinstance(k, int)])
         self.max_total_subsampling_before_phi_fr = (
-            self._n_phi_f_fr - 1 if self.average_fr_global else
+            self._n_phi_f_fr - 1 if not self.average_fr_global else
             self.J_pad_fr_max_init)
 
     def create_psi_filters(self):
@@ -1102,7 +1102,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # compute minimum amount of padding
         if self.resample_psi_fr:
             self.J_pad_fr_min_limit = (self.J_pad_fr_max_init -
-                                 self.max_total_subsampling_before_phi_fr)
+                                       self.max_total_subsampling_before_phi_fr)
             self.downsampling_max_due_to_sigma = -1
         else:
             xi_min = 2 / 2**self.J_pad_fr_max_init
@@ -1115,9 +1115,10 @@ class _FrequencyScatteringBase(ScatteringBase):
             # such that lowest `sigma` wavelet meets `sigma_min_max`  # TODO docs
             self.downsampling_max_due_to_sigma = math.floor(
                 math.log2(sigma_min_max / min(sigma1_fr)))
-            self.J_pad_fr_min_limit = (self.J_pad_fr_max_init -
-                                 min(self.downsampling_max_due_to_sigma,
-                                     self.max_total_subsampling_before_phi_fr))
+            self.J_pad_fr_min_limit = (
+                self.J_pad_fr_max_init -
+                min(self.downsampling_max_due_to_sigma,
+                    self.max_total_subsampling_before_phi_fr))
         # TODO doc
         # TODO rename max_subsamp -> max_downsamp
 
