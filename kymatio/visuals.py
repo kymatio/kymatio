@@ -126,8 +126,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         psi_t = to_time(psi_t)
 
         # compute joint wavelet in time
-        # TODO fix up & down instead of conjugating
-        Psi = np.conj(psi_f)[:, None] * psi_t[None]
+        Psi = psi_f[:, None] * psi_t[None]
         # title
         spin = '+1' if s_idx == 0 else '-1'
         psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, f_idx, spin)
@@ -239,7 +238,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
 
 
-def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
+def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False, sample_idx=0):
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
     # Arguments:
@@ -262,6 +261,9 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
         skip_spins: bool (default False)
             Whether to skip `psi_t * psi_f` pairs.
 
+        sample_idx : int (default 0)
+            Index of sample in batched input to visualize.
+
     # Example:
         T, J, Q = 2049, 7, 16
         x = np.cos(np.pi * 350 ** np.linspace(0, 1, T))
@@ -275,19 +277,20 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
     """
     def _title(meta, i, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
-        mu, l = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                 for n in meta['n'][pair][i]]
+        i = (i, 0) if out_3D else i
+        mu, l, _ = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
+                    for n in meta['n'][pair][i]]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
     def _viz_spins(Scx, meta, i, norm):
         kup = 'psi_t * psi_f_up'
         kdn = 'psi_t * psi_f_down'
-        sup, sdn = Scx[kup][i], Scx[kdn][i]
-        fig, axes = plt.subplots(1, 2, figsize=(15, 7))
+        sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
+        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
-        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, +1))
-        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, -1))
+        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, '+1'))
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, '-1'))
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
@@ -295,8 +298,16 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
         imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
                title=_title(meta, i, pair, '0'))
 
-    if norms is not None:
+    out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
+    out_list = bool(isinstance(Scx['S0'], list))
+    if not (out_3D or out_list):
+        raise NotImplementedError("`out_type` must be 'dict:array' with "
+                                  "`out_3D=True`, or 'dict:list'.")
+
+    if isinstance(norms, (list, tuple)):
         norms = [(0, n) for n in norms]
+    elif isinstance(norms, float):
+        norms = [(0, norms) for _ in range(3)]
     else:
         # set to .5 times the max of any joint coefficient (except phi_t * phi_f)
         mx = np.max([(c['coef'] if isinstance(c, list) else c).max()
@@ -305,12 +316,12 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
         norms = [(0, .5 * mx)] * 5
 
     if not skip_spins:
-        for i in range(len(Scx['psi_t * psi_f_up'])):
+        for i in range(len(Scx['psi_t * psi_f_up'][sample_idx])):
             _viz_spins(Scx, meta, i, norms[0])
 
     pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
     for j, pair in enumerate(pairs):
-        for i, coef in enumerate(Scx[pair]):
+        for i, coef in enumerate(Scx[pair][sample_idx]):
             coef = coef['coef'] if isinstance(coef, list) else coef
             _viz_simple(coef, pair, meta, i, norms[1 + j])
 
@@ -336,6 +347,13 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
         return (np.abs(x).sum() if kind == 'L1' else
                 (np.abs(x)**2).sum())
 
+    if not isinstance(Scx, dict):
+        raise NotImplementedError("input must be dict. Set out_type='dict:array' "
+                                  "or 'dict:list'.")
+
+    # TODO `norm` logic is wrong for joint pairs, must scale per
+    # `total_conv_stride_over_U1`
+    # TODO coeffs collapsed into one per pair for some reason
     # TODO reverse coeff ordering low to high freq
     # extract energy info
     energies = []

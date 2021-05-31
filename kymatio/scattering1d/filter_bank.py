@@ -306,6 +306,10 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3, warn=False):
     if len(meets_criterion_idxs) != 0:
         # if it is possible
         N = meets_criterion_idxs.min() + 1
+        # in this case pretend it's 1 less so external computations don't
+        # have to double support since this is close enough
+        if N == half_support:
+            N -= 1
     else:
         # if there are none
         N = half_support
@@ -807,7 +811,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         psi2_f[n2]['j'] = j2
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
-    phi_f['j'] = 0
+    phi_f['j'] = log2_T
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
@@ -821,7 +825,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
                    subsampling_equiv_relative_to_max_padding,
                    resample_psi_fr=True, r_psi=math.sqrt(0.5), normalize='l1',
-                   sigma0=0.1, alpha=5., P_max=5, eps=1e-7):
+                   criterion_amplitude=1e-3, sigma0=0.1, alpha=4., P_max=5,
+                   eps=1e-7):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -853,7 +858,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         - False: recalibrate filter to each length; center frequency is
           preserved, but temporal support is narrowed (contraction).
           E.g. `psi = psi[::2]`.
-    r_psi, normalize, sigma0, alpha, P_max, eps:
+    r_psi, normalize, criterion_amplitude, sigma0, alpha, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
     Returns
@@ -870,54 +875,88 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         is anti-analytic wavelet).
     """
     # compute the spectral parameters of the filters
+    J_support = J_pad_fr_max  # begin with longest
+    N = 2**J_support
+    xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
     _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
-        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
     psi1_f_fr_down = []
 
-    # loop params
-    J_support = J_pad_fr_max  # begin with longest
-    N = 2**J_support
+    if not resample_psi_fr:
+        # recalibrate filterbank to each j0
+        xi1_new, sigma1_new, j1s_new = _recalibrate_psi_fr(
+            xi1, sigma1, j1s, N, alpha, subsampling_equiv_relative_to_max_padding)
+
+    def get_params(n1_fr, j0):
+        if resample_psi_fr:
+            return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
+        return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1s_new[j0][n1_fr]
 
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
-    for (n1_fr, j1) in enumerate(j1s):
-        psi_f = {}
-        psi_f[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr],
-                             normalize=normalize, P_max=P_max, eps=eps)
-        # j0s is ordered greater to lower, so reverse
+    # TODO ^
+    j0_max = None
+    if resample_psi_fr:
+        j0_prev = -1
+        for j0 in (0, *subsampling_equiv_relative_to_max_padding[::-1]):
+            if j0 < 0 or j0 == j0_prev:
+                continue
+            psi_widest = morlet_1d(N // 2**j0, xi1[-1], sigma1[-1],
+                                   normalize=normalize, P_max=P_max, eps=eps)
+            psi_widest_halfwidth = compute_temporal_support(
+                psi_widest.reshape(1, -1),
+                criterion_amplitude=criterion_amplitude)
+            if psi_widest_halfwidth == psi_widest.size // 2:
+                # This means width is already too great for its own length,
+                # so lesser length will distort its temporal envelope.
+                # Frontend will adjust J_pad_fr_min accordingly.
+                j0_max = j0
+
+    for n1_fr in range(len(j1s)):
+        psi_down = {}
+        psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
+                                P_max=P_max, eps=eps)
+
+        # j0 is ordered greater to lower, so reverse
         j0_prev = -1
         for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
-            if j0 <= 0 or j0 == j0_prev:
+            if j0 <= 0 or j0 == j0_prev or (j0_max is not None and j0 > j0_max):
                 continue
-            factor = 2**j0
             j0_prev = j0
-            if resample_psi_fr:
-                psi_f[j0] = morlet_1d(N // factor, xi1[n1_fr], sigma1[n1_fr],
-                                      normalize=normalize, P_max=P_max, eps=eps)
-            else:
-                psi_f[j0] = periodize_filter_fourier(psi_f[0], nperiods=factor)
-        psi1_f_fr_down.append(psi_f)
 
-    # compute spin down filters by conjugating spin up in frequency domain
-    for psi_downs in psi1_f_fr_down:
+            xi, sigma, j = get_params(n1_fr, j0)
+            psi_down[j0] = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
+                                     P_max=P_max, eps=eps)
+
+        psi1_f_fr_down.append(psi_down)
+        # compute spin up
         psi_up = {}
-        for j0, psi_down in enumerate(psi_downs.values()):
-            psi_up[j0] = conj_fr(psi_down)
+        for j0 in psi_down:
+            # compute spin up by conjugating spin down in frequency domain
+            psi_up[j0] = conj_fr(psi_down[j0])
         psi1_f_fr_up.append(psi_up)
 
-    # Embed the meta information within the filters
-    for (n1_fr, j1) in enumerate(j1s):
-        for psi1_f in (psi1_f_fr_up, psi1_f_fr_down):
-            psi1_f[n1_fr]['xi'] = xi1[n1_fr]
-            psi1_f[n1_fr]['sigma'] = sigma1[n1_fr]
-            psi1_f[n1_fr]['j'] = j1
+    # Embed meta information within the filters
+    for (n1_fr, j1_fr) in enumerate(j1s):
+        for psi_f in (psi1_f_fr_down, psi1_f_fr_up):
+            # create initial meta
+            meta = {'xi': xi1[n1_fr], 'sigma': sigma1[n1_fr], 'j': j1_fr}
+            for field, value in meta.items():
+                psi_f[n1_fr][field] = {0: value}
+            # fill for j0s
+            j0s = [k for k in psi_f[n1_fr] if (isinstance(k, int) and k != 0)]
+            for j0 in j0s:
+                xi, sigma, j = get_params(n1_fr, j0)
+                psi_f[n1_fr]['xi'][j0] = xi
+                psi_f[n1_fr]['sigma'][j0] = sigma
+                psi_f[n1_fr]['j'][j0] = j
 
     # return results
-    return psi1_f_fr_up, psi1_f_fr_down
+    return psi1_f_fr_up, psi1_f_fr_down, j0_max
 
 
 def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
@@ -971,34 +1010,104 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
 
     # initial lowpass
     phi_f_fr = {}
-    phi_f_fr[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    phi_f_fr[0] = [gauss_1d(N, sigma_low, P_max=P_max, eps=eps)]
+
+    def compute_all_subsamplings(phi_f_fr, j_fr):
+        for j_fr_sub in range(1, 1 + log2_F):
+            phi_f_fr[j_fr].append(periodize_filter_fourier(
+                phi_f_fr[j_fr][0], nperiods=2**j_fr_sub))
+
+    compute_all_subsamplings(phi_f_fr, j_fr=0)
 
     # lowpass filters at all possible input lengths
     for j_fr in range(1, 1 + log2_F):
         factor = 2**j_fr
         if resample_phi_fr:
-            prev_phi = phi_f_fr[j_fr - 1].reshape(1, -1)
+            prev_phi = phi_f_fr[j_fr - 1][0].reshape(1, -1)
             prev_phi_halfwidth = compute_temporal_support(
                 prev_phi, criterion_amplitude=criterion_amplitude)
 
-            if prev_phi_halfwidth == prev_phi.size // 2:
+            if prev_phi_halfwidth == prev_phi.size // 2:  # TODO need for psi?
                 # This means width is already too great for own length,
                 # so lesser length will distort lowpass.
                 # Frontend will adjust "all possible input lengths" accordingly
                 break
-            phi_f_fr[j_fr] = gauss_1d(N // factor, sigma_low, P_max=P_max,
-                                      eps=eps)
+            phi_f_fr[j_fr] = [gauss_1d(N // factor, sigma_low, P_max=P_max,
+                                       eps=eps)]
+            # dedicate separate filters for *subsampled* as opposed to *trimmed*
+            # inputs (i.e. `n1_fr_subsample` vs `J_pad_fr_max_init - J_pad_fr`)
+            # note this increases maximum subsampling of phi_fr relative to
+            # J_pad_fr_max_init
+            compute_all_subsamplings(phi_f_fr, j_fr=j_fr)
         else:
-            phi_f_fr[j_fr] = periodize_filter_fourier(phi_f_fr[0],
-                                                      nperiods=factor)
+            # `phi[::factor] == gauss_1d(N // factor, sigma_low * factor)`
+            # when not aliased  # TODO cleanup
+            # these won't differ from plain subsampling but we still index
+            # via `subsampling_equiv_relative_to_max_padding` and
+            # `n1_fr_subsample` so just copy pointers
+            phi_f_fr[j_fr] = [phi_f_fr[0][j_fr_sub]
+                              for j_fr_sub in range(j_fr, 1 + log2_F)]
+            # TODO instead reindex as sum?
 
     # embed meta info in filters
-    phi_f_fr['xi'] = 0.
-    phi_f_fr['sigma'] = sigma_low
-    phi_f_fr['j'] = 0
+    phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j')})
+    j_frs = [j for j in phi_f_fr if isinstance(j, int)]
+    for j_fr in j_frs:
+        xi_fr_0 = 0.
+        sigma_fr_0 = (sigma_low if resample_phi_fr else
+                      sigma_low * 2**j_fr)
+        j_fr_0 = (log2_F if resample_phi_fr else
+                  log2_F - j_fr)
+        for field in ('xi', 'sigma', 'j'):
+            phi_f_fr[field][j_fr] = []
+        for j_fr_sub in range(len(phi_f_fr[j_fr])):
+            phi_f_fr['xi'][j_fr].append(xi_fr_0)
+            phi_f_fr['sigma'][j_fr].append(sigma_fr_0 * 2**j_fr_sub)
+            phi_f_fr['j'][j_fr].append(j_fr_0 - j_fr_sub)
+
+    for j_fr in j_frs:
+        for j_fr_sub in range(len(phi_f_fr[j_fr])):
+            # no negative subsampling
+            assert phi_f_fr['j'][j_fr][j_fr_sub] >= 0
+            # no sigma exceeding `F==1` case
+            assert phi_f_fr['sigma'][j_fr][j_fr_sub] <= sigma0
 
     # return results
     return phi_f_fr
+
+
+def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
+                        subsampling_equiv_relative_to_max_padding):
+    # recalibrate filterbank to each j0
+    # j0=0 is the original length, no change needed
+    xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
+    j0_prev = -1
+    for j0 in subsampling_equiv_relative_to_max_padding[::-1]:
+        if j0 <= 0 or j0 == j0_prev:
+            continue
+        xi1_new[j0], sigma1_new[j0], j1s_new[j0] = [], [], []
+        factor = 2**j0
+        j0_prev = j0
+
+        # contract largest temporal width of any wavelet by 2**j0,
+        # but not above sigma_max/1.2
+        sigma_max_to_min_max_ratio = 1.2
+        sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
+        sigma_min_j0 = min(min(sigma1) * factor, sigma_min_max)
+
+        # halve distance from existing xi_max to .5 (theoretical max)
+        new_xi_max = .5 - (.5 - max(xi1)) / factor
+        new_xi_min = 2 / (N // factor)
+        # logarithmically distribute
+        new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
+                             len(xi1), endpoint=True)[::-1]
+        xi1_new[j0].extend(new_xi)
+        new_sigma = np.logspace(np.log10(sigma_min_j0), np.log10(max(sigma1)),
+                                len(xi1), endpoint=True)[::-1]
+        sigma1_new[j0].extend(new_sigma)
+        for xi, sigma in zip(new_xi, new_sigma):
+            j1s_new[j0].append(get_max_dyadic_subsampling(xi, sigma, alpha=alpha))
+    return xi1_new, sigma1_new, j1s_new
 
 
 def conj_fr(x):
