@@ -575,7 +575,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     xi_min = (2 / N)  # leftmost peak at bin 2
     xi_min_fr = (2 / N_fr)
     log2_T = math.floor(math.log2(T))
-    log2_F = math.floor(math.log2(F))
     # extract filter meta
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
@@ -639,10 +638,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     # `phi_t * psi_f` coeffs
     for n1_fr in range(len(j1s_fr)):
-        try:
-            _fill_n1_info('phi_t * psi_f', n2=-1, n1_fr=n1_fr, spin=0)
-        except:
-            1/0
+        _fill_n1_info('phi_t * psi_f', n2=-1, n1_fr=n1_fr, spin=0)
 
     # `psi_t * phi_f` coeffs
     for n2, j2 in enumerate(j2s):

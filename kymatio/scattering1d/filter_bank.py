@@ -894,11 +894,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
     def get_params(n1_fr, j0):
         if resample_psi_fr:
             return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
-        try:
-            return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1s_new[j0][n1_fr]
-        except:
-            _recalibrate_psi_fr(
-                xi1, sigma1, j1s, N, alpha, subsampling_equiv_relative_to_max_padding)
+        return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1s_new[j0][n1_fr]
 
     # for the 1st order filters, the input is trimmed, so we resample or subsample
     # filters at expected pad lengths
