@@ -6,4 +6,5 @@ pillow
 matplotlib
 scikit-learn
 texext
-m2r
+m2r2
+pycodestyle

@@ -1,16 +1,37 @@
 name: Kymatio Pip CI
 
 on:
-    - push
-    - pull_request
+    push:
+        paths:
+          - "kymatio/*"
+          - "tests/*"
+          - ".github/workflows/*"
+          - ".coveragerc"
+          - "requirements.txt"
+          - "requirements_optional.txt"
+          
+    pull_request:
+        paths:
+          - "kymatio/*"
+          - "tests/*"
+          - ".github/workflows/*"
+          - ".coveragerc"
+          - "requirements.txt"
+          - "requirements_optional.txt"
 
 jobs:
     build-pip:
+        if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
+
         runs-on: ubuntu-20.04
 
         strategy:
             matrix:
-                python-version: [3.6, 3.7, 3.8]
+                python-version: [3.6, 3.7]
+                pytorch-version: [1.7, 1.8]
+                include:
+                    - python-version: 3.5
+                      pytorch-version: 1.5
 
         steps:
             - uses: actions/checkout@v1
@@ -23,15 +44,22 @@ jobs:
                   python3 -m pip install --upgrade pip
                   python3 -m pip install pytest pytest-cov
 
-                  torch_version="1.7.1+cpu"
-                  torchvision_version="0.8.2+cpu"
-
-                  python3 -m pip install torch==${torch_version} torchvision==${torchvision_version} -f https://download.pytorch.org/whl/torch_stable.html
-
-                  if [ "${{ matrix.python-version }}" != "3.9" ]; then
-                      python3 -m pip install "tensorflow>=2.0.0a"
+                  if [ ${{ matrix.pytorch-version }} == '1.5' ]; then
+                      pip install torch==1.5.1+cpu \
+                                  torchvision==0.6.1+cpu \
+                                  -f https://download.pytorch.org/whl/torch_stable.html
+                  elif [ ${{ matrix.pytorch-version }} == '1.7' ]; then
+                      pip install torch==1.7.1+cpu \
+                                  torchvision==0.8.2+cpu \
+                                  torchaudio==0.7.2 \
+                                  -f https://download.pytorch.org/whl/torch_stable.html
+                  elif [ ${{ matrix.pytorch-version }} == '1.8' ]; then
+                      pip install torch==1.8.0+cpu \
+                                  torchvision==0.9.0+cpu \
+                                  torchaudio==0.8.0 \
+                                  -f https://download.pytorch.org/whl/torch_stable.html
                   fi
-
+                  python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
 
                   python3 -m pip install -r requirements.txt
@@ -39,4 +67,7 @@ jobs:
             - name: Set up Kymatio
               run: python3 setup.py develop
             - name: Test
-              run: pytest --cov=kymatio
+              run: >
+                  pycodestyle --max-line-length=85 kymatio
+                  
+                  pytest --cov=kymatio
