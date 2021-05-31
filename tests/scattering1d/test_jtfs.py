@@ -43,6 +43,14 @@ def test_alignment():
         Scx = drop_batch_dim_jtfs(Scx)
         jmeta = jtfs.meta()
 
+        # some `psi2` won't capture peak
+        n2_min = 4
+        # assert J_pad_fr differs from max at this point
+        # (which is where alignment most easily breaks)
+        # assert jtfs.J_pad_fr[n2_min] != jtfs.J_pad_fr_max  # TODO
+
+        # TODO test phi pairs too
+
         # assert peaks share an index ########################################
         S_all = {}
         for pair in ('psi_t * psi_f_up', 'psi_t * psi_f_down'):
@@ -50,12 +58,12 @@ def test_alignment():
             if 'array' in out_type:
                 for i in range(len(jmeta['n'][pair])):
                     n2 = jmeta['n'][pair][i][0][0]
-                    if n2 >= 4:  # some `psi2` won't capture peak
+                    if n2 >= n2_min:
                         S_all[pair][i] = Scx[pair][i]
             else:
                 for i in range(len(Scx[pair])):  # more convenient
                     n2 = Scx[pair][i]['n'][0]
-                    if n2 >= 4:  # some `psi2` won't capture peak
+                    if n2 >= n2_min:
                         S_all[pair][i] = Scx[pair][i]['coef']
 
         first_coef = list(list(S_all.values())[0].values())[0]
@@ -149,7 +157,7 @@ def test_freq_tp_invar():
     J = int(np.log2(N) - 1)  # have 2 time units at output
     J_fr = 4
     F_all = [2**(J_fr), 2**(J_fr + 1)]
-    th_all = [.19, .14]
+    th_all = [.21, .14]
 
     for th, F in zip(th_all, F_all):
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
@@ -182,7 +190,7 @@ def test_up_vs_down():
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
     E_down = energy(Scx['psi_t * psi_f_down'])
-    assert E_down / E_up > 15
+    assert E_down / E_up > 17
 
 
 def test_max_pad_factor_fr():
@@ -256,10 +264,10 @@ def test_meta():
     combinations of
         - out_3D (True only with average_fr=True)
         - average_fr
-        - aligned (False only with out_3D=True)
+        - aligned
         - resample_psi_fr
         - resample_phi_fr
-    a total of 16 tests. All possible ways of packing the same coefficients
+    a total of 24 tests. All possible ways of packing the same coefficients
     (via `out_type`) aren't tested.
 
     Not tested:
@@ -334,19 +342,18 @@ def test_meta():
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    Q = (8, 2)
+    Q = (16, 1)
     J_fr = 5
     Q_fr = 2
+    F = 4
     out_type = 'dict:list'
-    params = dict(shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, out_type=out_type)
+    params = dict(shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, F=F, out_type=out_type)
 
     for out_3D in (False, True):
       for average_fr in (True, False):
         if out_3D and not average_fr:
             continue  # invalid option
         for aligned in (True, False):
-          if not aligned and not out_3D:
-              continue  # invalid option
           for resample_psi_fr in (True, False):
             for resample_phi_fr in (True, False):
                 test_params = dict(
@@ -355,11 +362,32 @@ def test_meta():
                 test_params_str = '\n'.join(f'{k}={v}' for k, v in
                                             test_params.items())
 
+                # if not (out_3D == False and
+                #         average_fr == True and
+                #         aligned == True  and
+                #         resample_psi_fr == False and
+                #         resample_phi_fr == True):
+                #     continue
+                # if resample_psi_fr or resample_phi_fr:
+                #     continue
+
                 jtfs = TimeFrequencyScattering1D(**params, **test_params,
-                                         frontend=default_backend)
-                Scx = jtfs(x)
-                jmeta = jtfs.meta()
-                # TODO assert for resample_=False we get variable J_pad_fr
+                                                 frontend=default_backend)
+                if not resample_psi_fr:
+                    # assert not all J_pad_fr are same so test covers this case
+                    # psi is dominant here as `2**J_fr > F`
+                    assert not all(
+                        J_pad_fr == jtfs.J_pad_fr_max
+                        for J_pad_fr in jtfs.J_pad_fr if J_pad_fr != -1
+                        ), "{}\nJ_pad_fr={}\nshape_fr={}".format(
+                            test_params_str, jtfs.J_pad_fr, jtfs.shape_fr)
+
+                try:
+                    Scx = jtfs(x)
+                    jmeta = jtfs.meta()
+                except Exception as e:
+                    print("Failed at:\n%s" % test_params_str)
+                    raise e
 
                 # ensure no output shape was completely reduced
                 for pair in Scx:
@@ -383,7 +411,7 @@ def test_output():
 
           (aligned, average_fr, out_3D, out_type,     F)
         0. True     True        False   'dict:list'   8
-        1. True     True        True    'dict:array'  8
+        1. True     True        True    'dict:array'  8  # TODO make this test 0
         2. False    True        True    'dict:array'  8
         3. True     True        False   'dict:list'   'global'
         4. True     False       False   'dict:array'  8
@@ -434,13 +462,12 @@ def test_output():
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
-        if test_num == 4:  # TODO
-            continue
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         out = jtfs(x)
 
+        # assert equal total number of coefficients
         if params['out_type'] == 'dict:list':
             n_coef_out = sum(len(o) for o in out.values())
             n_coef_out_stored = len(out_stored)
@@ -463,6 +490,8 @@ def test_output():
                                    params_str)
                 if output_test_print_mode and o.shape != o_stored.shape:
                     print(errmsg)
+                    i_s += 1
+                    continue
                 else:
                     assert o.shape == o_stored.shape, errmsg
 

@@ -1,8 +1,7 @@
 import torch
 import torch.fft
-import torch.nn.functional as F
 from ...backend.torch_backend import TorchBackend
-from .agnostic_backend import pad as agnostic_pad
+from .agnostic_backend import pad as agnostic_pad, index_axis
 
 
 class TorchBackend1D(TorchBackend):
@@ -32,61 +31,65 @@ class TorchBackend1D(TorchBackend):
         """
         cls.complex_check(x)
 
-        N = x.shape[-2]
+        N = x.shape[-1]
 
+        x = torch.view_as_real(x)
         res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+        res = torch.view_as_complex(res)
 
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right, pad_mode='reflect'):
-        """Pad real 1D tensors
+    def pad(x, pad_left, pad_right, axis=-1, pad_mode='reflect'):
+        """Pad N-dim tensor along one dimension.
 
-        1D implementation of the padding function for real PyTorch tensors.
+        Pads PyTorch tensor by `pad_left` and `pad_right` along one axis.
 
         Parameters
         ----------
         x : tensor
-            Three-dimensional input tensor with the third axis being the one to
-            be padded.
+            Input with at least one axis.
         pad_left : int
             Amount to add on the left of the tensor (at the beginning of the
             temporal axis).
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        axis : int
+            Axis to pad.
         pad_mode : str
             name of padding to use.
+
         Returns
         -------
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'torch')[..., None]
+        return agnostic_pad(x, pad_left, pad_right, pad_mode, axis, 'torch')
 
     @staticmethod
-    def unpad(x, i0, i1):
-        """Unpad real 1D tensor
+    def unpad(x, i0, i1, axis=-1):
+        """Unpad N-dim tensor along one dimension.
 
-        Slices the input tensor at indices between i0 and i1 along the last axis.
+        Slices the input tensor at indices between i0 and i1 along any one axis.
 
         Parameters
         ----------
         x : tensor
-            Input tensor with least one axis.
+            Input with at least one axis.
         i0 : int
             Start of original signal before padding.
         i1 : int
             End of original signal before padding.
+        axis : int
+            Axis to unpad.
 
         Returns
         -------
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        x = x.reshape(x.shape[:-1])
-
-        return x[..., i0:i1]
+        return x[index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
     def zeros_like(cls, ref, shape=None):
@@ -102,33 +105,25 @@ class TorchBackend1D(TorchBackend):
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
-    def rfft(cls, x):
+    def rfft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.real_check(x)
 
-        x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
-        x_r[..., 0] = x[..., 0]
-
-        return torch.fft.fft(x_r, 1)
+        return torch.fft.fft(x, dim=axis)
 
     @classmethod
-    def irfft(cls, x):
+    def irfft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.fft.ifft(x, 1, norm='forward')[..., :1]
+        return torch.fft.ifft(x, dim=axis).real
 
     @classmethod
-    def ifft(cls, x):
+    def ifft(cls, x, axis=-1):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return torch.fft.ifft(x, 1, norm='forward')
-
-    @classmethod
-    def transpose(cls, x):
-        """Permute time and frequency dimension for time-frequency scattering"""
-        return x.transpose(*list(range(x.ndim - 2)), -1, -2).contiguous()
+        return torch.fft.ifft(x, dim=axis)
 
     @classmethod
     def mean(cls, x, axis=-1):
