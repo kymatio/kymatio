@@ -1083,7 +1083,6 @@ class _FrequencyScatteringBase(ScatteringBase):
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
         # TODO consistent naming, `subsample` vs `subsampling` etc
-        # repeat logic of `max_total_subsampling_before_phi_fr` for psi
         if self.max_subsample_equiv_before_psi_fr is not None:
             self.J_pad_fr_min_limit = max(
                 self.J_pad_fr_min_limit,

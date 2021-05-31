@@ -1041,7 +1041,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
             compute_all_subsamplings(phi_f_fr, j_fr=j_fr)
         else:
             # `phi[::factor] == gauss_1d(N // factor, sigma_low * factor)`
-            # when not aliased
+            # when not aliased  # TODO cleanup
             # these won't differ from plain subsampling but we still index
             # via `subsampling_equiv_relative_to_max_padding` and
             # `n1_fr_subsample` so just copy pointers
