@@ -6,9 +6,5 @@ pillow
 matplotlib
 scikit-learn
 texext
-<<<<<<< HEAD
 m2r2
-=======
-m2r
 pycodestyle
->>>>>>> pycodestyle

@@ -59,11 +59,7 @@ jobs:
             - name: Set up Kymatio
               run: conda run -n ${CONDA_ENV} python3 setup.py develop
             - name: Test
-<<<<<<< HEAD
-              run: conda run -n ${CONDA_ENV} pytest --cov=kymatio
-=======
               run: >
                   conda run -n test-env pycodestyle --max-line-length=85 kymatio
                   
                   conda run -n test-env pytest --cov=kymatio
->>>>>>> Style
