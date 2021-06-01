@@ -463,10 +463,6 @@ class TimeFrequencyScatteringBase1D():
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
-        # don't allow untested (and likely unneeded) combination
-        # if not self.aligned and not self.out_3D:
-        #     raise ValueError("`aligned=False` is only allowed with `out_3D=True`")
-
         # if config yields no second order coeffs, we cannot do joint scattering
         if self._no_second_order_filters:
             raise ValueError("configuration yields no second-order filters; "
@@ -1033,6 +1029,11 @@ class _FrequencyScatteringBase(ScatteringBase):
             raise ValueError(("2**J_fr cannot exceed maximum number of frequency "
                               "rows (rounded up to pow2) in joint scattering "
                               "(got {} > {})".format(2**(self.J_fr), mx)))
+
+        # check `resample_psi_fr`
+        if self.resample_psi_fr == 'exclude' and self.out_3D:
+            raise ValueError("`resample_psi_fr='exclude'` and `out_3D=True` "
+                             "are incompatible.")
 
         # check F or set default
         if self.F is None:

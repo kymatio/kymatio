@@ -60,8 +60,8 @@ def compute_padding(J_pad, N):
         raise ValueError('Padding support should be larger than the original '
                          'signal size!')
     to_add = 2**J_pad - N
-    pad_left = to_add // 2
-    pad_right = to_add - pad_left
+    pad_right = to_add // 2
+    pad_left = to_add - pad_right
     return pad_left, pad_right
 
 def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
