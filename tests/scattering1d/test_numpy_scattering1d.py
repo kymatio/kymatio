@@ -2,10 +2,7 @@ import pytest
 from kymatio import Scattering1D
 from kymatio.scattering1d.filter_bank import scattering_filter_factory
 import os
-<<<<<<< HEAD
 import sys
-=======
->>>>>>> f169e929690ce3aba3bbead8ef852d59ff55d5b8
 import io
 import numpy as np
 
@@ -22,20 +19,15 @@ class TestScattering1DNumpy:
         a previously calculated version.
         """
         test_data_dir = os.path.dirname(__file__)
-
         with open(os.path.join(test_data_dir, 'test_data_1d.npz'), 'rb') as f:
             buffer = io.BytesIO(f.read())
             data = np.load(buffer)
-
         x = data['x']
         J = data['J']
         Q = data['Q']
         Sx0 = data['Sx']
-
         N = x.shape[-1]
-
         scattering = Scattering1D(J, N, Q, backend=backend, frontend='numpy')
-
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0)
 
@@ -50,36 +42,22 @@ class TestScattering1DNumpy:
             data = np.load(buffer)
         x = data['x']
         J = data['J']
-<<<<<<< HEAD
-        #debug
         Q = data['Q']
         Sx0 = data['Sx']
         N = x.shape[-1]
-        
-=======
-        Q = data['Q']
-        Sx0 = data['Sx']
-        N = x.shape[-1]
->>>>>>> f169e929690ce3aba3bbead8ef852d59ff55d5b8
         # default
         scattering1 = Scattering1D(J, N, Q, backend=backend, frontend='numpy')
         Sx1 = scattering1(x)
         meta1 = scattering1.meta()
-<<<<<<< HEAD
-        
-=======
         order0_1 = np.where(meta1['order'] == 0)
         order1_1 = np.where(meta1['order'] == 1)
         order2_1 = np.where(meta1['order'] == 2)
->>>>>>> f169e929690ce3aba3bbead8ef852d59ff55d5b8
         # adjust T
         sigma_low_scale_factor = 2
         T=2**(J-sigma_low_scale_factor)
         scattering2 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='numpy')
         Sx2 = scattering2(x)
         assert Sx2.shape == (Sx1.shape[0], Sx1.shape[1], Sx1.shape[2]*2**(sigma_low_scale_factor))        
-<<<<<<< HEAD
-
         # adjust J
         sigma_low_scale_factor = 1
         T=2**J
@@ -99,22 +77,6 @@ class TestScattering1DNumpy:
             indices2 = np.append(indices2, i)
           i += 1         
         assert np.allclose(Sx1[:,indices1, :],Sx2[:,indices2, :])
-=======
-        # new adjust T test
-        # sigma_low_scale_factor = 1
-        # T=2**J
-        # scattering2 = Scattering1D(J-sigma_low_scale_factor, N, Q, T=T, backend=backend, frontend='numpy')
-        # Sx2 = scattering2(x)
-        # meta2 = scattering2.meta()
-        # order0_2 = np.where(meta2['order'] == 0)
-        # order1_2 = np.where(meta2['order'] == 1)
-        # order2_2 = np.where(meta2['order'] == 2)
-        # order1_2_len = len(order1_2[0])
-        # order2_2_len = len(order2_2[0])
-        #assert np.allclose(Sx1[:,order0_1, :],Sx2[:,order0_2, :])
-        #assert np.allclose(Sx1[:,order1_1[0][0:order1_2_len], :],Sx2[:,order1_2, :])
-        #assert np.allclose(Sx1[:,order2_1[0][0:order2_2_len], :],Sx2[:,order2_2, :])
->>>>>>> f169e929690ce3aba3bbead8ef852d59ff55d5b8
         
     def test_Scattering1D_filter_factory_T(self, backend):
         """
@@ -135,9 +97,6 @@ class TestScattering1DNumpy:
                 else:
                     default_str = ''
                 phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(N), J, Q, T)
-<<<<<<< HEAD
-                assert(phi_f['sigma']==0.1/T)
-=======
                 assert(phi_f['sigma']==0.1/T)
 
 if __name__ == '__main__':
@@ -145,4 +104,3 @@ if __name__ == '__main__':
   test.test_Scattering1D_T(backend)
   test.test_Scattering1D(backend)
   test.test_Scattering1D_filter_factory_T(backend)
->>>>>>> f169e929690ce3aba3bbead8ef852d59ff55d5b8
