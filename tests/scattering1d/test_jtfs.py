@@ -203,8 +203,11 @@ def test_exclude():
                                       resample_filters_fr=(True, True))
     jtfs1 = TimeFrequencyScattering1D(**params,
                                       resample_filters_fr=('exclude', True))
+
     # required otherwise 'exclude' == True
     assert_pad_difference(jtfs0, test_params_str)
+    # reproduce case with different J_pad_fr
+    assert jtfs0.J_pad_fr != jtfs1.J_pad_fr
 
     Scx0 = jtfs0(x)
     Scx1 = jtfs1(x)
@@ -221,7 +224,10 @@ def test_exclude():
                 pair, i0, i1, n0, n1)
 
             if n0 != n1:
-                pad, pad_max = jtfs0.J_pad_fr[n0[0]], jtfs0.J_pad_fr_max
+                # check 1's pad as indexed by 0, since n0 lags n1 and might
+                # have e.g. pad1[n0=5]==(max-1), pad[n1=6]==max, but we're still
+                # iterating n==5 so appropriate comparison is at 5
+                pad, pad_max = jtfs1.J_pad_fr[n0[0]], jtfs1.J_pad_fr_max
                 assert pad != pad_max, (
                     "{} == {} | {}\n(must have sub-maximal `J_pad_fr` for "
                     "mismatched `n`)").format(pad, pad_max, info)
@@ -230,8 +236,10 @@ def test_exclude():
             assert c0.shape == c1.shape, ("shape mismatch: {} != {} | {}".format(
                 c0.shape, c1.shape, info))
             ae = np.abs(c0 - c1)
-            assert np.allclose(c0, c1), ("{} | MeanAE={:.2e}, MaxAE={:.2e}"
-                                         ).format(info, ae.mean(), ae.max())
+            # lower threshold because pad differences are possible
+            assert np.allclose(c0, c1, atol=5e-7), (
+                "{} | MeanAE={:.2e}, MaxAE={:.2e}"
+                ).format(info, ae.mean(), ae.max())
             i1 += 1
 
 
@@ -303,12 +311,12 @@ def test_backends():
 def test_meta():
     """Tests that meta values and structures match those of output for all
     combinations of
-        - out_3D (True only with average_fr=True)
+        - out_3D (True only with average_fr=True and resample_psi_fr != 'exclude')
         - average_fr
         - aligned
         - resample_psi_fr
         - resample_phi_fr
-    a total of 24 tests. All possible ways of packing the same coefficients
+    a total of 32 tests. All possible ways of packing the same coefficients
     (via `out_type`) aren't tested.
 
     Not tested:
@@ -378,6 +386,40 @@ def test_meta():
             n_freqs = Scx[pair][i]['coef'].shape[1]
             meta_idx[0] += n_freqs
 
+    def run_test(params, test_params):
+        jtfs = TimeFrequencyScattering1D(**params, **test_params,
+                                         frontend=default_backend)
+        test_params_str = '\n'.join(f'{k}={v}' for k, v in test_params.items())
+
+        resample_psi_fr = test_params['resample_filters_fr'][0]
+        if resample_psi_fr in (False, 'exclude'):
+            # assert not all J_pad_fr are same so test covers this case
+            # psi is dominant here as `2**J_fr > F`
+            assert_pad_difference(jtfs, test_params_str)
+
+        try:
+            Scx = jtfs(x)
+            jmeta = jtfs.meta()
+        except Exception as e:
+            print("Failed at:\n%s" % test_params_str)
+            raise e
+
+        # ensure no output shape was completely reduced
+        for pair in Scx:
+            for i, c in enumerate(Scx[pair]):
+                assert not np.any(c['coef'].shape == 0), (pair, i)
+
+        # meta test
+        out_3D = test_params['out_3D']
+        for field in ('j', 'n', 's'):
+          for pair in jmeta[field]:
+            meta_idx = [0]
+            assert_equal_lengths(Scx, jmeta, field, pair, out_3D,
+                                 test_params_str, jtfs)
+            for i in range(len(Scx[pair])):
+                assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
+                                    out_3D, test_params_str, jtfs)
+
     N = 512
     x = np.random.randn(N)
 
@@ -400,37 +442,23 @@ def test_meta():
                 test_params = dict(
                     out_3D=out_3D, average_fr=average_fr, aligned=aligned,
                     resample_filters_fr=(resample_psi_fr, resample_phi_fr))
-                test_params_str = '\n'.join(f'{k}={v}' for k, v in
-                                            test_params.items())
+                run_test(params, test_params)
 
-                jtfs = TimeFrequencyScattering1D(**params, **test_params,
-                                                 frontend=default_backend)
-                if not resample_psi_fr:
-                    # assert not all J_pad_fr are same so test covers this case
-                    # psi is dominant here as `2**J_fr > F`
-                    assert_pad_difference(jtfs, test_params_str)
+    # reproduce this case separately; above doesn't test where 'exclude' fails
+    N = 1024
+    x = np.random.randn(N)
+    J = int(np.log2(N) - 1)
+    J_fr = 3
+    params = dict(shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, F=F, out_type=out_type)
 
-                try:
-                    Scx = jtfs(x)
-                    jmeta = jtfs.meta()
-                except Exception as e:
-                    print("Failed at:\n%s" % test_params_str)
-                    raise e
-
-                # ensure no output shape was completely reduced
-                for pair in Scx:
-                    for i, c in enumerate(Scx[pair]):
-                        assert not np.any(c['coef'].shape == 0), (pair, i)
-
-                # meta test
-                for field in ('j', 'n', 's'):
-                  for pair in jmeta[field]:
-                    meta_idx = [0]
-                    assert_equal_lengths(Scx, jmeta, field, pair, out_3D,
-                                         test_params_str, jtfs)
-                    for i in range(len(Scx[pair])):
-                        assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
-                                            out_3D, test_params_str, jtfs)
+    resample_psi_fr = 'exclude'
+    for average_fr in (True, False):
+      for aligned in (True, False):
+        for resample_phi_fr in (True, False):
+            test_params = dict(
+                out_3D=False, average_fr=average_fr, aligned=aligned,
+                resample_filters_fr=(resample_psi_fr, resample_phi_fr))
+            run_test(params, test_params)
 
 
 def test_output():

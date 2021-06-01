@@ -1207,10 +1207,11 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         if recompute:
             J_pad, *_ = self._compute_J_pad(shape_fr, Q)
-        elif self.resample_phi_fr or self.resample_psi_fr:
-            if self.resample_phi_fr and self.resample_psi_fr:
+        elif self.resample_phi_fr or self.resample_psi_fr is True:
+            if self.resample_phi_fr and self.resample_psi_fr is True:
                 min_to_pad = self.min_to_pad_fr_max
-            elif self.resample_phi_fr:
+            elif self.resample_phi_fr or self.resample_psi_fr == 'exclude':
+                # 'exclude' is equivalent to False in terms of minimum sigma
                 min_to_pad = max(self._pad_fr_phi, self._pad_fr_psi // factor)
             else:
                 min_to_pad = max(self._pad_fr_psi, self._pad_fr_phi // factor)

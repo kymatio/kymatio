@@ -455,14 +455,12 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         shape_fr_padded = 2**pad_fr
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
-        if n1_fr != -1:
+        if n1_fr != -1:  # TODO try doing without accessing filters?
             j1_fr = sc_freq.psi1_f_fr_up[n1_fr]['j'][subsample_equiv_due_to_pad]
         else:
             j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
 
         _average_fr = (True if n1_fr == -1 else sc_freq.average_fr)
-        if n2 == 9 and n1_fr == -1:
-            1==1
         total_conv_stride_over_U1 = _get_stride(j1_fr, pad_fr,
                                                 subsample_equiv_due_to_pad,
                                                 sc_freq, _average_fr)
@@ -517,6 +515,13 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         return xi1_fr, sigma1_fr, j1_fr
 
     def _fill_n1_info(pair, n2, n1_fr, spin):
+        if sc_freq.resample_psi_fr == 'exclude' and n1_fr != -1:
+            pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
+                      sc_freq.J_pad_fr[n2])
+            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+            if subsample_equiv_due_to_pad not in sc_freq.psi1_f_fr_up[n1_fr]:
+                return
+
         # track S1 from padding to `_joint_lowpass()`
         (shape_fr_padded, total_conv_stride_over_U1, n1_fr_subsample,
          subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
