@@ -280,11 +280,10 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 
         gif_jtfs(Scx, meta)
     """
-    def _title(meta, i, pair, spin):
+    def _title(meta, meta_idx, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
-        i = (i, 0) if out_3D else i
         mu, l, _ = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                    for n in meta['n'][pair][i]]
+                    for n in meta['n'][pair][meta_idx[0]]]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
     def _viz_spins(Scx, meta, i, norm):
@@ -298,14 +297,17 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
         fig, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
-        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, '+1'))
-        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, '-1'))
+        imshow(sup, ax=axes[0], **kw, title=_title(meta, meta_idx, kup, '+1'))
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta, meta_idx, kdn, '-1'))
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
-    def _viz_simple(coef, pair, meta, i, norm):
+        meta_idx[0] += len(sup)
+
+    def _viz_simple(coef, pair, meta, norm):
         imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
-               title=_title(meta, i, pair, '0'))
+               title=_title(meta, meta_idx, pair, '0'))
+        meta_idx[0] += len(coef)
 
     out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
     out_list = isinstance(Scx['S0'], list)
@@ -324,6 +326,7 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                      if pair not in ('S0', 'S1', 'phi_t * phi_f')])
         norms = [(0, .5 * mx)] * 5
 
+    meta_idx = [0]
     if not skip_spins:
         if out_list:
             for i in range(len(Scx['psi_t * psi_f_up'])):
@@ -336,13 +339,14 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
         return
     pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
     for j, pair in enumerate(pairs):
+        meta_idx = [0]
         if out_list:
             for i, c in enumerate(Scx[pair]):
                 coef = c['coef'][sample_idx]
-                _viz_simple(coef, pair, meta, i, norms[1 + j])
+                _viz_simple(coef, pair, meta, norms[1 + j])
         else:
             for i, coef in enumerate(Scx[pair][sample_idx]):
-                _viz_simple(coef, pair, meta, i, norms[1 + j])
+                _viz_simple(coef, pair, meta, norms[1 + j])
 
 
 def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):

@@ -15,90 +15,88 @@ output_test_print_mode = 1
 
 
 def test_alignment():
-    """Ensure A.M. cosine's peaks are aligned across joint spinned slices."""
-    def max_row_idx(s):
-        return np.argmax(np.sum(s**2, axis=-1))
-
-    T = 2049
+    """Ensure A.M. cosine's peaks are aligned across joint slices."""
+    N = 1025
     J = 7
     Q = 16
+    Q_fr = 2
+    F = 4
 
     # generate A.M. cosine ###################################################
     f1, f2 = 8, 256
-    t = np.linspace(0, 1, T, 1)
+    t = np.linspace(0, 1, N, 1)
     a = (np.cos(2*np.pi * f1 * t) + 1) / 2
     c = np.cos(2*np.pi * f2 * t)
     x = a * c
 
     # scatter ################################################################
     for out_3D in (True, False):
-        out_type = ("dict:array" if out_3D else
-                    # preserve 3D indexing into slices dim for convenience
-                    "dict:list")
-        jtfs = TimeFrequencyScattering1D(
-            J, T, Q, Q_fr=2, average=True, average_fr=True, aligned=True,
-            out_type=out_type, out_3D=out_3D, frontend=default_backend)
+      for resample_psi_fr in (True, 'exclude'):
+        if resample_psi_fr == 'exclude' and out_3D:
+            continue  # incompatible
+        for J_fr in (3, 5):
+          out_type = ('dict:array' if out_3D else
+                      'dict:list')  # for convenience
+          test_params = dict(out_3D=out_3D,
+                             resample_filters_fr=(resample_psi_fr, True))
+          test_params_str = '\n'.join(f'{k}={v}' for k, v in
+                                      test_params.items())
+          jtfs = TimeFrequencyScattering1D(
+              J, N, Q, J_fr=J_fr, Q_fr=Q_fr, F=F, average=True, average_fr=True,
+              aligned=True, out_type=out_type, frontend=default_backend,
+              **test_params)
 
-        Scx = jtfs(x)
-        Scx = drop_batch_dim_jtfs(Scx)
-        jmeta = jtfs.meta()
+          Scx = jtfs(x)
+          Scx = drop_batch_dim_jtfs(Scx)
 
-        # some `psi2` won't capture peak
-        n2_min = 4
-        # assert J_pad_fr differs from max at this point
-        # (which is where alignment most easily breaks)
-        # assert jtfs.J_pad_fr[n2_min] != jtfs.J_pad_fr_max  # TODO
+          # assert peaks share an index #################################
+          def max_row_idx(c):
+              coef = c['coef'] if 'list' in out_type else c
+              return np.argmax(np.sum(coef**2, axis=-1))
 
-        # TODO test phi pairs too
+          first_coef = Scx['psi_t * psi_f_up'][0]
+          mx_idx = max_row_idx(first_coef)
+          for pair in Scx:
+              if pair in ('S0', 'S1'):  # joint only
+                  continue
 
-        # assert peaks share an index ########################################
-        S_all = {}
-        for pair in ('psi_t * psi_f_up', 'psi_t * psi_f_down'):
-            S_all[pair] = {}
-            if 'array' in out_type:
-                for i in range(len(jmeta['n'][pair])):
-                    n2 = jmeta['n'][pair][i][0][0]
-                    if n2 >= n2_min:
-                        S_all[pair][i] = Scx[pair][i]
-            else:
-                for i in range(len(Scx[pair])):  # more convenient
-                    n2 = Scx[pair][i]['n'][0]
-                    if n2 >= n2_min:
-                        S_all[pair][i] = Scx[pair][i]['coef']
+              for i, c in enumerate(Scx[pair]):
+                  mx_idx_i = max_row_idx(c)
+                  assert abs(mx_idx_i - mx_idx) < 2, (
+                      "{} != {} -- Scx[{}][{}]\n{}").format(
+                          mx_idx_i, mx_idx, pair, i, test_params_str)
 
-        first_coef = list(list(S_all.values())[0].values())[0]
-        mx_idx = max_row_idx(first_coef)
-        for pair in S_all:
-            for i, s in S_all[pair].items():
-                mx_idx_i = max_row_idx(s)
-                assert abs(mx_idx_i - mx_idx) < 2, (
-                    "{} != {} (Scx[{}][{}], out_3D={})").format(
-                        mx_idx_i, mx_idx, pair, i, out_3D)
+          if J_fr == 3:
+              # assert not all J_pad_fr are same so test covers this case
+              assert_pad_difference(jtfs, test_params_str)
 
 
 def test_shapes():
     """Ensure `out_3D=True` joint coeff slices have same shape."""
-    T = 1024
+    N = 1024
     J = 6
     Q = 16
 
-    x = np.random.randn(T)
+    x = np.random.randn(N)
 
     # scatter ################################################################
     for oversampling in (0, 1):
       for oversampling_fr in (0, 1):
         for aligned in (True, False):
+          test_params = dict(oversampling=oversampling,
+                             oversampling_fr=oversampling_fr, aligned=aligned)
+          test_params_str = '\n'.join(f'{k}={v}' for k, v in
+                                      test_params.items())
+
           jtfs = TimeFrequencyScattering1D(
-              J, T, Q, J_fr=4, Q_fr=2, average=True, average_fr=True,
+              J, N, Q, J_fr=4, Q_fr=2, average=True, average_fr=True,
               out_type='dict:array', out_3D=True, aligned=aligned,
               oversampling=oversampling, oversampling_fr=oversampling_fr,
               frontend=default_backend)
           try:
               _ = jtfs(x)  # shapes must equal for this not to error
           except Exception as e:
-              print(("(oversampling, oversampling_fr, aligned) "
-                     "= ({}, {}, {})").format(
-                         oversampling, oversampling_fr, aligned))
+              print(test_params_str)
               raise e
 
 
@@ -161,9 +159,9 @@ def test_freq_tp_invar():
 
     for th, F in zip(th_all, F_all):
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
-                                         F=F, average_fr=True,
+                                         F=F, average_fr=True, out_3D=True,
                                          out_type='dict:array',
-                                         out_3D=True, frontend=default_backend)
+                                         frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
         jtfs_x1_all = jtfs(x1)
@@ -172,8 +170,6 @@ def test_freq_tp_invar():
 
         l2_x0x1 = l2(jtfs_x0, jtfs_x1)
 
-        # TODO is this value reasonable? it's much greater with different f0
-        # (but same relative f1)
         assert l2_x0x1 < th, "{} > {} (F={})".format(l2_x0x1, th, F)
 
 
@@ -182,7 +178,7 @@ def test_up_vs_down():
     N = 2048
     x = echirp(N)
 
-    jtfs = TimeFrequencyScattering1D(shape=N, J=10, Q=16, J_fr=4, Q_fr=1,
+    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, Q_fr=1,
                                      average_fr=True, out_3D=True,
                                      out_type='dict:array',
                                      frontend=default_backend)
@@ -190,7 +186,52 @@ def test_up_vs_down():
 
     E_up   = energy(Scx['psi_t * psi_f_up'])
     E_down = energy(Scx['psi_t * psi_f_down'])
-    assert E_down / E_up > 17
+    assert E_down / E_up > 125
+
+
+def test_exclude():
+    """Test that outputs of `resample_psi_fr=='exclude'` are a subset of
+    `==True` (i.e. equal wherever both exist).
+    """
+    N = 1024
+    x = echirp(N)
+
+    params = dict(shape=N, J=9, Q=8, J_fr=3, Q_fr=1, average_fr=True,
+                  out_type='dict:list', frontend=default_backend)
+    test_params_str = '\n'.join(f'{k}={v}' for k, v in params.items())
+    jtfs0 = TimeFrequencyScattering1D(**params,
+                                      resample_filters_fr=(True, True))
+    jtfs1 = TimeFrequencyScattering1D(**params,
+                                      resample_filters_fr=('exclude', True))
+    # required otherwise 'exclude' == True
+    assert_pad_difference(jtfs0, test_params_str)
+
+    Scx0 = jtfs0(x)
+    Scx1 = jtfs1(x)
+
+    # assert exactly equal where J_pad_fr match
+    for pair in Scx1:
+        i1 = 0
+        for i0, c in enumerate(Scx1[pair]):
+            s0, s1 = Scx0[pair][i0], Scx1[pair][i1]
+            n0, n1 = s0['n'], s1['n']
+            c0, c1 = s0['coef'], s1['coef']
+            info = "{}, (i0, i1)=({}, {}); (n0, n1)=({}, {})".format(
+                pair, i0, i1, n0, n1)
+
+            if n0 != n1:
+                pad, pad_max = jtfs0.J_pad_fr[n0[0]], jtfs0.J_pad_fr_max
+                assert pad != pad_max, (
+                    "{} == {} | {}\n(must have sub-maximal `J_pad_fr` for "
+                    "mismatched `n`)").format(pad, pad_max, info)
+                continue
+
+            assert c0.shape == c1.shape, ("shape mismatch: {} != {} | {}".format(
+                c0.shape, c1.shape, info))
+            ae = np.abs(c0 - c1)
+            assert np.allclose(c0, c1), ("{} | MeanAE={:.2e}, MaxAE={:.2e}"
+                                         ).format(info, ae.mean(), ae.max())
+            i1 += 1
 
 
 def test_max_pad_factor_fr():
@@ -246,7 +287,7 @@ def test_backends():
         x = echirp(N)
         x = np.vstack([x, x, x])
         x = (tf.constant(x) if backend == 'tensorflow' else
-              torch.from_numpy(x))
+             torch.from_numpy(x))
 
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=3, Q_fr=1,
                                          average_fr=True, out_3D=True,
@@ -256,7 +297,6 @@ def test_backends():
         E_up   = energy(Scx['psi_t * psi_f_up'])
         E_down = energy(Scx['psi_t * psi_f_down'])
         assert E_down / E_up > 80
-        # TODO why is lower J, Q, and J_fr better for the ratio?
 
 
 def test_meta():
@@ -362,25 +402,12 @@ def test_meta():
                 test_params_str = '\n'.join(f'{k}={v}' for k, v in
                                             test_params.items())
 
-                # if not (out_3D == False and
-                #         average_fr == True and
-                #         aligned == True  and
-                #         resample_psi_fr == False and
-                #         resample_phi_fr == True):
-                #     continue
-                # if resample_psi_fr or resample_phi_fr:
-                #     continue
-
                 jtfs = TimeFrequencyScattering1D(**params, **test_params,
                                                  frontend=default_backend)
                 if not resample_psi_fr:
                     # assert not all J_pad_fr are same so test covers this case
                     # psi is dominant here as `2**J_fr > F`
-                    assert not all(
-                        J_pad_fr == jtfs.J_pad_fr_max
-                        for J_pad_fr in jtfs.J_pad_fr if J_pad_fr != -1
-                        ), "{}\nJ_pad_fr={}\nshape_fr={}".format(
-                            test_params_str, jtfs.J_pad_fr, jtfs.shape_fr)
+                    assert_pad_difference(jtfs, test_params_str)
 
                 try:
                     Scx = jtfs(x)
@@ -569,6 +596,14 @@ def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
     return np.cos(phi)
 
 
+def assert_pad_difference(jtfs, test_params_str):
+    assert not all(
+        J_pad_fr == jtfs.J_pad_fr_max
+        for J_pad_fr in jtfs.J_pad_fr if J_pad_fr != -1
+        ), "{}\nJ_pad_fr={}\nshape_fr={}".format(
+            test_params_str, jtfs.J_pad_fr, jtfs.shape_fr)
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_alignment()
@@ -576,6 +611,7 @@ if __name__ == '__main__':
         test_jtfs_vs_ts()
         test_freq_tp_invar()
         test_up_vs_down()
+        test_exclude()
         test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_backends()
