@@ -98,9 +98,3 @@ class TestScattering1DNumpy:
                     default_str = ''
                 phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(N), J, Q, T)
                 assert(phi_f['sigma']==0.1/T)
-
-if __name__ == '__main__':
-  test = TestScattering1DNumpy()
-  test.test_Scattering1D_T(backend)
-  test.test_Scattering1D(backend)
-  test.test_Scattering1D_filter_factory_T(backend)
