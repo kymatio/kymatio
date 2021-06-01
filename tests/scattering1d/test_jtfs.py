@@ -209,7 +209,8 @@ def test_exclude():
     Scx0 = jtfs0(x)
     Scx1 = jtfs1(x)
 
-    # assert exactly equal where J_pad_fr match
+    # assert equality where `n` metas match
+    # if `n` don't match, assert J_pad_fr is below maximum
     for pair in Scx1:
         i1 = 0
         for i0, c in enumerate(Scx1[pair]):
