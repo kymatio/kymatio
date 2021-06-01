@@ -915,6 +915,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
                 # so lesser length will distort its temporal envelope.
                 # Frontend will adjust J_pad_fr_min accordingly.
                 j0_max = j0
+                break
 
     for n1_fr in range(len(j1s)):
         psi_down = {}
@@ -927,9 +928,12 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             if j0 <= 0 or j0 == j0_prev or (j0_max is not None and j0 > j0_max):
                 continue
             j0_prev = j0
+            factor = 2**j0
 
             xi, sigma, j = get_params(n1_fr, j0)
-            psi_down[j0] = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
+            if resample_psi_fr == 'exclude' and sigma < factor * min(sigma1):
+                break
+            psi_down[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
                                      P_max=P_max, eps=eps)
 
         psi1_f_fr_down.append(psi_down)

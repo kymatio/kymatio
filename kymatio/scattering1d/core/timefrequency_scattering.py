@@ -508,11 +508,6 @@ def timefrequency_scattering(
         2. False, True
            Same as 1. See XB2.
 
-             `n1_fr_subsample <= (
-                 min(log2_F, J_pad_fr_max) -
-                 subsample_equiv_due_to_pad`
-                 # == max(J_pad_fr_max - pad_fr, subsample_equiv_due_to_pad))
-
         3. True, False
            `lowpass_subsample_fr = (min(log2_F, J_pad_fr_max) -
                                     subsample_equiv_due_to_pad -
@@ -894,6 +889,9 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
             subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+            if (sc_freq.resample_psi_fr == 'exclude' and
+                    subsample_equiv_due_to_pad not in psi1_f[n1_fr]):
+                break
 
             # compute subsampling
             j1_fr = psi1_f[n1_fr]['j'][subsample_equiv_due_to_pad]

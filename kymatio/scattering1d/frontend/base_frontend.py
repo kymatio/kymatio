@@ -463,10 +463,6 @@ class TimeFrequencyScatteringBase1D():
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
-        # don't allow untested (and likely unneeded) combination
-        # if not self.aligned and not self.out_3D:
-        #     raise ValueError("`aligned=False` is only allowed with `out_3D=True`")
-
         # if config yields no second order coeffs, we cannot do joint scattering
         if self._no_second_order_filters:
             raise ValueError("configuration yields no second-order filters; "
@@ -1034,6 +1030,11 @@ class _FrequencyScatteringBase(ScatteringBase):
                               "rows (rounded up to pow2) in joint scattering "
                               "(got {} > {})".format(2**(self.J_fr), mx)))
 
+        # check `resample_psi_fr`
+        if self.resample_psi_fr == 'exclude' and self.out_3D:
+            raise ValueError("`resample_psi_fr='exclude'` and `out_3D=True` "
+                             "are incompatible.")
+
         # check F or set default
         if self.F is None:
             self.F = 2**min(self.J_fr, 2)  # TODO docs
@@ -1206,10 +1207,11 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         if recompute:
             J_pad, *_ = self._compute_J_pad(shape_fr, Q)
-        elif self.resample_phi_fr or self.resample_psi_fr:
-            if self.resample_phi_fr and self.resample_psi_fr:
+        elif self.resample_phi_fr or self.resample_psi_fr is True:
+            if self.resample_phi_fr and self.resample_psi_fr is True:
                 min_to_pad = self.min_to_pad_fr_max
-            elif self.resample_phi_fr:
+            elif self.resample_phi_fr or self.resample_psi_fr == 'exclude':
+                # 'exclude' is equivalent to False in terms of minimum sigma
                 min_to_pad = max(self._pad_fr_phi, self._pad_fr_psi // factor)
             else:
                 min_to_pad = max(self._pad_fr_psi, self._pad_fr_phi // factor)
