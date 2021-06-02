@@ -14,10 +14,6 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
 
-        if pre_pad:
-            # Need to cast to complex in Torch
-            self.pad = lambda x: x.reshape(x.shape + (1,))
-
         self.register_filters()
 
     def register_single_filter(self, v, n):
@@ -37,7 +33,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
             if not isinstance(c, int):
                 continue
 
-            self.register_single_filter(phi, n)
+            self.phi[c] = self.register_single_filter(phi, n)
             n = n + 1
 
         for j in range(len(self.psi)):
@@ -45,7 +41,7 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
                 if not isinstance(k, int):
                     continue
 
-                self.register_single_filter(v, n)
+                self.psi[j][k] = self.register_single_filter(v, n)
                 n = n + 1
 
     def load_single_filter(self, n, buffer_dict):
@@ -59,24 +55,22 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         n = 0
 
-        phis = {}
-        for c, phi in self.phi.items():
+        phis = self.phi
+        for c, phi in phis.items():
             if not isinstance(c, int):
-                phis[c] = self.phi[c]
+                continue
 
-            else:
-                phis[c] = self.load_single_filter(n, buffer_dict)
-                n = n + 1
+            phis[c] = self.load_single_filter(n, buffer_dict)
+            n = n + 1
 
-        psis = [{} for _ in range(len(self.psi))]
-        for j in range(len(self.psi)):
-            for k, v in self.psi[j].items():
+        psis = self.psi
+        for j in range(len(psis)):
+            for k, v in psis[j].items():
                 if not isinstance(k, int):
-                    psis[j][k] = v
+                    continue
 
-                else:
-                    psis[j][k] = self.load_single_filter(n, buffer_dict)
-                    n = n + 1
+                psis[j][k] = self.load_single_filter(n, buffer_dict)
+                n = n + 1
 
         return phis, psis
 

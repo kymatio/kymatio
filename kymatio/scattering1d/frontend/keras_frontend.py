@@ -27,8 +27,5 @@ class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
         output_shape = [input_shape[0], nc, ln]
         return tensor_shape.TensorShape(output_shape)
 
-    def get_config(self):
-        keys = ["J", "Q", "max_order", "oversampling"]
-        return {key: getattr(self, key) for key in keys}
 
 ScatteringKeras1D._document()

@@ -1,7 +1,7 @@
 import numpy as np
 import math
 import warnings
-from scipy.fft import ifft
+from scipy.fftpack import ifft
 
 def adaptive_choice_P(sigma, eps=1e-7):
     """

@@ -1,4 +1,5 @@
 import torch.nn as nn
+from ..backend.torch_backend import input_checks
 
 class ScatteringTorch(nn.Module):
     def __init__(self):
@@ -17,7 +18,7 @@ class ScatteringTorch(nn.Module):
     def forward(self, x):
         """This method is an alias for `scattering`."""
 
-        self.backend.input_checks(x)
+        input_checks(x)
 
         return self.scattering(x)
 

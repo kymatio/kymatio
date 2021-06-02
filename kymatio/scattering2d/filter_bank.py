@@ -1,5 +1,5 @@
 import numpy as np
-from scipy.fft import fft2, ifft2
+from scipy.fftpack import fft2, ifft2
 
 
 def filter_bank(M, N, J, L=8):

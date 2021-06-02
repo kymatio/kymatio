@@ -21,10 +21,9 @@ def test_Scattering2D():
     N = x.shape[3]
 
     inputs = Input(shape=(3, M, N))
-    sc_layer = Scattering2D(J=J)
-    sc_tensor = sc_layer(inputs)
+    scat = Scattering2D(J=J)(inputs)
 
-    model = Model(inputs, sc_tensor)
+    model = Model(inputs, scat)
     model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
@@ -32,8 +31,4 @@ def test_Scattering2D():
     x = x
     S = S
     Sg = model.predict(x)
-    config = sc_layer.get_config()
-
     assert np.allclose(Sg, S)
-    assert config["J"] == J
-    assert Scattering2D.from_config(config).J == J
