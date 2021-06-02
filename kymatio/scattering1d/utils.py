@@ -484,14 +484,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             lowpass_subsample_fr = 0
 
-        total_subsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
-        total_subsample_fr = total_subsample_so_far + lowpass_subsample_fr
+        total_downsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
+        total_downsample_fr = total_downsample_so_far + lowpass_subsample_fr
         if out_3D:
-            ind_start_fr = sc_freq.ind_start_fr_max[total_subsample_fr]
-            ind_end_fr   = sc_freq.ind_end_fr_max[total_subsample_fr]
+            ind_start_fr = sc_freq.ind_start_fr_max[total_downsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr_max[total_downsample_fr]
         else:
-            ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
-            ind_end_fr   = sc_freq.ind_end_fr[n2][total_subsample_fr]
+            ind_start_fr = sc_freq.ind_start_fr[n2][total_downsample_fr]
+            ind_end_fr   = sc_freq.ind_end_fr[n2][total_downsample_fr]
 
         # TODO ref?
         total_conv_stride_over_U1 = n1_fr_subsample + lowpass_subsample_fr

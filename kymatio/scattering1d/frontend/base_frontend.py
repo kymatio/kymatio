@@ -1070,7 +1070,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # max `subsample_equiv_due_to_pad + n1_fr_subsample`
         # if we subsample more, `phi_f_fr[subsample_equiv_due_to_pad]` fails
         self._n_phi_f_fr = len([k for k in self.phi_f_fr if isinstance(k, int)])
-        self.max_total_subsampling_before_phi_fr = (
+        self.max_total_downsampling_before_phi_fr = (
             self._n_phi_f_fr - 1 if not self.average_fr_global else
             self.J_pad_fr_max_init)
 
@@ -1102,7 +1102,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # compute minimum amount of padding
         if self.resample_psi_fr:
             self.J_pad_fr_min_limit = (self.J_pad_fr_max_init -
-                                       self.max_total_subsampling_before_phi_fr)
+                                       self.max_total_downsampling_before_phi_fr)
             self.downsampling_max_due_to_sigma = -1
         else:
             xi_min = 2 / 2**self.J_pad_fr_max_init
@@ -1118,7 +1118,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.J_pad_fr_min_limit = (
                 self.J_pad_fr_max_init -
                 min(self.downsampling_max_due_to_sigma,
-                    self.max_total_subsampling_before_phi_fr))
+                    self.max_total_downsampling_before_phi_fr))
         # TODO doc
         # TODO rename max_subsamp -> max_downsamp
 
