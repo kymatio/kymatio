@@ -112,3 +112,7 @@ def index_axis(i0, i1, axis, ndim, step=1):
 
 def flip_axis(axis, ndim, step=1):
     return index_axis(-1, None, axis, ndim, -step)
+
+
+def stride_axis(step, axis, ndim):
+    return index_axis(None, None, axis, ndim, step)

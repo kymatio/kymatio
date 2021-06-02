@@ -3,10 +3,10 @@ import numpy as np
 import scipy.signal
 import warnings
 from kymatio import Scattering1D
-from kymatio.scattering1d.backend.agnostic_backend import pad
+from kymatio.scattering1d.backend.agnostic_backend import pad, stride_axis
 
 # set True to execute all test functions without pytest
-run_without_pytest = 0
+run_without_pytest = 1
 
 
 def test_T():
@@ -96,29 +96,64 @@ def _test_pad_axis(backend_name):
         assert np.allclose(shape0, shape2)
 
 
+def _test_subsample_fourier_axis(backend_name):
+    """Test that subsampling an arbitrary axis works as expected."""
+    backend = _get_backend(backend_name)
+    B = _get_kymatio_backend(backend_name)
+    x = np.random.randn(4, 8, 16, 32)
+
+    if backend_name != 'numpy':
+        xb = backend.tensor(x)
+    else:
+        xb = x
+
+    k = 2
+    axis = 3
+    for k in (2, 4):
+        for axis in range(x.ndim):
+            xf = B.fft(xb, axis=axis)
+            outf = B.subsample_fourier(xf, k, axis=axis)
+            out = B.ifft(outf, axis=axis).real
+
+            xref = xb[stride_axis(k, axis, xb.ndim)]
+            if backend_name != 'numpy':
+                out = out.numpy()
+            assert np.allclose(xref, out, atol=5e-7), np.abs(xref - out).max()
+
+
 def test_pad_numpy():
     _test_padding('numpy')
     _test_pad_axis('numpy')
 
 
 def test_pad_torch():
-    try:
-        import torch
-    except ImportError:
-        warnings.warn("Failed to import torch")
+    if cant_import('torch'):
         return
     _test_padding('torch')
     _test_pad_axis('torch')
 
 
 def test_pad_tensorflow():
-    try:
-        import tensorflow
-    except ImportError:
-        warnings.warn("Failed to import tensorflow")
+    if cant_import('tensorflow'):
         return
     _test_padding('tensorflow')
     _test_pad_axis('tensorflow')
+
+
+def test_subsample_fourier_numpy():
+    _test_subsample_fourier_axis('numpy')
+
+
+def test_subsample_fourier_torch():
+    if cant_import('torch'):
+        return
+    _test_subsample_fourier_axis('torch')
+
+
+def test_subsample_fourier_tensorflow():
+    if cant_import('tensorflow'):
+        return
+    _test_subsample_fourier_axis('tensorflow')
 
 
 def _get_backend(backend_name):
@@ -133,6 +168,19 @@ def _get_backend(backend_name):
     return backend
 
 
+def _get_kymatio_backend(backend_name):
+    if backend_name == 'numpy':
+        from kymatio.scattering1d.backend.numpy_backend import NumpyBackend1D
+        return NumpyBackend1D
+    elif backend_name == 'torch':
+        from kymatio.scattering1d.backend.torch_backend import TorchBackend1D
+        return TorchBackend1D
+    elif backend_name == 'tensorflow':
+        from kymatio.scattering1d.backend.tensorflow_backend import (
+            TensorFlowBackend1D)
+        return TensorFlowBackend1D
+
+
 def _l2(x):
     return np.sqrt(np.sum(np.abs(x)**2))
 
@@ -143,11 +191,31 @@ def l2(x0, x1):
     return _l2(x1 - x0) / _l2(x0)
 
 
+def cant_import(backend_name):
+    if backend_name == 'numpy':
+        return False
+    elif backend_name == 'torch':
+        try:
+            import torch
+        except ImportError:
+            warnings.warn("Failed to import torch")
+            return True
+    elif backend_name == 'tensorflow':
+        try:
+            import tensorflow
+        except ImportError:
+            warnings.warn("Failed to import tensorflow")
+            return True
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_T()
         test_pad_numpy()
         test_pad_torch()
         test_pad_tensorflow()
+        test_subsample_fourier_numpy()
+        test_subsample_fourier_torch()
+        test_subsample_fourier_tensorflow()
     else:
         pytest.main([__file__, "-s"])

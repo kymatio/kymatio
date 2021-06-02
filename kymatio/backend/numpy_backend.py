@@ -83,9 +83,12 @@ class NumpyBackend:
         if not cls._is_complex(A):
             raise TypeError('The first input must be complex.')
 
-        if A.shape[-len(B.shape):] != B.shape[:]:
+        sa, sb = A.shape, B.shape
+        # last dims equal, or last except *the* last if the last is 1 in A or B
+        if not ((sa[-B.ndim:] == sb) or
+                ((sa[-1] == 1 or sb[-1] == 1) and (sa[-B.ndim:-1] == sb[:-1]))):
             raise RuntimeError('The inputs are not compatible for '
-                                'multiplication.')
+                               'multiplication (%s and %s).' % (sa, sb))
 
         if not cls._is_complex(B) and not cls._is_real(B):
             raise TypeError('The second input must be complex or real.')

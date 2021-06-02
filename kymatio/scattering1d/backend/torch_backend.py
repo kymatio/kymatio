@@ -6,7 +6,7 @@ from .agnostic_backend import pad as agnostic_pad, index_axis
 
 class TorchBackend1D(TorchBackend):
     @classmethod
-    def subsample_fourier(cls, x, k):
+    def subsample_fourier(cls, x, k, axis=-1):
         """Subsampling in the Fourier domain
 
         Subsampling in the temporal domain amounts to periodization in the Fourier
@@ -22,6 +22,8 @@ class TorchBackend1D(TorchBackend):
             imaginary parts of the Fourier transform.
         k : int
             The subsampling factor.
+        axis : int
+            Axis along which to subsample.
 
         Returns
         -------
@@ -31,10 +33,17 @@ class TorchBackend1D(TorchBackend):
         """
         cls.complex_check(x)
 
-        N = x.shape[-1]
+        axis = axis if axis >= 0 else x.ndim + axis  # ensure positive
+        s = list(x.shape)
+        N = s[axis]
+        re = (k, N // k)
+        s.pop(axis)
+        s.insert(axis, re[1])
+        s.insert(axis, re[0])
+        s.append(2)  # view_as_real
 
         x = torch.view_as_real(x)
-        res = x.view(x.shape[:-2] + (k, N // k, 2)).mean(dim=-3)
+        res = x.view(s).mean(dim=axis)
         res = torch.view_as_complex(res)
 
         return res
