@@ -87,16 +87,15 @@ class TorchBackend:
 
         """
         if not cls._is_real(B):
-            cls.complex_contiguous_check(B)
-        else:
-            cls.contiguous_check(B)
+            cls.complex_check(B)
+        cls.complex_check(A)
 
-        cls.complex_contiguous_check(A)
-
-        if A.shape[-B.ndim:] != B.shape:
-            raise RuntimeError('The filters are not compatible for multiplication '
-                               '(shapes: %s, %s)' % (tuple(A.shape),
-                                                     tuple(B.shape)))
+        sa, sb = A.shape, B.shape
+        # last dims equal, or last except *the* last if the last is 1 in A or B
+        if not ((sa[-B.ndim:] == sb) or
+                ((sa[-1] == 1 or sb[-1] == 1) and (sa[-B.ndim:-1] == sb[:-1]))):
+            raise RuntimeError('The inputs are not compatible for '
+                               'multiplication (%s and %s).' % (sa, sb))
 
         # if A.dtype is not B.dtype:
         # TODO does "last dim 2" allow faster multiplication? (real * complex)

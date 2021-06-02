@@ -108,28 +108,24 @@ class TorchBackend1D(TorchBackend):
 
     @classmethod
     def fft(cls, x, axis=-1):
-        cls.contiguous_check(x)
         return torch.fft.fft(x, dim=axis)
 
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
     def rfft(cls, x, axis=-1):
-        cls.contiguous_check(x)
         cls.real_check(x)
 
         return torch.fft.fft(x, dim=axis)
 
     @classmethod
     def irfft(cls, x, axis=-1):
-        cls.contiguous_check(x)
         cls.complex_check(x)
 
         return torch.fft.ifft(x, dim=axis).real
 
     @classmethod
     def ifft(cls, x, axis=-1):
-        cls.contiguous_check(x)
         cls.complex_check(x)
 
         return torch.fft.ifft(x, dim=axis)

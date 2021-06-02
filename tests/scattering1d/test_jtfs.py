@@ -276,21 +276,12 @@ def test_no_second_order_filters():
 
 def test_backends():
     for backend in ('tensorflow', 'torch'):
-        if backend == 'torch':
-            continue  # TODO
-
-        if backend == 'tensorflow':
-            try:
-                import tensorflow as tf
-            except ImportError:
-                warnings.warn("could not import tensorflow")
-                continue
+        if cant_import(backend):
+            continue
         elif backend == 'torch':
-            try:
-                import torch
-            except ImportError:
-                warnings.warn("could not import torch")
-                continue
+            import torch
+        elif backend == 'tensorflow':
+            import tensorflow as tf
 
         N = 2048
         x = echirp(N)
@@ -306,6 +297,32 @@ def test_backends():
         E_up   = energy(Scx['psi_t * psi_f_up'])
         E_down = energy(Scx['psi_t * psi_f_down'])
         assert E_down / E_up > 80
+
+
+def test_differentiability_torch():
+    """Tests whether JTFS is differentiable in PyTorch backend.
+    Does NOT test whether the gradients are correct.
+    """
+    if cant_import('torch'):
+        return
+    import torch
+    if torch.cuda.is_available():
+        devices = ['cuda', 'cpu']
+    else:
+        devices = ['cpu']
+
+    J = 6
+    Q = 8
+    T = 2**12
+    for device in devices:
+        jtfs = TimeFrequencyScattering1D(J, T, Q, frontend='torch',
+                                         max_pad_factor=1).to(device)
+        x = torch.randn(2, T, requires_grad=True, device=device)
+
+        s = jtfs.forward(x)
+        loss = torch.sum(torch.abs(s))
+        loss.backward()
+        assert torch.max(torch.abs(x.grad)) > 0.
 
 
 def test_meta():
@@ -575,7 +592,14 @@ def l2(x0, x1):
     return _l2(x1 - x0) / _l2(x0)
 
 def energy(x):
-    return np.sum(np.abs(x)**2)
+    if isinstance(x, np.ndarray):
+        return np.sum(np.abs(x)**2)
+    elif 'torch' in str(type(x)):
+        import torch
+        return torch.sum(torch.abs(x)**2)
+    elif 'tensorflow' in str(type(x)):
+        import tensorflow as tf
+        return tf.reduce_sum(tf.abs(x)**2)
 
 # def _l1l2(x):
 #     return np.sum(np.sqrt(np.sum(np.abs(x)**2, axis=1)), axis=0)
@@ -633,6 +657,23 @@ def assert_pad_difference(jtfs, test_params_str):
             test_params_str, jtfs.J_pad_fr, jtfs.shape_fr)
 
 
+def cant_import(backend_name):
+    if backend_name == 'numpy':
+        return False
+    elif backend_name == 'torch':
+        try:
+            import torch
+        except ImportError:
+            warnings.warn("Failed to import torch")
+            return True
+    elif backend_name == 'tensorflow':
+        try:
+            import tensorflow
+        except ImportError:
+            warnings.warn("Failed to import tensorflow")
+            return True
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_alignment()
@@ -644,6 +685,7 @@ if __name__ == '__main__':
         test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_backends()
+        test_differentiability_torch()
         test_meta()
         test_output()
     else:

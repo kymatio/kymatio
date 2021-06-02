@@ -787,7 +787,6 @@ def timefrequency_scattering(
 
         # swap axes & map to Fourier domain to prepare for conv along freq
         Y_2_hat = B.fft(Y_2_arr, axis=-2)
-        # Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
         # Transform over frequency + low-pass, for both spins
         # `* psi_f` part of `X * (psi_t * psi_f)`
@@ -1051,14 +1050,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             assert (total_conv_stride_over_U1 ==
                     sc_freq.__total_conv_stride_over_U1_phi)
     return S_2
-
-
-def _transpose_fft(coeff_arr, B, fft):
-    # swap dims to convolve along frequency
-    out = B.transpose(coeff_arr)
-    # Map to Fourier domain
-    out = fft(out)
-    return out
 
 
 def _right_pad(coeff_list, pad_fr, B):
