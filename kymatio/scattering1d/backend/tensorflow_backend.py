@@ -6,7 +6,7 @@ from .agnostic_backend import pad as agnostic_pad
 
 class TensorFlowBackend1D(TensorFlowBackend):
     @classmethod
-    def subsample_fourier(cls, x, k):
+    def subsample_fourier(cls, x, k, axis=-1):
         """Subsampling in the Fourier domain
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
@@ -20,6 +20,9 @@ class TensorFlowBackend1D(TensorFlowBackend):
             imaginary parts of the Fourier transform.
         k : int
             The subsampling factor.
+        axis : int
+            Axis along which to subsample.
+
         Returns
         -------
         res : tensor
@@ -28,9 +31,17 @@ class TensorFlowBackend1D(TensorFlowBackend):
         """
         cls.complex_check(x)
 
-        y = tf.reshape(x, (*x.shape[:-1], k, x.shape[-1] // k))
+        axis = axis if axis >= 0 else x.ndim + axis  # ensure positive
+        s = list(x.shape)
+        N = s[axis]
+        re = (k, N // k)
+        s.pop(axis)
+        s.insert(axis, re[1])
+        s.insert(axis, re[0])
 
-        return tf.reduce_mean(y, axis=-2)
+        y = tf.reshape(x, s)
+
+        return tf.reduce_mean(y, axis=axis)
 
     @staticmethod
     def pad(x, pad_left, pad_right, pad_mode='reflect'):

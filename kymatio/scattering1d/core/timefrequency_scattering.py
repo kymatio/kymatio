@@ -698,7 +698,8 @@ def timefrequency_scattering(
         S_1_fr = B.mean(S_1_fr, axis=-2)  # TODO axis will change
         lowpass_subsample_fr = sc_freq.log2_F
     else:
-        S_1_tm_T_hat = _transpose_fft(S_1_fr, B, B.rfft)
+        # TODO rename (remove T etc)
+        S_1_tm_T_hat = B.rfft(S_1_fr, axis=-2)
 
         # this is usually 0
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
@@ -714,8 +715,9 @@ def timefrequency_scattering(
         # Low-pass filtering over frequency
         phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad][n1_fr_subsample]
         S_1_fr_T_c = B.cdgmm(S_1_tm_T_hat, phi_fr)
-        S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr)
-        S_1_fr_T = B.irfft(S_1_fr_T_hat)
+        S_1_fr_T_hat = B.subsample_fourier(S_1_fr_T_c, 2**lowpass_subsample_fr,
+                                           axis=-2)
+        S_1_fr_T = B.irfft(S_1_fr_T_hat, axis=-2)
 
         # unpad + transpose, append to out
         if out_3D:
@@ -724,8 +726,8 @@ def timefrequency_scattering(
         else:
             ind_start_fr = sc_freq.ind_start_fr[-1][total_subsample_fr]
             ind_end_fr   = sc_freq.ind_end_fr[-1][  total_subsample_fr]
-        S_1_fr_T = unpad(S_1_fr_T, ind_start_fr, ind_end_fr)
-        S_1_fr = B.transpose(S_1_fr_T)
+        S_1_fr_T = unpad(S_1_fr_T, ind_start_fr, ind_end_fr, axis=-2)
+        S_1_fr = S_1_fr_T#B.transpose(S_1_fr_T)
     j1_fr = (sc_freq.log2_F if sc_freq.average_fr_global else
              sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][n1_fr_subsample])
     out_S_2['phi_t * phi_f'].append({'coef': S_1_fr,
@@ -784,7 +786,8 @@ def timefrequency_scattering(
         k1_plus_k2 = k1 + k2
 
         # swap axes & map to Fourier domain to prepare for conv along freq
-        Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
+        Y_2_hat = B.fft(Y_2_arr, axis=-2)
+        # Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
 
         # Transform over frequency + low-pass, for both spins
         # `* psi_f` part of `X * (psi_t * psi_f)`
@@ -828,7 +831,7 @@ def timefrequency_scattering(
 
     Y_2_arr = _right_pad(Y_2_list, pad_fr, B)
     # swap axes & map to Fourier domain to prepare for conv along freq
-    Y_2_hat = _transpose_fft(Y_2_arr, B, B.fft)
+    Y_2_hat = B.fft(Y_2_arr, axis=-2)
 
     # Transform over frequency + low-pass
     # `* psi_f` part of `X * (phi_t * psi_f)`
@@ -882,9 +885,6 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
     if spin_down:
         psi1_fs.append(sc_freq.psi1_f_fr_down)
 
-    # TODO what happens when `not all(J_pad_fr == J_pad_fr_max)` and
-    # `resample_=True`?
-
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, psi1_f in enumerate(psi1_fs):
         for n1_fr in range(len(psi1_f)):
@@ -906,8 +906,8 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
 
             # Wavelet transform over frequency
             Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
-            Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
-            Y_fr_c = B.ifft(Y_fr_hat)
+            Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample, axis=-2)
+            Y_fr_c = B.ifft(Y_fr_hat, axis=-2)
 
             # Modulus
             U_2_m = B.modulus(Y_fr_c)
@@ -930,7 +930,7 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
     subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
     if sc_freq.average_fr_global:
-        Y_fr_c = B.mean(Y_2_hat, axis=-1)  # TODO axis may change
+        Y_fr_c = B.mean(Y_2_hat, axis=-2)  # TODO axis may change
         j1_fr = sc_freq.log2_F
         # TODO what about oversampling_fr? document that it's non-effective
         total_conv_stride_over_U1 = j1_fr - subsample_equiv_due_to_pad
@@ -952,8 +952,8 @@ def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
         n1_fr_subsample = max(sub_adj - oversampling_fr, 0)
 
         Y_fr_c = B.cdgmm(Y_2_hat, sc_freq.phi_f_fr[subsample_equiv_due_to_pad][0])
-        Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample)
-        Y_fr_c = B.ifft(Y_fr_hat)
+        Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample, axis=-2)
+        Y_fr_c = B.ifft(Y_fr_hat, axis=-2)
 
     # Modulus
     U_2_m = B.modulus(Y_fr_c)
@@ -992,13 +992,14 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
 
     # do lowpassing ##########################################################
     if sc_freq.average_fr_global:
-        S_2_fr = B.mean(U_2_m, axis=-1)
+        S_2_fr = B.mean(U_2_m, axis=-2)
     elif average_fr:
         # Low-pass filtering over frequency
-        U_2_hat = B.rfft(U_2_m)
+        U_2_hat = B.rfft(U_2_m, axis=-2)
         S_2_fr_c = B.cdgmm(U_2_hat, phi_fr)
-        S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr)
-        S_2_fr = B.irfft(S_2_fr_hat)
+        S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr,
+                                         axis=-2)
+        S_2_fr = B.irfft(S_2_fr_hat, axis=-2)
     else:
         S_2_fr = U_2_m
 
@@ -1010,9 +1011,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         else:
             ind_start_fr = sc_freq.ind_start_fr[n2][total_subsample_fr]
             ind_end_fr   = sc_freq.ind_end_fr[  n2][total_subsample_fr]
-        S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr)
-    # Swap time and frequency subscripts again
-    S_2_fr = B.transpose(S_2_fr)
+        S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
     if average:
         # Low-pass filtering over time

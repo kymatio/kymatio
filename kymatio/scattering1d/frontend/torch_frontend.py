@@ -154,9 +154,9 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         n_final = self._register_filters(self, ('phi_f', 'psi1_f'))
         self._register_filters(self.sc_freq,
                                ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
-                               n0=n_final)
+                               n0=n_final, expand_dim=True)
 
-    def _register_filters(self, obj, filter_names, n0=0):
+    def _register_filters(self, obj, filter_names, n0=0, expand_dim=False):
         n = n0
         for name in filter_names:
             p_f = getattr(obj, name)
@@ -167,10 +167,14 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                             for k_sub in range(len(p_f[k])):
                                 p_f[k][k_sub] = torch.from_numpy(
                                     p_f[k][k_sub]).float()
+                                if expand_dim:
+                                    p_f[k][k_sub] = p_f[k][k_sub].view(-1, 1)
                                 self.register_buffer(f'tensor{n}', p_f[k][k_sub])
                                 n += 1
                         else:
                             p_f[k] = torch.from_numpy(p_f[k]).float()
+                            if expand_dim:
+                                p_f[k] = p_f[k].view(-1, 1)
                             self.register_buffer(f'tensor{n}', p_f[k])
                             n += 1
             else:  # list
@@ -178,6 +182,8 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                     for k in p_f_sub:
                         if isinstance(k, int):
                             p_f_sub[k] = torch.from_numpy(p_f_sub[k]).float()
+                            if expand_dim:
+                                p_f_sub[k] = p_f_sub[k].view(-1, 1)
                             self.register_buffer(f'tensor{n}', p_f_sub[k])
                             n += 1
         n_final = n

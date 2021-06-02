@@ -518,6 +518,8 @@ def test_output():
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
+        if test_num != 0:
+            continue
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
@@ -635,16 +637,16 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
-        test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_up_vs_down()
-        test_exclude()
-        test_no_second_order_filters()
-        test_max_pad_factor_fr()
-        test_backends()
-        test_meta()
+        # test_alignment()
+        # test_shapes()
+        # test_jtfs_vs_ts()
+        # test_freq_tp_invar()
+        # test_up_vs_down()
+        # test_exclude()
+        # test_no_second_order_filters()
+        # test_max_pad_factor_fr()
+        # test_backends()
+        # test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])

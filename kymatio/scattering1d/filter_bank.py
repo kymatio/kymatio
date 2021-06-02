@@ -71,6 +71,7 @@ def periodize_filter_fourier(h_f, nperiods=1, upscale=True):
     h_f_re = h_f.reshape(nperiods, N)
     v_f = (h_f_re.sum(axis=0) if upscale else
            h_f_re.mean(axis=0))
+    v_f = v_f if h_f.ndim == 1 else v_f[:, None]  # preserve dim
     return v_f
 
 
@@ -919,8 +920,9 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
 
     for n1_fr in range(len(j1s)):
         psi_down = {}
+        # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
         psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
-                                P_max=P_max, eps=eps)
+                                P_max=P_max, eps=eps)[:, None]
 
         # j0 is ordered greater to lower, so reverse
         j0_prev = -1
@@ -934,7 +936,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             if resample_psi_fr == 'exclude' and sigma < factor * min(sigma1):
                 break
             psi_down[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
-                                     P_max=P_max, eps=eps)
+                                     P_max=P_max, eps=eps)[:, None]
 
         psi1_f_fr_down.append(psi_down)
         # compute spin up
@@ -1014,7 +1016,8 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
 
     # initial lowpass
     phi_f_fr = {}
-    phi_f_fr[0] = [gauss_1d(N, sigma_low, P_max=P_max, eps=eps)]
+    # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
+    phi_f_fr[0] = [gauss_1d(N, sigma_low, P_max=P_max, eps=eps)[:, None]]
 
     def compute_all_subsamplings(phi_f_fr, j_fr):
         for j_fr_sub in range(1, 1 + log2_F):
@@ -1037,7 +1040,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, resample_phi_fr=True,
                 # Frontend will adjust "all possible input lengths" accordingly
                 break
             phi_f_fr[j_fr] = [gauss_1d(N // factor, sigma_low, P_max=P_max,
-                                       eps=eps)]
+                                       eps=eps)[:, None]]
             # dedicate separate filters for *subsampled* as opposed to *trimmed*
             # inputs (i.e. `n1_fr_subsample` vs `J_pad_fr_max_init - J_pad_fr`)
             # note this increases maximum subsampling of phi_fr relative to
