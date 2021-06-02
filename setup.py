@@ -39,9 +39,9 @@ setup_info = dict(
             'Louis Thiry, Vincent Lostanlen, Joakim Andén, '
             'Tomás Angles, Gabriel Huang, Roberto Leonarduzzi'),
     author_email=('edouard.oyallon@lip6.fr, belilove@iro.umontreal.ca, '
-                  'sergey.zagoruyko@inria.fr, michael.eickenberg@berkeley.edu, '
+                  'sergey.zagoruyko@inria.fr, michael.eickenberg@flatironinstitute.org, '
                   'mathieu.andreux@ens.fr, georgios.exarchakis@ens.fr, '
-                  'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@flatironinstitute.org, '
+                  'louis.thiry@ens.fr, vincent.lostanlen@nyu.edu, janden@kth.se, '
                   'tomas.angles@ens.fr, gabriel.huang@umontreal.ca, roberto.leonarduzzi@ens.fr'),
     url=URL,
     download_url='https://github.com/kymatio/kymatio/releases',
@@ -57,7 +57,6 @@ setup_info = dict(
                  'Natural Language :: English',
                  'Operating System :: MacOS',
                  'Operating System :: POSIX :: Linux',
-                 'Programming Language :: Python :: 3.5',
                  'Programming Language :: Python :: 3.6',
                  'Programming Language :: Python :: 3.7',
                  'Programming Language :: Python :: 3.8',
@@ -74,7 +73,7 @@ setup_info = dict(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    python_requires='>=3.5',
+    python_requires='>=3.6',
     license=LICENSE,
     packages=find_packages(exclude=('test',)),
     install_requires=REQUIREMENTS,
