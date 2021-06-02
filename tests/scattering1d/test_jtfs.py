@@ -316,7 +316,8 @@ def test_differentiability_torch():
     T = 2**12
     for device in devices:
         jtfs = TimeFrequencyScattering1D(J, T, Q, frontend='torch',
-                                         max_pad_factor=1).to(device)
+                                         out_type='array', max_pad_factor=1
+                                         ).to(device)
         x = torch.randn(2, T, requires_grad=True, device=device)
 
         s = jtfs.forward(x)
