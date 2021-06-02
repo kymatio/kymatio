@@ -1119,9 +1119,9 @@ def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
 
 def conj_fr(x):
     """Conjugate in frequency domain by swapping all bins (except dc);
-    assumes frequency along last axis.
+    assumes frequency along first axis.
     """
     out = np.zeros_like(x)
-    out[..., 0] = x[..., 0]
-    out[..., 1:] = x[..., :0:-1]
+    out[0] = x[0]
+    out[1:] = x[:0:-1]
     return out
