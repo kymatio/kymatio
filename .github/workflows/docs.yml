@@ -1,0 +1,46 @@
+name: Kymatio docs CI
+
+on:
+    - push
+    - pull_request
+
+jobs:
+    docs:
+        if: github.ref == 'refs/heads/master'
+        runs-on: ubuntu-20.04
+
+        steps:
+            - uses: actions/checkout@v1
+            - name: Set up Python
+              uses: actions/setup-python@v2
+              with:
+                  python-version: 3.7
+            - name: Set up TeX Live
+              run: |
+                  sudo apt update
+                  sudo apt install texlive texlive-latex-extra cm-super-minimal dvipng
+            - name: Install Python dependencies
+              run: |
+                  python3 -m pip install --upgrade pip
+                  python3 -m pip install -r requirements.txt
+                  python3 -m pip install -r requirements_optional.txt
+                  pip install torch==1.8.0+cpu \
+                              torchvision==0.9.0+cpu \
+                              torchaudio==0.8.0 \
+                              -f https://download.pytorch.org/whl/torch_stable.html
+            - name: Set up Kymatio
+              run: python3 setup.py develop
+            - name: Generate documentation
+              run: |
+                  pushd doc
+                  make clean
+                  make html
+                  popd
+            - name: Upload to GitHub pages
+              env:
+                  GITHUB_ACTOR: ${{ github.actor }}
+                  GITHUB_REPOSITORY: ${{ github.repository }}
+                  TOKEN: ${{ secrets.TOKEN }}
+                  DOC_REPO: kymatio/kymatio.github.io
+                  DOC_ROOT: doc/build/html
+              run: "tools/push_doc.sh"

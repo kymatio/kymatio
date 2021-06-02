@@ -1,4 +1,4 @@
-import scipy.fftpack
+import scipy.fft
 import warnings
 
 def compute_padding(M, N, J):
