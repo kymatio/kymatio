@@ -1,9 +1,10 @@
 from ...backend.numpy_backend import NumpyBackend
+from .agnostic_backend import index_axis
 
 
 class NumpyBackend1D(NumpyBackend):
     @classmethod
-    def subsample_fourier(cls, x, k):
+    def subsample_fourier(cls, x, k, axis=-1):
         """Subsampling in the Fourier domain
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
@@ -17,6 +18,9 @@ class NumpyBackend1D(NumpyBackend):
             imaginary parts of the Fourier transform.
         k : int
             The subsampling factor.
+        axis : int
+            Axis along which to subsample.
+
         Returns
         -------
         res : tensor
@@ -25,9 +29,15 @@ class NumpyBackend1D(NumpyBackend):
         """
         cls.complex_check(x)
 
-        y = x.reshape(*x.shape[:-1], k, x.shape[-1] // k)
+        axis = axis if axis >= 0 else x.ndim + axis  # ensure positive
+        s = list(x.shape)
+        N = s[axis]
+        re = (k, N // k)
+        s.pop(axis)
+        s.insert(axis, re[1])
+        s.insert(axis, re[0])
 
-        res = y.mean(axis=-2)
+        res = cls._np.reshape(x, s).mean(axis=axis)
 
         return res
 
@@ -64,7 +74,7 @@ class NumpyBackend1D(NumpyBackend):
         return output
 
     @staticmethod
-    def unpad(x, i0, i1):
+    def unpad(x, i0, i1, axis=-1):
         """Unpad real 1D tensor
         Slices the input tensor at indices between i0 and i1 along the last axis.
         Parameters
@@ -75,12 +85,15 @@ class NumpyBackend1D(NumpyBackend):
             Start of original signal before padding.
         i1 : int
             End of original signal before padding.
+        axis : int
+            Axis to unpad.
+
         Returns
         -------
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        return x[..., i0:i1]
+        return x[index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
     def zeros_like(cls, ref, shape=None):
@@ -92,22 +105,22 @@ class NumpyBackend1D(NumpyBackend):
         return cls._np.fft.fft(x, axis=axis)
 
     @classmethod
-    def rfft(cls, x):
+    def rfft(cls, x, axis=-1):
         cls.real_check(x)
 
-        return cls._np.fft.fft(x)
+        return cls._np.fft.fft(x, axis=axis)
 
     @classmethod
-    def irfft(cls, x):
+    def irfft(cls, x, axis=-1):
         cls.complex_check(x)
 
-        return cls._fft.ifft(x).real
+        return cls._fft.ifft(x, axis=axis).real
 
     @classmethod
-    def ifft(cls, x):
+    def ifft(cls, x, axis=-1):
         cls.complex_check(x)
 
-        return cls._fft.ifft(x)
+        return cls._fft.ifft(x, axis=axis)
 
     @classmethod
     def transpose(cls, x):

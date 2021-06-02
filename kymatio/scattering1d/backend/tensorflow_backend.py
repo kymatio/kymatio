@@ -1,12 +1,12 @@
 import tensorflow as tf
 
 from ...backend.tensorflow_backend import TensorFlowBackend
-from .agnostic_backend import pad as agnostic_pad
+from .agnostic_backend import pad as agnostic_pad, index_axis
 
 
 class TensorFlowBackend1D(TensorFlowBackend):
     @classmethod
-    def subsample_fourier(cls, x, k):
+    def subsample_fourier(cls, x, k, axis=-1):
         """Subsampling in the Fourier domain
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
@@ -20,6 +20,9 @@ class TensorFlowBackend1D(TensorFlowBackend):
             imaginary parts of the Fourier transform.
         k : int
             The subsampling factor.
+        axis : int
+            Axis along which to subsample.
+
         Returns
         -------
         res : tensor
@@ -28,12 +31,20 @@ class TensorFlowBackend1D(TensorFlowBackend):
         """
         cls.complex_check(x)
 
-        y = tf.reshape(x, (*x.shape[:-1], k, x.shape[-1] // k))
+        axis = axis if axis >= 0 else x.ndim + axis  # ensure positive
+        s = list(x.shape)
+        N = s[axis]
+        re = (k, N // k)
+        s.pop(axis)
+        s.insert(axis, re[1])
+        s.insert(axis, re[0])
 
-        return tf.reduce_mean(y, axis=-2)
+        y = tf.reshape(x, s)
+
+        return tf.reduce_mean(y, axis=axis)
 
     @staticmethod
-    def pad(x, pad_left, pad_right, pad_mode='reflect'):
+    def pad(x, pad_left, pad_right, axis=-1, pad_mode='reflect'):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -47,17 +58,20 @@ class TensorFlowBackend1D(TensorFlowBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        axis : int
+            Axis to pad.
         pad_mode : str
             name of padding to use.
+
         Returns
         -------
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic_pad(x, pad_left, pad_right, pad_mode, 'tensorflow')
+        return agnostic_pad(x, pad_left, pad_right, pad_mode, axis, 'tensorflow')
 
     @staticmethod
-    def unpad(x, i0, i1):
+    def unpad(x, i0, i1, axis=-1):
         """Unpad real 1D tensor
         Slices the input tensor at indices between i0 and i1 along the last axis.
         Parameters
@@ -68,12 +82,15 @@ class TensorFlowBackend1D(TensorFlowBackend):
             Start of original signal before padding.
         i1 : int
             End of original signal before padding.
+        axis : int
+            Axis to unpad.
+
         Returns
         -------
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        return x[..., i0:i1]
+        return x[index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
     def zeros_like(cls, ref, shape=None):
@@ -81,26 +98,35 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.zeros(shape, dtype=ref.dtype)
 
     @classmethod
-    def fft(cls, x, axis=-1):  # TODO transpose?
-        return tf.signal.fft(x, name='fft1d')
+    def fft(cls, x, axis=-1):
+        x = cls._maybe_transpose_for_fft(x, axis)
+
+        out = tf.signal.fft(x, name='fft1d')
+        return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
-    def rfft(cls, x):
+    def rfft(cls, x, axis=-1):
         cls.real_check(x)
+        x = cls._maybe_transpose_for_fft(x, axis)
 
-        return tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d')
-
-    @classmethod
-    def irfft(cls, x):
-        cls.complex_check(x)
-
-        return tf.math.real(tf.signal.ifft(x, name='irfft1d'))
+        out = tf.signal.fft(tf.cast(x, tf.complex64), name='rfft1d')
+        return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
-    def ifft(cls, x):
+    def irfft(cls, x, axis=-1):
         cls.complex_check(x)
+        x = cls._maybe_transpose_for_fft(x, axis)
 
-        return tf.signal.ifft(x, name='ifft1d')
+        out = tf.math.real(tf.signal.ifft(x, name='irfft1d'))
+        return cls._maybe_transpose_for_fft(out, axis)
+
+    @classmethod
+    def ifft(cls, x, axis=-1):
+        cls.complex_check(x)
+        x = cls._maybe_transpose_for_fft(x, axis)
+
+        out = tf.signal.ifft(x, name='ifft1d')
+        return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
     def transpose(cls, x):
@@ -112,5 +138,13 @@ class TensorFlowBackend1D(TensorFlowBackend):
     def mean(cls, x, axis=-1):
         """Take mean along specified axis, without collapsing the axis."""
         return tf.reduce_mean(x, axis=axis, keepdims=True)
+
+    @classmethod
+    def _maybe_transpose_for_fft(cls, x, axis):
+        if axis == -2:
+            x = cls.transpose(x)
+        elif axis != -1:
+            raise NotImplementedError("`axis` must be -1 or -2")
+        return x
 
 backend = TensorFlowBackend1D

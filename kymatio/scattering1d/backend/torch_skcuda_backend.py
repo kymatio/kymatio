@@ -155,7 +155,6 @@ class TorchSkcudaBackend1D(TorchSkcudaBackend, TorchBackend1D):
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
-        cls.contiguous_check(x)
         cls.complex_check(x)
         return cls._subsample_fourier(x,k)
 
