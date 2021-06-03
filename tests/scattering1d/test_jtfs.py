@@ -31,14 +31,14 @@ def test_alignment():
 
     # scatter ################################################################
     for out_3D in (True, False):
-      for resample_psi_fr in (True, 'exclude'):
-        if resample_psi_fr == 'exclude' and out_3D:
+      for sampling_psi_fr in ('resample', 'exclude'):
+        if sampling_psi_fr == 'exclude' and out_3D:
             continue  # incompatible
         for J_fr in (3, 5):
           out_type = ('dict:array' if out_3D else
                       'dict:list')  # for convenience
           test_params = dict(out_3D=out_3D,
-                             resample_filters_fr=(resample_psi_fr, True))
+                             sampling_filters_fr=(sampling_psi_fr, 'resample'))
           test_params_str = '\n'.join(f'{k}={v}' for k, v in
                                       test_params.items())
           jtfs = TimeFrequencyScattering1D(
@@ -189,8 +189,8 @@ def test_up_vs_down():
     assert E_down / E_up > 125
 
 
-def test_exclude():
-    """Test that outputs of `resample_psi_fr=='exclude'` are a subset of
+def test_sampling_psi_fr_exclude():
+    """Test that outputs of `sampling_psi_fr=='exclude'` are a subset of
     `==True` (i.e. equal wherever both exist).
     """
     N = 1024
@@ -199,10 +199,10 @@ def test_exclude():
     params = dict(shape=N, J=9, Q=8, J_fr=3, Q_fr=1, average_fr=True,
                   out_type='dict:list', frontend=default_backend)
     test_params_str = '\n'.join(f'{k}={v}' for k, v in params.items())
-    jtfs0 = TimeFrequencyScattering1D(**params,
-                                      resample_filters_fr=(True, True))
-    jtfs1 = TimeFrequencyScattering1D(**params,
-                                      resample_filters_fr=('exclude', True))
+    jtfs0 = TimeFrequencyScattering1D(
+        **params, sampling_filters_fr=('resample', 'resample'))
+    jtfs1 = TimeFrequencyScattering1D(
+        **params, sampling_filters_fr=('exclude', 'resample'))
 
     # required otherwise 'exclude' == True
     assert_pad_difference(jtfs0, test_params_str)
@@ -249,14 +249,14 @@ def test_max_pad_factor_fr():
     x = echirp(N)
 
     for aligned in (True, False):
-        for resample_filters_fr in (True, False):
+        for sampling_filters_fr in ('resample', 'recalibrate'):
             jtfs = TimeFrequencyScattering1D(
                 shape=N, J=10, Q=20, J_fr=4, Q_fr=1, F=256, average_fr=True,
                 max_pad_factor_fr=1, aligned=aligned, out_3D=True,
-                resample_filters_fr=resample_filters_fr, frontend=default_backend)
+                sampling_filters_fr=sampling_filters_fr, frontend=default_backend)
 
-            params_str = "aligned={}, resample_filters_fr={}".format(
-                aligned, resample_filters_fr)
+            params_str = "aligned={}, sampling_filters_fr={}".format(
+                aligned, sampling_filters_fr)
             try:
                 _ = jtfs(x)
             except Exception as e:
@@ -329,11 +329,11 @@ def test_differentiability_torch():
 def test_meta():
     """Tests that meta values and structures match those of output for all
     combinations of
-        - out_3D (True only with average_fr=True and resample_psi_fr != 'exclude')
+        - out_3D (True only with average_fr=True and sampling_psi_fr != 'exclude')
         - average_fr
         - aligned
-        - resample_psi_fr
-        - resample_phi_fr
+        - sampling_psi_fr
+        - sampling_phi_fr
     a total of 32 tests. All possible ways of packing the same coefficients
     (via `out_type`) aren't tested.
 
@@ -409,8 +409,8 @@ def test_meta():
                                          frontend=default_backend)
         test_params_str = '\n'.join(f'{k}={v}' for k, v in test_params.items())
 
-        resample_psi_fr = test_params['resample_filters_fr'][0]
-        if resample_psi_fr in (False, 'exclude'):
+        sampling_psi_fr = test_params['sampling_filters_fr'][0]
+        if sampling_psi_fr in ('recalibrate', 'exclude'):
             # assert not all J_pad_fr are same so test covers this case
             # psi is dominant here as `2**J_fr > F`
             assert_pad_difference(jtfs, test_params_str)
@@ -455,11 +455,11 @@ def test_meta():
         if out_3D and not average_fr:
             continue  # invalid option
         for aligned in (True, False):
-          for resample_psi_fr in (True, False):
-            for resample_phi_fr in (True, False):
+          for sampling_psi_fr in ('resample', 'recalibrate'):
+            for sampling_phi_fr in ('resample', 'recalibrate'):
                 test_params = dict(
                     out_3D=out_3D, average_fr=average_fr, aligned=aligned,
-                    resample_filters_fr=(resample_psi_fr, resample_phi_fr))
+                    sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
                 run_test(params, test_params)
 
     # reproduce this case separately; above doesn't test where 'exclude' fails
@@ -469,13 +469,13 @@ def test_meta():
     J_fr = 3
     params = dict(shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, F=F, out_type=out_type)
 
-    resample_psi_fr = 'exclude'
+    sampling_psi_fr = 'exclude'
     for average_fr in (True, False):
       for aligned in (True, False):
-        for resample_phi_fr in (True, False):
+        for sampling_phi_fr in ('resample', 'recalibrate'):
             test_params = dict(
                 out_3D=False, average_fr=average_fr, aligned=aligned,
-                resample_filters_fr=(resample_psi_fr, resample_phi_fr))
+                sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
             run_test(params, test_params)
 
 
@@ -490,7 +490,7 @@ def test_output():
         3. True     True        False   'dict:list'   'global'
         4. True     False       False   'dict:array'  8
 
-        5. [2.] + (resample_psi_fr, resample_phi_fr) = (False, False)
+        5. [2.] + `sampling_psi_fr = sampling_phi_fr = 'recalibrate'`
         6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
@@ -515,7 +515,7 @@ def test_output():
 
             if k in ('average', 'average_fr', 'aligned'):
                 params[k] = bool(data[k])
-            elif k == 'resample_filters_fr':
+            elif k == 'sampling_filters_fr':
                 params[k] = (bool(data[k]) if len(data[k]) == 1 else
                              tuple(data[k]))
             elif k == 'F':
@@ -538,6 +538,7 @@ def test_output():
     for test_num in range(num_tests):
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
+
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         out = jtfs(x)
 
@@ -682,7 +683,7 @@ if __name__ == '__main__':
         test_jtfs_vs_ts()
         test_freq_tp_invar()
         test_up_vs_down()
-        test_exclude()
+        test_sampling_psi_fr_exclude()
         test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_backends()

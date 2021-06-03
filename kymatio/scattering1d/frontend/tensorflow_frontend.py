@@ -75,7 +75,7 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
                                           ScatteringTensorFlow1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
                  average=True, average_fr=False, oversampling=0,
-                 oversampling_fr=None, aligned=True, resample_filters_fr=True,
+                 oversampling_fr=None, aligned=True, sampling_filters_fr='resample',
                  out_type="array", out_3D=False, pad_mode='zero', max_pad_factor=2,
                  max_pad_factor_fr=None, backend='tensorflow',
                  name='TimeFrequencyScattering1D'):
@@ -90,7 +90,7 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
 
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, max_pad_factor_fr, out_3D, out_type)
+            sampling_filters_fr, max_pad_factor_fr, out_3D, out_type)
         TimeFrequencyScatteringBase1D.build(self)
 
     def scattering(self, x):
