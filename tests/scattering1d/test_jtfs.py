@@ -331,14 +331,14 @@ def test_meta():
     combinations of
         - out_3D (True only with average_fr=True and sampling_psi_fr != 'exclude')
         - average_fr
+        - average
         - aligned
         - sampling_psi_fr
         - sampling_phi_fr
-    a total of 32 tests. All possible ways of packing the same coefficients
+    a total of 56 tests. All possible ways of packing the same coefficients
     (via `out_type`) aren't tested.
 
     Not tested:
-        - average
         - average_fr_global
         - oversampling_fr
         - max_padding_fr
@@ -365,21 +365,23 @@ def test_meta():
                 pair, field, out_n_freqs, meta_n_freqs, test_params_str))
 
     def assert_equal_values(Scx, jmeta, field, pair, i, meta_idx, out_3D,
-                            test_params_str, jtfs):
+                            test_params_str, test_params, jtfs):
         """Assert that non-NaN values are equal."""
         a, b = Scx[pair][i][field], jmeta[field][pair][meta_idx[0]]
         errmsg = ("(out[{0}][{1}][{2}], jmeta[{2}][{0}][{3}]) = ({4}, {5})\n{6}"
                   ).format(pair, i, field, meta_idx[0], a, b, test_params_str)
 
         meta_len = b.shape[-1]
+        zeroth_order_unaveraged = (pair == 'S0' and not test_params['average'])
         if field != 's':
             assert meta_len == 3, ("all meta fields (except spin) must pad to "
-                                 "length 3: %s" % errmsg)
-            assert len(a) > 0, ("all computed metas (except spin) must append "
-                                "something: %s" % errmsg)
+                                   "length 3: %s" % errmsg)
+            if not zeroth_order_unaveraged:
+                assert len(a) > 0, ("all computed metas (except spin) must "
+                                    "append something: %s" % errmsg)
 
-        if field == 's' and pair in ('S0', 'S1'):
-            assert len(a) == 0 and np.isnan(b), errmsg
+        if (field == 's' and pair in ('S0', 'S1')) or zeroth_order_unaveraged:
+            assert len(a) == 0 and np.all(np.isnan(b)), errmsg
         elif len(a) == meta_len:
             assert np.all(a == b), errmsg
         elif len(a) < meta_len:
@@ -436,7 +438,7 @@ def test_meta():
                                  test_params_str, jtfs)
             for i in range(len(Scx[pair])):
                 assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
-                                    out_3D, test_params_str, jtfs)
+                                    out_3D, test_params_str, test_params, jtfs)
 
     N = 512
     x = np.random.randn(N)
@@ -452,15 +454,17 @@ def test_meta():
 
     for out_3D in (False, True):
       for average_fr in (True, False):
-        if out_3D and not average_fr:
-            continue  # invalid option
-        for aligned in (True, False):
-          for sampling_psi_fr in ('resample', 'recalibrate'):
-            for sampling_phi_fr in ('resample', 'recalibrate'):
-                test_params = dict(
-                    out_3D=out_3D, average_fr=average_fr, aligned=aligned,
-                    sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
-                run_test(params, test_params)
+        for average in (True, False):
+          if out_3D and not (average_fr and average):
+              continue  # invalid option
+          for aligned in (True, False):
+            for sampling_psi_fr in ('resample', 'recalibrate'):
+              for sampling_phi_fr in ('resample', 'recalibrate'):
+                  test_params = dict(
+                      out_3D=out_3D, average_fr=average_fr, average=average,
+                      aligned=aligned,
+                      sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
+                  run_test(params, test_params)
 
     # reproduce this case separately; above doesn't test where 'exclude' fails
     N = 1024
@@ -471,12 +475,14 @@ def test_meta():
 
     sampling_psi_fr = 'exclude'
     for average_fr in (True, False):
-      for aligned in (True, False):
-        for sampling_phi_fr in ('resample', 'recalibrate'):
-            test_params = dict(
-                out_3D=False, average_fr=average_fr, aligned=aligned,
-                sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
-            run_test(params, test_params)
+      for average in (True, False):
+        for aligned in (True, False):
+          for sampling_phi_fr in ('resample', 'recalibrate'):
+              test_params = dict(
+                  out_3D=False, average_fr=average_fr, average=average,
+                  aligned=aligned,
+                  sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
+              run_test(params, test_params)
 
 
 def test_output():

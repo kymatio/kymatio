@@ -1187,7 +1187,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                     self.J_pad_fr[i] = max(J_pad_fr, self.J_pad_fr_min_limit)
                     self.subsample_equiv_relative_to_max_padding[i] = (
                         self.J_pad_fr_max_init - self.J_pad_fr[i])
-        # realized minimum  # TODO docs
+        # realized minimum
         self.J_pad_fr_min = min(p for p in self.J_pad_fr if p != -1)
 
     def compute_padding_fr(self):

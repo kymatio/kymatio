@@ -658,21 +658,25 @@ def timefrequency_scattering(
         # compute even if `average=False`, since used in `phi_t * psi_f` pairs
         S_1_c = B.cdgmm(U_1_hat, phi[k1])
         S_1_c_list.append(S_1_c)
-
-        # Apply low-pass filtering over time (optional) and unpad
-        if average_global:
-            S_1 = B.mean(U_1_m, axis=-1)
-        elif average:
+        if not average_global:
+            # compute even if `average=False`, since used in `phi_t * phi_f` pairs
             # Low-pass filtering over time
             k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
             # Unpad
-            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1_u = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+
+        # Apply low-pass filtering over time (optional) and unpad
+        if average_global:
+            S_1_u = B.mean(U_1_m, axis=-1)
+            S_1 = S_1_u
+        elif average:
+            S_1 = S_1_u
         else:
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
-        S_1_list.append(S_1)
+        S_1_list.append(S_1_u)
         out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': ()})
 
     # Frequential averaging over time averaged coefficients ##################
@@ -1009,6 +1013,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
 
     # sanity checks (see "Subsampling, padding")
     if aligned and not sc_freq.average_fr_global:
+        # `total_conv_stride_over_U1` renamed; comment for searchability
         total_conv_stride_over_U1_realized = (n1_fr_subsample +
                                               lowpass_subsample_fr)
         if n1_fr != -1:
@@ -1018,7 +1023,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
                     total_conv_stride_over_U1_realized)
             assert (total_conv_stride_over_U1_realized ==
                     sc_freq.__total_conv_stride_over_U1)
-            # TODO rename summed to `_actual` or `_realized` (also in docs)
 
             if not average_fr:
                 assert total_conv_stride_over_U1_realized == 0
