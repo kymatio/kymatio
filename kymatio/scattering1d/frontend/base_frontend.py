@@ -278,7 +278,8 @@ class ScatteringBase1D(ScatteringBase):
             performance. However, this may reduce precision in the
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
-            may be modified after object creation. Defaults to `0`.
+            may be modified after object creation.
+            Defaults to `0`. Has no effect if `average_global=True`.
         {param_vectorize}
         Attributes
         ----------
