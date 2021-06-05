@@ -13,7 +13,9 @@ verbose = 1
 
 
 def test_average_combos():
-    """Test that various combinations of `average` & `average_fr` don't error."""
+    """Test that various combinations of `average`, `average_fr`, `oversampling`,
+    and `oversampling_fr` don't error.
+    """
     N = 2048
     x = np.random.randn(N)
 
@@ -56,7 +58,6 @@ def test_T_and_F():
     to `phi_t * phi_f` and `psi_t * phi_f` pairs that were padded to more than
     `J_pad_max` were accounted.
     """
-    from timeit import default_timer as dtime
     N = 1024
     x = np.random.randn(N)
     J, Q, J_fr, Q_fr = 9, 8, 5, 3

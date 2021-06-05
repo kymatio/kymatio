@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
 import numpy as np
-import matplotlib.pyplot as plt
 from .scattering1d.filter_bank import compute_temporal_support
 from scipy.fft import ifft
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    import warnings
+    warnings.warn("`kymatio.visuals` requires `matplotlib` installed.")
 
 
 __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',

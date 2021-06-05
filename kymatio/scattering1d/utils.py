@@ -455,7 +455,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         shape_fr_padded = 2**pad_fr
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
-        if n1_fr != -1:  # TODO try doing without accessing filters?
+        if n1_fr != -1:
             j1_fr = sc_freq.psi1_f_fr_up[n1_fr]['j'][subsample_equiv_due_to_pad]
         else:
             j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
@@ -464,7 +464,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         total_conv_stride_over_U1 = _get_stride(j1_fr, pad_fr,
                                                 subsample_equiv_due_to_pad,
                                                 sc_freq, _average_fr)
-
         if n2 == -1 and n1_fr == -1:
             n1_fr_subsample = 0
         else:
@@ -476,7 +475,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             n1_fr_subsample = max(sub_adj - sc_freq.oversampling_fr, 0)
 
         # _joint_lowpass() ####################################################
-        # TODO private method in core?
         if sc_freq.average_fr or (n2 == -1 and n1_fr == -1):
             lowpass_subsample_fr = max(total_conv_stride_over_U1 -
                                        n1_fr_subsample -

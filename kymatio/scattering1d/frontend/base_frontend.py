@@ -6,8 +6,7 @@ import warnings
 import numpy as np
 
 from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
-                           psi_fr_factory, phi_fr_factory,
-                           calibrate_scattering_filters)
+                           psi_fr_factory, phi_fr_factory)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -340,7 +339,8 @@ class ScatteringBase1D(ScatteringBase):
             performance. However, this may reduce precision in the
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
-            may be modified after object creation. Defaults to `0`.
+            may be modified after object creation.
+            Defaults to `0`. Has no effect if `average_global=True`.
         {param_vectorize}
         Attributes
         ----------
@@ -703,6 +703,7 @@ class TimeFrequencyScatteringBase1D():
     oversampling_fr: int (default 0), optional
         How much to oversample along frequency axis (with respect to `2**J_fr`).
         Also see `oversampling` in `Scattering1D`.
+        Has no effect if `average_fr_global=True`.
 
     aligned: bool (default True)
         If True, rows of joint slices index to same frequency for all slices.
@@ -732,6 +733,9 @@ class TimeFrequencyScatteringBase1D():
 
         The `aligned=False` and `out_3D=False` combination is not tested,
         nor is any use known for it.
+
+        Note: `sampling_psi_fr = 'recalibrate'` breaks global alignment, but
+        preserves it on per-`subsample_equiv_due_to_pad` basis, i.e. per-`n2`.
 
     sampling_filters_fr: str / tuple[str]
         Controls filter properties for input lengths below maximum.
@@ -781,7 +785,7 @@ class TimeFrequencyScatteringBase1D():
 
         Also see `J_pad_fr_max` if `any(sampling_filters_fr)==False`.
 
-    out_type : str['list', 'array', 'array-like'], optional
+    out_type : str, optional
         Affects output structure (but not how coefficients are computed).
         See `help(scattering)` for further info.
 
@@ -957,9 +961,14 @@ class TimeFrequencyScatteringBase1D():
     pad_right_fr : int
         Amount of padding to right of frequential rows (or top of joint matrix).
 
-    n1_fr_subsample, subsample_equiv_due_to_pad : int, int
+    n1_fr_subsample, subsample_equiv_due_to_pad, n2 : int, int, int
         See `help(kymatio.scattering1d.core.timefrequency_scattering)`.
-        Not attributes.
+        Not attributes. Summary:
+
+            - n1_fr_subsample: subsampling done after convolving with `psi_fr`
+            - subsample_equiv_due_to_pad: "equivalent subsampling" due to padding
+              less, equal to `J_pad_fr_max_init - pad_fr`
+            - n2: index of temporal wavelet in joint scattering, like `psi2[n2]`.
     """
 
     _doc_scattering = \
