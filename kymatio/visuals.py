@@ -73,7 +73,8 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
         _plot_filters(p2, p0, title=title)
 
 
-def filterbank_jtfs(jtfs, part='real', zoomed=False):
+def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
+                    labels=True, suptitle_y=1.015):
     """
     # Arguments:
         jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
@@ -84,6 +85,15 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         zoomed: bool (default False)
             Whether to plot all filters with maximum subsampling
             (loses relative orientations but shows fine detail).
+        w, h: float, float
+            Adjust width and height.
+        borders: bool (default False)
+            Whether to show plot borders between wavelets.
+        labels: bool (default True)
+            Whether to label joint slices with `mu, l, spin` information.
+        suptitle_y: float / None
+            Position of plot title (None for no title).
+            Default is optimized for `w=h=1`.
 
     # Examples:
         T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
@@ -93,23 +103,26 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     """
     def to_time(p):
         # center & ifft
-        return ifft(p[0] * (-1)**np.arange(len(p[0])))
+        return ifft(p * (-1)**np.arange(len(p)))
 
     def get_imshow_data(jtfs, t_idx, f_idx, s_idx=None, max_t_bound=None,
                         max_f_bound=None):
+        # iterate freq wavelets backwards to arrange low-high freq <-> left-right
+        _f_idx = len(jtfs.psi1_f_fr_up) - f_idx - 1
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[f_idx]
-            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", f_idx, 0)
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[_f_idx]
+            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", _f_idx, 0)
         elif f_idx == -1:
-            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
 
         if t_idx == -1 or f_idx == -1:
             title = (psi_txt, dict(fontsize=17, y=.75))
+            p_t, p_f = p_t[0].squeeze(), p_f[0].squeeze()
             Psi = to_time(p_f)[:, None] * to_time(p_t)[None]
             if max_t_bound is not None or zoomed:
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound)
@@ -118,11 +131,11 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         # else get spinned wavelets ##########################################
         psi_spin = (jtfs.sc_freq.psi1_f_fr_up if s_idx == 0 else
                     jtfs.sc_freq.psi1_f_fr_down)
-        psi_f = psi_spin[f_idx]
-        psi_t = jtfs.psi2_f[t_idx]
+        psi_f = psi_spin[_f_idx][0].squeeze()
+        psi_t = jtfs.psi2_f[t_idx][0].squeeze()
 
-        f_width = compute_temporal_support(psi_f[0][None])
-        t_width = compute_temporal_support(psi_t[0][None])
+        f_width = compute_temporal_support(psi_f[None])
+        t_width = compute_temporal_support(psi_t[None])
         f_bound = int(2**np.floor(np.log2(f_width)))
         t_bound = int(2**np.floor(np.log2(t_width)))
 
@@ -134,7 +147,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         Psi = psi_f[:, None] * psi_t[None]
         # title
         spin = '+1' if s_idx == 0 else '-1'
-        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, f_idx, spin)
+        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, _f_idx, spin)
         title = (psi_txt, dict(fontsize=17, y=.75))
         # meta
         m = dict(t_bound=t_bound, f_bound=f_bound)
@@ -168,7 +181,10 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         else:
             Psi = _colorize_complex(Psi)
         cmap = 'bwr' if part in ('real', 'imag') else 'none'
-        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=0, cmap=cmap)
+        if not labels:
+            title=None
+        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=borders,
+               cmap=cmap)
 
     # get spinned wavelet arrays & metadata ##################################
     n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_fr_up)
@@ -184,11 +200,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     bounds = (max_t_bound, max_f_bound)
 
     # plot ###################################################################
-    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(12, 13))
+    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(8*w, 21*h))
     _txt = "(%s%s" % (part, " part" if part in ('real', 'imag') else "")
     _txt += ", zoomed)" if zoomed else ")"
-    plt.suptitle("Joint wavelet filterbank " + _txt,
-                 y=1.04, weight='bold', fontsize=17)
+    if suptitle_y is not None:
+        plt.suptitle("Joint wavelet filterbank " + _txt,
+                     y=suptitle_y, weight='bold', fontsize=17)
 
     # (psi_t * psi_f) and (phi_t * psi_f)
     for s_idx in (0, 1):
@@ -200,7 +217,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                     Psi = process_Psi(Psi, None, None,
                                       imshow_data[(0, 0, f_idx)][2])
                 row_idx = n_rows
-                ax = axes[row_idx][f_idx]
+                ax = axes[row_idx][f_idx + 1]
                 _show(Psi, title=title, ax=ax)
 
         # (psi_t * psi_f)
@@ -211,7 +228,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound, m)
 
                 row_idx = t_idx + (n_rows + 1) * s_idx
-                ax = axes[row_idx][f_idx]
+                ax = axes[row_idx][f_idx + 1]
                 _show(Psi, title=title, ax=ax)
 
     # (psi_t * phi_f)
@@ -220,7 +237,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         if zoomed:
             Psi = process_Psi(Psi, None, None,
                               imshow_data[(0, t_idx, 0)][2])
-        ax = axes[t_idx][-1]
+        ax = axes[t_idx][0]
         _show(Psi, title=title, ax=ax)
 
     # (phi_t * phi_f)
@@ -228,12 +245,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     if zoomed:
         Psi = process_Psi(Psi, None, None,
                           imshow_data[(0, 0, 0)][2])
-    ax = axes[n_rows][-1]
+    ax = axes[n_rows][0]
     _show(Psi, title=title, ax=ax)
 
     # strip borders of remainders
     for t_idx in range(n_rows + 1, 2*n_rows + 1):
-        ax = axes[t_idx][-1]
+        ax = axes[t_idx][0]
         ax.set_xticks([])
         ax.set_yticks([])
         for spine in ax.spines:
