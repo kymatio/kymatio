@@ -439,7 +439,8 @@ class ScatteringBase1D(ScatteringBase):
 class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, sampling_filters_fr='resample',
-                 max_pad_factor_fr=None, out_3D=False, out_type='array'):
+                 max_pad_factor_fr=None, out_3D=False, out_type='array',
+                 out_exclude=None):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
@@ -450,6 +451,7 @@ class TimeFrequencyScatteringBase1D():
         self.max_pad_factor_fr = max_pad_factor_fr
         self.out_3D = out_3D
         self.out_type = out_type
+        self.out_exclude = out_exclude
 
     def build(self):
         """Check args and instantiate `_FrequencyScatteringBase` object
@@ -465,6 +467,17 @@ class TimeFrequencyScatteringBase1D():
         if self._no_second_order_filters:
             raise ValueError("configuration yields no second-order filters; "
                              "try increasing `J`")
+
+        if self.out_exclude is not None:
+            # ensure all names are valid
+            supported = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
+                         'psi_t * phi_f', 'psi_t * psi_f_up',
+                         'psi_t * psi_f_down')
+            for name in self.out_exclude:
+                if name not in supported:
+                    raise ValueError(("'{}' is an invalid coefficient name; "
+                                      "must be one of: {}").format(
+                                          name, ', '.join(supported)))
 
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1
@@ -822,6 +835,14 @@ class TimeFrequencyScatteringBase1D():
             `n_coeffs` are flattened into one dimension, yielding
             `(n_coeffs * freq, time)`. This breaks inter-wavelet spatial coherence
             but is the standard used in classification.
+
+    out_exclude: list/tuple[str] / None
+        Will exclude coefficients with these names from computation and output
+        (except for `S1`, which always computes but still excludes from output).
+        All names:
+
+            - 'S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+              'psi_t * psi_f_up', 'psi_t * psi_f_down'
     """
 
     _doc_attrs = \

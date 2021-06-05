@@ -263,6 +263,34 @@ def test_max_pad_factor_fr():
                 raise e
 
 
+def test_out_exclude():
+    """Test that `out_exclude` works as expected."""
+    N = 512
+    params = dict(shape=N, J=4, Q=4, J_fr=4, average=False, average_fr=True,
+                  out_type='dict:list', frontend=default_backend)
+    x = np.random.randn(N)
+
+    all_pairs = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
+                 'psi_t * phi_f', 'psi_t * psi_f_up', 'psi_t * psi_f_down')
+    out_excludes = [
+        ('S0', 'psi_t * psi_f_up'),
+        ('psi_t * psi_f_down', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f'),
+        ('S1', 'psi_t * psi_f_up', 'psi_t * psi_f_down'),
+    ]
+    for out_exclude in out_excludes:
+        jtfs = TimeFrequencyScattering1D(**params, out_exclude=out_exclude)
+        out = jtfs(x)
+
+        for pair in out:
+            assert pair not in out_exclude, pair
+            assert pair in all_pairs, pair  # ensure nothing else was inserted
+
+    # ensure invalid pair is caught
+    with pytest.raises(ValueError) as record:
+        jtfs = TimeFrequencyScattering1D(**params, out_exclude=('banana',))
+    assert "invalid coefficient" in record.value.args[0]
+
+
 def test_no_second_order_filters():
     """Reproduce edge case: configuration yields no second-order wavelets
     so can't do JTFS.
@@ -623,6 +651,7 @@ if __name__ == '__main__':
         test_sampling_psi_fr_exclude()
         test_no_second_order_filters()
         test_max_pad_factor_fr()
+        test_out_exclude()
         test_backends()
         test_differentiability_torch()
         test_meta()
