@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
 import numpy as np
-import matplotlib.pyplot as plt
 from .scattering1d.filter_bank import compute_temporal_support
 from scipy.fft import ifft
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    import warnings
+    warnings.warn("`kymatio.visuals` requires `matplotlib` installed.")
 
 
 __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
@@ -56,22 +61,23 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
     # shorthand references
     p0 = scattering.phi_f
     p1 = scattering.psi1_f
-    p2 = scattering.psi2_f
 
     title = "First-order filterbank | J, Q1 = {}, {}".format(
         scattering.J, scattering.Q[0])
     _plot_filters(p1, p0, title=title)
 
     if second_order:
+        p2 = scattering.psi2_f
         title = "Second-order filterbank | J, Q2 = {}, {}".format(
             scattering.J, scattering.Q[1])
         _plot_filters(p2, p0, title=title)
 
 
-def filterbank_jtfs(jtfs, part='real', zoomed=False):
+def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
+                    labels=True, suptitle_y=1.015):
     """
     # Arguments:
-        jtfs: kymatio.scattering1d.TimeFrequencyScattering
+        jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
             JTFS instance.
         part: str['real', 'imag', 'complex']
             Whether to plot real or imaginary part (black-white-red colormap),
@@ -79,45 +85,57 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         zoomed: bool (default False)
             Whether to plot all filters with maximum subsampling
             (loses relative orientations but shows fine detail).
+        w, h: float, float
+            Adjust width and height.
+        borders: bool (default False)
+            Whether to show plot borders between wavelets.
+        labels: bool (default True)
+            Whether to label joint slices with `mu, l, spin` information.
+        suptitle_y: float / None
+            Position of plot title (None for no title).
+            Default is optimized for `w=h=1`.
 
     # Examples:
         T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
-        jtfs = TimeFrequencyScattering(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
-                                       out_type='array', average_fr=1)
+        jtfs = TimeFrequencyScattering1D(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
+                                         out_type='array', average_fr=1)
         filterbank_jtfs(jtfs)
     """
     def to_time(p):
         # center & ifft
-        return ifft(p[0] * (-1)**np.arange(len(p[0])))
+        return ifft(p * (-1)**np.arange(len(p)))
 
     def get_imshow_data(jtfs, t_idx, f_idx, s_idx=None, max_t_bound=None,
                         max_f_bound=None):
+        # iterate freq wavelets backwards to arrange low-high freq <-> left-right
+        _f_idx = len(jtfs.psi1_f_fr_up) - f_idx - 1
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_up[f_idx]
-            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", f_idx, 0)
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[_f_idx]
+            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", _f_idx, 0)
         elif f_idx == -1:
-            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
 
         if t_idx == -1 or f_idx == -1:
             title = (psi_txt, dict(fontsize=17, y=.75))
+            p_t, p_f = p_t[0].squeeze(), p_f[0].squeeze()
             Psi = to_time(p_f)[:, None] * to_time(p_t)[None]
             if max_t_bound is not None or zoomed:
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound)
             return Psi, title
 
         # else get spinned wavelets ##########################################
-        psi_spin = (jtfs.sc_freq.psi1_f_up if s_idx == 0 else
-                    jtfs.sc_freq.psi1_f_down)
-        psi_f = psi_spin[f_idx]
-        psi_t = jtfs.psi2_f[t_idx]
+        psi_spin = (jtfs.sc_freq.psi1_f_fr_up if s_idx == 0 else
+                    jtfs.sc_freq.psi1_f_fr_down)
+        psi_f = psi_spin[_f_idx][0].squeeze()
+        psi_t = jtfs.psi2_f[t_idx][0].squeeze()
 
-        f_width = compute_temporal_support(psi_f[0][None])
-        t_width = compute_temporal_support(psi_t[0][None])
+        f_width = compute_temporal_support(psi_f[None])
+        t_width = compute_temporal_support(psi_t[None])
         f_bound = int(2**np.floor(np.log2(f_width)))
         t_bound = int(2**np.floor(np.log2(t_width)))
 
@@ -126,11 +144,10 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         psi_t = to_time(psi_t)
 
         # compute joint wavelet in time
-        # TODO fix up & down instead of conjugating
-        Psi = np.conj(psi_f)[:, None] * psi_t[None]
+        Psi = psi_f[:, None] * psi_t[None]
         # title
         spin = '+1' if s_idx == 0 else '-1'
-        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, f_idx, spin)
+        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, _f_idx, spin)
         title = (psi_txt, dict(fontsize=17, y=.75))
         # meta
         m = dict(t_bound=t_bound, f_bound=f_bound)
@@ -164,10 +181,13 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         else:
             Psi = _colorize_complex(Psi)
         cmap = 'bwr' if part in ('real', 'imag') else 'none'
-        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=0, cmap=cmap)
+        if not labels:
+            title=None
+        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=borders,
+               cmap=cmap)
 
     # get spinned wavelet arrays & metadata ##################################
-    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_up)
+    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_fr_up)
     imshow_data = {}
     for s_idx in (0, 1):
         for t_idx in range(n_rows):
@@ -180,11 +200,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     bounds = (max_t_bound, max_f_bound)
 
     # plot ###################################################################
-    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(12, 13))
+    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(8*w, 21*h))
     _txt = "(%s%s" % (part, " part" if part in ('real', 'imag') else "")
     _txt += ", zoomed)" if zoomed else ")"
-    plt.suptitle("Joint wavelet filterbank " + _txt,
-                 y=1.04, weight='bold', fontsize=17)
+    if suptitle_y is not None:
+        plt.suptitle("Joint wavelet filterbank " + _txt,
+                     y=suptitle_y, weight='bold', fontsize=17)
 
     # (psi_t * psi_f) and (phi_t * psi_f)
     for s_idx in (0, 1):
@@ -196,7 +217,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                     Psi = process_Psi(Psi, None, None,
                                       imshow_data[(0, 0, f_idx)][2])
                 row_idx = n_rows
-                ax = axes[row_idx][f_idx]
+                ax = axes[row_idx][f_idx + 1]
                 _show(Psi, title=title, ax=ax)
 
         # (psi_t * psi_f)
@@ -207,7 +228,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound, m)
 
                 row_idx = t_idx + (n_rows + 1) * s_idx
-                ax = axes[row_idx][f_idx]
+                ax = axes[row_idx][f_idx + 1]
                 _show(Psi, title=title, ax=ax)
 
     # (psi_t * phi_f)
@@ -216,7 +237,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         if zoomed:
             Psi = process_Psi(Psi, None, None,
                               imshow_data[(0, t_idx, 0)][2])
-        ax = axes[t_idx][-1]
+        ax = axes[t_idx][0]
         _show(Psi, title=title, ax=ax)
 
     # (phi_t * phi_f)
@@ -224,12 +245,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     if zoomed:
         Psi = process_Psi(Psi, None, None,
                           imshow_data[(0, 0, 0)][2])
-    ax = axes[n_rows][-1]
+    ax = axes[n_rows][0]
     _show(Psi, title=title, ax=ax)
 
     # strip borders of remainders
     for t_idx in range(n_rows + 1, 2*n_rows + 1):
-        ax = axes[t_idx][-1]
+        ax = axes[t_idx][0]
         ax.set_xticks([])
         ax.set_yticks([])
         for spine in ax.spines:
@@ -239,7 +260,8 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
 
 
-def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
+def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
+             skip_unspinned=False, sample_idx=0):
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
     # Arguments:
@@ -262,57 +284,91 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False):
         skip_spins: bool (default False)
             Whether to skip `psi_t * psi_f` pairs.
 
+        skip_unspinned: bool (default False)
+            Whether to skip `phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`
+            pairs.
+
+        sample_idx : int (default 0)
+            Index of sample in batched input to visualize.
+
     # Example:
         T, J, Q = 2049, 7, 16
         x = np.cos(np.pi * 350 ** np.linspace(0, 1, T))
 
-        scattering = TimeFrequencyScattering(J, T, Q, J_fr=4, Q_fr=2,
-                                             out_type='list', average=True)
+        scattering = TimeFrequencyScattering1D(J, T, Q, J_fr=4, Q_fr=2,
+                                               out_type='list', average=True)
         Scx = scattering(x)
         meta = scattering.meta()
 
         gif_jtfs(Scx, meta)
     """
-    def _title(meta, i, pair, spin):
+    def _title(meta, meta_idx, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
-        mu, l = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                 for n in meta['n'][pair][i]]
+        mu, l, _ = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
+                    for n in meta['n'][pair][meta_idx[0]]]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
     def _viz_spins(Scx, meta, i, norm):
         kup = 'psi_t * psi_f_up'
         kdn = 'psi_t * psi_f_down'
-        sup, sdn = Scx[kup][i], Scx[kdn][i]
-        fig, axes = plt.subplots(1, 2, figsize=(15, 7))
+        if out_list:
+            sup, sdn = (Scx[kup][i]['coef'][sample_idx],
+                        Scx[kdn][i]['coef'][sample_idx])
+        else:
+            sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
+        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
-        imshow(sup, ax=axes[0], **kw, title=_title(meta, i, kup, +1))
-        imshow(sdn, ax=axes[1], **kw, title=_title(meta, i, kdn, -1))
+        imshow(sup, ax=axes[0], **kw, title=_title(meta, meta_idx, kup, '+1'))
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta, meta_idx, kdn, '-1'))
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
-    def _viz_simple(coef, pair, meta, i, norm):
-        imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
-               title=_title(meta, i, pair, '0'))
+        meta_idx[0] += len(sup)
 
-    if norms is not None:
+    def _viz_simple(coef, pair, meta, norm):
+        imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
+               title=_title(meta, meta_idx, pair, '0'))
+        meta_idx[0] += len(coef)
+
+    out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
+    out_list = isinstance(Scx['S0'], list)
+    if not (out_3D or out_list):
+        raise NotImplementedError("`out_type` must be 'dict:array' with "
+                                  "`out_3D=True`, or 'dict:list'.")
+
+    if isinstance(norms, (list, tuple)):
         norms = [(0, n) for n in norms]
+    elif isinstance(norms, float):
+        norms = [(0, norms) for _ in range(3)]
     else:
         # set to .5 times the max of any joint coefficient (except phi_t * phi_f)
-        mx = np.max([(c['coef'] if isinstance(c, list) else c).max()
+        mx = np.max([(c['coef'] if out_list else c).max()
                      for pair in Scx for c in Scx[pair]
                      if pair not in ('S0', 'S1', 'phi_t * phi_f')])
         norms = [(0, .5 * mx)] * 5
 
+    meta_idx = [0]
     if not skip_spins:
-        for i in range(len(Scx['psi_t * psi_f_up'])):
-            _viz_spins(Scx, meta, i, norms[0])
+        if out_list:
+            for i in range(len(Scx['psi_t * psi_f_up'])):
+                _viz_spins(Scx, meta, i, norms[0])
+        else:
+            for i in range(len(Scx['psi_t * psi_f_up'][sample_idx])):
+                _viz_spins(Scx, meta, i, norms[0])
 
+    if skip_unspinned:
+        return
     pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
     for j, pair in enumerate(pairs):
-        for i, coef in enumerate(Scx[pair]):
-            coef = coef['coef'] if isinstance(coef, list) else coef
-            _viz_simple(coef, pair, meta, i, norms[1 + j])
+        meta_idx = [0]
+        if out_list:
+            for i, c in enumerate(Scx[pair]):
+                coef = c['coef'][sample_idx]
+                _viz_simple(coef, pair, meta, norms[1 + j])
+        else:
+            for i, coef in enumerate(Scx[pair][sample_idx]):
+                _viz_simple(coef, pair, meta, norms[1 + j])
 
 
 def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
@@ -321,11 +377,11 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
     Parameters
     ----------
     Scx : dict
-        Output of `TimeFrequencyScattering.scattering()`.
+        Output of `TimeFrequencyScattering1D.scattering()`.
     log2_T : int
-        `TimeFrequencyScattering.log2_T`. `average=False`   -> `log2_T=1`.
+        `TimeFrequencyScattering1D.log2_T`. `average=False`    -> `log2_T=1`.
     log2_F : int
-        `TimeFrequencyScattering.log2_T`. `average_fr=False` -> `log2_F=1`.
+        `TimeFrequencyScattering1D.log2_T`. `average_fr=False` -> `log2_F=1`.
     x : tensor, optional
         Original input to print `E_out / E_in`.
     kind : str['L1', 'L2']
@@ -336,6 +392,13 @@ def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
         return (np.abs(x).sum() if kind == 'L1' else
                 (np.abs(x)**2).sum())
 
+    if not isinstance(Scx, dict):
+        raise NotImplementedError("input must be dict. Set out_type='dict:array' "
+                                  "or 'dict:list'.")
+
+    # TODO `norm` logic is wrong for joint pairs, must scale per
+    # `total_conv_stride_over_U1`
+    # TODO coeffs collapsed into one per pair for some reason
     # TODO reverse coeff ordering low to high freq
     # extract energy info
     energies = []
