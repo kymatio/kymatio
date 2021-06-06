@@ -83,11 +83,13 @@ class ScatteringBase1D(ScatteringBase):
         self.average_global = bool(self.T == mx)
 
         # Compute the minimum support to pad (ideally)
-        min_to_pad, *_ = compute_minimum_support_to_pad(
+        min_to_pad, pad_phi, pad_psi1, pad_psi2 = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, self.T, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize, pad_mode=self.pad_mode)
+        if self.average_global:
+            min_to_pad = max(pad_psi1, pad_psi2)  # ignore phi's padding
 
         J_pad = int(np.ceil(np.log2(self.N + 2 * min_to_pad)))
         if self.max_pad_factor is None:
@@ -536,7 +538,8 @@ class TimeFrequencyScatteringBase1D():
         return compute_meta_jtfs(self.J_pad, self.J, self.Q, self.J_fr, self.Q_fr,
                                  self.T, self.F, self.aligned, self.out_3D,
                                  self.out_type, self.sampling_filters_fr,
-                                 self.average, self.sc_freq)
+                                 self.average, self.average_global,
+                                 self.oversampling, self.sc_freq)
 
     @property
     def fr_attributes(self):
@@ -551,7 +554,8 @@ class TimeFrequencyScatteringBase1D():
     def __getattr__(self, name):
         # access key attributes via frequential class
         # only called when default attribute lookup fails
-        if name in self.fr_attributes:
+        # `hasattr` in case called from Scattering1D
+        if name in self.fr_attributes and hasattr(self, 'sc_freq'):
             return getattr(self.sc_freq, name)
         raise AttributeError(f"'{type(self).__name__}' object has no "
                              f"attribute '{name}'")  # standard attribute error
@@ -1019,7 +1023,7 @@ class TimeFrequencyScatteringBase1D():
         - `True, True`: 3D, `(n_coeffs, freq, time)`; see `out_3D` docs.
         - `True, False`: 2D, `(n_coeffs * freq, time)`; see `out_3D` docs.
         - `False, True`: list of 1D tensors.
-        - `False, False`: list of 1D tensors.
+        - `False, False`: list of 1D tensors.  # TODO 4D
     For differences with `aligned, out_3D`, see their docs.
 
     Parameters
@@ -1138,10 +1142,11 @@ class _FrequencyScatteringBase(ScatteringBase):
                 warnings.warn("`sampling_phi_fr = 'exclude'` has no effect, "
                               "will use 'resample' instead.")
                 self.sampling_phi_fr = 'resample'
-        else:
+        else:  # TODO document that phi_fr has no effect in average_fr_global
             self.sampling_psi_fr = self.sampling_phi_fr = self.sampling_filters_fr
             if self.sampling_phi_fr == 'exclude':
                 self.sampling_phi_fr = 'resample'
+        self.sampling_filters_fr = (self.sampling_psi_fr, self.sampling_phi_fr)
 
         # validate `sampling_*` args
         psi_supported = ('resample', 'recalibrate', 'exclude')
@@ -1340,6 +1345,9 @@ class _FrequencyScatteringBase(ScatteringBase):
             shape_fr, self.J_fr, Q, self.F,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
                               'criterion_amplitude', 'normalize', 'pad_mode'))
+        if self.average_fr_global:
+            min_to_pad = pad_psi1  # ignore phi's padding
+            pad_phi = 0
         J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
         if self.max_pad_factor_fr is not None:

@@ -400,17 +400,36 @@ def test_meta():
 
         meta_len = b.shape[-1]
         zeroth_order_unaveraged = (pair == 'S0' and not test_params['average'])
-        if field != 's':
-            assert meta_len == 3, ("all meta fields (except spin) must pad to "
-                                   "length 3: %s" % errmsg)
+        if field not in ('s', 'stride'):
+            assert meta_len == 3, ("all meta fields (except spin, stride) must "
+                                   "pad to length 3: %s" % errmsg)
             if not zeroth_order_unaveraged:
                 assert len(a) > 0, ("all computed metas (except spin) must "
                                     "append something: %s" % errmsg)
 
-        if (field == 's' and pair in ('S0', 'S1')) or zeroth_order_unaveraged:
+        if field == 'stride':
+            assert meta_len == 2, ("'stride' meta length must be 2 "
+                                   "(got meta: %s)" % b)
+            if pair in ('S0', 'S1'):
+                if pair == 'S1' or test_params['average']:
+                    assert len(a) == 1, errmsg
+                if pair == 'S0' and not test_params['average']:
+                    assert a == (), errmsg
+                    assert np.all(np.isnan(b)), errmsg
+                else:
+                    assert a == b[..., 1], errmsg
+                    assert np.isnan(b[..., 0]), errmsg
+            else:
+                assert len(a) == 2, errmsg
+                assert np.all(a == b), errmsg
+                assert not np.any(np.isnan(b)), errmsg
+
+        elif (field == 's' and pair in ('S0', 'S1')) or zeroth_order_unaveraged:
             assert len(a) == 0 and np.all(np.isnan(b)), errmsg
+
         elif len(a) == meta_len:
             assert np.all(a == b), errmsg
+
         elif len(a) < meta_len:
             # S0 & S1 have one meta entry per coeff so we pad to joint's len
             if np.all(np.isnan(b[:2])):
@@ -420,6 +439,7 @@ def test_meta():
             elif len(a) == 2 and meta_len == 3:
                 assert pair not in ('S0', 'S1'), errmsg
                 assert np.all(a[:2] == b[..., :2]), errmsg
+
         else:
             # must meet one of above behaviors
             raise AssertionError(errmsg)
@@ -458,7 +478,7 @@ def test_meta():
 
         # meta test
         out_3D = test_params['out_3D']
-        for field in ('j', 'n', 's'):
+        for field in ('j', 'n', 's', 'stride'):
           for pair in jmeta[field]:
             meta_idx = [0]
             assert_equal_lengths(Scx, jmeta, field, pair, out_3D,

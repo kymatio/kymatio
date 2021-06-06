@@ -178,17 +178,15 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     pads = [int(1.2 * hw) for hw in
             (phi_halfwidth, psi1_halfwidth, psi2_halfwidth)]
 
+    # can pad half as much
+    if pad_mode == 'zero':
+        pads = [p//2 for p in pads]
+    pad_phi, pad_psi1, pad_psi2 = pads
     # set main quantity as the max of all
     min_to_pad = max(pads)
 
-    # set min to pad based on maximum
-    if pad_mode == 'zero':
-        min_to_pad //= 2
-        pads = [p//2 for p in pads]
-    phi_pad, psi1_pad, psi2_pad = pads
-
     # return results
-    return min_to_pad, phi_pad, psi1_pad, psi2_pad
+    return min_to_pad, pad_phi, pad_psi1, pad_psi2
 
 
 def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
@@ -357,7 +355,8 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
 
 
 def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
-                      sampling_filters_fr, average, sc_freq):
+                      sampling_filters_fr, average, average_global, oversampling,
+                      sc_freq):
     """Get metadata on the Joint Time-Frequency Scattering transform.
 
     This information specifies the content of each scattering coefficient,
@@ -398,6 +397,11 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         See `help(TimeFrequencyScattering1D)`. Affects `xi`, `sigma`, and `j`.
     average : bool
         Only affects `S0`'s meta.
+        Affects `S0`'s meta, and temporal stride meta.
+    average_global : bool
+        Affects `S0`'s meta, and temporal stride meta.
+    oversampling : int
+        Affects temporal stride meta.
     sc_freq : `scattering1d.frontend.base_frontend._FrequencyScatteringBase`
         Frequential scattering object, storing pertinent attributes and filters.
 
@@ -417,7 +421,8 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             bandwidth of the filter used at each order (padded with NaNs).
         - `'j'` : tensor
             A Tensor of size `(C, 3)`, specifying the dyadic scale
-            of the filter used at each order (padded with NaNs).
+            of the filter used at each order (padded with NaNs), excluding
+            lowpass filtering (unless it was the only filtering).
         - `'n'` : tensor
             A Tensor of size `(C, 3)`, specifying the indices of
             the filters used at each order (padded with NaNs).
@@ -425,6 +430,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         - `'s'` : tensor
             A Tensor of length `C`, specifying the spin of
             each frequency scattering filter (+1=up, -1=down, 0=none).
+        - `'stride'` : tensor
+            A Tensor of size `(C, 2)`, specifying the total temporal and
+            frequential convolutional stride (i.e. subsampling) of resulting
+            coefficient (including lowpass filtering).
         - `'key'` : list
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
@@ -434,9 +443,11 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     Computation replicates logic in `timefrequency_scattering()`. Meta values
     depend on:
         - out_3D (True only possible with average_fr=True)
-        - average (only affects `S0`)
+        - average
+        - average_global
         - average_fr
         - average_fr_global
+        - oversampling
         - oversampling_fr
         - max_padding_fr
         - aligned (False meaningful (and tested) only with out_3D=True)
@@ -460,12 +471,15 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
 
+        # `* phi_f` pairs always behave per `average_fr=True`
         _average_fr = (True if n1_fr == -1 else sc_freq.average_fr)
         total_conv_stride_over_U1 = _get_stride(j1_fr, pad_fr,
                                                 subsample_equiv_due_to_pad,
                                                 sc_freq, _average_fr)
         if n2 == -1 and n1_fr == -1:
             n1_fr_subsample = 0
+        elif n1_fr == -1 and sc_freq.average_fr_global:
+            n1_fr_subsample = total_conv_stride_over_U1
         else:
             if sc_freq.average_fr:
                 sub_adj = min(j1_fr, total_conv_stride_over_U1,
@@ -475,21 +489,26 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             n1_fr_subsample = max(sub_adj - sc_freq.oversampling_fr, 0)
 
         # _joint_lowpass() ####################################################
-        if sc_freq.average_fr or (n2 == -1 and n1_fr == -1):
+        if sc_freq.average_fr_global:
+            lowpass_subsample_fr = total_conv_stride_over_U1 - n1_fr_subsample
+        elif sc_freq.average_fr or (n2 == -1 and n1_fr == -1):
             lowpass_subsample_fr = max(total_conv_stride_over_U1 -
                                        n1_fr_subsample -
                                        sc_freq.oversampling_fr, 0)
         else:
             lowpass_subsample_fr = 0
 
-        total_downsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
-        total_downsample_fr = total_downsample_so_far + lowpass_subsample_fr
-        if out_3D:
-            ind_start_fr = sc_freq.ind_start_fr_max[total_downsample_fr]
-            ind_end_fr   = sc_freq.ind_end_fr_max[total_downsample_fr]
+        if not sc_freq.average_fr_global:
+            total_downsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
+            total_downsample_fr = total_downsample_so_far + lowpass_subsample_fr
+            if out_3D:
+                ind_start_fr = sc_freq.ind_start_fr_max[total_downsample_fr]
+                ind_end_fr   = sc_freq.ind_end_fr_max[total_downsample_fr]
+            else:
+                ind_start_fr = sc_freq.ind_start_fr[n2][total_downsample_fr]
+                ind_end_fr   = sc_freq.ind_end_fr[n2][total_downsample_fr]
         else:
-            ind_start_fr = sc_freq.ind_start_fr[n2][total_downsample_fr]
-            ind_end_fr   = sc_freq.ind_end_fr[n2][total_downsample_fr]
+            ind_start_fr, ind_end_fr = -1, -1
 
         total_conv_stride_over_U1_realized = (n1_fr_subsample +
                                               lowpass_subsample_fr)
@@ -506,8 +525,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 p = (xi1s_fr_new[k][n1_fr], sigma1s_fr_new[k][n1_fr],
                      j1s_fr_new[k][n1_fr])
         else:
-            if n1_fr == -1:
-                n1_fr_subsample = 0
+            n1_fr_subsample = 0
             p = [m[k][n1_fr_subsample] for m in (xi1s_fr_phi, sigma1_fr_phi,
                                                  j1s_fr_phi)]
         xi1_fr, sigma1_fr, j1_fr = p
@@ -531,9 +549,20 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             xi2, sigma2, j2 = xi2s[n2], sigma2s[n2], j2s[n2]
         else:
             xi2, sigma2, j2 = 0, sigma_low, log2_T
-
         xi1_fr, sigma1_fr, j1_fr = _get_fr_params(
             n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample)
+
+        # get temporal stride info
+        if average_global:
+            total_conv_stride_tm = log2_T
+        else:
+            k1_plus_k2 = max(j2 - oversampling, 0)
+            if average:
+                k2_tm_J = max(log2_T - k1_plus_k2 - oversampling, 0)
+                total_conv_stride_tm = k1_plus_k2 + k2_tm_J
+            else:
+                total_conv_stride_tm = k1_plus_k2
+        stride = (total_conv_stride_over_U1_realized, total_conv_stride_tm)
 
         # distinguish between `key` and `n`
         n1_fr_n   = n1_fr if (n1_fr != -1) else inf
@@ -543,13 +572,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
         # global average pooling, all S1 collapsed into single point
         if sc_freq.average_fr_global:
-            meta['order'][pair].append(2)
-            meta['s'    ][pair].append((spin,))
-            meta['j'    ][pair].append((j2,     j1_fr,     nan))
-            meta['xi'   ][pair].append((xi2,    xi1_fr,    nan))
-            meta['sigma'][pair].append((sigma2, sigma1_fr, nan))
-            meta['n'    ][pair].append((n2_n,   n1_fr_n,   nan))
-            meta['key'  ][pair].append((n2_key, n1_fr_key, 0))
+            meta['order' ][pair].append(2)
+            meta['xi'    ][pair].append((xi2,    xi1_fr,    nan))
+            meta['sigma' ][pair].append((sigma2, sigma1_fr, nan))
+            meta['j'     ][pair].append((j2,     j1_fr,     nan))
+            meta['n'     ][pair].append((n2_n,   n1_fr_n,   nan))
+            meta['s'     ][pair].append((spin,))
+            meta['stride'][pair].append(stride)
+            meta['key'   ][pair].append((n2_key, n1_fr_key, 0))
             return
 
         fr_max = sc_freq.shape_fr[n2] if (n2 != -1) else len(xi1s)
@@ -567,13 +597,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 xi1, sigma1, j1 = nan, nan, nan
             else:
                 xi1, sigma1, j1 = xi1s[n1], sigma1s[n1], j1s[n1]
-            meta['order'][pair].append(2)
-            meta['s'    ][pair].append((spin,))
-            meta['j'    ][pair].append((j2,     j1_fr,     j1))
-            meta['xi'   ][pair].append((xi2,    xi1_fr,    xi1))
-            meta['sigma'][pair].append((sigma2, sigma1_fr, sigma1))
-            meta['n'    ][pair].append((n2_n,   n1_fr_n,   n1))
-            meta['key'  ][pair].append((n2_key, n1_fr_key, n1))
+            meta['order' ][pair].append(2)
+            meta['xi'    ][pair].append((xi2,    xi1_fr,    xi1))
+            meta['sigma' ][pair].append((sigma2, sigma1_fr, sigma1))
+            meta['j'     ][pair].append((j2,     j1_fr,     j1))
+            meta['n'     ][pair].append((n2_n,   n1_fr_n,   n1))
+            meta['s'     ][pair].append((spin,))
+            meta['stride'][pair].append(stride)
+            meta['key'   ][pair].append((n2_key, n1_fr_key, n1))
 
     # set params
     N, N_fr = 2**J_pad, 2**sc_freq.J_pad_fr_max_init
@@ -614,27 +645,46 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         'psi_t * psi_f_up',    # (joint) spin up
         'psi_t * psi_f_down',  # (joint) spin down
     )
-    for field in ('order', 'xi', 'sigma', 'j', 'n', 's', 'key'):
+    for field in ('order', 'xi', 'sigma', 'j', 'n', 's', 'stride', 'key'):
         meta[field] = {name: [] for name in coef_names}
 
     # Zeroth-order
-    meta['order']['S0'].append(0)
-    meta['xi'   ]['S0'].append((nan, nan, 0         if average else nan))
-    meta['sigma']['S0'].append((nan, nan, sigma_low if average else nan))
-    meta['j'    ]['S0'].append((nan, nan, J         if average else nan))
-    meta['n'    ]['S0'].append((nan, nan, inf       if average else nan))
-    meta['s'    ]['S0'].append((nan,))
-    meta['key'  ]['S0'].append((0, 0, 0))
+    if average_global:
+        k0 = log2_T
+    elif average:
+        k0 = max(log2_T - oversampling, 0)
+    meta['order' ]['S0'].append(0)
+    meta['xi'    ]['S0'].append((nan, nan, 0         if average else nan,))
+    meta['sigma' ]['S0'].append((nan, nan, sigma_low if average else nan,))
+    meta['j'     ]['S0'].append((nan, nan, log2_T    if average else nan,))
+    meta['n'     ]['S0'].append((nan, nan, inf       if average else nan,))
+    meta['s'     ]['S0'].append((nan,))
+    meta['stride']['S0'].append((nan, k0 if average else nan))
+    meta['key'   ]['S0'].append((0, 0, 0))
 
-    # First-order coeffs
+    # First-order
+    def stride_S1(j1):
+        sub1_adj = min(j1, log2_T) if average else j1
+        k1 = max(sub1_adj - oversampling, 0)
+        k1_J = max(log2_T - k1 - oversampling, 0)
+
+        if average_global:
+            total_conv_stride_tm = log2_T
+        elif average:
+            total_conv_stride_tm = k1 + k1_J
+        else:
+            total_conv_stride_tm = k1
+        return total_conv_stride_tm
+
     for (n1, (xi1, sigma1, j1)) in enumerate(zip(xi1s, sigma1s, j1s)):
-        meta['order']['S1'].append(1)
-        meta['xi'   ]['S1'].append((nan, nan, xi1))
-        meta['sigma']['S1'].append((nan, nan, sigma1))
-        meta['j'    ]['S1'].append((nan, nan, j1))
-        meta['n'    ]['S1'].append((nan, nan, n1))
-        meta['s'    ]['S1'].append((nan,))
-        meta['key'  ]['S1'].append((0, 0, n1))
+        meta['order' ]['S1'].append(1)
+        meta['xi'    ]['S1'].append((nan, nan, xi1))
+        meta['sigma' ]['S1'].append((nan, nan, sigma1))
+        meta['j'     ]['S1'].append((nan, nan, j1))
+        meta['n'     ]['S1'].append((nan, nan, n1))
+        meta['s'     ]['S1'].append((nan,))
+        meta['stride']['S1'].append((nan, stride_S1(j1)))
+        meta['key'   ]['S1'].append((0, 0, n1))
 
     S1_len = len(meta['n']['S1'])
     assert S1_len >= sc_freq.shape_fr_max
@@ -662,7 +712,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             for n1_fr, j1_fr in enumerate(j1s_fr):
                 _fill_n1_info(pair, n2, n1_fr, spin=spin)
 
-    array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's']
+    array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's', 'stride']
     for field in array_fields:
         for pair, v in meta[field].items():
             meta[field][pair] = np.array(v)
@@ -670,7 +720,12 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     if out_3D:
       # reorder for 3D
       for field in array_fields:#meta:
-        meta_len = 3 if field not in ('s', 'order') else 1
+        if field in ('s', 'order'):
+            meta_len = 1
+        elif field == 'stride':
+            meta_len = 2
+        else:
+            meta_len = 3
         for pair in meta[field]:
           if pair in ('S0', 'S1'):
               # simply expand dim for consistency, no 3D structure
