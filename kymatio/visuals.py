@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
 import numpy as np
-from scipy.fft import ifft
 from .scattering1d.filter_bank import compute_temporal_support
-from .toolkit import coeff_energy, energy
+from scipy.fft import ifft
 
 try:
     import matplotlib.pyplot as plt
@@ -266,11 +265,11 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
     # Arguments:
-        Scx: dict[list] / dict[np.ndarray]
-            `jtfs(x)`.
+        Scx: np.ndarray
+            JTFS.
 
-        meta: dict[dict[np.ndarray]]
-            `jtfs.meta()`.
+        meta: list[dict]
+            `scattering.meta()`.
 
         norms: None / tuple
             Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
@@ -372,115 +371,79 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                 _viz_simple(coef, pair, meta, norms[1 + j])
 
 
-def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2'):
+def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
     """Plot & print relevant energy information across coefficient pairs.
-    Works for all `'dict' in out_type` and `out_exclude`.
-    Also see `help(kymatio.toolkit.coeff_energy)`.
 
     Parameters
     ----------
-    Scx: dict[list] / dict[np.ndarray]
-        `jtfs(x)`.
-
-    meta: dict[dict[np.ndarray]]
-        `jtfs.meta()`.
-
-    flatten: bool (default False)
-        Whether to plot energy for every individual coefficient. This means
-        flattening joint coefficients, whose energies would otherwise aggregate
-        on per-`(n2, n1_fr)` basis.
-
+    Scx : dict
+        Output of `TimeFrequencyScattering1D.scattering()`.
+    log2_T : int
+        `TimeFrequencyScattering1D.log2_T`. `average=False`    -> `log2_T=1`.
+    log2_F : int
+        `TimeFrequencyScattering1D.log2_T`. `average_fr=False` -> `log2_F=1`.
     x : tensor, optional
         Original input to print `E_out / E_in`.
-
-    pairs: None / list/tuple[str]
-        Computes energies for these pairs in provided order. None will compute
-        for all in default order:
-            ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
-             'psi_t * psi_f_up', 'psi_t * psi_f_down')
-
-    kind : str['l2', 'l2']
-        - L1: `sum(abs(x))`
-        - L2: `sum(abs(x)**2)` -- actually L2^2
-
-    Returns
-    -------
-    energies: list[float]
-        List of coefficient energies.
-    pair_energies: dict[str: float]
-        Keys are pairs, values are sums of all pair's coefficient energies.
+    kind : str['L1', 'L2']
+        - L1: sum(abs(x))
+        - L2: sum(abs(x)**2) -- actually L2^2
     """
+    def energy(x):
+        return (np.abs(x).sum() if kind == 'L1' else
+                (np.abs(x)**2).sum())
+
     if not isinstance(Scx, dict):
         raise NotImplementedError("input must be dict. Set out_type='dict:array' "
                                   "or 'dict:list'.")
 
-    # enforce pair order
-    if pairs is None:
-        pairs_all = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
-                     'psi_t * phi_f', 'psi_t * psi_f_up', 'psi_t * psi_f_down')
-    else:
-        pairs_all = pairs
-    compute_pairs = []
-    for pair in pairs_all:
-        if pair in meta['n']:
-            compute_pairs.append(pair)
-
+    # TODO `norm` logic is wrong for joint pairs, must scale per
+    # `total_conv_stride_over_U1`
+    # TODO coeffs collapsed into one per pair for some reason
+    # TODO reverse coeff ordering low to high freq
     # extract energy info
     energies = []
     pair_energies = {}
-    idxs = [0]
-    for pair in compute_pairs:
-        E_flat, E_slices = coeff_energy(Scx, meta, pair, aggregate=False,
-                                        kind=kind)
-        pair_energies[pair] = np.sum(E_slices)
-        energies.extend(E_slices[::-1])
-        # don't repeat 0
-        idxs.append(len(energies) - 1 if len(energies) != 1 else 1)
+    idxs = []
+    # enforce pair order
+    pairs = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+             'psi_t * psi_f_up', 'psi_t * psi_f_down')
+    for pair in pairs:
+        norm = 2**log2_T if pair in ('S0', 'S1') else 2**(log2_T + log2_F)
+        E = [norm * energy(c['coef'] if isinstance(c, list) else c)
+             for c in Scx[pair]]
+        pair_energies[pair] = np.sum(E)
+        energies.extend(E)
+        idxs.append(len(energies) - 1)
 
     # format & plot ##########################################################
     energies = np.array(energies)
     ticks = np.arange(len(energies))
     vlines = (idxs, {'color': 'tab:red', 'linewidth': 1})
 
-    # make title
-    pair_aliases = {'psi_t * phi_f': '* phi_f', 'phi_t * psi_f': 'phi_t *',
-                    'psi_t * psi_f_up': 'up', 'psi_t * psi_f_down': 'down'}
-    title = "%s | " % ("L1 norm" if kind == 'l2' else "Energy")
-    for pair in compute_pairs:
-        if pair in pair_aliases:
-            title += "{}, ".format(pair_aliases[pair])
-        else:
-            title += "{}, ".format(pair)
-    title = title.rstrip(', ')
-
     scat(ticks[idxs], energies[idxs], s=20)
-    plot(energies, vlines=vlines, ylims=(0, None), title=title, show=1)
+    title = "{} | S0, S1, phi_t * phi_f, phi_t *, * phi_f, up, down".format(
+        "L1 norm" if kind == 'L1' else "Energy")
+    plot(energies, vlines=vlines, show=1, title=title)
 
     # cumulative sum
     energies_cs = np.cumsum(energies)
-    title = "cumsum(%s)" % ("L1" if kind == 'l2' else "Energy")
-
     scat(ticks[idxs], energies_cs[idxs], s=20)
-    plot(energies_cs, vlines=vlines, ylims=(0, None), title=title, show=1)
+    plot(energies_cs, ylims=(0, None), vlines=vlines, show=1,
+         title="cumsum(%s)" % ("L1" if kind == 'L1' else "Energy"))
 
     # print report ###########################################################
     e_total = np.sum(energies)
-    nums = ["%.1f" % e for e in pair_energies.values()]
+    nums = ["%.1f" % pair_energies[pair] for pair in pair_energies]
     longest_num = max(map(len, nums))
 
-    i = 0
-    for pair in compute_pairs:
-        if pair not in meta['n']:
-            continue
+    for i, pair in enumerate(pairs):
         e_perc = "%.1f" % (np.sum(pair_energies[pair]) / e_total * 100)
         print("{} ({}%) -- {}".format(
             nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
-        i += 1
 
     # E_out / E_in
     if x is not None:
         print("E_out / E_in = %.3f" % (e_total / energy(x)))
-    return energies, pair_energies
 
 
 #### Visuals primitives ## messy code ########################################

@@ -355,8 +355,8 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
 
 
 def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
-                      out_exclude, sampling_filters_fr, average, average_global,
-                      oversampling, sc_freq):
+                      sampling_filters_fr, average, average_global, oversampling,
+                      sc_freq):
     """Get metadata on the Joint Time-Frequency Scattering transform.
 
     This information specifies the content of each scattering coefficient,
@@ -385,16 +385,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     F : int
         Temporal support of frequential low-pass filter, controlling amount of
         imposed frequency transposition invariance and subsampling
-    out_3D : bool
-        - True: will reshape meta fields to match output structure:
-          `(n_coeffs, n_freqs, meta_len)`.
-        - False: pack flattened: `(n_coeffs * n_freqs, meta_len)`.
     out_type : str
          - `'dict:list'` or `'dict:array'`: meta is packed
            into respective pairs (e.g. `meta['n']['psi_t * phi_f'][1]`)
          - `'list'` or `'array'`: meta is flattened (e.g. `meta['n'][15]`).
-    out_exclude : list/tuple[str]
-        Names of coefficient pairs to exclude from meta.
+    out_3D : bool
+        - True: will reshape meta fields to match output structure:
+          `(n_coeffs, n_freqs, meta_len)`.
+        - False: pack flattened: `(n_coeffs * n_freqs, meta_len)`.
     sampling_filters_fr : tuple[str]
         See `help(TimeFrequencyScattering1D)`. Affects `xi`, `sigma`, and `j`.
     average : bool
@@ -439,10 +437,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         - `'key'` : list
             The tuples indexing the corresponding scattering coefficient
             in the non-vectorized output.
-
-        In case of `out_3D=True`, for joint pairs, will reshape each field into
-        `(n_coeffs, C, meta_len)`, where `n_coeffs` is the number of joint slices
-        in the pair, and `meta_len` is the existing `shape[-1]` (1, 2, or 3).
 
     Computation and Structure
     -------------------------
@@ -562,7 +556,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         if average_global:
             total_conv_stride_tm = log2_T
         else:
-            k1_plus_k2 = max(min(j2, log2_T) - oversampling, 0)
+            k1_plus_k2 = max(j2 - oversampling, 0)
             if average:
                 k2_tm_J = max(log2_T - k1_plus_k2 - oversampling, 0)
                 total_conv_stride_tm = k1_plus_k2 + k2_tm_J
@@ -617,7 +611,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     xi_min = (2 / N)  # leftmost peak at bin 2
     xi_min_fr = (2 / N_fr)
     log2_T = math.floor(math.log2(T))
-    log2_F = math.floor(math.log2(F))
     # extract filter meta
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
@@ -752,24 +745,6 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
               number_of_n1_fr = 1
           n_coeffs = number_of_n2 * number_of_n1_fr
           meta[field][pair] = meta[field][pair].reshape(n_coeffs, -1, meta_len)
-
-    if out_exclude is not None:
-        # drop excluded pairs
-        for pair in out_exclude:
-            for field in meta:
-                del meta[field][pair]
-
-    # ensure time / freq stride doesn't exceed log2_T / log2_F in averaged cases
-    for pair in meta['stride']:
-        if average and not average_global:
-            for i, s in enumerate(meta['stride'][pair][..., 1].ravel()):
-                assert s <= log2_T, ("meta['stride'][{}][{}] > log2_T ({} > {})"
-                                     ).format(pair, i, s, log2_T)
-        if (sc_freq.average_fr and not sc_freq.average_fr_global and
-                pair not in ('S0', 'S1')):
-            for i, s in enumerate(meta['stride'][pair][..., 0].ravel()):
-                assert s <= log2_F, ("meta['stride'][{}][{}] > log2_F ({} > {})"
-                                     ).format(pair, i, s, log2_T)
 
     if not out_type.startswith('dict'):
         # join pairs

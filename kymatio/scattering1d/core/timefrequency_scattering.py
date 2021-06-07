@@ -614,7 +614,7 @@ def timefrequency_scattering(
     if 'S0' not in out_exclude:
         if average_global:
             k0 = log2_T
-            S_0 = B.mean(U_0, axis=-1)
+            S_0 = B.mean(U_0)
         elif average:
             k0 = max(log2_T - oversampling, 0)
             S_0_c = B.cdgmm(U_0_hat, phi[0])
@@ -647,13 +647,12 @@ def timefrequency_scattering(
         U_1_hat = B.rfft(U_1_m)
         U_1_hat_list.append(U_1_hat)
 
-        if average or ('phi_t * psi_f' not in out_exclude or
-                       'phi_t * phi_f' not in out_exclude):
+        if average or 'phi_t * psi_f' not in out_exclude:
             # compute even if `average=False`, since used in `phi_t * psi_f` pairs
             S_1_c = B.cdgmm(U_1_hat, phi[k1])
             S_1_c_list.append(S_1_c)
 
-        if (average and not average_global) or 'phi_t * phi_f' not in out_exclude:
+        if not average_global and 'phi_t * phi_f' not in out_exclude:
             # compute even if `average=False`, since used in `phi_t * phi_f` pairs
             # Low-pass filtering over time
             k1_J = max(log2_T - k1 - oversampling, 0)

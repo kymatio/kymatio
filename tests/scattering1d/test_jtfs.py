@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
-from kymatio.toolkit import drop_batch_dim_jtfs, coeff_energy
+from kymatio.toolkit import drop_batch_dim_jtfs
 from utils import cant_import, fdts, echirp, l2
 
 # backend to use for most tests
@@ -177,15 +177,15 @@ def test_up_vs_down():
     N = 2048
     x = echirp(N)
 
-    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, F=4, Q_fr=2,
-                                     average_fr=True, out_type='dict:array',
+    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, Q_fr=1,
+                                     average_fr=True, out_3D=True,
+                                     out_type='dict:array',
                                      frontend=default_backend)
     Scx = jtfs(x)
-    jmeta = jtfs.meta()
 
-    E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
-    E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    assert E_down / E_up > 215
+    E_up   = energy(Scx['psi_t * psi_f_up'])
+    E_down = energy(Scx['psi_t * psi_f_down'])
+    assert E_down / E_up > 125
 
 
 def test_sampling_psi_fr_exclude():
