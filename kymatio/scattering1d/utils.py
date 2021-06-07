@@ -176,16 +176,19 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     else:
         psi2_halfwidth = -1
 
-    # take maximum
-    t_max = max(phi_halfwidth, psi1_halfwidth, psi2_halfwidth)
+    # set min to pad based on each; take a little extra on each to be safe
+    pads = [int(1.1 * hw) for hw in
+            (phi_halfwidth, psi1_halfwidth, psi2_halfwidth)]
 
-    # set min to pad based on maximum
-    min_to_pad = int(1.2 * t_max)  # take a little extra to be safe
+    # can pad half as much
     if pad_mode == 'zero':
-        min_to_pad //= 2
+        pads = [p//2 for p in pads]
+    pad_phi, pad_psi1, pad_psi2 = pads
+    # set main quantity as the max of all
+    min_to_pad = max(pads)
 
     # return results
-    return min_to_pad
+    return min_to_pad, pad_phi, pad_psi1, pad_psi2
 
 
 def precompute_size_scattering(J, Q, max_order=2, detail=False):
