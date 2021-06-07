@@ -111,6 +111,10 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
     coeffs = drop_batch_dim_jtfs(Scx)[pair]
     out_list = bool(isinstance(coeffs, list))
 
+    # infer out_3D
+    out_3D = bool(meta['stride'][pair].ndim == 3)
+    if out_3D:
+        assert coeffs.ndim == 3, coeffs.ndim
     # completely flatten into (*, time)
     if out_list:
         coeffs_flat = []
@@ -118,14 +122,12 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
             c = coef['coef']
             coeffs_flat.extend(c)
     else:
-        out_3D = bool(coeffs.ndim == 3)
         if out_3D:
             coeffs = coeffs.reshape(-1, coeffs.shape[-1])
         coeffs_flat = coeffs
 
     # prepare for iterating
     meta = deepcopy(meta)  # don't change external dict
-    out_3D = bool(meta['stride'][pair].ndim == 3)
     if out_3D:
         meta['stride'][pair] = meta['stride'][pair].reshape(-1, 2)
         meta['n'][pair] = meta['n'][pair].reshape(-1, 3)
@@ -159,6 +161,10 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
     E_slices = [] if pair in ('S0', 'S1') else [[]]
     meta_idx = [0]  # make mutable to avoid passing around
     for c in coeffs_flat:
+        if hasattr(c, 'numpy'):
+            if hasattr(c, 'cpu'):  # torch
+                c = c.cpu()
+            c = c.numpy()  # TF/torch
         n_prev = n_current()
         E = norm(c, meta_idx) * energy(c)
         E_flat.append(E)
@@ -188,9 +194,15 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
 def energy(x, kind='l2'):
     """Compute energy. L1==`sum(abs(x))`, L2==`sum(abs(x)**2)` (so actually L2^2).
     """
+    def sum(x):
+        if type(x).__module__ == 'tensorflow':
+            return backend.reduce_sum(x)
+        return backend.sum(x)
+
     x = x['coef'] if isinstance(x, dict) else x
-    return (np.abs(x).sum() if kind == 'l1' else
-            (np.abs(x)**2).sum())
+    backend = _infer_backend(x)
+    return (backend.sum(backend.abs(x)) if kind == 'l1' else
+            backend.sum(backend.abs(x)**2))
 
 
 def _infer_backend(x):

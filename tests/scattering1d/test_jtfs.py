@@ -302,29 +302,34 @@ def test_no_second_order_filters():
 
 
 def test_backends():
-    for backend in ('tensorflow', 'torch'):
-        if cant_import(backend):
+    for backend_name in ('torch', 'tensorflow'):
+        if cant_import(backend_name):
             continue
-        elif backend == 'torch':
+        elif backend_name == 'torch':
             import torch
-        elif backend == 'tensorflow':
+        elif backend_name == 'tensorflow':
             import tensorflow as tf
 
         N = 2048
         x = echirp(N)
         x = np.vstack([x, x, x])
-        x = (tf.constant(x) if backend == 'tensorflow' else
+        x = (tf.constant(x) if backend_name == 'tensorflow' else
              torch.from_numpy(x))
 
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=3, Q_fr=1,
-                                         average_fr=True, out_3D=True,
-                                         out_type='dict:array', frontend=backend)
+                                         average_fr=True, out_type='dict:array',
+                                         out_3D=True, frontend=backend_name)
         Scx = jtfs(x)
         jmeta = jtfs.meta()
 
-        E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
-        E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-        assert E_down / E_up > 80
+        # pick one sample
+        out = {}
+        for pair, coef in Scx.items():
+            out[pair] = coef[0]
+
+        E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
+        E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
+        assert E_down / E_up > 115
 
 
 def test_differentiability_torch():
@@ -673,7 +678,7 @@ if __name__ == '__main__':
         test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_out_exclude()
-        # test_backends()
+        test_backends()
         test_differentiability_torch()
         test_meta()
         test_output()
