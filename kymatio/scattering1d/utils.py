@@ -2,7 +2,7 @@ import numpy as np
 import math
 from .filter_bank import scattering_filter_factory, calibrate_scattering_filters
 
-def compute_border_indices(log2_T, i0, i1):
+def compute_border_indices(log2_T, J, i0, i1):
     """
     Computes border indices at all scales which correspond to the original
     signal boundaries after padding.
@@ -15,7 +15,10 @@ def compute_border_indices(log2_T, i0, i1):
     Parameters
     ----------
     log2_T : int
-        maximal subsampling by 2**log2_T
+        maximal subsampling is by `2**log2_T` if `average=True`, else by
+        `2**max(log2_T, J)`. We compute latter to be sure.
+    J : int
+        See `log2_T`.
     i0 : int
         start index of the original signal at the finest resolution
     i1 : int
@@ -29,7 +32,7 @@ def compute_border_indices(log2_T, i0, i1):
     """
     ind_start = {0: i0}
     ind_end = {0: i1}
-    for j in range(1, log2_T + 1):
+    for j in range(1, max(log2_T, J) + 1):
         ind_start[j] = (ind_start[j - 1] // 2) + (ind_start[j - 1] % 2)
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
