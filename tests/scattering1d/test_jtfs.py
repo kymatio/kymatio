@@ -320,9 +320,10 @@ def test_backends():
                                          average_fr=True, out_3D=True,
                                          out_type='dict:array', frontend=backend)
         Scx = jtfs(x)
+        jmeta = jtfs.meta()
 
-        E_up   = energy(Scx['psi_t * psi_f_up'])
-        E_down = energy(Scx['psi_t * psi_f_down'])
+        E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
+        E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
         assert E_down / E_up > 80
 
 
@@ -672,7 +673,7 @@ if __name__ == '__main__':
         test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_out_exclude()
-        test_backends()
+        # test_backends()
         test_differentiability_torch()
         test_meta()
         test_output()

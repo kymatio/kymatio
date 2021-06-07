@@ -102,7 +102,7 @@ class ScatteringBase1D(ScatteringBase):
         self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.log2_T, self.pad_left, 2**self.J_pad - self.pad_right)
+            self.log2_T, self.J, self.pad_left, 2**self.J_pad - self.pad_right)
 
         # record whether configuration yields second order filters
         meta = ScatteringBase1D.meta(self)

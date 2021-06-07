@@ -146,8 +146,8 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
     def n_current():
         i = meta_idx[0]
         m = meta['n'][pair]
-        return (m[i] if i in m else
-                m[i - 1])  # reached end
+        return (m[i] if i <= len(m) - 1 else
+                np.array([-3, -3]))  # reached end; ensure equality fails
 
     def n_is_equal(n0, n1):
         n0, n1 = n0[:2], n1[:2]  # discard U1

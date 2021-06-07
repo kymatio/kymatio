@@ -630,12 +630,7 @@ def timefrequency_scattering(
                         'stride': (k0,)  if average else (),})
 
     # First order ############################################################
-    U_1_hat_list, S_1_u_list, S_1_c_list = [], [], []
-    for n1 in range(len(psi1)):
-        # Convolution + downsampling
-        j1 = psi1[n1]['j']
-        sub1_adj = min(j1, log2_T) if average else j1
-        k1 = max(sub1_adj - oversampling, 0)
+    def compute_U_1(k1):
         U_1_c = B.cdgmm(U_0_hat, psi1[n1][0])
         U_1_hat = B.subsample_fourier(U_1_c, 2**k1)
         U_1_c = B.ifft(U_1_hat)
@@ -645,22 +640,40 @@ def timefrequency_scattering(
 
         # Map to Fourier domain
         U_1_hat = B.rfft(U_1_m)
+        return U_1_hat, U_1_m
+
+    U_1_hat_list, S_1_u_list, S_1_c_list = [], [], []
+    for n1 in range(len(psi1)):
+        # Convolution + downsampling
+        j1 = psi1[n1]['j']
+        sub1_adj = min(j1, log2_T) if average else j1
+        k1 = max(sub1_adj - oversampling, 0)
+
+        U_1_hat, U_1_m = compute_U_1(k1)
         U_1_hat_list.append(U_1_hat)
 
+        # if `k1` is used from this point, treat as if `average=True`
+        sub1_adj_avg = min(j1, log2_T)
+        k1_avg = max(sub1_adj_avg - oversampling, 0)
         if average or ('phi_t * psi_f' not in out_exclude or
                        'phi_t * phi_f' not in out_exclude):
+            if k1 != k1_avg:
+                # must recompute U_1_hat
+                U_1_hat_avg, _ = compute_U_1(k1_avg)
+            else:
+                U_1_hat_avg = U_1_hat
             # compute even if `average=False`, since used in `phi_t * psi_f` pairs
-            S_1_c = B.cdgmm(U_1_hat, phi[k1])
+            S_1_c = B.cdgmm(U_1_hat_avg, phi[k1_avg])
             S_1_c_list.append(S_1_c)
 
         if (average and not average_global) or 'phi_t * phi_f' not in out_exclude:
             # compute even if `average=False`, since used in `phi_t * phi_f` pairs
             # Low-pass filtering over time
-            k1_J = max(log2_T - k1 - oversampling, 0)
+            k1_J = max(log2_T - k1_avg - oversampling, 0)
             S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = B.irfft(S_1_hat)
             # Unpad
-            S_1_u = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            S_1_u = unpad(S_1_r, ind_start[k1_J + k1_avg], ind_end[k1_J + k1_avg])
 
         # Apply low-pass filtering over time (optional) and unpad
         if average_global:
@@ -669,7 +682,7 @@ def timefrequency_scattering(
             total_conv_stride_tm = log2_T
         elif average:
             S_1 = S_1_u
-            total_conv_stride_tm = k1 + k1_J
+            total_conv_stride_tm = k1_avg + k1_J
         else:
             # Unpad
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
