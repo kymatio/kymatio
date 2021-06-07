@@ -537,9 +537,10 @@ class TimeFrequencyScatteringBase1D():
         """
         return compute_meta_jtfs(self.J_pad, self.J, self.Q, self.J_fr, self.Q_fr,
                                  self.T, self.F, self.aligned, self.out_3D,
-                                 self.out_type, self.sampling_filters_fr,
-                                 self.average, self.average_global,
-                                 self.oversampling, self.sc_freq)
+                                 self.out_type, self.out_exclude,
+                                 self.sampling_filters_fr, self.average,
+                                 self.average_global, self.oversampling,
+                                 self.sc_freq)
 
     @property
     def fr_attributes(self):
