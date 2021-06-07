@@ -180,7 +180,7 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
         psi2_halfwidth = -1
 
     # set min to pad based on each; take a little extra on each to be safe
-    pads = [int(1.2 * hw) for hw in
+    pads = [int(1.1 * hw) for hw in
             (phi_halfwidth, psi1_halfwidth, psi2_halfwidth)]
 
     # can pad half as much
