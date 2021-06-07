@@ -399,7 +399,7 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
             ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
              'psi_t * psi_f_up', 'psi_t * psi_f_down')
 
-    kind : str['l2', 'l2']
+    kind : str['l1', 'l2']
         - L1: `sum(abs(x))`
         - L2: `sum(abs(x)**2)` -- actually L2^2
 
@@ -445,7 +445,7 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
     # make title
     pair_aliases = {'psi_t * phi_f': '* phi_f', 'phi_t * psi_f': 'phi_t *',
                     'psi_t * psi_f_up': 'up', 'psi_t * psi_f_down': 'down'}
-    title = "%s | " % ("L1 norm" if kind == 'l2' else "Energy")
+    title = "%s | " % ("L1 norm" if kind == 'l1' else "Energy")
     for pair in compute_pairs:
         if pair in pair_aliases:
             title += "{}, ".format(pair_aliases[pair])
@@ -458,7 +458,7 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
 
     # cumulative sum
     energies_cs = np.cumsum(energies)
-    title = "cumsum(%s)" % ("L1" if kind == 'l2' else "Energy")
+    title = "cumsum(%s)" % ("L1" if kind == 'l1' else "Energy")
 
     scat(ticks[idxs], energies_cs[idxs], s=20)
     plot(energies_cs, vlines=vlines, ylims=(0, None), title=title, show=1)

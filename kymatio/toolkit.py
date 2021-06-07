@@ -67,7 +67,7 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
               in a pair. That is, sum of coeff energies on per-`(n2, n1_fr)`
               basis.
 
-    kind: str['l2', 'l2']
+    kind: str['l1', 'l2']
         Kind of energy to compute. L1==`sum(abs(x))`, L2==`sum(abs(x)**2)`
         (so actually L2^2).
 
@@ -189,7 +189,7 @@ def energy(x, kind='l2'):
     """Compute energy. L1==`sum(abs(x))`, L2==`sum(abs(x)**2)` (so actually L2^2).
     """
     x = x['coef'] if isinstance(x, dict) else x
-    return (np.abs(x).sum() if kind == 'l2' else
+    return (np.abs(x).sum() if kind == 'l1' else
             (np.abs(x)**2).sum())
 
 
