@@ -1084,6 +1084,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
         # TODO consistent naming, `subsample` vs `subsampling` etc
+        _min = min(p for p in self.J_pad_fr if p != -1)
         if self.max_subsample_equiv_before_psi_fr is not None:
             self.J_pad_fr_min_limit = max(
                 self.J_pad_fr_min_limit,
@@ -1096,6 +1097,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                         self.J_pad_fr_max_init - self.J_pad_fr[i])
         # realized minimum  # TODO docs
         self.J_pad_fr_min = min(p for p in self.J_pad_fr if p != -1)
+        assert self.J_pad_fr_min == _min, "stuff broke, change input params"
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
