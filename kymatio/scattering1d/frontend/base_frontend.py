@@ -1084,20 +1084,25 @@ class _FrequencyScatteringBase(ScatteringBase):
                               'sigma0', 'alpha', 'P_max', 'eps'))
 
         # TODO consistent naming, `subsample` vs `subsampling` etc
-        _min = min(p for p in self.J_pad_fr if p != -1)
         if self.max_subsample_equiv_before_psi_fr is not None:
             self.J_pad_fr_min_limit = max(
                 self.J_pad_fr_min_limit,
                 self.J_pad_fr_max_init - self.max_subsample_equiv_before_psi_fr)
             # adjust existing J_pad_fr per (potentially) new J_pad_fr_min_limit
-            for i, J_pad_fr in enumerate(self.J_pad_fr):
+            for n2, (J_pad_fr, shape_fr
+                     ) in enumerate(zip(self.J_pad_fr, self.shape_fr)):
                 if J_pad_fr != -1:
-                    self.J_pad_fr[i] = max(J_pad_fr, self.J_pad_fr_min_limit)
-                    self.subsampling_equiv_relative_to_max_padding[i] = (
-                        self.J_pad_fr_max_init - self.J_pad_fr[i])
+                    self.J_pad_fr[n2] = max(J_pad_fr, self.J_pad_fr_min_limit)
+                    j0, pad_left, pad_right, ind_start, ind_end = (
+                        self._compute_padding_params(self.J_pad_fr[n2], shape_fr))
+                    self.subsampling_equiv_relative_to_max_padding[n2] = j0
+                    self.pad_left_fr[n2] = pad_left
+                    self.pad_right_fr[n2] = pad_right
+                    self.ind_start_fr[n2] = ind_start
+                    self.ind_end_fr[n2] = ind_end
+
         # realized minimum  # TODO docs
         self.J_pad_fr_min = min(p for p in self.J_pad_fr if p != -1)
-        assert self.J_pad_fr_min == _min, "stuff broke, change input params"
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
@@ -1138,22 +1143,8 @@ class _FrequencyScatteringBase(ScatteringBase):
                 J_pad = self.compute_J_pad(shape_fr)
 
                 # compute the padding quantities
-                pad_left = 0
-                pad_right = 2**J_pad - pad_left - shape_fr
-                j0 = self.J_pad_fr_max_init - J_pad
-
-                # compute unpad indices for all possible subsamplings
-                ind_start, ind_end = [], []
-                for j in range(self.J_pad_fr_max_init + 1):
-                    if j == j0:  # no actual subsampling done, unpad original
-                        ind_start.append(0)
-                        ind_end.append(shape_fr)
-                    elif j > j0:  # subsampled, adjust indices
-                        ind_start.append(0)
-                        ind_end.append(math.ceil(ind_end[-1] / 2))
-                    else:  # smaller than equiv padded, won't occur
-                        ind_start.append(-1)
-                        ind_end.append(-1)
+                j0, pad_left, pad_right, ind_start, ind_end = (
+                    self._compute_padding_params(J_pad, shape_fr))
             else:
                 J_pad, pad_left, pad_right, j0 = -1, -1, -1, -1
                 ind_start, ind_end = [], []
@@ -1200,6 +1191,25 @@ class _FrequencyScatteringBase(ScatteringBase):
         # not great
         self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1_f, recompute=True,
                                               Q=(0, 0))
+
+    def _compute_padding_params(self, J_pad, shape_fr):
+        pad_left = 0
+        pad_right = 2**J_pad - pad_left - shape_fr
+        j0 = self.J_pad_fr_max_init - J_pad
+
+        # compute unpad indices for all possible subsamplings
+        ind_start, ind_end = [], []
+        for j in range(self.J_pad_fr_max_init + 1):
+            if j == j0:  # no actual subsampling done, unpad original
+                ind_start.append(0)
+                ind_end.append(shape_fr)
+            elif j > j0:  # subsampled, adjust indices
+                ind_start.append(0)
+                ind_end.append(math.ceil(ind_end[-1] / 2))
+            else:  # smaller than equiv padded, won't occur
+                ind_start.append(-1)
+                ind_end.append(-1)
+        return j0, pad_left, pad_right, ind_start, ind_end
 
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
         """Docs in `TimeFrequencyScatteringBase1D`."""
