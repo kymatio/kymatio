@@ -895,12 +895,12 @@ class TimeFrequencyScatteringBase1D():
         to `max(J_pad_fr)`.
 
         Note with `sampling_* != 'resample'`, `J_pad_fr_max_init > J_pad_fr_max`
-        is possible. This means *none* of the filters used in scattering will have
-        physical dimensions as specified (see `sampling_psi_fr`); they'll be
-        sampled at `J_pad_fr_max_init` then subsampled to `J_pad_fr`.
+        is possible. This means the largest scale will be less than specified
+        (`< J_fr`); see `sampling_psi_fr`.
 
           - If undesired, set `max_pad_factor_fr` (`1` will guarantee
             `J_pad_fr_max == J_pad_fr_max_init`).
+            # TODO this doesn't change largest realized scale
           - Occurs because the orignal computation with `shape_fr_max`
             required a filter of greater length than `nextpow2(shape_fr_max)`,
             and with `sampling_* != 'resample'` we allow contracting time width
@@ -1120,20 +1120,48 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.eps = 1e-7
         self.criterion_amplitude = 1e-3
         self.normalize = 'l1'
-        self.pad_mode = 'zero'
+        self.pad_mode = 'conj-reflect-zero'  # TODO
         self.sigma_max_to_min_max_ratio = 1.2
 
         # longest obtainable frequency row w.r.t. which we calibrate filters
         self.shape_fr_max = max(self.shape_fr)
+        # above is for `psi_t *` pairs, below is actual max, which
+        # occurs for `phi_t *` pairs
+        self.shape_fr_max_all = self._n_psi1_f  # TODO doc
+
+        # smallest possible maximum padding (cannot be overridden by
+        # `max_pad_factor_fr`)
+        self.J_pad_fr_max_min = math.ceil(math.log2(self.shape_fr_max))
 
         # ensure 2**J_fr <= nextpow2(shape_fr_max)
-        mx = 2**math.ceil(math.log2(self.shape_fr_max))
         if self.J_fr is None:
-            self.J_fr = int(math.log2(mx)) - 1
-        elif 2**(self.J_fr) > mx:
+            self.J_fr = int(math.log2(self.J_pad_fr_max_min)) - 1
+        elif 2**(self.J_fr) > self.J_pad_fr_max_min:
             raise ValueError(("2**J_fr cannot exceed maximum number of frequency "
                               "rows (rounded up to pow2) in joint scattering "
-                              "(got {} > {})".format(2**(self.J_fr), mx)))
+                              "(got {} > {})".format(
+                                  2**(self.J_fr), self.J_pad_fr_max_min)))
+
+        # check F or set default
+        if self.F is None:
+            self.F = 2**min(self.J_fr, 2)  # TODO docs
+        elif self.F == 'global':
+            self.F = self.J_pad_fr_max_min
+        elif self.F > self.J_pad_fr_max_min:
+            raise ValueError("The temporal support F of the low-pass filter "
+                             "cannot exceed maximum number of frequency rows "
+                             "(rounded up to pow2) in joint scattering "
+                             "(got {} > {})".format(
+                                 self.F, self.J_pad_fr_max_min))
+        self.log2_F = math.floor(math.log2(self.F))
+        self.average_fr_global = bool(self.F == self.J_pad_fr_max_min)
+
+        # restrict `J_pad_fr_max` (and `J_pad_fr_max_init`) if specified by user
+        if self.max_pad_factor_fr is not None:
+            self.J_pad_fr_max_user = int(round(np.log2(
+                self.shape_fr_max * 2**self.max_pad_factor_fr)))
+        else:
+            self.J_pad_fr_max_user = None
 
         # unpack `sampling_` args
         if isinstance(self.sampling_filters_fr, tuple):
@@ -1164,26 +1192,6 @@ class _FrequencyScatteringBase(ScatteringBase):
                               "of: {}").format(self.sampling_phi_fr,
                                                ', '.join(phi_supported)))
 
-        # check F or set default
-        if self.F is None:
-            self.F = 2**min(self.J_fr, 2)  # TODO docs
-        elif self.F == 'global':
-            self.F = mx
-        elif self.F > mx:
-            raise ValueError("The temporal support F of the low-pass filter "
-                             "cannot exceed maximum number of frequency rows "
-                             "(rounded up to pow2) in joint scattering "
-                             "(got {} > {})".format(self.F, mx))
-        self.log2_F = math.floor(math.log2(self.F))
-        self.average_fr_global = bool(self.F == mx)
-
-        # restrict `J_pad_fr_max` (and `J_pad_fr_max_init`) if specified by user
-        if self.max_pad_factor_fr is not None:
-            self.J_pad_fr_max_user = int(round(np.log2(
-                self.shape_fr_max * 2**self.max_pad_factor_fr)))
-        else:
-            self.J_pad_fr_max_user = None
-
         # compute maximum amount of padding
         (self.J_pad_fr_max_init, self.min_to_pad_fr_max, self._pad_fr_phi,
          self._pad_fr_psi) = self._compute_J_pad(self.shape_fr_max,
@@ -1207,7 +1215,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         """See `filter_bank.psi_fr_factory`."""
         (self.psi1_f_fr_up, self.psi1_f_fr_down,
          self.max_subsample_equiv_before_psi_fr) = psi_fr_factory(
-            self.J_pad_fr_max_init, self.J_fr, self.Q_fr,
+            self.J_pad_fr_max_init, self.J_fr, self.Q_fr, self.shape_fr,
             self.subsample_equiv_relative_to_max_padding,
             **self.get_params('sampling_psi_fr', 'sigma_max_to_min_max_ratio',
                               'r_psi', 'normalize', 'sigma0', 'alpha',
@@ -1218,19 +1226,69 @@ class _FrequencyScatteringBase(ScatteringBase):
                 self.J_pad_fr_min_limit,
                 self.J_pad_fr_max_init - self.max_subsample_equiv_before_psi_fr)
             # adjust existing J_pad_fr per (potentially) new J_pad_fr_min_limit
-            for i, J_pad_fr in enumerate(self.J_pad_fr):
+            for n2, (J_pad_fr, shape_fr
+                     ) in enumerate(zip(self.J_pad_fr, self.shape_fr)):
                 if J_pad_fr != -1:
-                    self.J_pad_fr[i] = max(J_pad_fr, self.J_pad_fr_min_limit)
-                    self.subsample_equiv_relative_to_max_padding[i] = (
-                        self.J_pad_fr_max_init - self.J_pad_fr[i])
+                    self.J_pad_fr[n2] = max(J_pad_fr, self.J_pad_fr_min_limit)
+                    j0, pad_left, pad_right, ind_start, ind_end = (
+                        self._compute_padding_params(self.J_pad_fr[n2], shape_fr))
+                    self.subsampling_equiv_relative_to_max_padding[n2] = j0
+                    self.pad_left_fr[n2] = pad_left
+                    self.pad_right_fr[n2] = pad_right
+                    self.ind_start_fr[n2] = ind_start
+                    self.ind_end_fr[n2] = ind_end
+
         # realized minimum
         self.J_pad_fr_min = min(p for p in self.J_pad_fr if p != -1)
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
+        # TODO
+        """
+        For 'exclude' & 'recalibrate':
+            1. Compute `psi`s at `J_pad_fr_max_init`
+            2. Compute and store their 'width' meta
+            3. Use width meta to compute padding for each `shape_fr`, excluding
+               widths that exceed `nextpow2(shape_fr)`.
+            4. Compute `psi`s at every other `J_pad_fr`
+
+        Suppose `max_pad_factor_fr=0`, `J_pad_fr_max_init == 8`, and
+        `nextpow2(shape_fr_max) == 7`. Then, for:
+            'resample':
+                - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+                - `subsample_equiv_due_to_pad` will now have a minimum value,
+                  `== J_pad_fr_max_init - (nextpow2(shape_fr_max) +
+                                           max_pad_factor_fr)`,
+                  which determines `J_pad_fr` and thus `psi`'s length, as opposed
+                  to `max_pad_fr==None` case where `psi` determined max allowed
+                  `subsample_equiv_due_to_pad`.
+                - But `psi`'s length will not be any shorter than
+                  "original_max - max_pad_factor_fr", i.e.
+                  `J_pad_fr_max_init - max_pad_factor_fr`.
+                - Thus `J_pad_fr_min == J_pad_fr_max_init - max_pad_factor_fr`.
+
+            'exclude':
+                - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+                - `J_pad_fr = min(J_pad_fr_original,
+                                  nextpow2(shape_fr) + max_pad_factor_fr)`
+                - `psi`s will still be excluded based on `shape_fr` alone,
+                  independent of `J_pad_fr`, so some `psi` will be distorted.
+
+            'recalibrate':
+                - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+                - `J_pad_fr = min(J_pad_fr_original,
+                                  nextpow2(shape_fr) + max_pad_factor_fr)`
+                - Lowest sigma `psi` will still be set based on `shape_fr` alone,
+                  independent of `J_pad_fr`, so some `psi` will be distorted.
+        """
+        # TODO allow list `max_pad_factor_fr`?
+        # e.g. [0, None] would mean 0 for `shape_fr_max`, and `None` for rest.
         # tentative limit
         self.J_pad_fr_min_limit = (self.J_pad_fr_max_init -
                                    self.max_total_downsample_before_phi_fr)
+        self.J_pad_fr_min_limit = max(
+            self.J_pad_fr_max_init - self.max_total_downsample_before_phi_fr,
+            )
 
         attrs = ('J_pad_fr', 'pad_left_fr', 'pad_right_fr',
                  'ind_start_fr', 'ind_end_fr',
@@ -1290,6 +1348,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                 getattr(self, attr).append(idxs_max)
 
         # max `n1_fr_subsample`; this may vary with `subsample_equiv_due_to_pad`
+        # TODO how does `max_pad_factor_fr` interact with this?
         self.max_subsample_before_phi_fr = []
         for n2, shape_fr in enumerate(self.shape_fr):
             if self.average_fr_global:
@@ -1337,6 +1396,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # don't let J_pad drop below minimum
         J_pad = max(J_pad, self.J_pad_fr_min_limit)
         # don't let J_pad exceed user-set max
+        # TODO instead have `max_pad_factor_fr` control padding *per-shape_fr*?
         if self.max_pad_factor_fr is not None:
             J_pad = min(J_pad, self.J_pad_fr_max_user)
         return J_pad

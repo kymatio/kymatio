@@ -98,8 +98,8 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
                 Scx, meta, pair, aggregate=False, kind=kind)
         if aggregate:
             E = {}
-            for p in E_flat:
-                E[pair] = E_flat[pair].sum()
+            for pair in E_flat:
+                E[pair] = np.sum(E_flat[pair])
             return E
         return E_flat, E_slices
 
@@ -126,11 +126,22 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
             coeffs = coeffs.reshape(-1, coeffs.shape[-1])
         coeffs_flat = coeffs
 
+    # compute compensation factor # TODO better comment
+    if pair == 'S0':
+        factor = 1
+    elif 'psi' in pair:
+        factor = 4
+    else:
+        factor = 2
+
     # prepare for iterating
     meta = deepcopy(meta)  # don't change external dict
     if out_3D:
         meta['stride'][pair] = meta['stride'][pair].reshape(-1, 2)
         meta['n'][pair] = meta['n'][pair].reshape(-1, 3)
+
+    assert (len(coeffs_flat) == len(meta['stride'][pair])), (
+        "{} != {} | {}".format(len(coeffs_flat), len(meta['stride'][pair]), pair))
 
     # define helpers #########################################################
     def norm(c, meta_idx):
@@ -138,6 +149,7 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
         m_start, m_end = meta_idx[0], meta_idx[0] + n_freqs
         stride = meta['stride'][pair][m_start:m_end]
         assert c.ndim == 1, (c.shape, pair)
+        assert len(stride) != 0, pair
 
         stride[np.isnan(stride)] = 0
         total_joint_stride = stride.sum()
@@ -166,7 +178,7 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
                 c = c.cpu()
             c = c.numpy()  # TF/torch
         n_prev = n_current()
-        E = norm(c, meta_idx) * energy(c)
+        E = norm(c, meta_idx) * energy(c) * factor  # TODO make part of norm?
         E_flat.append(E)
 
         if pair in ('S0', 'S1'):

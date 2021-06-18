@@ -430,6 +430,8 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
     pair_energies = {}
     idxs = [0]
     for pair in compute_pairs:
+        if pair not in meta['n']:
+            continue
         E_flat, E_slices = coeff_energy(Scx, meta, pair, aggregate=False,
                                         kind=kind)
         pair_energies[pair] = np.sum(E_slices)
@@ -464,15 +466,20 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
     plot(energies_cs, vlines=vlines, ylims=(0, None), title=title, show=1)
 
     # print report ###########################################################
+    def sig_figs(x, n_sig=3):
+        s = str(x)
+        nondecimals = len(s.split('.')[0]) - int(s[0] == '0')
+        decimals = max(n_sig - nondecimals, 0)
+        return s.lstrip('0')[:decimals + nondecimals + 1].rstrip('.')
+
     e_total = np.sum(energies)
-    nums = ["%.1f" % e for e in pair_energies.values()]
+    nums = [sig_figs(e, n_sig=3) for e in pair_energies.values()]
     longest_num = max(map(len, nums))
 
     i = 0
     for pair in compute_pairs:
-        if pair not in meta['n']:
-            continue
-        e_perc = "%.1f" % (np.sum(pair_energies[pair]) / e_total * 100)
+        E_pair = np.sum(pair_energies[pair])
+        e_perc = sig_figs(E_pair / e_total * 100, n_sig=3)
         print("{} ({}%) -- {}".format(
             nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
         i += 1

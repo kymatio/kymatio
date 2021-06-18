@@ -599,11 +599,11 @@ def timefrequency_scattering(
                ind_start, ind_end)
 
     out_S_0 = []
-    out_S_1 = []
+    out_S_1_tm = []
+    out_S_1 = {'phi_t * phi_f': []}
     out_S_2 = {'psi_t * psi_f': [[], []],
                'psi_t * phi_f': [],
-               'phi_t * psi_f': [[]],
-               'phi_t * phi_f': []}
+               'phi_t * psi_f': [[]]}
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
@@ -642,9 +642,11 @@ def timefrequency_scattering(
         U_1_hat = B.rfft(U_1_m)
         return U_1_hat, U_1_m
 
-    U_1_hat_list, S_1_u_list, S_1_c_list = [], [], []
+    include_phi_t = any(pair not in out_exclude for pair in
+                        ('phi_t * phi_f', 'phi_t * psi_f'))
+    U_1_hat_list, S_1_tm_list = [], []
     for n1 in range(len(psi1)):
-        # Convolution + downsampling
+        # Convolution + subsampling
         j1 = psi1[n1]['j']
         sub1_adj = min(j1, log2_T) if average else j1
         k1 = max(sub1_adj - oversampling, 0)
@@ -655,58 +657,62 @@ def timefrequency_scattering(
         # if `k1` is used from this point, treat as if `average=True`
         sub1_adj_avg = min(j1, log2_T)
         k1_avg = max(sub1_adj_avg - oversampling, 0)
-        if average or ('phi_t * psi_f' not in out_exclude or
-                       'phi_t * phi_f' not in out_exclude):
-            if k1 != k1_avg:
-                # must recompute U_1_hat
-                U_1_hat_avg, _ = compute_U_1(k1_avg)
+        if average or include_phi_t:
+            if not average_global:
+                if k1 != k1_avg:
+                    # must recompute U_1_hat
+                    U_1_hat_avg, _ = compute_U_1(k1_avg)
+                else:
+                    U_1_hat_avg = U_1_hat
+                # Low-pass filtering over time
+                S_1_c = B.cdgmm(U_1_hat_avg, phi[k1_avg])
+
+                k1_J = max(log2_T - k1_avg - oversampling, 0)
+                S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
+                S_1_avg = B.irfft(S_1_hat)  # don't unpad yet else breaks * phi_t
             else:
-                U_1_hat_avg = U_1_hat
-            # compute even if `average=False`, since used in `phi_t * psi_f` pairs
-            S_1_c = B.cdgmm(U_1_hat_avg, phi[k1_avg])
-            S_1_c_list.append(S_1_c)
+                # Average directly
+                S_1_avg = B.mean(U_1_m, axis=-1)
 
-        if (average and not average_global) or 'phi_t * phi_f' not in out_exclude:
-            # compute even if `average=False`, since used in `phi_t * phi_f` pairs
-            # Low-pass filtering over time
-            k1_J = max(log2_T - k1_avg - oversampling, 0)
-            S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
-            S_1_r = B.irfft(S_1_hat)
-            # Unpad
-            S_1_u = unpad(S_1_r, ind_start[k1_J + k1_avg], ind_end[k1_J + k1_avg])
-
-        # Apply low-pass filtering over time (optional) and unpad
-        if average_global:
-            S_1_u = B.mean(U_1_m, axis=-1)
-            S_1 = S_1_u
-            total_conv_stride_tm = log2_T
-        elif average:
-            S_1 = S_1_u
-            total_conv_stride_tm = k1_avg + k1_J
-        else:
-            # Unpad
-            S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
-            total_conv_stride_tm = k1
-
-        if 'phi_t * phi_f' not in out_exclude:
-            S_1_u_list.append(S_1_u)
-        out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,), 's': (),
-                        'stride': (total_conv_stride_tm,)})
+        if 'S1' not in out_exclude:  # TODO docs
+            if average_global:
+                S_1_tm = S_1_avg
+                total_conv_stride_tm = log2_T
+            elif average:
+                # Unpad averaged
+                S_1_tm = unpad(S_1_avg, ind_start[k1_J + k1_avg],
+                               ind_end[k1_J + k1_avg])
+                total_conv_stride_tm = k1_avg + k1_J
+            else:
+                # Unpad unaveraged
+                S_1_tm = unpad(U_1_m, ind_start[k1], ind_end[k1])
+                total_conv_stride_tm = k1
+            out_S_1_tm.append({'coef': S_1_tm, 'j': (j1,), 'n': (n1,), 's': (),
+                               'stride': (total_conv_stride_tm,)})
+        if include_phi_t:
+            S_1_tm_list.append(S_1_avg)
 
     # Frequential averaging over time averaged coefficients ##################
     # `U1 * (phi_t * phi_f)` pair
-    if 'phi_t * phi_f' not in out_exclude:
-        # zero-pad along frequency, map to Fourier domain
+    if include_phi_t:
+        # zero-pad along frequency
         pad_fr = sc_freq.J_pad_fr_max
-        S_1 = _right_pad(S_1_u_list, pad_fr, B)
+        S_1_tm = _right_pad(S_1_tm_list, pad_fr, sc_freq.shape_fr_max_all, B)
+
+        if (('phi_t * phi_f' not in out_exclude and not sc_freq.average_fr_global)
+                or 'phi_t * psi_f' not in out_exclude):
+            # map frequency axis to Fourier domain
+            S_1_tm_hat = B.rfft(S_1_tm, axis=-2)
+        # TODO can unpad in time first
+
+    if 'phi_t * phi_f' not in out_exclude:
         n1_fr_subsample = 0  # no intermediate scattering
 
         if sc_freq.average_fr_global:
-            S_1_fr = B.mean(S_1, axis=-2)
+            # take mean along frequency directly
+            S_1 = B.mean(S_1_tm, axis=-2)
             lowpass_subsample_fr = sc_freq.log2_F
         else:
-            S_1_fr = B.rfft(S_1, axis=-2)
-
             # this is usually 0
             subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
@@ -721,23 +727,34 @@ def timefrequency_scattering(
 
             # Low-pass filtering over frequency
             phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad][n1_fr_subsample]
-            S_1_fr_c = B.cdgmm(S_1_fr, phi_fr)
-            S_1_fr_hat = B.subsample_fourier(S_1_fr_c, 2**lowpass_subsample_fr,
-                                             axis=-2)
-            S_1_fr = B.irfft(S_1_fr_hat, axis=-2)
+            S_1_c = B.cdgmm(S_1_tm_hat, phi_fr)
+            S_1_hat = B.subsample_fourier(S_1_c, 2**lowpass_subsample_fr,
+                                          axis=-2)
+            S_1_c = B.irfft(S_1_hat, axis=-2)
 
-            # unpad
+            # Unpad frequency
             if out_3D:
                 ind_start_fr = sc_freq.ind_start_fr_max[total_downsample_fr]
                 ind_end_fr   = sc_freq.ind_end_fr_max[  total_downsample_fr]
             else:
                 ind_start_fr = sc_freq.ind_start_fr[-1][total_downsample_fr]
                 ind_end_fr   = sc_freq.ind_end_fr[-1][  total_downsample_fr]
-            S_1_fr = unpad(S_1_fr, ind_start_fr, ind_end_fr, axis=-2)
+            S_1 = unpad(S_1_c, ind_start_fr, ind_end_fr, axis=-2)
 
         # set reference for later
         total_conv_stride_over_U1_realized = (n1_fr_subsample +
                                               lowpass_subsample_fr)
+        if not sc_freq.average_fr_global:
+            # energy correction due to integer-rounded unpad indices
+            ind_end_exact = (sc_freq.shape_fr_max /
+                             2**total_conv_stride_over_U1_realized)
+            energy_correction = B.sqrt(ind_end_exact / ind_end_fr)
+            S_1 *= energy_correction
+        if not average_global:
+            # Unpad time
+            k1_J = max(log2_T - oversampling, 0)
+            S_1 = unpad(S_1, ind_start[k1_J], ind_end[k1_J], axis=-1)
+
         sc_freq.__total_conv_stride_over_U1_phi = (
             total_conv_stride_over_U1_realized)
         sc_freq.__total_conv_stride_over_U1 = (-1 if not average_fr else
@@ -747,8 +764,8 @@ def timefrequency_scattering(
                  sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad
                                        ][n1_fr_subsample])
         stride = (total_conv_stride_over_U1_realized, log2_T)
-        out_S_2['phi_t * phi_f'].append({
-            'coef': S_1_fr, 'j': (log2_T, j1_fr), 'n': (-1, -1), 's': (0,),
+        out_S_1['phi_t * phi_f'].append({
+            'coef': S_1, 'j': (log2_T, j1_fr), 'n': (-1, -1), 's': (0,),
             'stride': stride})
     else:
         sc_freq.__total_conv_stride_over_U1_phi = -1
@@ -757,7 +774,7 @@ def timefrequency_scattering(
     ##########################################################################
     # Joint scattering: separable convolutions (along time & freq), and low-pass
     # `U1 * (psi_t * psi_f)` (up & down), and `U1 * (psi_t * phi_f)`
-    skip_spinned = bool('psi_t * psi_f_up' in out_exclude and
+    skip_spinned = bool('psi_t * psi_f_up'   in out_exclude and
                         'psi_t * psi_f_down' in out_exclude)
 
     if not (skip_spinned and 'psi_t * phi_f' in out_exclude):
@@ -793,66 +810,44 @@ def timefrequency_scattering(
                 Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
                 Y_2_c = B.ifft(Y_2_hat)
                 Y_2_list.append(Y_2_c)
-                # Y_2_arr[n1] = Y_2_c
 
-            Y_2_arr = _right_pad(Y_2_list, pad_fr, B)
+            Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq.shape_fr_max, B)
 
             # sum is same for all `n1`, just take last
             k1_plus_k2 = k1 + k2
+
+            B.conj_reflections(Y_2_arr, ind_start[k1_plus_k2],
+                               ind_end[k1_plus_k2])
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
 
             # Transform over frequency + low-pass, for both spins
-            # `* psi_f` part of `X * (psi_t * psi_f)`
+            # `* psi_f` part of `U1 * (psi_t * psi_f)`
             if not skip_spinned:
                 _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2,
                                       commons, out_S_2['psi_t * psi_f'])
 
             # Low-pass over frequency
-            # `* phi_f` part of `X * (psi_t * phi_f)`
+            # `* phi_f` part of `U1 * (psi_t * phi_f)`
             if 'psi_t * phi_f' not in out_exclude:
-                _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons,
-                                   out_S_2['psi_t * phi_f'])
+                _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2,
+                                   commons, out_S_2['psi_t * phi_f'])
 
     ##########################################################################
     # `U1 * (phi_t * psi_f)`
     if 'phi_t * psi_f' not in out_exclude:
         # take largest subsampling factor
         j2 = log2_T
-        # n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
-        Y_2_list = []
-
-        # Low-pass filtering over time, with filter length matching first-order's
-        for n1 in range(len(psi1)):
-            # reuse 1st-order U_1_hat * phi[k1]
-            Y_2_c = S_1_c_list[n1]
-            if not average_global:
-                j1 = psi1[n1]['j']
-                # Convolution and downsampling
-                # what we subsampled in 1st-order
-                sub1_adj = min(j1, log2_T) if average else j1
-                k1 = max(sub1_adj - oversampling, 0)
-                # what we subsample now in 2nd
-                k2 = max(j2 - k1 - oversampling, 0)
-                Y_2_hat = B.subsample_fourier(Y_2_c, 2**k2)
-                Y_2_c = B.ifft(Y_2_hat)
-            else:
-                k1, k2 = -1, 0  # won't use
-            Y_2_list.append(Y_2_c)
-
-        # sum is same for all `n1`, just take last
-        k1_plus_k2 = k1 + k2
-
-        # frequential padding
+        k1_plus_k2 = max(log2_T - oversampling, 0)
         pad_fr = sc_freq.J_pad_fr_max
-        Y_2_arr = _right_pad(Y_2_list, pad_fr, B)
+        # n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
 
-        # map to Fourier domain to prepare for conv along freq
-        Y_2_hat = B.fft(Y_2_arr, axis=-2)
+        # reuse from first-order scattering
+        Y_2_hat = S_1_tm_hat
 
         # Transform over frequency + low-pass
-        # `* psi_f` part of `X * (phi_t * psi_f)`
+        # `* psi_f` part of `U1 * (phi_t * psi_f)`
         _frequency_scattering(Y_2_hat, j2, -1, pad_fr, k1_plus_k2, commons,
                               out_S_2['phi_t * psi_f'], spin_down=False)
 
@@ -860,8 +855,8 @@ def timefrequency_scattering(
     # pack outputs & return
     out = {}
     out['S0'] = out_S_0
-    out['S1'] = out_S_1
-    out['phi_t * phi_f'] = out_S_2['phi_t * phi_f']
+    out['S1'] = out_S_1_tm  # TODO rename key to S1_tm
+    out['phi_t * phi_f'] = out_S_1['phi_t * phi_f']
     out['phi_t * psi_f'] = out_S_2['phi_t * psi_f'][0]
     out['psi_t * phi_f'] = out_S_2['psi_t * phi_f']
     out['psi_t * psi_f_up']   = out_S_2['psi_t * psi_f'][0]
@@ -932,6 +927,8 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             n1_fr_subsample = max(sub_adj - oversampling_fr, 0)
 
             # Wavelet transform over frequency
+            if any(s==69 for s in Y_2_hat.shape):
+                1==1
             Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample, axis=-2)
             Y_fr_c = B.ifft(Y_fr_hat, axis=-2)
@@ -950,15 +947,16 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                  'stride': stride})
 
 
-def _frequency_lowpass(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2):
+def _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2, commons,
+                       out_S_2):
     B, sc_freq, _, aligned, oversampling_fr, average_fr, out_3D, *_ = commons
 
     subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
     if sc_freq.average_fr_global:
-        Y_fr_c = B.mean(Y_2_hat, axis=-2)
+        Y_fr_c = B.mean(Y_2_arr, axis=-2)
         j1_fr = sc_freq.log2_F
-        total_conv_stride_over_U1 = pad_fr
+        total_conv_stride_over_U1 = min(pad_fr, sc_freq.log2_F)
         n1_fr_subsample = total_conv_stride_over_U1
     else:
         j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
@@ -1003,20 +1001,19 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     else:
         lowpass_subsample_fr = 0
 
-    # fetch frequential lowpass
-    if average_fr and not sc_freq.average_fr_global:
-        phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad][n1_fr_subsample]
-
     # do lowpassing ##########################################################
-    if sc_freq.average_fr_global:
-        S_2_fr = B.mean(U_2_m, axis=-2)
-    elif average_fr:
-        # Low-pass filtering over frequency
-        U_2_hat = B.rfft(U_2_m, axis=-2)
-        S_2_fr_c = B.cdgmm(U_2_hat, phi_fr)
-        S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr,
-                                         axis=-2)
-        S_2_fr = B.irfft(S_2_fr_hat, axis=-2)
+    do_averaging_fr = average_fr and n1_fr != -1
+    if do_averaging_fr:
+        if sc_freq.average_fr_global:
+            S_2_fr = B.mean(U_2_m, axis=-2)
+        elif average_fr:
+            # Low-pass filtering over frequency
+            phi_fr = sc_freq.phi_f_fr[subsample_equiv_due_to_pad][n1_fr_subsample]
+            U_2_hat = B.rfft(U_2_m, axis=-2)
+            S_2_fr_c = B.cdgmm(U_2_hat, phi_fr)
+            S_2_fr_hat = B.subsample_fourier(S_2_fr_c, 2**lowpass_subsample_fr,
+                                             axis=-2)
+            S_2_fr = B.irfft(S_2_fr_hat, axis=-2)
     else:
         S_2_fr = U_2_m
 
@@ -1031,25 +1028,38 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             ind_end_fr   = sc_freq.ind_end_fr[  n2][total_downsample_fr]
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
-    if average_global:
-        S_2 = B.mean(U_2_hat, axis=-1)
-    elif average:
-        # Low-pass filtering over time
-        k2_tm_J = max(log2_T - k1_plus_k2 - oversampling, 0)
-        U_2_hat = B.rfft(S_2_fr)
-        S_2_c = B.cdgmm(U_2_hat, phi[k1_plus_k2])
-        S_2_hat = B.subsample_fourier(S_2_c, 2**k2_tm_J)
-        S_2_r = B.irfft(S_2_hat)
-        total_downsample_tm = k1_plus_k2 + k2_tm_J
-    else:
-        total_downsample_tm = k1_plus_k2
-        S_2_r = S_2_fr
+        # energy correction due to integer-rounded unpad indices # TODO time?
+        total_conv_stride_over_U1_realized = (n1_fr_subsample +
+                                              lowpass_subsample_fr)
+        ind_end_exact = (sc_freq.shape_fr_max /
+                         2**total_conv_stride_over_U1_realized)
+        energy_correction = B.sqrt(ind_end_exact / ind_end_fr)
+        S_2_fr *= energy_correction
 
+    do_averaging = average and n2 != -1
+    if do_averaging:
+        if average_global:
+            S_2 = B.mean(S_2_fr, axis=-1)
+        elif average:
+            # Low-pass filtering over time
+            k2_tm_J = max(log2_T - k1_plus_k2 - oversampling, 0)
+            U_2_hat = B.rfft(S_2_fr)
+            S_2_c = B.cdgmm(U_2_hat, phi[k1_plus_k2])
+            S_2_hat = B.subsample_fourier(S_2_c, 2**k2_tm_J)
+            S_2_r = B.irfft(S_2_hat)
+            total_downsample_tm = k1_plus_k2 + k2_tm_J
+    else:
+        S_2_r = S_2_fr
+        total_downsample_tm = k1_plus_k2
+
+    # TODO unpad sooner?
     if not average_global:
         S_2 = unpad(S_2_r, ind_start[total_downsample_tm],
                     ind_end[total_downsample_tm])
+    elif not do_averaging:
+        S_2 = S_2_r
 
-    # sanity checks (see "Subsampling, padding")
+    # sanity checks (see "Subsampling, padding") #############################
     total_conv_stride_over_U1_realized = (n1_fr_subsample +
                                           lowpass_subsample_fr)
     if aligned and not sc_freq.average_fr_global:
@@ -1083,10 +1093,48 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     return S_2, stride
 
 
-def _right_pad(coeff_list, pad_fr, B):
+def _right_pad(coeff_list, pad_fr, shape_fr_max, B):
+    # TODO visualize this for every pad len
+    n_coeffs_input = len(coeff_list)
     zero_row = B.zeros_like(coeff_list[0])
-    zero_rows = [zero_row] * (2**pad_fr - len(coeff_list))
-    return B.concatenate_v2(coeff_list + zero_rows, axis=1)
+    # first zero pad, then reflect remainder (including zeros as appropriate)
+    n_zeros = min(2**pad_fr // 2, shape_fr_max - n_coeffs_input)
+    # n_zeros = max(n_zeros_min, (2**pad_fr - len(coeff_list)) // 2)
+    zero_rows = [zero_row] * n_zeros
+
+    coeff_list_new = coeff_list + zero_rows
+    right_pad = max((2**pad_fr - n_coeffs_input) // 2, n_zeros)
+    left_pad  = 2**pad_fr - right_pad - n_coeffs_input
+
+    # right pad
+    right_rows = zero_rows
+    idx = -2
+    reflect = False
+    while len(right_rows) < right_pad:
+        c = coeff_list_new[idx]
+        c = c if reflect else B.conj(c)
+        right_rows.append(c)
+        if idx in (-1, -len(coeff_list_new)):
+            reflect = not reflect
+        idx += 1 if reflect else -1
+
+    # to_pad = 2**pad_fr - len(coeff_list_new)
+    # (circ-)left pad
+    left_rows = []
+    idx = - (len(coeff_list_new) - 1)
+    reflect = False
+    while len(left_rows) < left_pad:
+        c = coeff_list_new[idx]
+        c = c if reflect else B.conj(c)
+        left_rows.append(c)
+        if idx in (-1, -len(coeff_list_new)):
+            reflect = not reflect
+        idx += -1 if reflect else 1
+    left_rows = left_rows[::-1]
+    # print(len(coeff_list), len(zero_rows), len(conj_reflected_rows), to_pad)
+    if len(coeff_list + right_rows + left_rows) == 69:
+        _right_pad(coeff_list, pad_fr, shape_fr_max, B)
+    return B.concatenate_v2(coeff_list + right_rows + left_rows, axis=1)
 
 
 def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq,
@@ -1099,7 +1147,7 @@ def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq,
     J_pad_fr_max, J_pad_fr_min = sc_freq.J_pad_fr_max, sc_freq.J_pad_fr_min
 
     if sc_freq.average_fr_global:
-        total_conv_stride_over_U1 = pad_fr
+        total_conv_stride_over_U1 = min(pad_fr, sc_freq.log2_F)
     elif average_fr:
         phi_fr = sc_freq.phi_f_fr
         if sc_freq.aligned:
