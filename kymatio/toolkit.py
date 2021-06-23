@@ -107,7 +107,77 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
         raise ValueError("`pair` must be string, list/tuple of strings, or None "
                          "(got %s)" % pair)
 
-    # compute for one pair ###################################################
+    # compute compensation factor # TODO better comment
+    factor = _get_pair_factor(pair)
+    fn = lambda c: energy(c, kind=kind)
+    norm_fn = lambda total_joint_stride: 2**total_joint_stride
+
+    E_flat, E_slices = _iterate_coeffs(Scx, meta, pair, fn, norm_fn, factor)
+    Es = []
+    for s in E_slices:
+        Es.append(np.sum(s))
+    E_slices = Es
+
+    if aggregate:
+        return np.sum(E_flat)
+    return E_flat, E_slices
+
+
+def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, kind='l2'):
+    if meta1 is None:
+        meta1 = meta0
+    # compute compensation factor # TODO better comment
+    factor = _get_pair_factor(pair)
+    fn = lambda c: c
+
+    def norm_fn(total_joint_stride):
+        return (2**(total_joint_stride / 2) if kind == 'l2' else
+                2**total_joint_stride)
+
+    c_flat0, c_slices0 = _iterate_coeffs(Scx0, meta0, pair, fn, norm_fn, factor)
+    c_flat1, c_slices1 = _iterate_coeffs(Scx1, meta0, pair, fn, norm_fn, factor)
+
+    # make into array and assert shapes are as expected
+    c_flat0, c_flat1 = np.asarray(c_flat0), np.asarray(c_flat1)
+    c_slices0 = [np.asarray(c) for c in c_slices0]
+    c_slices1 = [np.asarray(c) for c in c_slices1]
+
+    assert c_flat0.ndim == c_flat1.ndim == 2, (c_flat0.shape, c_flat1.shape)
+    shapes = [np.array(c).shape for cs in (c_slices0, c_slices1) for c in cs]
+    # effectively 3D
+    assert all(len(s) == 2 for s in shapes), shapes
+
+    E = lambda x: _l2(x) if kind == 'l2' else _l1(x)
+    ref0, ref1 = E(c_flat0), E(c_flat1)
+    ref = (ref0 + ref1) / 2
+
+    def D(x0, x1, axis):
+        if isinstance(x0, list):
+            return [D(_x0, _x1, axis) for (_x0, _x1) in zip(x0, x1)]
+
+        if kind == 'l2':
+            return np.sqrt(np.sum(np.abs(x0 - x1)**2, axis=axis)) / ref
+        return np.sum(np.abs(x0 - x1), axis=axis) / ref
+
+    # do not collapse `freq` dimension
+    reldist_flat   = D(c_flat0,   c_flat1,   axis=-1)
+    reldist_slices = D(c_slices0, c_slices1, axis=(-1, -2))
+
+    # return tuple consistency; we don't do "slices" here
+    return reldist_flat, reldist_slices
+
+
+def _get_pair_factor(pair):
+    if pair == 'S0':
+        factor = 1
+    elif 'psi' in pair:
+        factor = 4
+    else:
+        factor = 2
+    return factor
+
+
+def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     coeffs = drop_batch_dim_jtfs(Scx)[pair]
     out_list = bool(isinstance(coeffs, list))
 
@@ -126,14 +196,6 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
             coeffs = coeffs.reshape(-1, coeffs.shape[-1])
         coeffs_flat = coeffs
 
-    # compute compensation factor # TODO better comment
-    if pair == 'S0':
-        factor = 1
-    elif 'psi' in pair:
-        factor = 4
-    else:
-        factor = 2
-
     # prepare for iterating
     meta = deepcopy(meta)  # don't change external dict
     if out_3D:
@@ -144,18 +206,16 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
         "{} != {} | {}".format(len(coeffs_flat), len(meta['stride'][pair]), pair))
 
     # define helpers #########################################################
-    def norm(c, meta_idx):
+    def get_total_joint_stride(meta_idx):
         n_freqs = 1
         m_start, m_end = meta_idx[0], meta_idx[0] + n_freqs
         stride = meta['stride'][pair][m_start:m_end]
-        assert c.ndim == 1, (c.shape, pair)
         assert len(stride) != 0, pair
 
         stride[np.isnan(stride)] = 0
         total_joint_stride = stride.sum()
-        norm = 2 ** total_joint_stride
         meta_idx[0] = m_end  # update idx
-        return norm
+        return total_joint_stride
 
     def n_current():
         i = meta_idx[0]
@@ -169,6 +229,10 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
         return bool(np.all(n0 == n1))
 
     # append energies one by one #############################################
+    fn = fn or (lambda c: c)
+    norm_fn = norm_fn or (lambda total_joint_stride: 2**total_joint_stride)
+    factor = factor or 1
+
     E_flat = []
     E_slices = [] if pair in ('S0', 'S1') else [[]]
     meta_idx = [0]  # make mutable to avoid passing around
@@ -178,7 +242,10 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
                 c = c.cpu()
             c = c.numpy()  # TF/torch
         n_prev = n_current()
-        E = norm(c, meta_idx) * energy(c) * factor  # TODO make part of norm?
+        assert c.ndim == 1, (c.shape, pair)
+        total_joint_stride = get_total_joint_stride(meta_idx)
+
+        E = norm_fn(total_joint_stride) * fn(c) * factor
         E_flat.append(E)
 
         if pair in ('S0', 'S1'):
@@ -187,19 +254,20 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
             E_slices[-1].append(E)  # append to slice
         else:
             E_slices[-1].append(E)  # append to slice
-            E_slices[-1] = np.sum(E_slices[-1])  # aggregate slice
+            # E_slices[-1] = np.sum(E_slices[-1])  # aggregate slice # TODO rm
             E_slices.append([])
 
-    # in case loop terminates early
-    if isinstance(E_slices[-1], list):
-        E_slices[-1] = np.sum(E_slices[-1])
+    # # in case loop terminates early
+    if isinstance(E_slices[-1], list) and len(E_slices[-1]) == 0:
+        E_slices.pop()
+    # if isinstance(E_slices[-1], list): # TODO rm
+    #     E_slices[-1] = np.sum(E_slices[-1])
 
     # ensure they sum to same
-    adiff = abs(np.sum(E_flat) - np.sum(E_slices))
-    assert np.allclose(np.sum(E_flat), np.sum(E_slices)), "MAE=%.3f" % adiff
+    Es_sum = np.sum(np.sum(E_slices))
+    adiff = abs(np.sum(E_flat) - Es_sum)
+    assert np.allclose(np.sum(E_flat), Es_sum), "MAE=%.3f" % adiff
 
-    if aggregate:
-        return np.sum(E_flat)
     return E_flat, E_slices
 
 
@@ -217,7 +285,26 @@ def energy(x, kind='l2'):
             backend.sum(backend.abs(x)**2))
 
 
-def _infer_backend(x):
+def _l2(x):  # TODO backend # TODO use `energy` instead?
+    return np.sqrt(np.sum(np.abs(x)**2))
+
+def l2(x0, x1, adj=False):
+    """Coeff distance measure; Eq 2.24 in
+    https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
+    """
+    ref = _l2(x0) if not adj else (_l2(x0) + _l2(x1)) / 2
+    return _l2(x1 - x0) / ref
+
+
+def _l1(x):
+    return np.sum(np.abs(x))
+
+def l1(x0, x1, adj=False):
+    ref = _l1(x0) if not adj else (_l1(x0) + _l1(x1)) / 2
+    return _l1(x1 - x0) / ref
+
+
+def _infer_backend(x, get_name=False):
     while isinstance(x, (dict, list)):
         if isinstance(x, dict):
             if 'coef' in x:
@@ -228,12 +315,14 @@ def _infer_backend(x):
             x = x[0]
     module = type(x).__module__
     if module == 'numpy':
-        return np
+        backend = np
     elif module == 'torch':
         import torch
-        return torch
+        backend = torch
     elif module == 'tensorflow':
         import tensorflow
-        return tensorflow
+        backend = tensorflow
     else:
         raise ValueError("could not infer backend from %s" % type(x))
+    return (backend if not get_name else
+            (backend, module))

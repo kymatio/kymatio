@@ -697,7 +697,7 @@ def timefrequency_scattering(
     if include_phi_t:
         # zero-pad along frequency
         pad_fr = sc_freq.J_pad_fr_max
-        S_1_tm = _right_pad(S_1_tm_list, pad_fr, sc_freq.shape_fr_max_all, B)
+        S_1_tm = _right_pad(S_1_tm_list, pad_fr, sc_freq, B)
 
         if (('phi_t * phi_f' not in out_exclude and not sc_freq.average_fr_global)
                 or 'phi_t * psi_f' not in out_exclude):
@@ -811,13 +811,14 @@ def timefrequency_scattering(
                 Y_2_c = B.ifft(Y_2_hat)
                 Y_2_list.append(Y_2_c)
 
-            Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq.shape_fr_max, B)
+            Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             # sum is same for all `n1`, just take last
             k1_plus_k2 = k1 + k2
 
-            B.conj_reflections(Y_2_arr, ind_start[k1_plus_k2],
-                               ind_end[k1_plus_k2])
+            if pad_mode == 'reflect':
+                B.conj_reflections(Y_2_arr, ind_start[k1_plus_k2],
+                                   ind_end[k1_plus_k2])
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
@@ -927,8 +928,6 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             n1_fr_subsample = max(sub_adj - oversampling_fr, 0)
 
             # Wavelet transform over frequency
-            if any(s==69 for s in Y_2_hat.shape):
-                1==1
             Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample, axis=-2)
             Y_fr_c = B.ifft(Y_fr_hat, axis=-2)
@@ -1093,7 +1092,16 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     return S_2, stride
 
 
-def _right_pad(coeff_list, pad_fr, shape_fr_max, B):
+def _right_pad(coeff_list, pad_fr, sc_freq, B):
+    if sc_freq.pad_mode_fr == 'conj-reflect-zero':
+        return _pad_conj_reflect_zero(coeff_list, pad_fr, sc_freq.shape_fr_max, B)
+    # zero-pad
+    zero_row = B.zeros_like(coeff_list[0])
+    zero_rows = [zero_row] * (2**pad_fr - len(coeff_list))
+    return B.concatenate_v2(coeff_list + zero_rows, axis=1)
+
+
+def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
     # TODO visualize this for every pad len
     n_coeffs_input = len(coeff_list)
     zero_row = B.zeros_like(coeff_list[0])
@@ -1118,7 +1126,6 @@ def _right_pad(coeff_list, pad_fr, shape_fr_max, B):
             reflect = not reflect
         idx += 1 if reflect else -1
 
-    # to_pad = 2**pad_fr - len(coeff_list_new)
     # (circ-)left pad
     left_rows = []
     idx = - (len(coeff_list_new) - 1)
@@ -1132,8 +1139,6 @@ def _right_pad(coeff_list, pad_fr, shape_fr_max, B):
         idx += -1 if reflect else 1
     left_rows = left_rows[::-1]
     # print(len(coeff_list), len(zero_rows), len(conj_reflected_rows), to_pad)
-    if len(coeff_list + right_rows + left_rows) == 69:
-        _right_pad(coeff_list, pad_fr, shape_fr_max, B)
     return B.concatenate_v2(coeff_list + right_rows + left_rows, axis=1)
 
 

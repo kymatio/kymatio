@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from ...backend.tensorflow_backend import TensorFlowBackend
-from .agnostic_backend import pad as agnostic_pad, index_axis
+from . import agnostic_backend as agnostic
 
 
 class TensorFlowBackend1D(TensorFlowBackend):
@@ -68,7 +68,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic_pad(x, pad_left, pad_right, pad_mode, axis, 'tensorflow')
+        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis)
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):
@@ -90,7 +90,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        return x[index_axis(i0, i1, axis, x.ndim)]
+        return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
     def zeros_like(cls, ref, shape=None):
@@ -140,11 +140,16 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.reduce_mean(x, axis=axis, keepdims=True)
 
     @classmethod
+    def conj_reflections(cls, x, ind_start, ind_end):
+        return agnostic.conj_reflections(cls, x, ind_start, ind_end)
+
+    @classmethod
     def _maybe_transpose_for_fft(cls, x, axis):
         if axis == -2:
             x = cls.transpose(x)
         elif axis != -1:
             raise NotImplementedError("`axis` must be -1 or -2")
         return x
+
 
 backend = TensorFlowBackend1D

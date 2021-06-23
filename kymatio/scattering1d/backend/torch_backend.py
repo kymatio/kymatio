@@ -1,7 +1,7 @@
 import torch
 import torch.fft
 from ...backend.torch_backend import TorchBackend
-from .agnostic_backend import pad as agnostic_pad, index_axis
+from . import agnostic_backend as agnostic
 
 
 class TorchBackend1D(TorchBackend):
@@ -74,7 +74,7 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic_pad(x, pad_left, pad_right, pad_mode, axis, 'torch')
+        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis)
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):
@@ -98,7 +98,7 @@ class TorchBackend1D(TorchBackend):
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        return x[index_axis(i0, i1, axis, x.ndim)]
+        return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
     def zeros_like(cls, ref, shape=None):
@@ -134,6 +134,10 @@ class TorchBackend1D(TorchBackend):
     def mean(cls, x, axis=-1):
         """Take mean along specified axis, without collapsing the axis."""
         return x.mean(axis, keepdim=True)
+
+    @classmethod
+    def conj_reflections(cls, x, ind_start, ind_end):
+        return agnostic.conj_reflections(cls, x, ind_start, ind_end)
 
 
 backend = TorchBackend1D

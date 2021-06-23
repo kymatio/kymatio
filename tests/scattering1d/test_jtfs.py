@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import drop_batch_dim_jtfs, coeff_energy
+from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
 from utils import cant_import, fdts, echirp, l2
 
 # backend to use for most tests
@@ -11,6 +12,8 @@ default_backend = 'numpy'
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
 output_test_print_mode = 1
+# set True to print assertion values of certain tests
+metric_verbose = 1
 
 
 def test_alignment():
@@ -43,8 +46,7 @@ def test_alignment():
           jtfs = TimeFrequencyScattering1D(
               J, N, Q, J_fr=J_fr, Q_fr=Q_fr, F=F, average=True, average_fr=True,
               aligned=True, out_type=out_type, frontend=default_backend,
-              pad_mode='reflect',
-              **test_params)
+              pad_mode='zero', pad_mode_fr='zero', **test_params)
 
           Scx = jtfs(x)
           Scx = drop_batch_dim_jtfs(Scx)
@@ -137,10 +139,19 @@ def test_jtfs_vs_ts():
     # and by comparing only against up & down
     assert l2_jtfs / l2_ts > 22, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
+    # TODO take l2 distance from stride-adjusted coeffs?
+    # TODO also compare max per-coeff ratio
+
+    if metric_verbose:
+        print(("\nFDTS sensitivity:\n"
+               "JTFS/TS = {:.1f}\n"
+               "TS      = {:.4f}\n").format(l2_jtfs / l2_ts, l2_ts))
 
 
 def test_freq_tp_invar():
     """Test frequency transposition invariance."""
+    # TODO reflcet & conj-reflect-zero reduce invar and make it worse
+    # for greater F?
     # design signal
     N = 2048
     f0 = N // 12
@@ -153,40 +164,75 @@ def test_freq_tp_invar():
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    J_fr = 4
-    F_all = [2**(J_fr), 2**(J_fr + 1)]
-    th_all = [.21, .14]  # TODO it's 15.5 and 12.5 now... ok?
+    J_fr = 6
+    F_all = [32, 64]
 
-    for th, F in zip(th_all, F_all):
+    pair_distances, global_distances = [], []
+    for F in F_all:
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
-                                         F=F, average_fr=True, out_3D=True,
+                                         F=F, average_fr=True, out_3D=False,
                                          out_type='dict:array',
+                                         oversampling=0, oversampling_fr=0,
+                                         out_exclude=('S0', 'S1'),
+                                         # pad_mode='zero', pad_mode_fr='zero',
+                                         pad_mode='reflect',
+                                         pad_mode_fr='conj-reflect-zero',
                                          frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
         jtfs_x1_all = jtfs(x1)
-        jtfs_x0 = concat_joint(jtfs_x0_all)  # compare against joint coeffs only
+
+        # compute & append distances
+        _, pair_dist = coeff_distance_jtfs(jtfs_x0_all, jtfs_x1_all,
+                                           jtfs.meta(), plots=False)
+        pair_distances.append(pair_dist)
+
+        jtfs_x0 = concat_joint(jtfs_x0_all)
         jtfs_x1 = concat_joint(jtfs_x1_all)
+        global_distances.append(l2(jtfs_x0, jtfs_x1))
 
-        l2_x0x1 = l2(jtfs_x0, jtfs_x1)
+    if metric_verbose:
+        print("\nFrequency transposition invariance stats:")
 
-        assert l2_x0x1 < th, "{} > {} (F={})".format(l2_x0x1, th, F)
+    # compute stats & assert
+    _, stats = compare_distances_jtfs(*pair_distances, plots=0,
+                                      verbose=metric_verbose, title="F: 32 vs 64")
+    maxs, means = zip(*[(s['max'], s['mean']) for s in stats.values()])
+    max_max, mean_mean = max(maxs), np.mean(means)
+    # best case must attain at least twice the invariance
+    assert max_max > 2, max_max
+    # global mean ratio should exceed unity
+    assert mean_mean > 1.4, mean_mean
+
+    if metric_verbose:
+        print("max_max, mean_mean = {:.2f}, {:.2f}".format(max_max, mean_mean))
+        print("Global L2: (F=32, F=64, ratio) = ({:.3f}, {:.3f}, {:.3f})".format(
+            *global_distances, global_distances[0] / global_distances[1]))
 
 
 def test_up_vs_down():
     """Test that echirp yields significant disparity in up vs down coeffs."""
+    # TODO 'zero' & 'zero' pads attain 98.9
+    # TODO include both in testing (zero & reflect)?
     N = 2048
     x = echirp(N)
 
     jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, F=4, Q_fr=2,
                                      average_fr=True, out_type='dict:array',
+                                     pad_mode='reflect',
+                                     pad_mode_fr='conj-reflect-zero',
                                      frontend=default_backend)
     Scx = jtfs(x)
     jmeta = jtfs.meta()
 
     E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
     E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    assert E_down / E_up > 84
+    th = 81
+    assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
+
+    if metric_verbose:
+        print(("\nFDTS directional sensitivity:\n"
+               "E_down/E_up = {:.1f}\n").format(E_down / E_up))
 
 
 def test_sampling_psi_fr_exclude():
@@ -196,7 +242,7 @@ def test_sampling_psi_fr_exclude():
     N = 1024
     x = echirp(N)
 
-    params = dict(shape=N, J=9, Q=8, J_fr=3, Q_fr=1, average_fr=True,
+    params = dict(shape=N, J=9, Q=8, J_fr=3, Q_fr=2, average_fr=True,
                   out_type='dict:list', frontend=default_backend)
     test_params_str = '\n'.join(f'{k}={v}' for k, v in params.items())
     jtfs0 = TimeFrequencyScattering1D(
@@ -207,8 +253,7 @@ def test_sampling_psi_fr_exclude():
     # required otherwise 'exclude' == 'resample'
     assert_pad_difference(jtfs0, test_params_str)
     # reproduce case with different J_pad_fr
-    assert jtfs0.J_pad_fr != jtfs1.J_pad_fr
-    # TODO assert same `J_pad_fr_max`?
+    assert jtfs0.J_pad_fr != jtfs1.J_pad_fr, jtfs0.J_pad_fr
 
     Scx0 = jtfs0(x)
     Scx1 = jtfs1(x)
@@ -308,8 +353,8 @@ def test_global_averaging():
     N = 512
     params = dict(shape=N, J=9, Q=4, J_fr=5, Q_fr=2, average=True,
                   average_fr=True, out_type='dict:array', pad_mode='reflect',
-                  max_pad_factor=None, max_pad_factor_fr=None,
-                  frontend=default_backend)
+                  pad_mode_fr='conj-reflect-zero', max_pad_factor=None,
+                  max_pad_factor_fr=None, frontend=default_backend)
     x = echirp(N)
     x += np.random.randn(N)
 
@@ -332,6 +377,9 @@ def test_global_averaging():
     T1F0 = coeff_energy(outs[(Ts[1], Fs[0])], metas[(Ts[1], Fs[0])])
     T1F1 = coeff_energy(outs[(Ts[1], Fs[1])], metas[(Ts[1], Fs[1])])
 
+    if metric_verbose:
+        print("\nGlobal averaging reldiffs:")
+
     th = .1
     for pair in T0F0:
         ref = T0F0[pair]
@@ -341,6 +389,10 @@ def test_global_averaging():
         assert reldiff01 < th, "%s > %s" % (reldiff01, th)
         assert reldiff10 < th, "%s > %s" % (reldiff10, th)
         assert reldiff11 < th, "%s > %s" % (reldiff11, th)
+
+        if metric_verbose:
+            print("(01, 10, 11) = ({:.2e}, {:.2e}, {:.2e}) | {}".format(
+                reldiff01, reldiff10, reldiff11, pair))
 
 
 def test_no_second_order_filters():
@@ -381,7 +433,8 @@ def test_backends():
 
         E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        assert E_down / E_up > 115
+        th = 45
+        assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 
 def test_differentiability_torch():
@@ -398,17 +451,59 @@ def test_differentiability_torch():
 
     J = 6
     Q = 8
-    T = 2**12
+    N = 2**12
     for device in devices:
-        jtfs = TimeFrequencyScattering1D(J, T, Q, frontend='torch',
+        jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch',
                                          out_type='array', max_pad_factor=1
                                          ).to(device)
-        x = torch.randn(2, T, requires_grad=True, device=device)
+        x = torch.randn(2, N, requires_grad=True, device=device)
 
         s = jtfs.forward(x)
         loss = torch.sum(torch.abs(s))
         loss.backward()
         assert torch.max(torch.abs(x.grad)) > 0.
+
+
+def test_reconstruction_torch():
+    """Test that input reconstruction via backprop has decreasing loss."""
+    if cant_import('torch'):
+        return
+    import torch
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
+    J = 6
+    Q = 6
+    N = 512
+    n_iters = 20
+    jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
+                                     max_pad_factor=1, max_pad_factor_fr=2
+                                     ).to(device)
+
+    y = torch.from_numpy(echirp(N).astype('float32')).to(device)
+    Sy = jtfs(y)
+
+    torch.manual_seed(0)
+    x = torch.randn(N, requires_grad=True, device=device)
+    optimizer = torch.optim.Adam([x], lr=.4)
+    loss_fn = torch.nn.MSELoss()
+
+    losses = []
+    for i in range(n_iters):
+        optimizer.zero_grad()
+        Sx = jtfs(x)
+        loss = loss_fn(Sx, Sy)
+        loss.backward()
+        optimizer.step()
+        losses.append(float(loss.detach().cpu().numpy()))
+
+    th = 1e-5
+    end_ratio = losses[0] / losses[-1]
+    assert end_ratio > 25, end_ratio
+    assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
+
+    if metric_verbose:
+        print(("\nReconstruction (torch):\n(end_start_ratio, min_loss) = "
+               "({:.1f}, {:.2e})").format(end_ratio, min(losses)))
 
 
 def test_meta():
@@ -688,7 +783,7 @@ def test_output():
                           ).format(pair, i, o_stored_key, adiff.mean(),
                                    adiff.max(), params_str)
                 if output_test_print_mode and not np.allclose(o, o_stored):
-                    print(errmsg)
+                    1# TODO print(errmsg)
                 else:
                     assert np.allclose(o, o_stored), errmsg
                 i_s += 1
@@ -704,36 +799,42 @@ def energy(x):
         import tensorflow as tf
         return tf.reduce_sum(tf.abs(x)**2)
 
-def concat_joint(Scx, out_type="array"):
+def concat_joint(Scx):
     Scx = drop_batch_dim_jtfs(Scx)
-    return np.vstack([(c if out_type == "array" else c['coef'])
-                      for pair, c in Scx.items()
-                      if pair not in ('S0', 'S1')])
+    k = list(Scx)[0]
+    out_type = ('list' if (isinstance(Scx[k], list) and 'coef' in Scx[k][0]) else
+                'array')
+    if out_type == 'array':
+        return np.vstack([c for pair, c in Scx.items()
+                          if pair not in ('S0', 'S1')])
+    return np.vstack([c['coef'] for pair, coeffs in Scx.items()
+                      for c in coeffs if pair not in ('S0', 'S1')])
 
 
 def assert_pad_difference(jtfs, test_params_str):
     assert not all(
         J_pad_fr == jtfs.J_pad_fr_max
         for J_pad_fr in jtfs.J_pad_fr if J_pad_fr != -1
-        ), "{}\nJ_pad_fr={}\nshape_fr={}".format(
+        ), "\n{}\nJ_pad_fr={}\nshape_fr={}".format(
             test_params_str, jtfs.J_pad_fr, jtfs.shape_fr)
 
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
         test_sampling_psi_fr_exclude()
         test_no_second_order_filters()
         test_max_pad_factor_fr()
         test_out_exclude()
         test_global_averaging()
-        # test_backends()
-        # test_differentiability_torch()
-        # test_meta()
+        test_backends()
+        test_differentiability_torch()
+        test_reconstruction_torch()
+        test_meta()
         # test_output()
     else:
         pytest.main([__file__, "-s"])

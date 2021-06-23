@@ -770,13 +770,16 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     smax_t = log2_T if average else J
     smax_f = log2_F if sc_freq.average_fr else sc_freq.J_fr
     for pair in meta['stride']:
+        if pair == 'S0' and not average:
+            continue
         for i, s in enumerate(meta['stride'][pair][..., 1].ravel()):
             assert s <= smax_t, ("meta['stride'][{}][{}] > stride_max_t "
                                  "({} > {})").format(pair, i, s, smax_t)
-        if pair not in ('S0', 'S1'):
-            for i, s in enumerate(meta['stride'][pair][..., 0].ravel()):
-                assert s <= log2_F, ("meta['stride'][{}][{}] > stride_max_f "
-                                     "({} > {})").format(pair, i, s, smax_f)
+        if pair in ('S0', 'S1'):
+            continue
+        for i, s in enumerate(meta['stride'][pair][..., 0].ravel()):
+            assert s <= smax_f, ("meta['stride'][{}][{}] > stride_max_f "
+                                 "({} > {})").format(pair, i, s, smax_f)
 
     if not out_type.startswith('dict'):
         # join pairs

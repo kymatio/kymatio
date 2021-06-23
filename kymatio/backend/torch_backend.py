@@ -113,3 +113,16 @@ class TorchBackend:
                 raise TypeError('Input must be on CPU.')
 
         return A * B
+
+    @classmethod
+    def sqrt(cls, x):
+        if isinstance(x, (float, int)):
+            x = torch.tensor(x)
+        return torch.sqrt(x)
+
+    @classmethod
+    def conj(cls, x, inplace=False):
+        if inplace:
+            raise Exception("Torch autograd doesn't support `out=`")
+        return (torch.conj(x) if cls._is_complex(x) else
+                x)

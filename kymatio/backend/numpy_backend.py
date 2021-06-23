@@ -106,34 +106,3 @@ class NumpyBackend:
         elif not inplace:
             return (cls._np.conj(x) if cls._is_complex(x) else
                     x)
-
-    @classmethod
-    def conj_reflections(cls, x, ind_start, ind_end):
-        N = ind_end - ind_start
-        Np = x.shape[-1]
-
-        # right
-        start = ind_end
-        end = start + N
-        reflected = True
-        while True:
-            if reflected:
-                cls.conj(x[..., start:end], inplace=True)
-            if end >= Np:
-                break
-            start += N
-            end = min(start + N, Np)
-            reflected = not reflected
-
-        # left
-        end = ind_start
-        start = end - N
-        reflected = True
-        while True:
-            if reflected:
-                cls.conj(x[..., start:end], inplace=True)
-            if start <= 0:
-                break
-            end -= N
-            start = max(end - N, 0)
-            reflected = not reflected

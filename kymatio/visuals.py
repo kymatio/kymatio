@@ -2,8 +2,9 @@
 """Convenience visual methods."""
 import numpy as np
 from scipy.fft import ifft
+from copy import deepcopy
 from .scattering1d.filter_bank import compute_temporal_support
-from .toolkit import coeff_energy, energy
+from .toolkit import coeff_energy, coeff_distance, energy
 
 try:
     import matplotlib.pyplot as plt
@@ -305,8 +306,10 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
     """
     def _title(meta, meta_idx, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
+        values = meta['n'][pair][meta_idx[0]]
+        values = values if values.ndim == 1 else values[0]
         mu, l, _ = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                    for n in meta['n'][pair][meta_idx[0]]]
+                    for n in values]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
     def _viz_spins(Scx, meta, i, norm):
@@ -317,6 +320,9 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                         Scx[kdn][i]['coef'][sample_idx])
         else:
             sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
+        if meta['n'][kup][meta_idx[0]][0] < 9:
+            meta_idx[0] += len(sup)
+            return
         fig, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
@@ -349,6 +355,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                      if pair not in ('S0', 'S1', 'phi_t * phi_f')])
         norms = [(0, .5 * mx)] * 5
 
+    # print(norms)
+    # 1/0
     meta_idx = [0]
     if not skip_spins:
         if out_list:
@@ -372,7 +380,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                 _viz_simple(coef, pair, meta, norms[1 + j])
 
 
-def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2'):
+def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
+                        plots=True, **plot_kw):
     """Plot & print relevant energy information across coefficient pairs.
     Works for all `'dict' in out_type` and `out_exclude`.
     Also see `help(kymatio.toolkit.coeff_energy)`.
@@ -385,7 +394,7 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
     meta: dict[dict[np.ndarray]]
         `jtfs.meta()`.
 
-    flatten: bool (default False)
+    flatten: bool (default False)  # TODO does nothing?
         Whether to plot energy for every individual coefficient. This means
         flattening joint coefficients, whose energies would otherwise aggregate
         on per-`(n2, n1_fr)` basis.
@@ -413,7 +422,150 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
     if not isinstance(Scx, dict):
         raise NotImplementedError("input must be dict. Set out_type='dict:array' "
                                   "or 'dict:list'.")
+    # enforce pair order
+    compute_pairs = _get_compute_pairs(pairs, meta)
+    # make `titles`
+    titles = _make_titles_jtfs(compute_pairs,
+                               target="L1 norm" if kind == 'l1' else "Energy")
+    # make `fn`
+    fn = lambda Scx, meta, pair: coeff_energy(
+        Scx, meta, pair, aggregate=False, kind=kind)
 
+    # compute, plot, print
+    energies, pair_energies = _iterate_coeff_pairs(
+        Scx, meta, fn, pairs, plots=plots, titles=titles, **plot_kw)
+
+    # E_out / E_in
+    if x is not None:
+        e_total = np.sum(energies)
+        print("E_out / E_in = %.3f" % (e_total / energy(x)))
+    return energies, pair_energies
+
+
+def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
+                        plots=True, **plot_kw):
+    if not all(isinstance(Scx, dict) for Scx in (Scx0, Scx1)):
+        raise NotImplementedError("inputs must be dict. Set "
+                                  "out_type='dict:array' or 'dict:list'.")
+    if meta1 is None:
+        meta1 = meta0
+
+    # enforce pair order
+    compute_pairs = _get_compute_pairs(pairs, meta0)
+    # make `titles`
+    titles = _make_titles_jtfs(compute_pairs,
+                               target="L1 norm" if kind == 'l1' else "Energy")
+    # make `fn`
+    fn = lambda Scx, meta, pair: coeff_distance(*Scx, *meta, pair, kind=kind)
+
+    # compute, plot, print
+    # TODO instead return as "pairs:flat", "pairs:slices"?
+    # TODO global distance?
+    distances, pair_distances = _iterate_coeff_pairs(
+        (Scx0, Scx1), (meta0, meta1), fn, pairs, plots=plots,
+        titles=titles, **plot_kw)
+
+    return distances, pair_distances
+
+
+def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, plots=True, titles=None,
+                         **plot_kw):
+    # in case multiple meta passed
+    meta0 = meta[0] if isinstance(meta, tuple) else meta
+    # enforce pair order
+    compute_pairs = _get_compute_pairs(pairs, meta0)
+
+    # extract energy info
+    energies = []
+    pair_energies = {}
+    idxs = [0]
+    for pair in compute_pairs:
+        if pair not in meta0['n']:
+            continue
+        E_flat, E_slices = fn(Scx, meta, pair)
+        pair_energies[pair] = E_slices[::-1]
+        energies.extend(E_slices[::-1])
+        # don't repeat 0
+        idxs.append(len(energies) - 1 if len(energies) != 1 else 1)
+
+    # format & plot ##########################################################
+    energies = np.array(energies)
+    ticks = np.arange(len(energies))
+    vlines = (idxs, {'color': 'tab:red', 'linewidth': 1})
+
+    if titles is None:
+        titles = ['', '']
+    if plots:
+        scat(ticks[idxs], energies[idxs], s=20)
+        plot_kw['ylims'] = plot_kw.get('ylims', (0, None))
+        plot(energies, vlines=vlines, title=titles[0], show=1, **plot_kw)
+
+    # cumulative sum
+    energies_cs = np.cumsum(energies)
+
+    if plots:
+        scat(ticks[idxs], energies_cs[idxs], s=20)
+        plot(energies_cs, vlines=vlines, title=titles[1], show=1, **plot_kw)
+
+    # print report ###########################################################
+    def sig_figs(x, n_sig=3):
+        s = str(x)
+        nondecimals = len(s.split('.')[0]) - int(s[0] == '0')
+        decimals = max(n_sig - nondecimals, 0)
+        return s.lstrip('0')[:decimals + nondecimals + 1].rstrip('.')
+
+    e_total = np.sum(energies)
+    pair_energies_sum = {pair: np.sum(pair_energies[pair])
+                         for pair in pair_energies}
+    nums = [sig_figs(e, n_sig=3) for e in pair_energies_sum.values()]
+    longest_num = max(map(len, nums))
+
+    if plots:
+        i = 0
+        for pair in compute_pairs:
+            E_pair = pair_energies_sum[pair]
+            e_perc = sig_figs(E_pair / e_total * 100, n_sig=3)
+            print("{} ({}%) -- {}".format(
+                nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
+            i += 1
+    return energies, pair_energies
+
+
+def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
+                           verbose=True, title=None):
+    # don't modify external
+    pd0, pd1 = deepcopy(pair_distances), deepcopy(pair_distances_ref)
+
+    ratios, stats = {}, {}
+    for pair in pd0:
+        p0, p1 = np.asarray(pd0[pair]), np.asarray(pd1[pair])
+        # threshold out small points
+        idxs = np.where((p0 < .001*p0.max()).astype(int) +
+                        (p1 < .001*p1.max()).astype(int))[0]
+        p0[idxs], p1[idxs] = 1, 1
+        R = p0 / p1
+        ratios[pair] = R
+        stats[pair] = dict(mean=R.mean(), min=R.min(), max=R.max())
+
+    if plots:
+        if title is None:
+            title = ''
+        _title = _make_titles_jtfs(list(ratios), f"Distance ratios | {title}")[0]
+        vidxs = np.cumsum([len(r) for r in ratios.values()])
+        ratios_flat = np.array([r for rs in ratios.values() for r in rs])
+        plot(ratios_flat, ylims=(0, None), title=_title,
+             hlines=(1,     dict(color='tab:red', linestyle='--')),
+             vlines=(vidxs, dict(color='k', linewidth=1)))
+        scat(idxs, ratios_flat[idxs], color='tab:red', show=1)
+    if verbose:
+        print("mean  min   max   | pair")
+        for pair in ratios:
+            print("{:<5.2f} {:<5.2f} {:<5.2f} | {}".format(
+                *list(stats[pair].values()), pair))
+    return ratios, stats
+
+
+def _get_compute_pairs(pairs, meta):
     # enforce pair order
     if pairs is None:
         pairs_all = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
@@ -424,70 +576,27 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2')
     for pair in pairs_all:
         if pair in meta['n']:
             compute_pairs.append(pair)
+    return compute_pairs
 
-    # extract energy info
-    energies = []
-    pair_energies = {}
-    idxs = [0]
-    for pair in compute_pairs:
-        if pair not in meta['n']:
-            continue
-        E_flat, E_slices = coeff_energy(Scx, meta, pair, aggregate=False,
-                                        kind=kind)
-        pair_energies[pair] = np.sum(E_slices)
-        energies.extend(E_slices[::-1])
-        # don't repeat 0
-        idxs.append(len(energies) - 1 if len(energies) != 1 else 1)
 
-    # format & plot ##########################################################
-    energies = np.array(energies)
-    ticks = np.arange(len(energies))
-    vlines = (idxs, {'color': 'tab:red', 'linewidth': 1})
-
-    # make title
+def _make_titles_jtfs(compute_pairs, target):
+    """For energies and distances."""
+    # make `titles`
+    titles = []
     pair_aliases = {'psi_t * phi_f': '* phi_f', 'phi_t * psi_f': 'phi_t *',
                     'psi_t * psi_f_up': 'up', 'psi_t * psi_f_down': 'down'}
-    title = "%s | " % ("L1 norm" if kind == 'l1' else "Energy")
+    title = "%s | " % target
     for pair in compute_pairs:
         if pair in pair_aliases:
             title += "{}, ".format(pair_aliases[pair])
         else:
             title += "{}, ".format(pair)
     title = title.rstrip(', ')
+    titles.append(title)
 
-    scat(ticks[idxs], energies[idxs], s=20)
-    plot(energies, vlines=vlines, ylims=(0, None), title=title, show=1)
-
-    # cumulative sum
-    energies_cs = np.cumsum(energies)
-    title = "cumsum(%s)" % ("L1" if kind == 'l1' else "Energy")
-
-    scat(ticks[idxs], energies_cs[idxs], s=20)
-    plot(energies_cs, vlines=vlines, ylims=(0, None), title=title, show=1)
-
-    # print report ###########################################################
-    def sig_figs(x, n_sig=3):
-        s = str(x)
-        nondecimals = len(s.split('.')[0]) - int(s[0] == '0')
-        decimals = max(n_sig - nondecimals, 0)
-        return s.lstrip('0')[:decimals + nondecimals + 1].rstrip('.')
-
-    e_total = np.sum(energies)
-    nums = [sig_figs(e, n_sig=3) for e in pair_energies.values()]
-    longest_num = max(map(len, nums))
-
-    i = 0
-    for pair in compute_pairs:
-        E_pair = np.sum(pair_energies[pair])
-        e_perc = sig_figs(E_pair / e_total * 100, n_sig=3)
-        print("{} ({}%) -- {}".format(
-            nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
-        i += 1
-
-    # E_out / E_in
-    if x is not None:
-        print("E_out / E_in = %.3f" % (e_total / energy(x)))
-    return energies, pair_energies
+    title = "cumsum(%s)" % target
+    titles.append(title)
+    return titles
 
 
 #### Visuals primitives ## messy code ########################################
