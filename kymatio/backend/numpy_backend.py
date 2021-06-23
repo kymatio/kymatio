@@ -94,3 +94,15 @@ class NumpyBackend:
             raise TypeError('The second input must be complex or real.')
 
         return A * B
+
+    @classmethod
+    def sqrt(cls, x):
+        return cls._np.sqrt(x)
+
+    @classmethod
+    def conj(cls, x, inplace=False):
+        if inplace and cls._is_complex(x):
+            cls._np.conj(x, out=x)
+        elif not inplace:
+            return (cls._np.conj(x) if cls._is_complex(x) else
+                    x)

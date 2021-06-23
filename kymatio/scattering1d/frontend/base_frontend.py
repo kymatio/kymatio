@@ -1,12 +1,12 @@
 from ...frontend.base_frontend import ScatteringBase
 import math
 import numbers
+import warnings
 
 import numpy as np
 
 from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
-                           psi_fr_factory, phi_fr_factory,
-                           calibrate_scattering_filters)
+                           psi_fr_factory, phi_fr_factory)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -83,11 +83,13 @@ class ScatteringBase1D(ScatteringBase):
         self.average_global = bool(self.T == mx)
 
         # Compute the minimum support to pad (ideally)
-        min_to_pad, *_ = compute_minimum_support_to_pad(
+        min_to_pad, pad_phi, pad_psi1, pad_psi2 = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, self.T, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps,
             criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize, pad_mode=self.pad_mode)
+        if self.average_global:
+            min_to_pad = max(pad_psi1, pad_psi2)  # ignore phi's padding
 
         J_pad = int(np.ceil(np.log2(self.N + 2 * min_to_pad)))
         if self.max_pad_factor is None:
@@ -100,7 +102,7 @@ class ScatteringBase1D(ScatteringBase):
         self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.log2_T, self.pad_left, 2**self.J_pad - self.pad_right)
+            self.log2_T, self.J, self.pad_left, 2**self.J_pad - self.pad_right)
 
         # record whether configuration yields second order filters
         meta = ScatteringBase1D.meta(self)
@@ -339,7 +341,8 @@ class ScatteringBase1D(ScatteringBase):
             performance. However, this may reduce precision in the
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
-            may be modified after object creation. Defaults to `0`.
+            may be modified after object creation.
+            Defaults to `0`. Has no effect if `average_global=True`.
         {param_vectorize}
         Attributes
         ----------
@@ -437,21 +440,21 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
-                 oversampling_fr=0, aligned=True, resample_filters_fr=True,
-                 max_pad_factor_fr=None, out_3D=False, out_type='array'):
+                 oversampling_fr=0, aligned=True, sampling_filters_fr='resample',
+                 max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
+                 out_3D=False, out_type='array', out_exclude=None):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
         self.average_fr = average_fr
         self.oversampling_fr = oversampling_fr
         self.aligned = aligned
-        if isinstance(resample_filters_fr, tuple):
-            self.resample_psi_fr, self.resample_phi_fr = resample_filters_fr
-        else:
-            self.resample_psi_fr = self.resample_phi_fr = resample_filters_fr
+        self.sampling_filters_fr = sampling_filters_fr
         self.max_pad_factor_fr = max_pad_factor_fr
+        self.pad_mode_fr = pad_mode_fr
         self.out_3D = out_3D
         self.out_type = out_type
+        self.out_exclude = out_exclude
 
     def build(self):
         """Check args and instantiate `_FrequencyScatteringBase` object
@@ -468,6 +471,19 @@ class TimeFrequencyScatteringBase1D():
             raise ValueError("configuration yields no second-order filters; "
                              "try increasing `J`")
 
+        if self.out_exclude is not None:
+            if isinstance(self.out_exclude, str):
+                self.out_exclude = [self.out_exclude]
+            # ensure all names are valid
+            supported = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
+                         'psi_t * phi_f', 'psi_t * psi_f_up',
+                         'psi_t * psi_f_down')
+            for name in self.out_exclude:
+                if name not in supported:
+                    raise ValueError(("'{}' is an invalid coefficient name; "
+                                      "must be one of: {}").format(
+                                          name, ', '.join(supported)))
+
         self._shape_fr = self.get_shape_fr()
         max_order_fr = 1
         # number of psi1 filters
@@ -476,15 +492,15 @@ class TimeFrequencyScatteringBase1D():
         self.sc_freq = _FrequencyScatteringBase(
             self._shape_fr, self.J_fr, self.Q_fr, self.F, max_order_fr,
             self.average_fr, self.aligned, self.oversampling_fr,
-            self.resample_psi_fr, self.resample_phi_fr, self.out_type,
-            self.out_3D, self.max_pad_factor_fr, self._n_psi1_f, self.backend)
+            self.sampling_filters_fr, self.out_type, self.out_3D,
+            self.max_pad_factor_fr, self.pad_mode_fr, self._n_psi1_f,
+            self.backend)
         self.finish_creating_filters()
 
         # detach __init__ args, instead access `sc_freq`'s via `__getattr__`
         # this is so that changes in attributes are reflected here
         init_args = ('J_fr', 'Q_fr', 'F', 'average_fr', 'oversampling_fr',
-                     'resample_psi_fr', 'resample_phi_fr', 'max_pad_factor_fr',
-                     'out_3D')
+                     'sampling_filters_fr', 'max_pad_factor_fr', 'out_3D')
         for init_arg in init_args:
             delattr(self, init_arg)
 
@@ -525,23 +541,27 @@ class TimeFrequencyScatteringBase1D():
         """
         return compute_meta_jtfs(self.J_pad, self.J, self.Q, self.J_fr, self.Q_fr,
                                  self.T, self.F, self.aligned, self.out_3D,
-                                 self.out_type, self.resample_filters_fr,
-                                 self.average, self.sc_freq)
+                                 self.out_type, self.out_exclude,
+                                 self.sampling_filters_fr, self.average,
+                                 self.average_global, self.oversampling,
+                                 self.sc_freq)
 
     @property
     def fr_attributes(self):
         """Exposes `sc_freq`'s attributes via main object."""
-        return ('J_fr', 'Q_fr', 'shape_fr', 'shape_fr_max', 'J_pad_fr',
-                'J_pad_fr_max', 'average_fr', 'average_fr_global', 'aligned',
-                'oversampling_fr', 'F', 'log2_F', 'max_order_fr',
-                'max_pad_factor_fr', 'out_3D', 'resample_filters_fr',
-                'resample_psi_fr', 'resample_phi_fr',
+        return ('J_fr', 'Q_fr', 'shape_fr', 'shape_fr_max', 'shape_fr_min',
+                'shape_fr_scale_max', 'shape_fr_scale_min',
+                'J_pad_fr', 'J_pad_fr_max', 'average_fr', 'average_fr_global',
+                'aligned', 'oversampling_fr', 'F', 'log2_F', 'max_order_fr',
+                'max_pad_factor_fr', 'out_3D', 'sampling_filters_fr',
+                'sampling_psi_fr', 'sampling_phi_fr',
                 'phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down')
 
     def __getattr__(self, name):
         # access key attributes via frequential class
         # only called when default attribute lookup fails
-        if name in self.fr_attributes:
+        # `hasattr` in case called from Scattering1D
+        if name in self.fr_attributes and hasattr(self, 'sc_freq'):
             return getattr(self.sc_freq, name)
         raise AttributeError(f"'{type(self).__name__}' object has no "
                              f"attribute '{name}'")  # standard attribute error
@@ -706,6 +726,7 @@ class TimeFrequencyScatteringBase1D():
     oversampling_fr: int (default 0), optional
         How much to oversample along frequency axis (with respect to `2**J_fr`).
         Also see `oversampling` in `Scattering1D`.
+        Has no effect if `average_fr_global=True`.
 
     aligned: bool (default True)
         If True, rows of joint slices index to same frequency for all slices.
@@ -736,41 +757,58 @@ class TimeFrequencyScatteringBase1D():
         The `aligned=False` and `out_3D=False` combination is not tested,
         nor is any use known for it.
 
-    resample_filters_fr: bool / tuple[bool]
-        Whether to resample (True, default) frequential filters at different
-        lengths, or subsample (False) them:
+        Note: `sampling_psi_fr = 'recalibrate'` breaks global alignment, but
+        preserves it on per-`subsample_equiv_due_to_pad` basis, i.e. per-`n2`.
 
-            - resample: preserve physical dimensionality (center frequeny, width)
-              at every length (trimming in time domain).
-              E.g. `psi = psi_fn(N/2) == psi_fn(N)[N/4:-N/4]`.
-            - subsample: recalibrate filter to each length; center frequency is
-              preserved, but temporal support is narrowed (contraction in time
-              domain) and center frequency increased. E.g. `psi = psi[::2]`.
+    sampling_filters_fr: str / tuple[str]
+        Controls filter properties for input lengths below maximum.
 
-        Tuple can set separately `(resample_psi_fr, resample_phi_fr)`, else
-        both set to same value. Also see `J_pad_fr_max` if
-        `any(resample_filters_fr)==False`.
+          - 'resample': preserve physical dimensionality (center frequeny, width)
+            at every length (trimming in time domain).
+            E.g. `psi = psi_fn(N/2) == psi_fn(N)[N/4:-N/4]`.
+          - 'recalibrate': recalibrate filter to each length.
+            - widths (in time): widest filter is halved in width, narrowest is
+              kept unchanged, and other widths are re-distributed from the
+              new minimum to same maximum.
+            - center frequencies: all redistribute between new min and max.
+              New min is set as `2 / new_length` (old min was `2 / max_length`).
+              New max is set by halving distance between old max and 0.5
+              (greatest possible), e.g. 0.44 -> 0.47, then 0.47 -> 0.485, etc.
+          - 'exclude': same as 'resample' except filters wider than `widest / 2`
+            are excluded. (and `widest / 4` for next short input, etc).
+
+        Tuple can set separately `(sampling_psi_fr, sampling_phi_fr)`, else
+        both set to same value.
+        Also see `J_pad_fr_max` if `not all(sampling_filters_fr) == 'resample'`.
 
         From an information/classification standpoint:
 
-            - `True` enforces frequential invariance imposed by `phi_f_fr` and
-              physical scale of extracted modulations by `psi_f_fr_up` (& down).
+            - 'resample' enforces freq invariance imposed by `phi_f_fr` and
+              physical scale of extracted modulations by `psi1_f_fr_up` (& down).
               This is consistent with scattering theory and is the standard used
               in classification.
-            - `False` remedies a problem with `True`. `True` calibrates all
-              filters relative to longest input; when the shortest input is
-              very different in comparison, it makes most filters appear
+            - 'recalibrate' remedies a problem with 'resample'. 'resample'
+              calibrates all filters relative to longest input; when the shortest
+              input is very different in comparison, it makes most filters appear
               lowpass-ish. In contrast, recalibration enables better exploitation
               of fine structure over the smaller interval (which is the main
               motivation behind wavelets, a "multi-scale zoom".)
+            - 'exclude' circumvents the problem by simply excluding wide filters.
+              'exclude' is simply a subset of 'resample', preserving all center
+              frequencies and widths - but 3D/4D concat is no longer possible.
+              Preferred if not caring for 3D/4D concat.
+
+        Note: `sampling_phi_fr = 'exclude'` will re-set to `'resample'`, as
+        `'exclude'` isn't a valid option (there must exist a lowpass for every
+        input length).
 
     max_pad_factor_fr : int / None (default), optional
         `max_pad_factor` (see `Scattering1D`) for frequential axis in frequential
         scattering, setting `J_pad_fr_max_user` from `shape_fr_max`.
 
-        Also see `J_pad_fr_max` if `any(resample_filters_fr)==False`.
+        Also see `J_pad_fr_max` if `any(sampling_filters_fr)==False`.
 
-    out_type : str['list', 'array', 'array-like'], optional
+    out_type : str, optional
         Affects output structure (but not how coefficients are computed).
         See `help(scattering)` for further info.
 
@@ -807,6 +845,14 @@ class TimeFrequencyScatteringBase1D():
             `n_coeffs` are flattened into one dimension, yielding
             `(n_coeffs * freq, time)`. This breaks inter-wavelet spatial coherence
             but is the standard used in classification.
+
+    out_exclude: list/tuple[str] / None
+        Will exclude coefficients with these names from computation and output
+        (except for `S1`, which always computes but still excludes from output).
+        All names:
+
+            - 'S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+              'psi_t * psi_f_up', 'psi_t * psi_f_down'
     """
 
     _doc_attrs = \
@@ -816,6 +862,7 @@ class TimeFrequencyScatteringBase1D():
     sc_freq : `_FrequencyScatteringBase`
         Frequential scattering object, storing pertinent attributes and filters.
         Temporal scattering's are accessed directly via `self`.
+
     shape_fr : list[int]
         List of lengths of frequential rows in joint scattering, indexed
         by `n2` (index of second-order temporal wavelet).
@@ -823,46 +870,14 @@ class TimeFrequencyScatteringBase1D():
     shape_fr_max : int
         Equal to `max(shape_fr)`, used to set `J_pad_fr_max`.
 
-    J_pad_fr : list[int]
-        log2 of padding lengths of frequential rows in joint scattering
-        (row lengths given by `shape_fr`). See `sc_freq.compute_padding_fr()`.
-
-    J_pad_fr_max : int
-        Set as reference for computing other `J_pad_fr`, is (usually) equal
-        to `max(J_pad_fr)`.
-
-        Note with `resample_* = False`, `J_pad_fr_max > max(J_pad_fr)` is
-        possible. This means *none* of the filters will have physical dimensions
-        as specified (see `resample_psi_fr`); they'll be sampled at `J_pad_fr_max`
-        then subsampled to `J_pad_fr`. If undesired, set `max_pad_factor_fr`.
-
-          - Occurs because the orignal computation with `shape_fr_max`
-            (which proceeds with `resample_* = True`) required a filter of greater
-            length than `nextpow2(shape_fr_max)`, and with `resample_* = False` we
-            allow contracting time support so `nextpow2(shape_fr_max)` sufficed.
-
-    J_pad_fr_max_user : int
-        User-imposed maximum on `J_pad_fr_max` computed from `max_pad_factor_fr`
-        and `shape_fr_max`.
-
-    pad_left_fr : int
-        Amount of padding to left  of frequential rows (or top of joint matrix).
-
-    pad_right_fr : int
-        Amount of padding to right of frequential rows (or top of joint matrix).
-
-    min_to_pad_fr_max : int
-        `min_to_pad` from `compute_minimum_support_to_pad(N=shape_fr_max)`.
-        Used to determine `J_pad_fr` if `resample_psi_fr or resample_phi_fr`.
-        See `sc_freq.compute_J_pad()`.
-
     phi_f_fr : dictionary
         Dictionary containing the frequential lowpass filter at all resolutions.
-        See `filter_bank.phi_fr_factory` for an exact description.
+        See `help(kymatio.scattering1d.filter_bank.phi_fr_factory)`.
 
     psi1_f_fr_up : list[dict]
         List of dictionaries containing all frequential scattering filters
-        with "up" spin. See `filter_bank.psi_fr_factory` for an exact description.
+        with "up" spin.
+        See `help(kymatio.scattering1d.filter_bank.psi_fr_factory)`.
 
     psi1_f_fr_down : list[dict]
         `psi1_f_fr_up`, but with "down" spin, forming a complementary pair.
@@ -876,21 +891,115 @@ class TimeFrequencyScatteringBase1D():
         Equal to `log2(prevpow2(F))`; is the maximum frequential subsampling
         factor if `average_fr=True` (otherwise that factor is up to `J_fr`).
 
-    subsampling_equiv_relative_to_max_padding : int
+    J_pad_fr : list[int]
+        log2 of padding lengths of frequential rows in joint scattering
+        (row lengths given by `shape_fr`). See `sc_freq.compute_padding_fr()`.
+
+    J_pad_fr_max_init : int
+        Set as reference for computing other `J_pad_fr`, is (usually) equal
+        to `max(J_pad_fr)`.
+
+        Note with `sampling_* != 'resample'`, `J_pad_fr_max_init > J_pad_fr_max`
+        is possible. This means the largest scale will be less than specified
+        (`< J_fr`); see `sampling_psi_fr`.
+
+          - If undesired, set `max_pad_factor_fr` (`1` will guarantee
+            `J_pad_fr_max == J_pad_fr_max_init`).
+            # TODO this doesn't change largest realized scale
+          - Occurs because the orignal computation with `shape_fr_max`
+            required a filter of greater length than `nextpow2(shape_fr_max)`,
+            and with `sampling_* != 'resample'` we allow contracting time width
+            so e.g. `nextpow2(shape_fr_max)` sufficed.
+
+    J_pad_fr_max : int
+        `== max(J_pad_fr)`.
+
+    J_pad_fr_max_user : int
+        User-imposed maximum on `J_pad_fr_max` computed from `max_pad_factor_fr`
+        and `shape_fr_max`.
+
+    J_pad_fr_min : int
+        `== min(J_pad_fr)` (excluding -1).
+
+    J_pad_fr_min_limit : int
+        `J_pad_fr_min` cannot be less than this. Is determined from:
+            - `max_total_downsample_before_phi_fr`
+            - `max_subsample_equiv_before_psi_fr`
+
+    min_to_pad_fr_max : int
+        `min_to_pad` from `compute_minimum_support_to_pad(N=shape_fr_max)`.
+        Used in computing `J_pad_fr`. See `sc_freq.compute_J_pad()`.
+
+    subsample_equiv_relative_to_max_padding : int
         Amount of *equivalent subsampling* of frequential padding relative to
-        `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
+        `J_pad_fr_max_init`, indexed by `n2`.
+        See `help(sc_freq.compute_padding_fr())`.
 
-    max_subsampling_before_phi_fr : int
-        Maximum permitted frequential subsampling before convolving with
-        `phi_f_fr`; may differ from `log2_F` if `resample_phi_fr=True`.
+    max_total_downsample_before_phi_fr : int
+        Maximum permitted frequential downsampling
+        (`n1_fr_subsample + subsample_equiv_due_to_pad`) before convolving
+        with `phi_f_fr`; may differ from `log2_F` if `sampling_phi_fr='resample'`.
 
-        If `resample_phi_fr=True`, the `log2_F` subsampling factor may not be
-        reached *by the filter*, as temporal width is preserved upon resampling
-        rather than halved as with subsampling.
+        This avoids distorting `phi`; temporal width is preserved with 'resample',
+        so downsampling may yield a `phi` that never properly decays and wraps
+        on itself.
+          - Subsampling by `log2_F` *after* convolving with `phi_f_fr` is fine,
+            thus the restriction is to not subsample by more than the most
+            subsampled `phi_f_fr` *before* convolving with it.
 
-        Subsampling by `log2_F` *after* convolving with `phi_f_fr` is fine, thus
-        the restriction is to not subsample by more than the most subsampled
-        `phi_f_fr` *before* convolving with it.
+    max_subsample_before_phi_fr : list[int]
+        Maximum permitted `n1_fr_subsample`. May differ from `_n_phi_fr - 1`
+        if `sampling_phi_fr == 'recalibrate'`, in which case it accounts for
+        (and varies with) `subsample_equiv_due_to_pad` (which the filter treats
+        same as `n1_fr_subsample`; see "Returns" in
+        `help(kymatio.scattering1d.filter_bank.phi_fr_factory)`).
+
+        Difference with `max_total_downsample_before_phi_fr` is, this restricts
+        `n1_fr_subsample` - the other restricts `subsample_equiv_due_to_pad`
+        (i.e. sets `J_pad_fr_min_limit`).
+
+    max_subsample_equiv_before_psi_fr : int / None
+        Maximum permitted `subsample_equiv_due_to_pad` (equivalently minimum
+        permitted `J_pad_fr` as difference with `J_pad_fr_max_init`), i.e.
+        shortest input `psi` can accept.
+
+          - Is `psi`'s equivalent of `max_total_downsample_before_phi_fr`
+            (see its docs)
+          - Is not `None` if `sampling_psi_fr in ('resample', 'recalibrate')`
+          - With 'recalibrate', `max_subsample_equiv_before_psi_fr` will have
+            no effect if build didn't terminate per `sigma_max_to_min_max_ratio`
+            (i.e. it'll equal the largest existing `subsample_equiv_due_to_pad`).
+
+    sigma_max_to_min_max_ratio : float >= 1
+        Largest permitted `max(sigma) / min(sigma)`. Used with
+        `sampling_psi_fr in ('recalibrate', 'exclude')` to restrict how large the
+        smallest sigma can get.
+
+        Worst cases (high `subsample_equiv_due_to_pad`):
+          - A value of `< 1` means a lower center frequency will have
+            the narrowest temporal width, which is undesired.
+          - A value of `1` means all center frequencies will have the same
+            temporal width, which is undesired.
+          - The `1.2` default was chosen arbitrarily as a seemingly good
+            compromise between not overly restricting sigma and closeness to `1`.
+
+    _n_phi_f_fr : int
+        `== len(phi_f_fr)`. Used for setting `max_total_downsample_before_phi_fr`.
+
+    pad_left_fr : int
+        Amount of padding to left  of frequential rows (or top of joint matrix).
+
+    pad_right_fr : int
+        Amount of padding to right of frequential rows (or top of joint matrix).
+
+    n1_fr_subsample, subsample_equiv_due_to_pad, n2 : int, int, int
+        See `help(kymatio.scattering1d.core.timefrequency_scattering)`.
+        Not attributes. Summary:
+
+            - n1_fr_subsample: subsampling done after convolving with `psi_fr`
+            - subsample_equiv_due_to_pad: "equivalent subsampling" due to padding
+              less, equal to `J_pad_fr_max_init - pad_fr`
+            - n2: index of temporal wavelet in joint scattering, like `psi2[n2]`.
     """
 
     _doc_scattering = \
@@ -920,7 +1029,7 @@ class TimeFrequencyScatteringBase1D():
         - `True, True`: 3D, `(n_coeffs, freq, time)`; see `out_3D` docs.
         - `True, False`: 2D, `(n_coeffs * freq, time)`; see `out_3D` docs.
         - `False, True`: list of 1D tensors.
-        - `False, False`: list of 1D tensors.
+        - `False, False`: list of 1D tensors.  # TODO 4D
     For differences with `aligned, out_3D`, see their docs.
 
     Parameters
@@ -941,11 +1050,11 @@ class TimeFrequencyScatteringBase1D():
       - `pad_left_fr, ind_start_fr`: always zero since we right-pad
       - `pad_right_fr`: computed to avoid boundary effects *for each* `shape_fr.
       - `ind_end_fr`: computed to undo `pad_right_fr`
-      - `subsampling_equiv_relative_to_max_padding`: indexed by `n2`, is the
+      - `subsample_equiv_relative_to_max_padding`: indexed by `n2`, is the
          amount of *equivalent subsampling* of padding relative to `J_pad_fr_max`.
          E.g.:
              - if max pad length is 128 and we pad to 64 at `n2 = 3`, then
-               `subsampling_equiv_relative_to_max_padding[3] == 1`.
+               `subsample_equiv_relative_to_max_padding[3] == 1`.
       - `ind_end_fr_max`: maximum unpad index across all `n2` for a given
         subsampling factor. E.g.:
 
@@ -960,16 +1069,75 @@ class TimeFrequencyScatteringBase1D():
 
         Ensures same unpadded freq length for `out_3D=True` without losing
         information. Unused for `out_3D=False`.
+
+    Logic demos
+    -----------
+    For 'exclude' & 'recalibrate':
+        1. Compute `psi`s at `J_pad_fr_max_init`
+        2. Compute and store their 'width' meta
+        3. Use width meta to compute padding for each `shape_fr`, excluding
+           widths that exceed `nextpow2(shape_fr)`.
+        4. Compute `psi`s at every other `J_pad_fr`
+
+    Suppose `max_pad_factor_fr=0`, `J_pad_fr_max_init == 8`, and
+    `nextpow2(shape_fr_max) == 7`. Then, for:
+        'resample':
+            - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+            - `subsample_equiv_due_to_pad` will now have a minimum value,
+              `== J_pad_fr_max_init - (nextpow2(shape_fr_max) +
+                                       max_pad_factor_fr)`,
+              which determines `J_pad_fr` and thus `psi`'s length, as opposed
+              to `max_pad_fr==None` case where `psi` determined max allowed
+              `subsample_equiv_due_to_pad`.
+            - But `psi`'s length will not be any shorter than
+              "original_max - max_pad_factor_fr", i.e.
+              `J_pad_fr_max_init - max_pad_factor_fr`.
+            - Thus `J_pad_fr_min == J_pad_fr_max_init - max_pad_factor_fr`.
+
+        'exclude':
+            - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+            - `J_pad_fr = min(J_pad_fr_original,
+                              nextpow2(shape_fr) + max_pad_factor_fr)`
+            - `psi`s will still be excluded based on `shape_fr` alone,
+              independent of `J_pad_fr`, so some `psi` will be distorted.
+
+        'recalibrate':
+            - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+            - `J_pad_fr = min(J_pad_fr_original,
+                              nextpow2(shape_fr) + max_pad_factor_fr)`
+            - Lowest sigma `psi` will still be set based on `shape_fr` alone,
+              independent of `J_pad_fr`, so some `psi` will be distorted.
+
+    `psi` calibration and padding
+    -----------------------------
+    In computing padding, we take `nextpow2(shape_fr)` for every `shape_fr`.
+    This guarantees no two `shape_fr` from different `shape_fr_scale` have
+    the same `J_pad_fr`, which would require triple indexing wavelets:
+    `psi_fr[n1_fr][n2][subsample_equiv_due_to_pad]`. When `J_fr` is at
+    or one below maximum, this happens automatically, so this only loses speed
+    relative to small `J_fr`.
+
+    Illustrating, consider `shape_fr, width(psi_fr_widest) -> J_pad_fr`:
+        33, 16 -> 64    # J_fr == 2 below max
+        33, 32 -> 128   # J_fr == 1 below max
+        33, 64 -> 128   # J_fr == max
+        63, 64 -> 128   # J_fr == max
+
+    Non-uniqueness example, w/ # `(J_pad_fr, shape_fr_scale)`
+        33, 4 -> 64  # `(6, 6)`
+        31, 2 -> 64  # `(5, 6)`
+        17, 2 -> 32  # `(5, 5)`
     """
 
     _doc_compute_J_pad = \
     """
-    Depends on `shape_fr` and `(resample_phi_fr or resample_phi_fr)`:
-        True:  pad per `shape_fr` and `min_to_pad` of longest `shape_fr`
-        False: pad per `shape_fr` and `min_to_pad` of subsampled filters
+    Depends on `shape_fr`, `sampling_phi_fr`, and `sampling_psi_fr`.
 
-    `min_to_pad` is computed for both `phi_f_fr[0]` and `psi1_f_fr_up[-1]`
-    in case latter has greater time-domain support.
+    `min_to_pad` is computed for both `phi` and `psi` in case latter has greater
+    time-domain support (stored as `_pad_fr_phi` and `_pad_fr_psi`).
+      - 'resample': will use original `_pad_fr_phi` and/or `_pad_fr_psi`
+      - 'recalibrate' / 'exclude': will divide by difference in dyadic scale,
+        e.g. `_pad_fr_phi / 2`.
 
     `recompute=True` will force computation from `shape_fr` alone, independent
     of `J_pad_fr_max` and `min_to_pad_fr_max`, and per `resample_* == True`.
@@ -982,8 +1150,9 @@ class _FrequencyScatteringBase(ScatteringBase):
     """
     def __init__(self, shape_fr, J_fr=None, Q_fr=2, F=None, max_order_fr=1,
                  average_fr=False, aligned=True, oversampling_fr=0,
-                 resample_psi_fr=True, resample_phi_fr=True, out_type='array',
-                 out_3D=False, max_pad_factor_fr=None, n_psi1=None, backend=None):
+                 sampling_filters_fr='resample', out_type='array', out_3D=False,
+                 max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
+                 n_psi1=None, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.shape_fr = shape_fr
         self.J_fr = J_fr
@@ -993,12 +1162,13 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.average_fr = average_fr
         self.aligned = aligned
         self.oversampling_fr = oversampling_fr
-        self.resample_filters_fr = (resample_psi_fr, resample_phi_fr)
-        self.resample_psi_fr = resample_psi_fr
-        self.resample_phi_fr = resample_phi_fr
+        self.sampling_filters_fr = sampling_filters_fr
+        self.sampling_psi_fr = None  # set in build()
+        self.sampling_phi_fr = None  # set in build()
         self.out_type = out_type
         self.out_3D = out_3D
         self.max_pad_factor_fr = max_pad_factor_fr
+        self.pad_mode_fr = pad_mode_fr
         self._n_psi1_f = n_psi1
         self.backend = backend
 
@@ -1015,38 +1185,45 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.eps = 1e-7
         self.criterion_amplitude = 1e-3
         self.normalize = 'l1'
-        self.pad_mode = 'zero'
         self.sigma_max_to_min_max_ratio = 1.2
 
-        # longest obtainable frequency row w.r.t. which we calibrate filters
+        # longest & shortest obtainable frequency row w.r.t. which we
+        # calibrate filters  # TODO doc min
         self.shape_fr_max = max(self.shape_fr)
+        self.shape_fr_min = min(N_fr for N_fr in self.shape_fr if N_fr > 0)
+        # corresponding scale, and smallest possible maximum padding
+        # (cannot be overridden by `max_pad_factor_fr`)
+        self.shape_fr_scale_max = math.ceil(math.log2(self.shape_fr_max))
+        self.shape_fr_scale_min = math.ceil(math.log2(self.shape_fr_min))
+        # above is for `psi_t *` pairs, below is actual max, which
+        # occurs for `phi_t *` pairs
+        self.shape_fr_max_all = self._n_psi1_f  # TODO doc
+        # compute corresponding scales
+        self.shape_fr_scale = [(math.ceil(math.log2(shape_fr)) if shape_fr != 0
+                                else -1) for shape_fr in self.shape_fr]
 
         # ensure 2**J_fr <= nextpow2(shape_fr_max)
-        mx = 2**math.ceil(math.log2(self.shape_fr_max))
         if self.J_fr is None:
-            self.J_fr = int(math.log2(mx)) - 1
-        elif 2**(self.J_fr) > mx:
+            self.J_fr = self.shape_fr_scale_max
+        elif self.J_fr > self.shape_fr_scale_max:
             raise ValueError(("2**J_fr cannot exceed maximum number of frequency "
                               "rows (rounded up to pow2) in joint scattering "
-                              "(got {} > {})".format(2**(self.J_fr), mx)))
-
-        # check `resample_psi_fr`
-        if self.resample_psi_fr == 'exclude' and self.out_3D:
-            raise ValueError("`resample_psi_fr='exclude'` and `out_3D=True` "
-                             "are incompatible.")
+                              "(got {} > {})".format(
+                                  2**(self.J_fr), 2**self.shape_fr_scale_max)))
 
         # check F or set default
         if self.F is None:
             self.F = 2**min(self.J_fr, 2)  # TODO docs
         elif self.F == 'global':
-            self.F = mx
-        elif self.F > mx:
+            self.F = 2**self.shape_fr_scale_max
+        elif self.F > 2**self.shape_fr_scale_max:
             raise ValueError("The temporal support F of the low-pass filter "
                              "cannot exceed maximum number of frequency rows "
                              "(rounded up to pow2) in joint scattering "
-                             "(got {} > {})".format(self.F, mx))
+                             "(got {} > {})".format(
+                                 self.F, 2**self.shape_fr_scale_max))
         self.log2_F = math.floor(math.log2(self.F))
-        self.average_fr_global = bool(self.F == mx)
+        self.average_fr_global = bool(self.F == 2**self.shape_fr_scale_max)
 
         # restrict `J_pad_fr_max` (and `J_pad_fr_max_init`) if specified by user
         if self.max_pad_factor_fr is not None:
@@ -1055,22 +1232,59 @@ class _FrequencyScatteringBase(ScatteringBase):
         else:
             self.J_pad_fr_max_user = None
 
+        # check `pad_mode_fr`
+        supported = ('conj-reflect-zero', 'zero')
+        if self.pad_mode_fr not in supported:
+            raise ValueError("unsupported `pad_mode_fr=%s`; " % self.pad_mode_fr
+                             + "must be one of: " + ', '.join(supported))
+
+        # unpack `sampling_` args
+        if isinstance(self.sampling_filters_fr, tuple):
+            self.sampling_psi_fr, self.sampling_phi_fr = self.sampling_filters_fr
+            if self.sampling_phi_fr == 'exclude':
+                # if user explicitly passed 'exclude' for `_phi`
+                warnings.warn("`sampling_phi_fr = 'exclude'` has no effect, "
+                              "will use 'resample' instead.")
+                self.sampling_phi_fr = 'resample'
+        else:  # TODO document that phi_fr has no effect in average_fr_global
+            self.sampling_psi_fr = self.sampling_phi_fr = self.sampling_filters_fr
+            if self.sampling_phi_fr == 'exclude':
+                self.sampling_phi_fr = 'resample'
+        self.sampling_filters_fr = (self.sampling_psi_fr, self.sampling_phi_fr)
+
+        # validate `sampling_*` args
+        psi_supported = ('resample', 'recalibrate', 'exclude')
+        phi_supported = ('resample', 'recalibrate')
+        if self.sampling_psi_fr == 'exclude' and self.out_3D:
+            raise ValueError("`sampling_psi_fr = 'exclude'` and `out_3D=True` "
+                             "are incompatible.")
+        elif self.sampling_psi_fr not in psi_supported:
+            raise ValueError(("unsupported `sampling_psi_fr` ({}), must be one "
+                              "of: {}").format(self.sampling_psi_fr,
+                                               ', '.join(psi_supported)))
+        elif self.sampling_phi_fr not in phi_supported:
+            raise ValueError(("unsupported `sampling_phi_fr` ({}), must be one "
+                              "of: {}").format(self.sampling_phi_fr,
+                                               ', '.join(phi_supported)))
+
         # compute maximum amount of padding
+        # we do this at max possible `shape_fr` per each dyadic scale
+        # to guarantee pad uniqueness across scales; see # TODO
         (self.J_pad_fr_max_init, self.min_to_pad_fr_max, self._pad_fr_phi,
-         self._pad_fr_psi) = self._compute_J_pad(self.shape_fr_max,
+         self._pad_fr_psi) = self._compute_J_pad(2**self.shape_fr_scale_max,
                                                  (self.Q_fr, 0))
 
     def create_phi_filters(self):
         """See `filter_bank.phi_fr_factory`."""
         self.phi_f_fr = phi_fr_factory(
             self.J_pad_fr_max_init, self.F, self.log2_F,
-            **self.get_params('resample_phi_fr', 'criterion_amplitude',
+            **self.get_params('sampling_phi_fr', 'criterion_amplitude',
                               'sigma0', 'P_max', 'eps'))
 
         # max `subsample_equiv_due_to_pad + n1_fr_subsample`
         # if we subsample more, `phi_f_fr[subsample_equiv_due_to_pad]` fails
         self._n_phi_f_fr = len([k for k in self.phi_f_fr if isinstance(k, int)])
-        self.max_total_subsampling_before_phi_fr = (
+        self.max_total_downsample_before_phi_fr = (
             self._n_phi_f_fr - 1 if not self.average_fr_global else
             self.J_pad_fr_max_init)
 
@@ -1078,12 +1292,13 @@ class _FrequencyScatteringBase(ScatteringBase):
         """See `filter_bank.psi_fr_factory`."""
         (self.psi1_f_fr_up, self.psi1_f_fr_down,
          self.max_subsample_equiv_before_psi_fr) = psi_fr_factory(
-            self.J_pad_fr_max_init, self.J_fr, self.Q_fr,
-            self.subsampling_equiv_relative_to_max_padding,
-            **self.get_params('resample_psi_fr', 'r_psi', 'normalize',
-                              'sigma0', 'alpha', 'P_max', 'eps'))
+            self.J_pad_fr_max_init, self.J_fr, self.Q_fr, self.shape_fr,
+            self.shape_fr_scale_max, self.shape_fr_scale_min,
+            self.subsample_equiv_relative_to_max_padding,
+            **self.get_params('sampling_psi_fr', 'sigma_max_to_min_max_ratio',
+                              'r_psi', 'normalize', 'sigma0', 'alpha',
+                              'P_max', 'eps'))
 
-        # TODO consistent naming, `subsample` vs `subsampling` etc
         if self.max_subsample_equiv_before_psi_fr is not None:
             self.J_pad_fr_min_limit = max(
                 self.J_pad_fr_min_limit,
@@ -1095,44 +1310,27 @@ class _FrequencyScatteringBase(ScatteringBase):
                     self.J_pad_fr[n2] = max(J_pad_fr, self.J_pad_fr_min_limit)
                     j0, pad_left, pad_right, ind_start, ind_end = (
                         self._compute_padding_params(self.J_pad_fr[n2], shape_fr))
-                    self.subsampling_equiv_relative_to_max_padding[n2] = j0
+                    self.subsample_equiv_relative_to_max_padding[n2] = j0
                     self.pad_left_fr[n2] = pad_left
                     self.pad_right_fr[n2] = pad_right
                     self.ind_start_fr[n2] = ind_start
                     self.ind_end_fr[n2] = ind_end
 
-        # realized minimum  # TODO docs
+        # realized minimum
         self.J_pad_fr_min = min(p for p in self.J_pad_fr if p != -1)
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
-        # compute minimum amount of padding
-        if self.resample_psi_fr:
-            self.J_pad_fr_min_limit = (self.J_pad_fr_max_init -
-                                       self.max_total_subsampling_before_phi_fr)
-            self.downsampling_max_due_to_sigma = -1
-        else:
-            xi_min = 2 / 2**self.J_pad_fr_max_init
-            _, _, sigma1_fr, *_ = calibrate_scattering_filters(
-                self.J_fr, self.Q_fr, T=self.F, r_psi=self.r_psi,
-                sigma0=self.sigma0, alpha=self.alpha, xi_min=xi_min)
-            sigma_min_max = max(sigma1_fr) / self.sigma_max_to_min_max_ratio
-            # restrict maximum downsampling relative to `J_pad_fr_max_init`
-            # such that the second-highest `xi` wavelet meets `sigma_min_max`
-            # such that lowest `sigma` wavelet meets `sigma_min_max`  # TODO docs
-            self.downsampling_max_due_to_sigma = math.floor(
-                math.log2(sigma_min_max / min(sigma1_fr)))
-            self.J_pad_fr_min_limit = (
-                self.J_pad_fr_max_init -
-                min(self.downsampling_max_due_to_sigma,
-                    self.max_total_subsampling_before_phi_fr))
-        # TODO doc
-        # TODO rename max_subsamp -> max_downsamp
+        # TODO allow list `max_pad_factor_fr`?
+        # e.g. [0, None] would mean 0 for `shape_fr_max`, and `None` for rest.
+        # tentative limit
+        self.J_pad_fr_min_limit = (self.J_pad_fr_max_init -
+                                   self.max_total_downsample_before_phi_fr)
 
         attrs = ('J_pad_fr', 'pad_left_fr', 'pad_right_fr',
                  'ind_start_fr', 'ind_end_fr',
                  'ind_start_fr_max', 'ind_end_fr_max',
-                 'subsampling_equiv_relative_to_max_padding')
+                 'subsample_equiv_relative_to_max_padding')
         for attr in attrs:
             setattr(self, attr, [])
 
@@ -1154,7 +1352,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             self.pad_right_fr.append(pad_right)
             self.ind_start_fr.append(ind_start)
             self.ind_end_fr.append(ind_end)
-            self.subsampling_equiv_relative_to_max_padding.append(j0)
+            self.subsample_equiv_relative_to_max_padding.append(j0)
 
         for attr in attrs:
             getattr(self, attr).reverse()
@@ -1173,24 +1371,44 @@ class _FrequencyScatteringBase(ScatteringBase):
                 getattr(self, attr).append(idxs_max)
 
         # max `n1_fr_subsample`; this may vary with `subsample_equiv_due_to_pad`
-        self.max_subsampling_before_phi_fr = []
+        # TODO how does `max_pad_factor_fr` interact with this?
+        self.max_subsample_before_phi_fr = []
         for n2, shape_fr in enumerate(self.shape_fr):
             if self.average_fr_global:
                 sub = 999  # "lowpass" shape always same, can't distort
-            elif self.resample_phi_fr:
+            elif self.sampling_phi_fr == 'resample':
                 sub = self._n_phi_f_fr - 1
             else:
                 sub = (self._n_phi_f_fr - 1  -
-                       self.subsampling_equiv_relative_to_max_padding[n2])
+                       self.subsample_equiv_relative_to_max_padding[n2])
             assert sub >= 0
-            self.max_subsampling_before_phi_fr.append(sub)
+            self.max_subsample_before_phi_fr.append(sub)
 
         # unused quantity; if this exceeds `J_pad_fr_max_init`, then
         # `phi_t * psi_f` and `phi_t * phi_f` pairs will incur boundary effects.
         # Implem doesn't account for this as the effect is rare and most often
         # not great
-        self.J_pad_fr_fo = self.compute_J_pad(self._n_psi1_f, recompute=True,
-                                              Q=(0, 0))
+        self._J_pad_fr_fo = self.compute_J_pad(self._n_psi1_f, recompute=True,
+                                               Q=(0, 0))
+
+    def _compute_padding_params(self, J_pad, shape_fr):
+        pad_left = 0
+        pad_right = 2**J_pad - pad_left - shape_fr
+        j0 = self.J_pad_fr_max_init - J_pad
+
+        # compute unpad indices for all possible subsamplings
+        ind_start, ind_end = [], []
+        for j in range(self.J_pad_fr_max_init + 1):
+            if j == j0:  # no actual subsampling done, unpad original
+                ind_start.append(0)
+                ind_end.append(shape_fr)
+            elif j > j0:  # subsampled, adjust indices
+                ind_start.append(0)
+                ind_end.append(math.ceil(ind_end[-1] / 2))
+            else:  # smaller than equiv padded, won't occur
+                ind_start.append(-1)
+                ind_end.append(-1)
+        return j0, pad_left, pad_right, ind_start, ind_end
 
     def _compute_padding_params(self, J_pad, shape_fr):
         pad_left = 0
@@ -1215,38 +1433,44 @@ class _FrequencyScatteringBase(ScatteringBase):
         """Docs in `TimeFrequencyScatteringBase1D`."""
         # for later
         shape_fr_scale = int(np.ceil(np.log2(shape_fr)))
-        factor = 2**(self.J_pad_fr_max_init - shape_fr_scale)
+        factor = 2**(self.shape_fr_scale_max - shape_fr_scale)
+        shape_fr_max_at_scale = 2**shape_fr_scale
 
         if recompute:
-            J_pad, *_ = self._compute_J_pad(shape_fr, Q)
-        elif self.resample_phi_fr or self.resample_psi_fr is True:
-            if self.resample_phi_fr and self.resample_psi_fr is True:
-                min_to_pad = self.min_to_pad_fr_max
-            elif self.resample_phi_fr or self.resample_psi_fr == 'exclude':
-                # 'exclude' is equivalent to False in terms of minimum sigma
-                min_to_pad = max(self._pad_fr_phi, self._pad_fr_psi // factor)
+            J_pad, *_ = self._compute_J_pad(shape_fr_max_at_scale, Q)
+        elif (self.sampling_phi_fr == 'resample' or
+              self.sampling_psi_fr == 'resample'):
+            if self.sampling_phi_fr == 'resample':
+                if self.sampling_psi_fr == 'resample':
+                    min_to_pad = self.min_to_pad_fr_max
+                else:
+                    # see `else` below
+                    min_to_pad = max(self._pad_fr_phi, self._pad_fr_psi // factor)
             else:
+                # 'exclude' is equivalent to 'recalibrate' in terms of min sigma
                 min_to_pad = max(self._pad_fr_psi, self._pad_fr_phi // factor)
-            J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+            J_pad = math.ceil(np.log2(shape_fr_max_at_scale + 2 * min_to_pad))
         else:
-            # reproduce `compute_minimum_support_to_pad`'s logic
-            # if we subsample, the time support reduces by same factor
-            # `min_to_pad_fr_max` is set w.r.t. a `2**J_pad_fr_max_init` filter
+            # both 'recalibrate' and 'exclude' build precisely to this logic
             min_to_pad = self.min_to_pad_fr_max // factor
-            J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
+            J_pad = math.ceil(np.log2(shape_fr_max_at_scale + 2 * min_to_pad))
 
         # don't let J_pad drop below minimum
         J_pad = max(J_pad, self.J_pad_fr_min_limit)
         # don't let J_pad exceed user-set max
+        # TODO instead have `max_pad_factor_fr` control padding *per-shape_fr*?
         if self.max_pad_factor_fr is not None:
             J_pad = min(J_pad, self.J_pad_fr_max_user)
         return J_pad
 
     def _compute_J_pad(self, shape_fr, Q):
         min_to_pad, pad_phi, pad_psi1, _ = compute_minimum_support_to_pad(
-            shape_fr, self.J_fr, Q, self.F,
+            shape_fr, self.J_fr, Q, self.F, pad_mode=self.pad_mode_fr,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
-                              'criterion_amplitude', 'normalize', 'pad_mode'))
+                              'criterion_amplitude', 'normalize'))
+        if self.average_fr_global:
+            min_to_pad = pad_psi1  # ignore phi's padding
+            pad_phi = 0
         J_pad = math.ceil(np.log2(shape_fr + 2 * min_to_pad))
 
         if self.max_pad_factor_fr is not None:

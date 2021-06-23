@@ -128,9 +128,10 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                                      ScatteringTorch1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
                  average=True, average_fr=False, oversampling=0,
-                 oversampling_fr=None, aligned=True, resample_filters_fr=True,
-                 out_type="array", out_3D=False, pad_mode='zero', max_pad_factor=2,
-                 max_pad_factor_fr=None, backend="torch"):
+                 oversampling_fr=None, aligned=True, sampling_filters_fr='resample',
+                 out_type="array", out_3D=False, out_exclude=None,
+                 pad_mode='zero', max_pad_factor=2, max_pad_factor_fr=None,
+                 pad_mode_fr='conj-reflect-zero', backend="torch"):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         # Second-order scattering object for the time variable
@@ -143,7 +144,8 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
 
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            resample_filters_fr, max_pad_factor_fr, out_3D, out_type)
+            sampling_filters_fr, max_pad_factor_fr, pad_mode_fr,
+            out_3D, out_type, out_exclude)
         TimeFrequencyScatteringBase1D.build(self)
         self.register_filters()
 
@@ -245,6 +247,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             aligned=self.aligned,
             out_type=self.out_type,
             out_3D=self.out_3D,
+            out_exclude=self.out_exclude,
             pad_mode=self.pad_mode)
         return S
 

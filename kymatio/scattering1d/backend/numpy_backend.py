@@ -1,5 +1,5 @@
 from ...backend.numpy_backend import NumpyBackend
-from .agnostic_backend import index_axis
+from . import agnostic_backend as agnostic
 
 
 class NumpyBackend1D(NumpyBackend):
@@ -93,7 +93,7 @@ class NumpyBackend1D(NumpyBackend):
         x_unpadded : tensor
             The tensor x[..., i0:i1].
         """
-        return x[index_axis(i0, i1, axis, x.ndim)]
+        return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
     def zeros_like(cls, ref, shape=None):
@@ -131,6 +131,10 @@ class NumpyBackend1D(NumpyBackend):
     def mean(cls, x, axis=-1):
         """Take mean along specified axis, without collapsing the axis."""
         return x.mean(axis, keepdims=True)
+
+    @classmethod
+    def conj_reflections(cls, x, ind_start, ind_end):
+        return agnostic.conj_reflections(cls, x, ind_start, ind_end)
 
 
 backend = NumpyBackend1D

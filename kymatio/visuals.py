@@ -1,9 +1,16 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
 import numpy as np
-import matplotlib.pyplot as plt
-from .scattering1d.filter_bank import compute_temporal_support
 from scipy.fft import ifft
+from copy import deepcopy
+from .scattering1d.filter_bank import compute_temporal_support
+from .toolkit import coeff_energy, coeff_distance, energy
+
+try:
+    import matplotlib.pyplot as plt
+except ImportError:
+    import warnings
+    warnings.warn("`kymatio.visuals` requires `matplotlib` installed.")
 
 
 __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
@@ -68,7 +75,8 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
         _plot_filters(p2, p0, title=title)
 
 
-def filterbank_jtfs(jtfs, part='real', zoomed=False):
+def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
+                    labels=True, suptitle_y=1.015):
     """
     # Arguments:
         jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
@@ -79,6 +87,15 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         zoomed: bool (default False)
             Whether to plot all filters with maximum subsampling
             (loses relative orientations but shows fine detail).
+        w, h: float, float
+            Adjust width and height.
+        borders: bool (default False)
+            Whether to show plot borders between wavelets.
+        labels: bool (default True)
+            Whether to label joint slices with `mu, l, spin` information.
+        suptitle_y: float / None
+            Position of plot title (None for no title).
+            Default is optimized for `w=h=1`.
 
     # Examples:
         T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
@@ -88,23 +105,26 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     """
     def to_time(p):
         # center & ifft
-        return ifft(p[0] * (-1)**np.arange(len(p[0])))
+        return ifft(p * (-1)**np.arange(len(p)))
 
     def get_imshow_data(jtfs, t_idx, f_idx, s_idx=None, max_t_bound=None,
                         max_f_bound=None):
+        # iterate freq wavelets backwards to arrange low-high freq <-> left-right
+        _f_idx = len(jtfs.psi1_f_fr_up) - f_idx - 1
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[f_idx]
-            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", f_idx, 0)
+            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[_f_idx]
+            psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", _f_idx, 0)
         elif f_idx == -1:
-            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
 
         if t_idx == -1 or f_idx == -1:
             title = (psi_txt, dict(fontsize=17, y=.75))
+            p_t, p_f = p_t[0].squeeze(), p_f[0].squeeze()
             Psi = to_time(p_f)[:, None] * to_time(p_t)[None]
             if max_t_bound is not None or zoomed:
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound)
@@ -113,11 +133,11 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         # else get spinned wavelets ##########################################
         psi_spin = (jtfs.sc_freq.psi1_f_fr_up if s_idx == 0 else
                     jtfs.sc_freq.psi1_f_fr_down)
-        psi_f = psi_spin[f_idx]
-        psi_t = jtfs.psi2_f[t_idx]
+        psi_f = psi_spin[_f_idx][0].squeeze()
+        psi_t = jtfs.psi2_f[t_idx][0].squeeze()
 
-        f_width = compute_temporal_support(psi_f[0][None])
-        t_width = compute_temporal_support(psi_t[0][None])
+        f_width = compute_temporal_support(psi_f[None])
+        t_width = compute_temporal_support(psi_t[None])
         f_bound = int(2**np.floor(np.log2(f_width)))
         t_bound = int(2**np.floor(np.log2(t_width)))
 
@@ -129,7 +149,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         Psi = psi_f[:, None] * psi_t[None]
         # title
         spin = '+1' if s_idx == 0 else '-1'
-        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, f_idx, spin)
+        psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, _f_idx, spin)
         title = (psi_txt, dict(fontsize=17, y=.75))
         # meta
         m = dict(t_bound=t_bound, f_bound=f_bound)
@@ -163,7 +183,10 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         else:
             Psi = _colorize_complex(Psi)
         cmap = 'bwr' if part in ('real', 'imag') else 'none'
-        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=0, cmap=cmap)
+        if not labels:
+            title=None
+        imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=borders,
+               cmap=cmap)
 
     # get spinned wavelet arrays & metadata ##################################
     n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_fr_up)
@@ -179,11 +202,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     bounds = (max_t_bound, max_f_bound)
 
     # plot ###################################################################
-    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(12, 13))
+    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(8*w, 21*h))
     _txt = "(%s%s" % (part, " part" if part in ('real', 'imag') else "")
     _txt += ", zoomed)" if zoomed else ")"
-    plt.suptitle("Joint wavelet filterbank " + _txt,
-                 y=1.04, weight='bold', fontsize=17)
+    if suptitle_y is not None:
+        plt.suptitle("Joint wavelet filterbank " + _txt,
+                     y=suptitle_y, weight='bold', fontsize=17)
 
     # (psi_t * psi_f) and (phi_t * psi_f)
     for s_idx in (0, 1):
@@ -195,7 +219,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                     Psi = process_Psi(Psi, None, None,
                                       imshow_data[(0, 0, f_idx)][2])
                 row_idx = n_rows
-                ax = axes[row_idx][f_idx]
+                ax = axes[row_idx][f_idx + 1]
                 _show(Psi, title=title, ax=ax)
 
         # (psi_t * psi_f)
@@ -206,7 +230,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
                 Psi = process_Psi(Psi, max_t_bound, max_f_bound, m)
 
                 row_idx = t_idx + (n_rows + 1) * s_idx
-                ax = axes[row_idx][f_idx]
+                ax = axes[row_idx][f_idx + 1]
                 _show(Psi, title=title, ax=ax)
 
     # (psi_t * phi_f)
@@ -215,7 +239,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
         if zoomed:
             Psi = process_Psi(Psi, None, None,
                               imshow_data[(0, t_idx, 0)][2])
-        ax = axes[t_idx][-1]
+        ax = axes[t_idx][0]
         _show(Psi, title=title, ax=ax)
 
     # (phi_t * phi_f)
@@ -223,12 +247,12 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False):
     if zoomed:
         Psi = process_Psi(Psi, None, None,
                           imshow_data[(0, 0, 0)][2])
-    ax = axes[n_rows][-1]
+    ax = axes[n_rows][0]
     _show(Psi, title=title, ax=ax)
 
     # strip borders of remainders
     for t_idx in range(n_rows + 1, 2*n_rows + 1):
-        ax = axes[t_idx][-1]
+        ax = axes[t_idx][0]
         ax.set_xticks([])
         ax.set_yticks([])
         for spine in ax.spines:
@@ -243,11 +267,11 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
     # Arguments:
-        Scx: np.ndarray
-            JTFS.
+        Scx: dict[list] / dict[np.ndarray]
+            `jtfs(x)`.
 
-        meta: list[dict]
-            `scattering.meta()`.
+        meta: dict[dict[np.ndarray]]
+            `jtfs.meta()`.
 
         norms: None / tuple
             Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
@@ -282,8 +306,10 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
     """
     def _title(meta, meta_idx, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star X|$"
+        values = meta['n'][pair][meta_idx[0]]
+        values = values if values.ndim == 1 else values[0]
         mu, l, _ = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
-                    for n in meta['n'][pair][meta_idx[0]]]
+                    for n in values]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
     def _viz_spins(Scx, meta, i, norm):
@@ -349,79 +375,223 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                 _viz_simple(coef, pair, meta, norms[1 + j])
 
 
-def energy_profile_jtfs(Scx, log2_T, log2_F, x=None, kind='L2'):
+def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
+                        plots=True, **plot_kw):
     """Plot & print relevant energy information across coefficient pairs.
+    Works for all `'dict' in out_type` and `out_exclude`.
+    Also see `help(kymatio.toolkit.coeff_energy)`.
 
     Parameters
     ----------
-    Scx : dict
-        Output of `TimeFrequencyScattering1D.scattering()`.
-    log2_T : int
-        `TimeFrequencyScattering1D.log2_T`. `average=False`    -> `log2_T=1`.
-    log2_F : int
-        `TimeFrequencyScattering1D.log2_T`. `average_fr=False` -> `log2_F=1`.
+    Scx: dict[list] / dict[np.ndarray]
+        `jtfs(x)`.
+
+    meta: dict[dict[np.ndarray]]
+        `jtfs.meta()`.
+
+    flatten: bool (default False)  # TODO does nothing?
+        Whether to plot energy for every individual coefficient. This means
+        flattening joint coefficients, whose energies would otherwise aggregate
+        on per-`(n2, n1_fr)` basis.
+
     x : tensor, optional
         Original input to print `E_out / E_in`.
-    kind : str['L1', 'L2']
-        - L1: sum(abs(x))
-        - L2: sum(abs(x)**2) -- actually L2^2
-    """
-    def energy(x):
-        return (np.abs(x).sum() if kind == 'L1' else
-                (np.abs(x)**2).sum())
 
+    pairs: None / list/tuple[str]
+        Computes energies for these pairs in provided order. None will compute
+        for all in default order:
+            ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+             'psi_t * psi_f_up', 'psi_t * psi_f_down')
+
+    kind : str['l1', 'l2']
+        - L1: `sum(abs(x))`
+        - L2: `sum(abs(x)**2)` -- actually L2^2
+
+    Returns
+    -------
+    energies: list[float]
+        List of coefficient energies.
+    pair_energies: dict[str: float]
+        Keys are pairs, values are sums of all pair's coefficient energies.
+    """
     if not isinstance(Scx, dict):
         raise NotImplementedError("input must be dict. Set out_type='dict:array' "
                                   "or 'dict:list'.")
+    # enforce pair order
+    compute_pairs = _get_compute_pairs(pairs, meta)
+    # make `titles`
+    titles = _make_titles_jtfs(compute_pairs,
+                               target="L1 norm" if kind == 'l1' else "Energy")
+    # make `fn`
+    fn = lambda Scx, meta, pair: coeff_energy(
+        Scx, meta, pair, aggregate=False, kind=kind)
 
-    # TODO `norm` logic is wrong for joint pairs, must scale per
-    # `total_conv_stride_over_U1`
-    # TODO coeffs collapsed into one per pair for some reason
-    # TODO reverse coeff ordering low to high freq
+    # compute, plot, print
+    energies, pair_energies = _iterate_coeff_pairs(
+        Scx, meta, fn, pairs, plots=plots, titles=titles, **plot_kw)
+
+    # E_out / E_in
+    if x is not None:
+        e_total = np.sum(energies)
+        print("E_out / E_in = %.3f" % (e_total / energy(x)))
+    return energies, pair_energies
+
+
+def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
+                        plots=True, **plot_kw):
+    if not all(isinstance(Scx, dict) for Scx in (Scx0, Scx1)):
+        raise NotImplementedError("inputs must be dict. Set "
+                                  "out_type='dict:array' or 'dict:list'.")
+    if meta1 is None:
+        meta1 = meta0
+
+    # enforce pair order
+    compute_pairs = _get_compute_pairs(pairs, meta0)
+    # make `titles`
+    titles = _make_titles_jtfs(compute_pairs,
+                               target="L1 norm" if kind == 'l1' else "Energy")
+    # make `fn`
+    fn = lambda Scx, meta, pair: coeff_distance(*Scx, *meta, pair, kind=kind)
+
+    # compute, plot, print
+    # TODO instead return as "pairs:flat", "pairs:slices"?
+    # TODO global distance?
+    distances, pair_distances = _iterate_coeff_pairs(
+        (Scx0, Scx1), (meta0, meta1), fn, pairs, plots=plots,
+        titles=titles, **plot_kw)
+
+    return distances, pair_distances
+
+
+def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, plots=True, titles=None,
+                         **plot_kw):
+    # in case multiple meta passed
+    meta0 = meta[0] if isinstance(meta, tuple) else meta
+    # enforce pair order
+    compute_pairs = _get_compute_pairs(pairs, meta0)
+
     # extract energy info
     energies = []
     pair_energies = {}
-    idxs = []
-    # enforce pair order
-    pairs = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
-             'psi_t * psi_f_up', 'psi_t * psi_f_down')
-    for pair in pairs:
-        norm = 2**log2_T if pair in ('S0', 'S1') else 2**(log2_T + log2_F)
-        E = [norm * energy(c['coef'] if isinstance(c, list) else c)
-             for c in Scx[pair]]
-        pair_energies[pair] = np.sum(E)
-        energies.extend(E)
-        idxs.append(len(energies) - 1)
+    idxs = [0]
+    for pair in compute_pairs:
+        if pair not in meta0['n']:
+            continue
+        E_flat, E_slices = fn(Scx, meta, pair)
+        pair_energies[pair] = E_slices[::-1]
+        energies.extend(E_slices[::-1])
+        # don't repeat 0
+        idxs.append(len(energies) - 1 if len(energies) != 1 else 1)
 
     # format & plot ##########################################################
     energies = np.array(energies)
     ticks = np.arange(len(energies))
     vlines = (idxs, {'color': 'tab:red', 'linewidth': 1})
 
-    scat(ticks[idxs], energies[idxs], s=20)
-    title = "{} | S0, S1, phi_t * phi_f, phi_t *, * phi_f, up, down".format(
-        "L1 norm" if kind == 'L1' else "Energy")
-    plot(energies, vlines=vlines, show=1, title=title)
+    if titles is None:
+        titles = ['', '']
+    if plots:
+        scat(ticks[idxs], energies[idxs], s=20)
+        plot_kw['ylims'] = plot_kw.get('ylims', (0, None))
+        plot(energies, vlines=vlines, title=titles[0], show=1, **plot_kw)
 
     # cumulative sum
     energies_cs = np.cumsum(energies)
-    scat(ticks[idxs], energies_cs[idxs], s=20)
-    plot(energies_cs, ylims=(0, None), vlines=vlines, show=1,
-         title="cumsum(%s)" % ("L1" if kind == 'L1' else "Energy"))
+
+    if plots:
+        scat(ticks[idxs], energies_cs[idxs], s=20)
+        plot(energies_cs, vlines=vlines, title=titles[1], show=1, **plot_kw)
 
     # print report ###########################################################
+    def sig_figs(x, n_sig=3):
+        s = str(x)
+        nondecimals = len(s.split('.')[0]) - int(s[0] == '0')
+        decimals = max(n_sig - nondecimals, 0)
+        return s.lstrip('0')[:decimals + nondecimals + 1].rstrip('.')
+
     e_total = np.sum(energies)
-    nums = ["%.1f" % pair_energies[pair] for pair in pair_energies]
+    pair_energies_sum = {pair: np.sum(pair_energies[pair])
+                         for pair in pair_energies}
+    nums = [sig_figs(e, n_sig=3) for e in pair_energies_sum.values()]
     longest_num = max(map(len, nums))
 
-    for i, pair in enumerate(pairs):
-        e_perc = "%.1f" % (np.sum(pair_energies[pair]) / e_total * 100)
-        print("{} ({}%) -- {}".format(
-            nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
+    if plots:
+        i = 0
+        for pair in compute_pairs:
+            E_pair = pair_energies_sum[pair]
+            e_perc = sig_figs(E_pair / e_total * 100, n_sig=3)
+            print("{} ({}%) -- {}".format(
+                nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
+            i += 1
+    return energies, pair_energies
 
-    # E_out / E_in
-    if x is not None:
-        print("E_out / E_in = %.3f" % (e_total / energy(x)))
+
+def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
+                           verbose=True, title=None):
+    # don't modify external
+    pd0, pd1 = deepcopy(pair_distances), deepcopy(pair_distances_ref)
+
+    ratios, stats = {}, {}
+    for pair in pd0:
+        p0, p1 = np.asarray(pd0[pair]), np.asarray(pd1[pair])
+        # threshold out small points
+        idxs = np.where((p0 < .001*p0.max()).astype(int) +
+                        (p1 < .001*p1.max()).astype(int))[0]
+        p0[idxs], p1[idxs] = 1, 1
+        R = p0 / p1
+        ratios[pair] = R
+        stats[pair] = dict(mean=R.mean(), min=R.min(), max=R.max())
+
+    if plots:
+        if title is None:
+            title = ''
+        _title = _make_titles_jtfs(list(ratios), f"Distance ratios | {title}")[0]
+        vidxs = np.cumsum([len(r) for r in ratios.values()])
+        ratios_flat = np.array([r for rs in ratios.values() for r in rs])
+        plot(ratios_flat, ylims=(0, None), title=_title,
+             hlines=(1,     dict(color='tab:red', linestyle='--')),
+             vlines=(vidxs, dict(color='k', linewidth=1)))
+        scat(idxs, ratios_flat[idxs], color='tab:red', show=1)
+    if verbose:
+        print("mean  min   max   | pair")
+        for pair in ratios:
+            print("{:<5.2f} {:<5.2f} {:<5.2f} | {}".format(
+                *list(stats[pair].values()), pair))
+    return ratios, stats
+
+
+def _get_compute_pairs(pairs, meta):
+    # enforce pair order
+    if pairs is None:
+        pairs_all = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
+                     'psi_t * phi_f', 'psi_t * psi_f_up', 'psi_t * psi_f_down')
+    else:
+        pairs_all = pairs
+    compute_pairs = []
+    for pair in pairs_all:
+        if pair in meta['n']:
+            compute_pairs.append(pair)
+    return compute_pairs
+
+
+def _make_titles_jtfs(compute_pairs, target):
+    """For energies and distances."""
+    # make `titles`
+    titles = []
+    pair_aliases = {'psi_t * phi_f': '* phi_f', 'phi_t * psi_f': 'phi_t *',
+                    'psi_t * psi_f_up': 'up', 'psi_t * psi_f_down': 'down'}
+    title = "%s | " % target
+    for pair in compute_pairs:
+        if pair in pair_aliases:
+            title += "{}, ".format(pair_aliases[pair])
+        else:
+            title += "{}, ".format(pair)
+    title = title.rstrip(', ')
+    titles.append(title)
+
+    title = "cumsum(%s)" % target
+    titles.append(title)
+    return titles
 
 
 #### Visuals primitives ## messy code ########################################
