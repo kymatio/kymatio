@@ -320,9 +320,6 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                         Scx[kdn][i]['coef'][sample_idx])
         else:
             sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
-        if meta['n'][kup][meta_idx[0]][0] < 9:
-            meta_idx[0] += len(sup)
-            return
         fig, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
@@ -355,8 +352,6 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                      if pair not in ('S0', 'S1', 'phi_t * phi_f')])
         norms = [(0, .5 * mx)] * 5
 
-    # print(norms)
-    # 1/0
     meta_idx = [0]
     if not skip_spins:
         if out_list:

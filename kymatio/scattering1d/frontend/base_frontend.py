@@ -1416,7 +1416,6 @@ class _FrequencyScatteringBase(ScatteringBase):
         shape_fr_scale = int(np.ceil(np.log2(shape_fr)))
         factor = 2**(self.shape_fr_scale_max - shape_fr_scale)
         shape_fr_max_at_scale = 2**shape_fr_scale
-        # factor = 2**(self.J_pad_fr_max_init - shape_fr_scale)
 
         if recompute:
             J_pad, *_ = self._compute_J_pad(shape_fr_max_at_scale, Q)

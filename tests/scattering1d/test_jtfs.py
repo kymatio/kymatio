@@ -150,8 +150,6 @@ def test_jtfs_vs_ts():
 
 def test_freq_tp_invar():
     """Test frequency transposition invariance."""
-    # TODO reflcet & conj-reflect-zero reduce invar and make it worse
-    # for greater F?
     # design signal
     N = 2048
     f0 = N // 12
@@ -783,7 +781,7 @@ def test_output():
                           ).format(pair, i, o_stored_key, adiff.mean(),
                                    adiff.max(), params_str)
                 if output_test_print_mode and not np.allclose(o, o_stored):
-                    1# TODO print(errmsg)
+                    print(errmsg)
                 else:
                     assert np.allclose(o, o_stored), errmsg
                 i_s += 1

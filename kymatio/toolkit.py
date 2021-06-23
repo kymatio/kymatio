@@ -254,14 +254,11 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
             E_slices[-1].append(E)  # append to slice
         else:
             E_slices[-1].append(E)  # append to slice
-            # E_slices[-1] = np.sum(E_slices[-1])  # aggregate slice # TODO rm
             E_slices.append([])
 
     # # in case loop terminates early
     if isinstance(E_slices[-1], list) and len(E_slices[-1]) == 0:
         E_slices.pop()
-    # if isinstance(E_slices[-1], list): # TODO rm
-    #     E_slices[-1] = np.sum(E_slices[-1])
 
     # ensure they sum to same
     Es_sum = np.sum(np.sum(E_slices))
