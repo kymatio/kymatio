@@ -144,7 +144,8 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
     Q_temp = (max(Q1, 1), max(Q2, 1))  # don't pass in zero
     N = 2 ** J_support
-    xi_min = (2 / N)  # leftmost peak at bin 2
+    # compute without limit, will find necessary pad_psi then check in factories
+    xi_min = -1
 
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = \
         calibrate_scattering_filters(J_scattering, Q_temp, T, xi_min=xi_min)
@@ -634,7 +635,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     if sampling_psi_fr == 'recalibrate':
         xi1s_fr_new, sigma1s_fr_new, j1s_fr_new, _ = _recalibrate_psi_fr(
             xi1s_fr, sigma1s_fr, j1s_fr, N_fr, sc_freq.alpha,
-            sc_freq.subsample_equiv_relative_to_max_padding,
+            sc_freq.shape_fr_scale_min, sc_freq.shape_fr_scale_max,
             sc_freq.sigma_max_to_min_max_ratio)
 
     # fetch phi meta; must access `phi_f_fr` as `j1s_fr` requires sampling phi
@@ -764,17 +765,21 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             for field in meta:
                 del meta[field][pair]
 
-    # ensure time / freq stride doesn't exceed log2_T / log2_F in averaged cases
+    # ensure time / freq stride doesn't exceed log2_T / log2_F in averaged cases,
+    # and J / J_fr in unaveraged  # TODO make it happen
+    smax_t = log2_T if average else J
+    smax_f = log2_F if sc_freq.average_fr else sc_freq.J_fr
     for pair in meta['stride']:
-        if average and not average_global:
-            for i, s in enumerate(meta['stride'][pair][..., 1].ravel()):
-                assert s <= log2_T, ("meta['stride'][{}][{}] > log2_T ({} > {})"
-                                     ).format(pair, i, s, log2_T)
-        if (sc_freq.average_fr and not sc_freq.average_fr_global and
-                pair not in ('S0', 'S1')):
-            for i, s in enumerate(meta['stride'][pair][..., 0].ravel()):
-                assert s <= log2_F, ("meta['stride'][{}][{}] > log2_F ({} > {})"
-                                     ).format(pair, i, s, log2_T)
+        if pair == 'S0' and not average:
+            continue
+        for i, s in enumerate(meta['stride'][pair][..., 1].ravel()):
+            assert s <= smax_t, ("meta['stride'][{}][{}] > stride_max_t "
+                                 "({} > {})").format(pair, i, s, smax_t)
+        if pair in ('S0', 'S1'):
+            continue
+        for i, s in enumerate(meta['stride'][pair][..., 0].ravel()):
+            assert s <= smax_f, ("meta['stride'][{}][{}] > stride_max_f "
+                                 "({} > {})").format(pair, i, s, smax_f)
 
     if not out_type.startswith('dict'):
         # join pairs

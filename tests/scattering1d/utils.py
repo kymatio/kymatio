@@ -22,15 +22,18 @@ def cant_import(backend_name):
             return True
 
 
-def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None):
+def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
+         endpoint=False):
     """Generate windowed tones with Frequency-dependent Time Shifts (FDTS)."""
     total_shift = total_shift or N//16
     f0 = f0 or N//12
     seg_len = seg_len or N//8
 
-    t = np.linspace(0, 1, N, endpoint=False)
+    t = np.linspace(0, 1, N, endpoint=endpoint)
     window = scipy.signal.tukey(seg_len, alpha=0.5)
-    window = np.pad(window, (N - len(window)) // 2)
+    pad_right = (N - len(window)) // 2
+    pad_left = N - len(window) - pad_right
+    window = np.pad(window, [pad_left, pad_right])
 
     x = np.zeros(N)
     xs = x.copy()

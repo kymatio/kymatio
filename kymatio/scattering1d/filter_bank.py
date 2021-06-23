@@ -827,8 +827,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     return phi_f, psi1_f, psi2_f, t_max_phi
 
 
-def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
-                   subsample_equiv_relative_to_max_padding,
+def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr,
+                   shape_fr_scale_max, shape_fr_scale_min,
+                   subsample_equiv_relative_to_max_pad_init,
                    sampling_psi_fr='resample', sigma_max_to_min_max_ratio=1.2,
                    r_psi=math.sqrt(0.5), normalize='l1', criterion_amplitude=1e-3,
                    sigma0=0.1, alpha=4., P_max=5, eps=1e-7):
@@ -846,7 +847,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
 
     Parameters
     ----------
-    J_pad_fr_max : int
+    J_pad_fr_max : int  # TODO
         `2**J_pad_fr_max` is the desired support size (length) of the filters.
 
     J_fr : int
@@ -857,7 +858,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
     Q_fr : int
         Number of wavelets per octave for frequential scattering.
 
-    subsample_equiv_relative_to_max_padding : int
+    subsample_equiv_relative_to_max_pad_init : int
         Amount of *equivalent subsampling* of frequential padding relative to
         `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
 
@@ -922,7 +923,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
         `help(TimeFrequencyScattering1D)`.
     """
     # compute the spectral parameters of the filters
-    J_support = J_pad_fr_max  # begin with longest
+    J_support = J_pad_fr_max_init  # begin with longest
     N = 2**J_support
     xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
@@ -933,70 +934,103 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
     psi1_f_fr_up = []
     psi1_f_fr_down = []
 
-    j0_max = None
+    j0_max, scale_diff_max = None, None
+    kw = dict(criterion_amplitude=criterion_amplitude)
     if sampling_psi_fr == 'recalibrate':
         # recalibrate filterbank to each j0
-        xi1_new, sigma1_new, j1s_new, j0_max = _recalibrate_psi_fr(
-            xi1, sigma1, j1s, N, alpha, subsample_equiv_relative_to_max_padding,
+        xi1_new, sigma1_new, j1s_new, scale_diff_max = _recalibrate_psi_fr(
+            xi1, sigma1, j1s, N, alpha, shape_fr_scale_min, shape_fr_scale_max,
             sigma_max_to_min_max_ratio)
     elif sampling_psi_fr == 'resample':
         # in this case filter temporal behavior is preserved across all lengths
         # so we must restrict lowest length such that widest filter still decays
-        j0_prev = -1
-        for j0 in (0, *subsample_equiv_relative_to_max_padding[::-1]):
-            if j0 < 0 or j0 == j0_prev:
-                continue
-            psi_widest = morlet_1d(N // 2**j0, xi1[-1], sigma1[-1],
-                                   normalize=normalize, P_max=P_max, eps=eps)
-            psi_widest_halfwidth = compute_temporal_support(
-                psi_widest.reshape(1, -1),
-                criterion_amplitude=criterion_amplitude)
-            if psi_widest_halfwidth == psi_widest.size // 2:
-                # This means width is already too great for its own length,
-                # so lesser length will distort its temporal envelope.
-                # Frontend will adjust J_pad_fr_min accordingly.
-                j0_max = j0
+        j0 = 0
+        while True:
+            psi_widest = morlet_1d(N // 2**j0, xi1[-1], sigma1[-1], P_max=P_max,
+                                   normalize=normalize, eps=eps)[:, None]
+            psi_widest_halfwidth = compute_temporal_support(psi_widest.T, **kw)
+            if psi_widest_halfwidth == len(psi_widest) // 2:
+                j0_max = max(j0 - 1, 0)
+                if j0_max < 0:  # TODO
+                    raise Exception("got `j0_max = %s < 0`, meaning " % j0_max
+                                    + "`J_pad_fr_max_init` computed incorrectly.")
                 break
+            elif len(psi_widest) == shape_fr_scale_min:
+                # smaller pad length is impossible
+                break
+            j0 += 1
     elif sampling_psi_fr == 'exclude':
         # this is built precisely to enable `j0_max=None` while preserving
         # temporal behavior
         pass
 
-    def get_params(n1_fr, j0):
+    def get_params(n1_fr, scale_diff):
         if sampling_psi_fr in ('resample', 'exclude'):
             return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
         elif sampling_psi_fr == 'recalibrate':
-            return xi1_new[j0][n1_fr], sigma1_new[j0][n1_fr], j1s_new[j0][n1_fr]
+            return (xi1_new[scale_diff][n1_fr], sigma1_new[scale_diff][n1_fr],
+                    j1s_new[scale_diff][n1_fr])
 
+    # keep a mapping from `j0` to `scale_diff`
+    j0_to_scale_diff = {}
     # sample spin down and up wavelets
     for n1_fr in range(len(j1s)):
         psi_down = {}
         # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
         psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
                                 P_max=P_max, eps=eps)[:, None]
+        psi_down['width'] = {0: compute_temporal_support(psi_down[0].T, **kw)}
 
         # j0 is ordered greater to lower, so reverse
         j0_prev = -1
-        for j0 in subsample_equiv_relative_to_max_padding[::-1]:
+        for j0, N_fr in zip(subsample_equiv_relative_to_max_pad_init[::-1],
+                            shape_fr[::-1]):
+            # ensure we compute at valid `j0` and don't recompute
             if j0 <= 0 or j0 == j0_prev or (j0_max is not None and j0 > j0_max):
                 continue
+            # compute scale params
             j0_prev = j0
             factor = 2**j0
-
-            xi, sigma, j = get_params(n1_fr, j0)
-            if sampling_psi_fr == 'exclude' and sigma < factor * min(sigma1):
-                # we don't set `j0_max` here, instead it's checked during
-                # scattering whether a `j0` filter exists
+            shape_fr_scale = math.ceil(math.log2(N_fr))
+            scale_diff = shape_fr_scale_max - shape_fr_scale
+            if scale_diff_max is not None and scale_diff > scale_diff_max:
+                # subsequent `scale_diff` are only greater
                 break
-            psi_down[j0] = morlet_1d(N // factor, xi, sigma, normalize=normalize,
-                                     P_max=P_max, eps=eps)[:, None]
+
+            # ensure every `j0` maps to one `scale_diff`
+            if j0 in j0_to_scale_diff and j0_to_scale_diff[j0] != scale_diff:
+                raise Exception("same `J_pad_fr` mapped to different "
+                                "`scale_diff`.")
+            elif list(j0_to_scale_diff.values()).count(scale_diff) > 1:
+                raise Exception("same `scale_diff` yielded multiple `J_pad_fr`")
+            elif j0 not in j0_to_scale_diff:
+                j0_to_scale_diff[j0] = scale_diff
+
+            # fetch wavelet params, sample wavelet, compute its spatial width
+            xi, sigma, j = get_params(n1_fr, scale_diff)
+            psi = morlet_1d(N // factor, xi, sigma, normalize=normalize,
+                            P_max=P_max, eps=eps)[:, None]
+            psi_width = compute_temporal_support(psi.T, **kw)
+            if sampling_psi_fr == 'exclude':
+                # if wavelet exceeds max possible width at this scale, exclude it
+                shape_fr_scale = math.ceil(math.log2(N_fr))
+                if psi_width > 2**shape_fr_scale:
+                    # subsequent `shape_fr_scale` are only lesser, and `psi_width`
+                    # doesn't change (approx w/ discretization error)
+                    break
+
+            psi_down[j0] = psi
+            psi_down['width'][j0] = psi_width
 
         psi1_f_fr_down.append(psi_down)
         # compute spin up
         psi_up = {}
+        j0s = [j0 for j0 in psi_down if isinstance(j0, int)]
         for j0 in psi_down:
-            # compute spin up by conjugating spin down in frequency domain
-            psi_up[j0] = conj_fr(psi_down[j0])
+            if isinstance(j0, int):
+                # compute spin up by conjugating spin down in frequency domain
+                psi_up[j0] = conj_fr(psi_down[j0])
+        psi_up['width'] = psi_down['width'].copy()
         psi1_f_fr_up.append(psi_up)
 
     # Embed meta information within the filters
@@ -1009,7 +1043,7 @@ def psi_fr_factory(J_pad_fr_max, J_fr, Q_fr,
             # fill for j0s
             j0s = [k for k in psi_f[n1_fr] if (isinstance(k, int) and k != 0)]
             for j0 in j0s:
-                xi, sigma, j = get_params(n1_fr, j0)
+                xi, sigma, j = get_params(n1_fr, j0_to_scale_diff[j0])
                 psi_f[n1_fr]['xi'][j0] = xi
                 psi_f[n1_fr]['sigma'][j0] = sigma
                 psi_f[n1_fr]['j'][j0] = j
@@ -1110,7 +1144,7 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, sampling_phi_fr='resample',
             compute_all_subsamplings(phi_f_fr, j_fr=j_fr)
         else:
             # These won't differ from plain subsampling but we still index
-            # via `subsample_equiv_relative_to_max_padding` and
+            # via `subsample_equiv_relative_to_max_pad_init` and
             # `n1_fr_subsample` so just copy pointers.
             # `phi[::factor] == gauss_1d(N // factor, sigma_low * factor)`
             # when not aliased
@@ -1145,44 +1179,43 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, sampling_phi_fr='resample',
 
 
 def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
-                        subsample_equiv_relative_to_max_padding,
+                        shape_fr_scale_min, shape_fr_scale_max,
                         sigma_max_to_min_max_ratio):
     # recalibrate filterbank to each j0
     # j0=0 is the original length, no change needed
     xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
-    j0_max = None
-    j0_prev = -1
-    for j0 in subsample_equiv_relative_to_max_padding[::-1]:
-        if j0 <= 0 or j0 == j0_prev:
-            continue
-        xi1_new[j0], sigma1_new[j0], j1s_new[j0] = [], [], []
-        factor = 2**j0
-        j0_prev = j0
+    scale_diff_max = None
+
+    for shape_fr_scale in range(shape_fr_scale_max - 1, shape_fr_scale_min - 1,
+                                -1):
+        scale_diff = shape_fr_scale_max - shape_fr_scale
+        xi1_new[scale_diff], sigma1_new[scale_diff], j1s_new[scale_diff] = (
+            [], [], [])
+        factor = 2**scale_diff
 
         # contract largest temporal width of any wavelet by 2**j0,
         # but not above sigma_max/sigma_max_to_min_max_ratio
         sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
         new_sigma_min = min(sigma1) * factor
         if new_sigma_min > sigma_min_max:
-            j0_max = j0
-            new_sigma_min = sigma_min_max
+            scale_diff_max = scale_diff
+            break
 
-        # halve distance from existing xi_max to .5 (theoretical max)
+        # halve distance from existing xi_max to .5 (max possible)
         new_xi_max = .5 - (.5 - max(xi1)) / factor
         new_xi_min = 2 / (N // factor)
         # logarithmically distribute
         new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
                              len(xi1), endpoint=True)[::-1]
-        xi1_new[j0].extend(new_xi)
+        xi1_new[scale_diff].extend(new_xi)
         new_sigma = np.logspace(np.log10(new_sigma_min), np.log10(max(sigma1)),
                                 len(xi1), endpoint=True)[::-1]
-        sigma1_new[j0].extend(new_sigma)
+        sigma1_new[scale_diff].extend(new_sigma)
         for xi, sigma in zip(new_xi, new_sigma):
-            j1s_new[j0].append(get_max_dyadic_subsampling(xi, sigma, alpha=alpha))
+            j1s_new[scale_diff].append(get_max_dyadic_subsampling(
+                xi, sigma, alpha=alpha))
 
-        if j0_max is not None:
-            break
-    return xi1_new, sigma1_new, j1s_new, j0_max
+    return xi1_new, sigma1_new, j1s_new, scale_diff_max
 
 
 def conj_fr(x):
@@ -1193,3 +1226,8 @@ def conj_fr(x):
     out[0] = x[0]
     out[1:] = x[:0:-1]
     return out
+
+
+def assert_not_pure_sine(psi_f, ratio_threshold=100):  # TODO apply this?
+    psi_fr_sorted = np.sort(psi_f)[::-1]
+    assert psi_fr_sorted[0] / psi_fr_sorted[1] < ratio_threshold

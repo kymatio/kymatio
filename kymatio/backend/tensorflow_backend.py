@@ -19,3 +19,15 @@ class TensorFlowBackend(NumpyBackend):
 
         return norm
 
+    @classmethod
+    def sqrt(cls, x):
+        if isinstance(x, (int, float)):
+            x = tf.constant(x)
+        return tf.math.sqrt(x)
+
+    @classmethod
+    def conj(cls, x, inplace=False):
+        if inplace:
+            raise Exception("TensorFlow doesn't support `out=`")
+        return (tf.math.conj(x) if cls._is_complex(x) else
+                x)
