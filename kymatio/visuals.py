@@ -566,7 +566,7 @@ def _get_compute_pairs(pairs, meta):
         pairs_all = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
                      'psi_t * phi_f', 'psi_t * psi_f_up', 'psi_t * psi_f_down')
     else:
-        pairs_all = pairs
+        pairs_all = pairs if not isinstance(pairs, str) else [pairs]
     compute_pairs = []
     for pair in pairs_all:
         if pair in meta['n']:

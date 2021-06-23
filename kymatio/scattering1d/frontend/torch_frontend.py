@@ -130,7 +130,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                  average=True, average_fr=False, oversampling=0,
                  oversampling_fr=None, aligned=True, sampling_filters_fr='resample',
                  out_type="array", out_3D=False, out_exclude=None,
-                 pad_mode='zero', max_pad_factor=2, max_pad_factor_fr=None,
+                 pad_mode='reflect', max_pad_factor=2, max_pad_factor_fr=None,
                  pad_mode_fr='conj-reflect-zero', backend="torch"):
         if oversampling_fr is None:
             oversampling_fr = oversampling

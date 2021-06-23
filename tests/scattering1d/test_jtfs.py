@@ -2,9 +2,9 @@ import pytest
 import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
-from kymatio.toolkit import drop_batch_dim_jtfs, coeff_energy
+from kymatio.toolkit import drop_batch_dim_jtfs, coeff_energy, fdts, echirp, l2
 from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
-from utils import cant_import, fdts, echirp, l2
+from utils import cant_import
 
 # backend to use for most tests
 default_backend = 'numpy'
