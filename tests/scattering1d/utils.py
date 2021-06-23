@@ -67,10 +67,3 @@ def l2(x0, x1):
     https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
     """
     return _l2(x1 - x0) / _l2(x0)
-
-# def _l1l2(x):
-#     return np.sum(np.sqrt(np.sum(np.abs(x)**2, axis=1)), axis=0)
-
-# def l1l2(x0, x1):
-#     """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
-#     return _l2(x1 - x0) / _l2(x0)

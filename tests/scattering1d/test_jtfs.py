@@ -833,6 +833,6 @@ if __name__ == '__main__':
         test_differentiability_torch()
         test_reconstruction_torch()
         test_meta()
-        # test_output()
+        test_output()
     else:
         pytest.main([__file__, "-s"])
