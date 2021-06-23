@@ -828,6 +828,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 
 
 def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr,
+                   shape_fr_scale_max, shape_fr_scale_min,
                    subsample_equiv_relative_to_max_pad_init,
                    sampling_psi_fr='resample', sigma_max_to_min_max_ratio=1.2,
                    r_psi=math.sqrt(0.5), normalize='l1', criterion_amplitude=1e-3,
@@ -929,10 +930,6 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr,
     _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
         J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
-    shape_fr_scale_max = int(np.ceil(np.log2(max(shape_fr))))
-    shape_fr_scale_min = int(np.ceil(np.log2(min(
-        N_fr for N_fr in shape_fr if N_fr > 0))))
-
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
     psi1_f_fr_down = []
@@ -941,8 +938,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr,
     kw = dict(criterion_amplitude=criterion_amplitude)
     if sampling_psi_fr == 'recalibrate':
         # recalibrate filterbank to each j0
-        xi1_new, sigma1_new, j1s_new, scale_diff_max = _recalibrate_psi_fr_v2(
-            xi1, sigma1, j1s, N, alpha, shape_fr_scale_max, shape_fr_scale_min,
+        xi1_new, sigma1_new, j1s_new, scale_diff_max = _recalibrate_psi_fr(
+            xi1, sigma1, j1s, N, alpha, shape_fr_scale_min, shape_fr_scale_max,
             sigma_max_to_min_max_ratio)
     elif sampling_psi_fr == 'resample':
         # in this case filter temporal behavior is preserved across all lengths
@@ -1181,9 +1178,9 @@ def phi_fr_factory(J_pad_fr_max, F, log2_F, sampling_phi_fr='resample',
     return phi_f_fr
 
 
-def _recalibrate_psi_fr_v2(xi1, sigma1, j1s, N, alpha,
-                           shape_fr_scale_max, shape_fr_scale_min,
-                           sigma_max_to_min_max_ratio):
+def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
+                        shape_fr_scale_min, shape_fr_scale_max,
+                        sigma_max_to_min_max_ratio):
     # recalibrate filterbank to each j0
     # j0=0 is the original length, no change needed
     xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
@@ -1219,47 +1216,6 @@ def _recalibrate_psi_fr_v2(xi1, sigma1, j1s, N, alpha,
                 xi, sigma, alpha=alpha))
 
     return xi1_new, sigma1_new, j1s_new, scale_diff_max
-
-
-def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
-                        subsample_equiv_relative_to_max_pad_init,
-                        sigma_max_to_min_max_ratio):
-    # recalibrate filterbank to each j0
-    # j0=0 is the original length, no change needed
-    xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
-    j0_max = None
-    j0_prev = -1
-    for j0 in subsample_equiv_relative_to_max_pad_init[::-1]:
-        if j0 <= 0 or j0 == j0_prev:
-            continue
-        xi1_new[j0], sigma1_new[j0], j1s_new[j0] = [], [], []
-        factor = 2**j0
-        j0_prev = j0
-
-        # contract largest temporal width of any wavelet by 2**j0,
-        # but not above sigma_max/sigma_max_to_min_max_ratio
-        sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
-        new_sigma_min = min(sigma1) * factor
-        if new_sigma_min >= sigma_min_max:
-            j0_max = j0
-            new_sigma_min = sigma_min_max
-
-        # halve distance from existing xi_max to .5 (theoretical max)
-        new_xi_max = .5 - (.5 - max(xi1)) / factor
-        new_xi_min = 2 / (N // factor)
-        # logarithmically distribute
-        new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
-                             len(xi1), endpoint=True)[::-1]
-        xi1_new[j0].extend(new_xi)
-        new_sigma = np.logspace(np.log10(new_sigma_min), np.log10(max(sigma1)),
-                                len(xi1), endpoint=True)[::-1]
-        sigma1_new[j0].extend(new_sigma)
-        for xi, sigma in zip(new_xi, new_sigma):
-            j1s_new[j0].append(get_max_dyadic_subsampling(xi, sigma, alpha=alpha))
-
-        if j0_max is not None:
-            break
-    return xi1_new, sigma1_new, j1s_new, j0_max
 
 
 def conj_fr(x):

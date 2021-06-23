@@ -549,9 +549,10 @@ class TimeFrequencyScatteringBase1D():
     @property
     def fr_attributes(self):
         """Exposes `sc_freq`'s attributes via main object."""
-        return ('J_fr', 'Q_fr', 'shape_fr', 'shape_fr_max', 'J_pad_fr',
-                'J_pad_fr_max', 'average_fr', 'average_fr_global', 'aligned',
-                'oversampling_fr', 'F', 'log2_F', 'max_order_fr',
+        return ('J_fr', 'Q_fr', 'shape_fr', 'shape_fr_max', 'shape_fr_min',
+                'shape_fr_scale_max', 'shape_fr_scale_min',
+                'J_pad_fr', 'J_pad_fr_max', 'average_fr', 'average_fr_global',
+                'aligned', 'oversampling_fr', 'F', 'log2_F', 'max_order_fr',
                 'max_pad_factor_fr', 'out_3D', 'sampling_filters_fr',
                 'sampling_psi_fr', 'sampling_phi_fr',
                 'phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down')
@@ -1068,6 +1069,64 @@ class TimeFrequencyScatteringBase1D():
 
         Ensures same unpadded freq length for `out_3D=True` without losing
         information. Unused for `out_3D=False`.
+
+    Logic demos
+    -----------
+    For 'exclude' & 'recalibrate':
+        1. Compute `psi`s at `J_pad_fr_max_init`
+        2. Compute and store their 'width' meta
+        3. Use width meta to compute padding for each `shape_fr`, excluding
+           widths that exceed `nextpow2(shape_fr)`.
+        4. Compute `psi`s at every other `J_pad_fr`
+
+    Suppose `max_pad_factor_fr=0`, `J_pad_fr_max_init == 8`, and
+    `nextpow2(shape_fr_max) == 7`. Then, for:
+        'resample':
+            - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+            - `subsample_equiv_due_to_pad` will now have a minimum value,
+              `== J_pad_fr_max_init - (nextpow2(shape_fr_max) +
+                                       max_pad_factor_fr)`,
+              which determines `J_pad_fr` and thus `psi`'s length, as opposed
+              to `max_pad_fr==None` case where `psi` determined max allowed
+              `subsample_equiv_due_to_pad`.
+            - But `psi`'s length will not be any shorter than
+              "original_max - max_pad_factor_fr", i.e.
+              `J_pad_fr_max_init - max_pad_factor_fr`.
+            - Thus `J_pad_fr_min == J_pad_fr_max_init - max_pad_factor_fr`.
+
+        'exclude':
+            - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+            - `J_pad_fr = min(J_pad_fr_original,
+                              nextpow2(shape_fr) + max_pad_factor_fr)`
+            - `psi`s will still be excluded based on `shape_fr` alone,
+              independent of `J_pad_fr`, so some `psi` will be distorted.
+
+        'recalibrate':
+            - `J_pad_fr_max = 7`, and some `psi` will be distorted.
+            - `J_pad_fr = min(J_pad_fr_original,
+                              nextpow2(shape_fr) + max_pad_factor_fr)`
+            - Lowest sigma `psi` will still be set based on `shape_fr` alone,
+              independent of `J_pad_fr`, so some `psi` will be distorted.
+
+    `psi` calibration and padding
+    -----------------------------
+    In computing padding, we take `nextpow2(shape_fr)` for every `shape_fr`.
+    This guarantees no two `shape_fr` from different `shape_fr_scale` have
+    the same `J_pad_fr`, which would require triple indexing wavelets:
+    `psi_fr[n1_fr][n2][subsample_equiv_due_to_pad]`. When `J_fr` is at
+    or one below maximum, this happens automatically, so this only loses speed
+    relative to small `J_fr`.
+
+    Illustrating, consider `shape_fr, width(psi_fr_widest) -> J_pad_fr`:
+        33, 16 -> 64    # J_fr == 2 below max
+        33, 32 -> 128   # J_fr == 1 below max
+        33, 64 -> 128   # J_fr == max
+        63, 64 -> 128   # J_fr == max
+
+    Non-uniqueness example, w/ # `(J_pad_fr, shape_fr_scale)`
+        33, 4 -> 64  # `(6, 6)`
+        31, 2 -> 64  # `(5, 6)`
+        17, 2 -> 32  # `(5, 5)`
     """
 
     _doc_compute_J_pad = \
@@ -1128,11 +1187,14 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.normalize = 'l1'
         self.sigma_max_to_min_max_ratio = 1.2
 
-        # longest obtainable frequency row w.r.t. which we calibrate filters
+        # longest & shortest obtainable frequency row w.r.t. which we
+        # calibrate filters  # TODO doc min
         self.shape_fr_max = max(self.shape_fr)
+        self.shape_fr_min = min(N_fr for N_fr in self.shape_fr if N_fr > 0)
         # corresponding scale, and smallest possible maximum padding
         # (cannot be overridden by `max_pad_factor_fr`)
         self.shape_fr_scale_max = math.ceil(math.log2(self.shape_fr_max))
+        self.shape_fr_scale_min = math.ceil(math.log2(self.shape_fr_min))
         # above is for `psi_t *` pairs, below is actual max, which
         # occurs for `phi_t *` pairs
         self.shape_fr_max_all = self._n_psi1_f  # TODO doc
@@ -1231,6 +1293,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         (self.psi1_f_fr_up, self.psi1_f_fr_down,
          self.max_subsample_equiv_before_psi_fr) = psi_fr_factory(
             self.J_pad_fr_max_init, self.J_fr, self.Q_fr, self.shape_fr,
+            self.shape_fr_scale_max, self.shape_fr_scale_min,
             self.subsample_equiv_relative_to_max_padding,
             **self.get_params('sampling_psi_fr', 'sigma_max_to_min_max_ratio',
                               'r_psi', 'normalize', 'sigma0', 'alpha',
@@ -1258,64 +1321,6 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
-        # TODO
-        """
-        For 'exclude' & 'recalibrate':
-            1. Compute `psi`s at `J_pad_fr_max_init`
-            2. Compute and store their 'width' meta
-            3. Use width meta to compute padding for each `shape_fr`, excluding
-               widths that exceed `nextpow2(shape_fr)`.
-            4. Compute `psi`s at every other `J_pad_fr`
-
-        Suppose `max_pad_factor_fr=0`, `J_pad_fr_max_init == 8`, and
-        `nextpow2(shape_fr_max) == 7`. Then, for:
-            'resample':
-                - `J_pad_fr_max = 7`, and some `psi` will be distorted.
-                - `subsample_equiv_due_to_pad` will now have a minimum value,
-                  `== J_pad_fr_max_init - (nextpow2(shape_fr_max) +
-                                           max_pad_factor_fr)`,
-                  which determines `J_pad_fr` and thus `psi`'s length, as opposed
-                  to `max_pad_fr==None` case where `psi` determined max allowed
-                  `subsample_equiv_due_to_pad`.
-                - But `psi`'s length will not be any shorter than
-                  "original_max - max_pad_factor_fr", i.e.
-                  `J_pad_fr_max_init - max_pad_factor_fr`.
-                - Thus `J_pad_fr_min == J_pad_fr_max_init - max_pad_factor_fr`.
-
-            'exclude':
-                - `J_pad_fr_max = 7`, and some `psi` will be distorted.
-                - `J_pad_fr = min(J_pad_fr_original,
-                                  nextpow2(shape_fr) + max_pad_factor_fr)`
-                - `psi`s will still be excluded based on `shape_fr` alone,
-                  independent of `J_pad_fr`, so some `psi` will be distorted.
-
-            'recalibrate':
-                - `J_pad_fr_max = 7`, and some `psi` will be distorted.
-                - `J_pad_fr = min(J_pad_fr_original,
-                                  nextpow2(shape_fr) + max_pad_factor_fr)`
-                - Lowest sigma `psi` will still be set based on `shape_fr` alone,
-                  independent of `J_pad_fr`, so some `psi` will be distorted.
-
-        `psi` calibration and padding
-        -----------------------------
-        In computing padding, we take `nextpow2(shape_fr)` for every `shape_fr`.
-        This guarantees no two `shape_fr` from different `shape_fr_scale` have
-        the same `J_pad_fr`, which would require triple indexing wavelets:
-        `psi_fr[n1_fr][n2][subsample_equiv_due_to_pad]`. When `J_fr` is at
-        or one below maximum, this happens automatically, so this only loses speed
-        relative to small `J_fr`.
-
-        Illustrating, consider `shape_fr, width(psi_fr_widest) -> J_pad_fr`:
-            33, 16 -> 64    # J_fr == 2 below max
-            33, 32 -> 128   # J_fr == 1 below max
-            33, 64 -> 128   # J_fr == max
-            63, 64 -> 128   # J_fr == max
-
-        Non-uniqueness example, w/ # `(J_pad_fr, shape_fr_scale)`
-            33, 4 -> 64  # `(6, 6)`
-            31, 2 -> 64  # `(5, 6)`
-            17, 2 -> 32  # `(5, 5)`
-        """
         # TODO allow list `max_pad_factor_fr`?
         # e.g. [0, None] would mean 0 for `shape_fr_max`, and `None` for rest.
         # tentative limit

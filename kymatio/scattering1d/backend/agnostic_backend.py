@@ -18,8 +18,6 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1):
             - reflect: [3,4,3,2, 1,2,3,4, 3,2,1]
     axis : int
         Axis to pad.
-    # backend_name : str  # TODO
-    #     One of: numpy, torch, tensorflow
 
     Returns
     -------

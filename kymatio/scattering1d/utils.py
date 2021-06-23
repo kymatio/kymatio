@@ -635,7 +635,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     if sampling_psi_fr == 'recalibrate':
         xi1s_fr_new, sigma1s_fr_new, j1s_fr_new, _ = _recalibrate_psi_fr(
             xi1s_fr, sigma1s_fr, j1s_fr, N_fr, sc_freq.alpha,
-            sc_freq.subsample_equiv_relative_to_max_padding,
+            sc_freq.shape_fr_scale_min, sc_freq.shape_fr_scale_max,
             sc_freq.sigma_max_to_min_max_ratio)
 
     # fetch phi meta; must access `phi_f_fr` as `j1s_fr` requires sampling phi

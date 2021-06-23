@@ -151,5 +151,4 @@ class TensorFlowBackend1D(TensorFlowBackend):
             raise NotImplementedError("`axis` must be -1 or -2")
         return x
 
-
 backend = TensorFlowBackend1D
