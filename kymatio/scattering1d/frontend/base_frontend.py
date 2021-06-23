@@ -1410,6 +1410,25 @@ class _FrequencyScatteringBase(ScatteringBase):
                 ind_end.append(-1)
         return j0, pad_left, pad_right, ind_start, ind_end
 
+    def _compute_padding_params(self, J_pad, shape_fr):
+        pad_left = 0
+        pad_right = 2**J_pad - pad_left - shape_fr
+        j0 = self.J_pad_fr_max_init - J_pad
+
+        # compute unpad indices for all possible subsamplings
+        ind_start, ind_end = [], []
+        for j in range(self.J_pad_fr_max_init + 1):
+            if j == j0:  # no actual subsampling done, unpad original
+                ind_start.append(0)
+                ind_end.append(shape_fr)
+            elif j > j0:  # subsampled, adjust indices
+                ind_start.append(0)
+                ind_end.append(math.ceil(ind_end[-1] / 2))
+            else:  # smaller than equiv padded, won't occur
+                ind_start.append(-1)
+                ind_end.append(-1)
+        return j0, pad_left, pad_right, ind_start, ind_end
+
     def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
         """Docs in `TimeFrequencyScatteringBase1D`."""
         # for later
