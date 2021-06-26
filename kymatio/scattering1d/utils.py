@@ -162,27 +162,25 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     phi_f_fn = lambda N: gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
 
     # compute for all cases as psi's time support might exceed phi's
-    kw = dict(criterion_amplitude=criterion_amplitude)
-    N_min_phi = compute_minimum_required_length(phi_f_fn, N_init=N, **kw)
-    phi_halfwidth = compute_temporal_support(
-        phi_f_fn(N_min_phi).reshape(1, -1), **kw)
+    ca = dict(criterion_amplitude=criterion_amplitude)
+    N_min_phi = compute_minimum_required_length(phi_f_fn, N_init=N, **ca)
+    phi_halfwidth = compute_temporal_support(phi_f_fn(N_min_phi)[None], **ca)
 
     if Q1 >= 1:
-        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, N_init=N, **kw)
-        psi1_halfwidth = compute_temporal_support(
-            psi1_f_fn(N_min_psi1).reshape(1, -1), **kw)
+        N_min_psi1 = compute_minimum_required_length(psi1_f_fn, N_init=N, **ca)
+        psi1_halfwidth = compute_temporal_support(psi1_f_fn(N_min_psi1)[None],
+                                                  **ca)
     else:
         psi1_halfwidth = -1  # placeholder
     if Q2 >= 1:
-        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, N_init=N, **kw)
-        psi2_halfwidth = compute_temporal_support(
-            psi2_f_fn(N_min_psi2).reshape(1, -1), **kw)
+        N_min_psi2 = compute_minimum_required_length(psi2_f_fn, N_init=N, **ca)
+        psi2_halfwidth = compute_temporal_support(psi2_f_fn(N_min_psi2)[None],
+                                                  **ca)
     else:
         psi2_halfwidth = -1
 
-    # set min to pad based on each; take a little extra on each to be safe
-    pads = [int(1.1 * hw) for hw in
-            (phi_halfwidth, psi1_halfwidth, psi2_halfwidth)]
+    # set min to pad based on each
+    pads = (phi_halfwidth, psi1_halfwidth, psi2_halfwidth)
 
     # can pad half as much
     if pad_mode == 'zero':

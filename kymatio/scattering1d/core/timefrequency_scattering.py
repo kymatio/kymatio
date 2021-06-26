@@ -816,7 +816,7 @@ def timefrequency_scattering(
             # sum is same for all `n1`, just take last
             k1_plus_k2 = k1 + k2
 
-            if pad_mode == 'reflect':
+            if pad_mode == 'reflect':  # TODO implem for non-dyadic N
                 B.conj_reflections(Y_2_arr, ind_start[k1_plus_k2],
                                    ind_end[k1_plus_k2])
 
@@ -866,6 +866,15 @@ def timefrequency_scattering(
     for pair in out_exclude:
         del out[pair]
 
+    # warn of any zero-sized coefficients
+    for pair in out:
+        for i, c in enumerate(out[pair]):
+            if 0 in c['coef'].shape:
+                import warnings
+                warnings.warn("out[{}][{}].shape == {}".format(
+                    pair, i, c['coef'].shape))
+
+    # concat
     if out_type == 'dict:array':
         for k, v in out.items():
             if out_3D:
@@ -907,10 +916,11 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
         psi1_fs.append(sc_freq.psi1_f_fr_down)
         spins.append(-1)
 
+    subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, (spin, psi1_f) in enumerate(zip(spins, psi1_fs)):
         for n1_fr in range(len(psi1_f)):
-            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
             if (sc_freq.sampling_psi_fr == 'exclude' and
                     subsample_equiv_due_to_pad not in psi1_f[n1_fr]):
                 break
@@ -1102,17 +1112,21 @@ def _right_pad(coeff_list, pad_fr, sc_freq, B):
 
 
 def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
-    # TODO visualize this for every pad len
-    n_coeffs_input = len(coeff_list)
+    n_coeffs_input = len(coeff_list)  # == shape_fr
     zero_row = B.zeros_like(coeff_list[0])
+    padded_len = 2**pad_fr
     # first zero pad, then reflect remainder (including zeros as appropriate)
-    n_zeros = min(2**pad_fr // 2, shape_fr_max - n_coeffs_input)
-    # n_zeros = max(n_zeros_min, (2**pad_fr - len(coeff_list)) // 2)
+    n_zeros = min(#padded_len // 2,                # never need more than this
+                  # TODO ^ with variable length wavelets this becomes relevant
+                  # again; currently it's dropped since further steps are
+                  # required to account for `max_pad_factor_fr`
+                  shape_fr_max - n_coeffs_input,  # nor this
+                  padded_len - n_coeffs_input)    # cannot exceed `padded_len`
     zero_rows = [zero_row] * n_zeros
 
     coeff_list_new = coeff_list + zero_rows
-    right_pad = max((2**pad_fr - n_coeffs_input) // 2, n_zeros)
-    left_pad  = 2**pad_fr - right_pad - n_coeffs_input
+    right_pad = max((padded_len - n_coeffs_input) // 2, n_zeros)
+    left_pad  = padded_len - right_pad - n_coeffs_input
 
     # right pad
     right_rows = zero_rows
@@ -1138,7 +1152,6 @@ def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
             reflect = not reflect
         idx += -1 if reflect else 1
     left_rows = left_rows[::-1]
-    # print(len(coeff_list), len(zero_rows), len(conj_reflected_rows), to_pad)
     return B.concatenate_v2(coeff_list + right_rows + left_rows, axis=1)
 
 

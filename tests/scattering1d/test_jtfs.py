@@ -137,7 +137,8 @@ def test_jtfs_vs_ts():
 
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down
-    assert l2_jtfs / l2_ts > 22, "\nTS: %s\nJTFS: %s" % (l2_ts, l2_jtfs)
+    assert l2_jtfs / l2_ts > 21, ("'nJTFS/TS: %s \nTS: %s\nJTFS: %s"
+                                  )% (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
     # TODO take l2 distance from stride-adjusted coeffs?
     # TODO also compare max per-coeff ratio
@@ -289,23 +290,37 @@ def test_sampling_psi_fr_exclude():
 
 
 def test_max_pad_factor_fr():
-    """Test that low `max_pad_factor_fr` works with high `F`."""
-    N = 2048
+    """Test that low and variable `max_pad_factor_fr` works."""
+    N = 1024
     x = echirp(N)
 
-    for aligned in (True, False):
-        for sampling_filters_fr in ('resample', 'recalibrate'):
-            jtfs = TimeFrequencyScattering1D(
-                shape=N, J=10, Q=20, J_fr=4, Q_fr=1, F=256, average_fr=True,
-                max_pad_factor_fr=1, aligned=aligned, out_3D=True,
-                sampling_filters_fr=sampling_filters_fr, frontend=default_backend)
+    for aligned in (True, False)[1:]:
+        for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
+          for max_pad_factor_fr in (0, 1, [1, 2, 0, 1]):
+            F = 128 if sampling_filters_fr == 'recalibrate' else 16
+            test_params = dict(aligned=aligned,
+                               sampling_filters_fr=sampling_filters_fr,
+                               max_pad_factor_fr=max_pad_factor_fr)
+            test_params_str = '\n'.join(f'{k}={v}' for k, v in
+                                        test_params.items())
 
-            params_str = "aligned={}, sampling_filters_fr={}".format(
-                aligned, sampling_filters_fr)
+            try:
+                jtfs = TimeFrequencyScattering1D(
+                    shape=N, J=9, Q=12, J_fr=4, Q_fr=1, F=F, average_fr=True,
+                    out_3D=True, **test_params, frontend=default_backend)
+            except Exception as e:
+                if not ("same `J_pad_fr`" in str(e) and
+                        sampling_filters_fr == 'recalibrate'):
+                    print("Failed on %s with" % test_params_str)
+                    raise e
+                else:
+                    continue
+            assert_pad_difference(jtfs, test_params_str)
+
             try:
                 _ = jtfs(x)
             except Exception as e:
-                print("Failed on %s with" % params_str)
+                print("Failed on %s with" % test_params_str)
                 raise e
 
 
@@ -431,7 +446,7 @@ def test_backends():
 
         E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        th = 45
+        th = 43
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 
@@ -472,7 +487,7 @@ def test_reconstruction_torch():
     J = 6
     Q = 6
     N = 512
-    n_iters = 20
+    n_iters = 22
     jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
@@ -725,7 +740,7 @@ def test_output():
             elif k == 'F':
                 params[k] = (str(data[k]) if str(data[k]) == 'global' else
                              int(data[k]))
-            elif k == 'out_type':
+            elif k in ('out_type', 'pad_mode', 'pad_mode_fr'):
                 params[k] = str(data[k])
             else:
                 params[k] = int(data[k])
@@ -758,33 +773,59 @@ def test_output():
             ).format(n_coef_out, n_coef_out_stored, params_str)
 
         i_s = 0
+        mean_aes, max_aes = [0], [0]
+        already_printed_test_info, max_mean_info, max_max_info = False, None, None
         for pair in out:
             for i, o in enumerate(out[pair]):
                 # assert equal shapes
                 o = o if params['out_type'] == 'dict:array' else o['coef']
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
-                errmsg = ("out[{0}][{1}].shape != out_stored[{2}].shape\n"
-                          "({3} != {4})\n{5}"
-                          ).format(pair, i, o_stored_key, o.shape, o_stored.shape,
-                                   params_str)
+                errmsg = ("out[{}][{}].shape != out_stored[{}].shape\n"
+                          "({} != {})\n"
+                          ).format(pair, i, o_stored_key, o.shape, o_stored.shape)
+                if not already_printed_test_info:
+                    errmsg += params_str
+
                 if output_test_print_mode and o.shape != o_stored.shape:
                     print(errmsg)
+                    already_printed_test_info = True
                     i_s += 1
                     continue
                 else:
                     assert o.shape == o_stored.shape, errmsg
 
-                # assert equal values
+                # store info for printing
                 adiff = np.abs(o - o_stored)
-                errmsg = ("out[{0}][{1}] != out_stored[{2}]\n"
-                          "(MeanAE={3:.2e}, MaxAE={4:.2e})\n{5}"
-                          ).format(pair, i, o_stored_key, adiff.mean(),
-                                   adiff.max(), params_str)
+                mean_ae, max_ae = adiff.mean(), adiff.max()
+                if mean_ae > max(mean_aes):
+                    max_mean_info = "out[%s][%s]" % (pair, i)
+                if max_ae > max(max_aes):
+                    max_max_info  = "out[%s][%s]" % (pair, i)
+                mean_aes.append(mean_ae)
+                max_aes.append(max_ae)
+
+                # assert equal values
+                errmsg = ("out[{}][{}] != out_stored[{}]\n"
+                          "(MeanAE={:.2e}, MaxAE={:.2e})\n"
+                          ).format(pair, i, o_stored_key,
+                                   mean_aes[-1], max_aes[-1],)
+                if not already_printed_test_info:
+                    errmsg += params_str
+
                 if output_test_print_mode and not np.allclose(o, o_stored):
                     print(errmsg)
+                    already_printed_test_info = True
                 else:
                     assert np.allclose(o, o_stored), errmsg
                 i_s += 1
+
+        if output_test_print_mode:
+            if max_mean_info is not None:
+                print("// max_meanAE = {:.2e} | {}\n".format(max(mean_aes),
+                                                             max_mean_info))
+            if max_max_info is not None:
+                print("// max_maxAE = {:.2e} | {}\n".format(max(max_aes),
+                                                            max_max_info))
 
 ### helper methods ###########################################################
 def energy(x):
