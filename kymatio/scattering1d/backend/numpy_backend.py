@@ -1,5 +1,6 @@
 from ...backend.numpy_backend import NumpyBackend
 from . import agnostic_backend as agnostic
+from scipy.fft import fft, ifft
 
 
 class NumpyBackend1D(NumpyBackend):
@@ -102,25 +103,25 @@ class NumpyBackend1D(NumpyBackend):
 
     @classmethod
     def fft(cls, x, axis=-1):
-        return cls._np.fft.fft(x, axis=axis)
+        return fft(x, axis=axis, workers=-1)
 
     @classmethod
     def rfft(cls, x, axis=-1):
         cls.real_check(x)
 
-        return cls._np.fft.fft(x, axis=axis)
+        return fft(x, axis=axis, workers=-1)
 
     @classmethod
     def irfft(cls, x, axis=-1):
         cls.complex_check(x)
 
-        return cls._fft.ifft(x, axis=axis).real
+        return ifft(x, axis=axis, workers=-1).real
 
     @classmethod
     def ifft(cls, x, axis=-1):
         cls.complex_check(x)
 
-        return cls._fft.ifft(x, axis=axis)
+        return ifft(x, axis=axis, workers=-1)
 
     @classmethod
     def transpose(cls, x):
