@@ -10,4 +10,8 @@ class JaxBackend(NumpyBackend):
 
     name = 'jax'
 
+    @staticmethod
+    def input_checks(x):
+        if x is None:
+            raise TypeError('The input should be not empty.')
 

@@ -11,12 +11,12 @@ class ScatteringJax2D(ScatteringJax, ScatteringNumPy2D, ScatteringBase2D):
     # be loaded
 
 
-    def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend='jax'):
+    def __init__(self, J, shape, L=8, max_order=2, pre_pad=False,
+            backend='jax', out_type='array'):
         
         ScatteringJax.__init__(self)
-        ScatteringBase2D.__init__(self, J, shape, Q, max_order, average,
-                oversampling, vectorize, out_type, backend)
+        ScatteringBase2D.__init__(self, J, shape, L, max_order, pre_pad,
+                backend, out_type)
         ScatteringBase2D._instantiate_backend(self, 'kymatio.scattering2d.backend.')
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
