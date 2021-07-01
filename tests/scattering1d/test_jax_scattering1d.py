@@ -9,10 +9,9 @@ import io
 backends = []
 
 from kymatio.scattering1d.backend.jax_backend import backend
-backends.append(backend)
 
-@pytest.mark.parametrize('backend', backends)
-def test_Scattering1D(backend):
+
+def test_Scattering1D():
     """
     Applies scattering on a stored signal to make sure its output agrees with
     a previously calculated version.
@@ -31,6 +30,10 @@ def test_Scattering1D(backend):
     T = x.shape[-1]
     scattering = Scattering1D(J, T, Q, backend=backend, frontend='jax')
 
+
     Sx = scattering(x) 
 
     assert np.allclose(Sx, Sx0, atol=1e-6, rtol=1e-7)
+
+    assert scattering.backend.name == 'jax'
+    

@@ -1,3 +1,9 @@
+# This collection of tests checks the correspondence between numpy and jax
+# for the functionality relevant to kymatio. In particular the fft routines
+# have different backends, which leads to relatively poor numerical accuracy
+# (rel err around 1e-4). We bound this here and will thus be notified if
+# a change to the library makes it worse.
+
 import pytest
 import numpy as np
 import scipy.fftpack
@@ -23,8 +29,6 @@ def jnp_pad(x, pad_left, pad_right):
   return res
 
 def test_multiplication():
-    # multiplication
-
     real_filter = np.random.rand(1024)
     complex_input = np.random.rand(4, 1, 1024) + 1j * np.random.rand(4, 1, 1024)
 
@@ -36,22 +40,7 @@ def test_multiplication():
     jax_result = complex_input * real_filter
     assert np.allclose(jax_result, numpy_result)
 
-
-def test_jnp_multiplication():
-    # multiplication jnp
-    real_filter = device_put(random.normal(key, (1024,)))
-    complex_input = device_put(random.normal(key, (4, 1, 1024)) + 1j * random.normal(key, (4, 1, 1024)))
-
-    jax_result = complex_input * real_filter
-
-    real_filter = np.asarray(real_filter)
-    complex_input = np.asarray(complex_input)
-
-    numpy_result = complex_input * real_filter
-    assert jnp.allclose(numpy_result, jax_result)
-
 def test_real_ifft():
-    #real ifft
     x = np.random.rand(4, 1, 1024)
 
     numpy_x_ifft = np.real(scipy.fftpack.ifft(x))
@@ -60,7 +49,6 @@ def test_real_ifft():
     assert np.allclose(jax_x_ifft, numpy_x_ifft, atol=1e-6, rtol=1e-7)
 
 def test_jnp_real_ifft():
-    #real ifft jnp
     x = device_put(random.normal(key, (4, 1, 1024)))
 
     jax_x_ifft = jnp.real(jnp.fft.ifft(device_put(x)))
@@ -69,7 +57,6 @@ def test_jnp_real_ifft():
     assert jnp.allclose(numpy_x_ifft, jax_x_ifft, atol=1e-6, rtol=1e-7)
 
 def test_ifft():
-    #ifft
     x = np.random.rand(4, 1, 1024)
 
     numpy_x_ifft = scipy.fftpack.ifft(x)
@@ -78,7 +65,6 @@ def test_ifft():
     assert np.allclose(jax_x_ifft, numpy_x_ifft, atol=1e-6, rtol=1e-7)
 
 def test_jnp_ifft():
-    #ifft jnp
     x = device_put(random.normal(key, (4, 1, 1024)))
 
     jax_x_ifft = jnp.fft.ifft(device_put(x))
@@ -87,7 +73,6 @@ def test_jnp_ifft():
     assert jnp.allclose(numpy_x_ifft, jax_x_ifft, atol=1e-6, rtol=1e-7)
 
 def test_fft():
-    #fft
     real_filter = np.random.rand(1024)
     complex_input = np.random.rand(4, 1, 1024) + 1j * np.random.rand(4, 1, 1024)
 
@@ -100,7 +85,6 @@ def test_fft():
     assert np.allclose(jax_result, numpy_result, atol=1e-4, rtol=1e-4)
 
 def test_jnp_fft():
-    #fft jnp
     real_filter = device_put(random.normal(key, (1024,)))
     complex_input = device_put(random.normal(key, (4, 1, 1024)) + 1j * random.normal(key, (4, 1, 1024)))
 
@@ -114,7 +98,6 @@ def test_jnp_fft():
     assert jnp.allclose(numpy_result, jax_result, atol=1e-3, rtol=1e-4)
 
 def test_rfft():
-    #rfft
     x = np.random.rand(4, 1, 1024)
     numpy_result = np.fft.fft(x)
 
@@ -124,7 +107,6 @@ def test_rfft():
     assert np.allclose(jax_result, numpy_result, atol=1e-4, rtol=1e-4)
 
 def test_jnp_rfft():
-    #rfft jnp
     x = device_put(random.normal(key, (4, 1, 1024)))
     jax_result = jnp.fft.fft(x)
 
@@ -135,7 +117,6 @@ def test_jnp_rfft():
 
 
 def test_absolute():
-    #absolute 
     complex_input = np.random.rand(4, 1, 1024) + 1j * np.random.rand(4, 1, 1024)
     numpy_result = np.absolute(complex_input)
 
@@ -144,7 +125,6 @@ def test_absolute():
     assert np.allclose(jax_result, numpy_result)
 
 def test_jnp_absolute():
-    #absolute jnp
     complex_input = device_put(random.normal(key, (4, 1, 1024)) + 1j * random.normal(key, (4, 1, 1024)))
     jax_result = jnp.absolute(complex_input)
 
@@ -153,7 +133,6 @@ def test_jnp_absolute():
     assert jnp.allclose(numpy_result, jax_result)
 
 def test_real():
-    #real
     complex_input = np.random.rand(4, 1, 1024) + 1j * np.random.rand(4, 1, 1024)
     numpy_result = jnp.real(complex_input)
 
@@ -162,7 +141,6 @@ def test_real():
     assert np.allclose(jax_result, numpy_result)
 
 def test_jnp_real():
-    #real jnp
     complex_input = device_put(random.normal(key, (4, 1, 1024)) + 1j * random.normal(key, (4, 1, 1024)))
     jax_result = jnp.real(complex_input)
 
@@ -171,7 +149,6 @@ def test_jnp_real():
     assert jnp.allclose(numpy_result, jax_result)
 
 def test_subsample_fourier():
-    #subsample fourier
     x = np.random.rand(4, 1, 1024)
     x_jax = device_put(jnp.asarray(x))
 
@@ -183,7 +160,6 @@ def test_subsample_fourier():
 
 
 def test_pad_unpad():       
-    #pad
     x = np.random.rand(4, 1, 512)
     numpy_result = np_pad(x, 256, 256)
 
@@ -197,7 +173,6 @@ def test_pad_unpad():
     assert np.allclose(jax_result, numpy_result)
 
 def test_jnp_pad_unpad():       
-    #pad jnp
     x = device_put(random.normal(key, (4, 1, 512)))
     jax_result = jnp_pad(x, 256, 256)
 
@@ -210,7 +185,6 @@ def test_jnp_pad_unpad():
     assert jnp.allclose(numpy_result, jax_result)
 
 def test_stack():       
-    #stack
     array_1 = np.random.rand(4, 1, 512)
     array_2 = np.random.rand(4, 1, 512)
     numpy_result = np.stack([array_1, array_2], axis=-2)
@@ -222,7 +196,6 @@ def test_stack():
     assert np.allclose(jax_result, numpy_result)
 
 def test_jnp_stack():       
-    #stack jnp 
     array_1 = device_put(random.normal(key, (4, 1, 512)))
     array_2 = device_put(random.normal(key, (4, 1, 512)))
     jax_result = jnp.stack([array_1, array_2], axis=-2)
