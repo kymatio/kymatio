@@ -20,8 +20,7 @@ class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringBase3D):
         ScatteringBase3D.create_filters(self)
 
     def scattering(self, input_array):
-        if not type(input_array) is np.ndarray:
-            raise TypeError('The input should be a NumPy array.')
+        self.backend.input_checks(input)
 
         if input_array.ndim < 3:
             raise RuntimeError('Input tensor must have at least three '
