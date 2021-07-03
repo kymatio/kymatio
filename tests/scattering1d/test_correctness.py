@@ -4,7 +4,7 @@ import scipy.signal
 from utils import cant_import
 from kymatio import Scattering1D
 from kymatio.scattering1d.backend.agnostic_backend import pad, stride_axis
-from kymatio.toolkit import l2, echirp
+from kymatio.toolkit import l2
 
 # set True to execute all test functions without pytest
 run_without_pytest = 1
@@ -52,36 +52,6 @@ def test_T():
     assert l2_00_xxs < th0, "{} > {}".format(l2_00_xxs, th0)
     assert l2_11_xxs > th1, "{} < {}".format(l2_11_xxs, th1)
 
-
-def test_repad():
-    N = 2048
-    J = int(np.log2(N))
-    Q = 8
-    T = 128
-    np.random.seed(2)
-    x = np.random.randn(N)
-
-    kw = dict(shape=N, J=J, Q=Q, T=T, average=True, out_type="array",
-              pad_mode="reflect", max_pad_factor=None, frontend=default_frontend)
-    ts0 = Scattering1D(shorten=False, **kw)
-    ts1 = Scattering1D(shorten=True,  **kw)
-
-    out0 = ts0(x)
-    out1 = ts1(x)
-
-    ae = np.abs(out0 - out1)
-    def rel_ae(order):
-        i = (o == order)
-        return ae[i] / ((np.abs(out0[i]) + np.abs(out1[i])) / 2)
-
-    o = ts0.meta()['order']
-    assert np.allclose(out0, out1), (
-        "\nMaxAE   MeanAE  | order\n"
-        "{:.1e} {:.1e} | 0\n"
-        "{:.1e} {:.1e} | 1\n"
-        "{:.1e} {:.1e} | 2\n").format(rel_ae(0).max(), rel_ae(0).mean(),
-                                      rel_ae(1).max(), rel_ae(1).mean(),
-                                      rel_ae(2).max(), rel_ae(2).mean())
 
 #### Primitives tests ########################################################
 def _test_padding(backend_name):
@@ -219,13 +189,12 @@ def _get_kymatio_backend(backend_name):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_T()
-        test_repad()
-        # test_pad_numpy()
-        # test_pad_torch()
-        # test_pad_tensorflow()
-        # test_subsample_fourier_numpy()
-        # test_subsample_fourier_torch()
-        # test_subsample_fourier_tensorflow()
+        test_T()
+        test_pad_numpy()
+        test_pad_torch()
+        test_pad_tensorflow()
+        test_subsample_fourier_numpy()
+        test_subsample_fourier_torch()
+        test_subsample_fourier_tensorflow()
     else:
         pytest.main([__file__, "-s"])
