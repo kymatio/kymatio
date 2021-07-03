@@ -1,5 +1,4 @@
 from ...toolkit import _infer_backend
-import numpy as np
 
 
 def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
@@ -25,9 +24,6 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
     out : type(x)
         Padded tensor.
     """
-    if out is not None:
-        return pad_fast(x, pad_left, pad_right, out)
-
     backend, backend_name = _infer_backend(x, get_name=True)
     kw = {'dtype': x.dtype}
     if backend_name == 'torch':
@@ -66,46 +62,6 @@ def _flip(x, backend, axis, backend_name='numpy'):
     elif backend_name == 'torch':
         axis = axis if axis >= 0 else (x.ndim + axis)
         return backend.flip(x, (axis,))
-
-
-def pad_fast(x, pad_left, pad_right, out):
-    N = x.shape[-1]
-    out_len = out.shape[-1]
-
-    # right
-    xflip = x[::-1]
-    right_idx = pad_left + N
-    # steps = (out_len - right_idx) // N
-    steps = np.ceil(pad_right / N)
-    step = 2
-    # print(steps, pad_right, N, right_idx, len(out))
-    while step < steps + 2:
-        i = step - 2
-        start = right_idx + i*N
-        # realized_len = len(out[start:start + N])
-        realized_len = out_len - start
-        # print(step, i, start, start + N, realized_len)
-        if step % 2 == 0:
-            out[..., start:start + N] = xflip[..., :realized_len]
-        else:
-            out[..., start:start + N] = x[..., :realized_len]
-        step += 1
-
-    # left
-    xflip = x[::-1]
-    left_idx = pad_left
-    steps = np.ceil(pad_left / N)
-    step = 2
-    while step < steps + 2:
-        end = left_idx
-        i = step - 2
-        realized_len = end - N  # target shortest quantity
-        if step % 2 == 0:
-            out[..., end - N:end] = xflip[..., -realized_len:]
-        else:
-            out[..., end - N:end] = x[..., -realized_len:]
-        step += 1
-    return out
 
 
 def _pad_reflect(x, xflip, out, pad_left, pad_right, N, axis):
@@ -180,20 +136,6 @@ def conj_reflections(backend, x, ind_start, ind_end):
         start = max(end - N, 0)
         reflected = not reflected
 
-
-def _idx(a, b):
-    return index_axis(a, b, -1, 1)
-
-def pad2(x, out):
-    N = len(x)
-    ix0, ix1, ix2, ix3 = _idx(0, N), _idx(N, 2*N), _idx(2*N, 3*N), _idx(3*N, 4*N)
-    ix4 = _idx(4*N, None)
-    xflip = x[flip_axis(-1, 1)]
-    out[ix0] = x
-    out[ix1] = xflip
-    out[ix2] = x
-    out[ix3] = xflip
-    out[ix4] = x
 
 ## helpers ###################################################################
 def index_axis(i0, i1, axis, ndim, step=1):

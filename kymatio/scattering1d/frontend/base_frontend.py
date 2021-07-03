@@ -443,8 +443,7 @@ class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, sampling_filters_fr='resample',
                  max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 out_3D=False, out_type='array', out_exclude=None,
-                 shorten_fr=False):
+                 out_3D=False, out_type='array', out_exclude=None):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
@@ -457,7 +456,6 @@ class TimeFrequencyScatteringBase1D():
         self.out_3D = out_3D
         self.out_type = out_type
         self.out_exclude = out_exclude
-        self.shorten_fr = shorten_fr
 
     def build(self):
         """Check args and instantiate `_FrequencyScatteringBase` object
@@ -497,7 +495,7 @@ class TimeFrequencyScatteringBase1D():
             self.average_fr, self.aligned, self.oversampling_fr,
             self.sampling_filters_fr, self.out_type, self.out_3D,
             self.max_pad_factor_fr, self.pad_mode_fr, self._n_psi1_f,
-            self.shorten_fr, self.backend)
+            self.backend)
         self.finish_creating_filters()
 
         # detach __init__ args, instead access `sc_freq`'s via `__getattr__`

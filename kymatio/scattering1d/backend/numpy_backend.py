@@ -68,16 +68,10 @@ class NumpyBackend1D(NumpyBackend):
         if pad_mode == 'zero':
             pad_mode = 'constant'
 
-        if axis == -1:
-            paddings = ((0, 0),) * len(x.shape[:-1])
-            paddings += (pad_left, pad_right),
-        elif axis == -2:
-            paddings = ((0, 0),) * (x.ndim - 2)
-            paddings += (pad_left, pad_right),
-            paddings += (0, 0),
+        paddings = ((0, 0),) * len(x.shape[:-1])
+        paddings += (pad_left, pad_right),
 
         output = cls._np.pad(x, paddings, mode=pad_mode)
-
         return output
 
     @staticmethod
