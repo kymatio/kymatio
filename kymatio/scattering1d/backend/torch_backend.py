@@ -6,7 +6,7 @@ from . import agnostic_backend as agnostic
 
 class TorchBackend1D(TorchBackend):
     @classmethod
-    def subsample_fourier(cls, x, k, axis=-1):
+    def subsample_fourier(cls, x, k, out=None,axis=-1):
         """Subsampling in the Fourier domain
 
         Subsampling in the temporal domain amounts to periodization in the Fourier
@@ -40,6 +40,10 @@ class TorchBackend1D(TorchBackend):
         s.pop(axis)
         s.insert(axis, re[1])
         s.insert(axis, re[0])
+
+        if out is not None:
+            torch.mean(x.view(s), dim=axis, out=out)
+            return out
         s.append(2)  # view_as_real
 
         x = torch.view_as_real(x)

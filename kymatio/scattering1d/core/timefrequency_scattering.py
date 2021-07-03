@@ -811,6 +811,7 @@ def timefrequency_scattering(
                 Y_2_c = B.ifft(Y_2_hat)
                 Y_2_list.append(Y_2_c)
 
+            # TODO if log2_T < J and max padded, can partly unpad sooner
             Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             # sum is same for all `n1`, just take last
@@ -819,15 +820,19 @@ def timefrequency_scattering(
             if pad_mode == 'reflect':  # TODO implem for non-dyadic N
                 B.conj_reflections(Y_2_arr, ind_start[k1_plus_k2],
                                    ind_end[k1_plus_k2])
+            pad_fr_short = sc_freq.shape_fr_scale[n2] + 1
+            Y_2_arr_short = Y_2_arr[:, :2**pad_fr_short]
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
+            Y_2_hat_short = B.fft(Y_2_arr_short, axis=-2)
 
             # Transform over frequency + low-pass, for both spins
             # `* psi_f` part of `U1 * (psi_t * psi_f)`
             if not skip_spinned:
-                _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2,
-                                      commons, out_S_2['psi_t * psi_f'])
+                _frequency_scattering(Y_2_hat, Y_2_hat_short, j2, n2, pad_fr,
+                                      k1_plus_k2, commons,
+                                      out_S_2['psi_t * psi_f'])
 
             # Low-pass over frequency
             # `* phi_f` part of `U1 * (psi_t * phi_f)`
@@ -849,7 +854,7 @@ def timefrequency_scattering(
 
         # Transform over frequency + low-pass
         # `* psi_f` part of `U1 * (phi_t * psi_f)`
-        _frequency_scattering(Y_2_hat, j2, -1, pad_fr, k1_plus_k2, commons,
+        _frequency_scattering(Y_2_hat, None, j2, -1, pad_fr, k1_plus_k2, commons,
                               out_S_2['phi_t * psi_f'], spin_down=False)
 
     ##########################################################################
@@ -903,10 +908,32 @@ def timefrequency_scattering(
     return out
 
 
-def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
-                          spin_down=True):
+def _frequency_scattering(Y_2_hat, Y_2_hat_short, j2, n2, pad_fr, k1_plus_k2,
+                          commons, out_S_2, spin_down=True):
     (B, sc_freq, out_exclude, aligned, oversampling_fr, average_fr, out_3D, *_
      ) = commons
+
+    # short padding ##########################################################
+    import math
+    N = sc_freq.shape_fr[n2]
+    N_scale = math.ceil(math.log2(N))
+    J_pad_short = N_scale + 1
+    pad_right_short = (2**J_pad_short - N) // 2
+    pad_left_short = 2**J_pad_short - N - pad_right_short
+
+    # compute repad params ###################################################
+    ind_start_fr_re = {0: 0}
+    ind_end_fr_re = {0: 2**J_pad_short - pad_right_short - pad_left_short}
+    # print('n2:', n2)
+    for k, sub in enumerate(sc_freq.ind_start_fr[n2]):
+        if k == 0:
+            continue
+        ind_start_fr_re[k] = 0
+        ind_end_fr_re[k] = math.ceil(ind_end_fr_re[k - 1] / 2)
+        # print(k, ind_end_fr_re[k])
+
+    original_padded_len = 2**pad_fr
+    ##########################################################################'
 
     psi1_fs, spins = [], []
     if 'psi_t * psi_f_up' not in out_exclude:
@@ -925,6 +952,10 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
                     subsample_equiv_due_to_pad not in psi1_f[n1_fr]):
                 break
 
+            short = psi1_f[n1_fr]['short'][subsample_equiv_due_to_pad]
+            if short and Y_2_hat_short is None:
+                continue
+
             # compute subsampling
             j1_fr = psi1_f[n1_fr]['j'][subsample_equiv_due_to_pad]
             total_conv_stride_over_U1 = _get_stride(
@@ -938,12 +969,23 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             n1_fr_subsample = max(sub_adj - oversampling_fr, 0)
 
             # Wavelet transform over frequency
-            Y_fr_c = B.cdgmm(Y_2_hat, psi1_f[n1_fr][subsample_equiv_due_to_pad])
+            to_conv = Y_2_hat_short if short else Y_2_hat
+            try:
+                Y_fr_c = B.cdgmm(to_conv, psi1_f[n1_fr][subsample_equiv_due_to_pad])
+            except:
+                1/0
             Y_fr_hat = B.subsample_fourier(Y_fr_c, 2**n1_fr_subsample, axis=-2)
             Y_fr_c = B.ifft(Y_fr_hat, axis=-2)
 
-            # Modulus
-            U_2_m = B.modulus(Y_fr_c)
+            if short:
+                # print()
+                # print(n1_fr, n1_fr_subsample, Y_fr_c.shape, short)
+                commons2 = ind_start_fr_re, ind_end_fr_re, original_padded_len
+                U_2_m = repad_and_modulus(Y_fr_c, None, n1_fr_subsample,
+                                          commons2, B)
+            else:
+                # Modulus
+                U_2_m = B.modulus(Y_fr_c)
 
             # Convolve by Phi = phi_t * phi_f, unpad
             S_2, stride = _joint_lowpass(
@@ -954,6 +996,26 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, commons, out_S_2,
             out_S_2[s1_fr].append(
                 {'coef': S_2, 'j': (j2, j1_fr), 'n': (n2, n1_fr), 's': (spin,),
                  'stride': stride})
+
+
+def repad_and_modulus(U_2_c, U_0_m0, k1, commons, B):
+    ind_start_re, ind_end_re, original_padded_len = commons
+
+    U_2_c_u_ups = B.unpad(U_2_c, ind_start_re[k1], ind_end_re[k1], axis=-2)
+    U_2_m_u_ups = B.modulus(U_2_c_u_ups)
+
+    padded_len = original_padded_len // 2**k1
+    to_pad = padded_len - U_2_m_u_ups.shape[-2]
+    repad_left = 0
+    repad_right = to_pad
+
+    # TODO correct?
+    # print(U_2_m_u_ups.shape, repad_right, padded_len, k1)
+    U_2_m_re_full = B.pad(U_2_m_u_ups, repad_left, repad_right, out=U_0_m0,
+                          pad_mode='reflect', axis=-2)
+    # print(U_2_m_re_full.shape)
+    U_2_m = U_2_m_re_full
+    return U_2_m
 
 
 def _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2, commons,

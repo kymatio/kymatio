@@ -824,8 +824,8 @@ def test_output():
                 print("// max_meanAE = {:.2e} | {}\n".format(max(mean_aes),
                                                              max_mean_info))
             if max_max_info is not None:
-                print("// max_maxAE = {:.2e} | {}\n".format(max(max_aes),
-                                                            max_max_info))
+                print("// max_maxAE  = {:.2e} | {}\n".format(max(max_aes),
+                                                             max_max_info))
 
 ### helper methods ###########################################################
 def energy(x):
@@ -860,20 +860,20 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
-        test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_up_vs_down()
-        test_sampling_psi_fr_exclude()
-        test_no_second_order_filters()
-        test_max_pad_factor_fr()
-        test_out_exclude()
-        test_global_averaging()
-        test_backends()
-        test_differentiability_torch()
-        test_reconstruction_torch()
-        test_meta()
+        # test_alignment()
+        # test_shapes()
+        # test_jtfs_vs_ts()
+        # test_freq_tp_invar()
+        # test_up_vs_down()
+        # test_sampling_psi_fr_exclude()
+        # test_no_second_order_filters()
+        # test_max_pad_factor_fr()
+        # test_out_exclude()
+        # test_global_averaging()
+        # test_backends()
+        # test_differentiability_torch()
+        # test_reconstruction_torch()
+        # test_meta()
         test_output()
     else:
         pytest.main([__file__, "-s"])

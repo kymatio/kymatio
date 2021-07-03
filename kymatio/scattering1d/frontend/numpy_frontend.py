@@ -9,13 +9,14 @@ from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, out_type='array', pad_mode='reflect',
-            max_pad_factor=2, backend='numpy'):
+            max_pad_factor=2, shorten=False, backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
-                oversampling, out_type, pad_mode, max_pad_factor, backend)
+                oversampling, out_type, pad_mode, max_pad_factor, shorten, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
+        ScatteringBase1D.adjust_filters(self)
 
     def scattering(self, x):
         # basic checking, should be improved
@@ -77,7 +78,8 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
                  sampling_filters_fr='resample', out_type="array", out_3D=False,
                  out_exclude=None, pad_mode='reflect',
                  pad_mode_fr='conj-reflect-zero', max_pad_factor=2,
-                 max_pad_factor_fr=None, backend="numpy"):
+                 max_pad_factor_fr=None, shorten=False, shorten_fr=False,
+                 backend="numpy"):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         # Second-order scattering object for the time variable
@@ -85,12 +87,12 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
         scattering_out_type = out_type.lstrip('dict:')
         ScatteringNumPy1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            scattering_out_type, pad_mode, max_pad_factor, backend)
+            scattering_out_type, pad_mode, max_pad_factor, shorten, backend)
 
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
             sampling_filters_fr, max_pad_factor_fr, pad_mode_fr,
-            out_3D, out_type, out_exclude)
+            out_3D, out_type, out_exclude, shorten_fr)
         TimeFrequencyScatteringBase1D.build(self)
 
     def scattering(self, x):

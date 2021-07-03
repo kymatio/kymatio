@@ -652,7 +652,7 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
 def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
          xlims=None, ylims=None, vlines=None, hlines=None,
          xlabel=None, ylabel=None, xticks=None, yticks=None, ticks=True,
-         ax=None, fig=None, **kw):
+         ax=None, fig=None, squeeze=True, **kw):
     """
     norm: color norm, tuple of (vmin, vmax)
     abs: take abs(data) before plotting
@@ -667,10 +667,13 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
     if x is None and y is None:
         raise Exception("`x` and `y` cannot both be None")
     elif x is None:
+        y = y if not squeeze else y.squeeze()
         x = np.arange(len(y))
     elif y is None:
+        x = x if not squeeze else x.squeeze()
         y = x
         x = np.arange(len(x))
+    x, y = (x, y) if not squeeze else (x.squeeze(), y.squeeze())
 
     if complex:
         ax.plot(x, y.real, color='tab:blue', **kw)

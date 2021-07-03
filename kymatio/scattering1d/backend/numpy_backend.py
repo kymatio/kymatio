@@ -5,7 +5,7 @@ from scipy.fft import fft, ifft
 
 class NumpyBackend1D(NumpyBackend):
     @classmethod
-    def subsample_fourier(cls, x, k, axis=-1):
+    def subsample_fourier(cls, x, k, out=None, axis=-1):
         """Subsampling in the Fourier domain
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
@@ -28,6 +28,8 @@ class NumpyBackend1D(NumpyBackend):
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
+        if k == 0:
+            return x
         cls.complex_check(x)
 
         axis = axis if axis >= 0 else x.ndim + axis  # ensure positive
@@ -38,12 +40,14 @@ class NumpyBackend1D(NumpyBackend):
         s.insert(axis, re[1])
         s.insert(axis, re[0])
 
-        res = cls._np.reshape(x, s).mean(axis=axis)
-
-        return res
+        if out is None:
+            res = cls._np.reshape(x, s).mean(axis=axis)
+            return res
+        cls._np.reshape(x, s).mean(axis=axis, out=out)
+        return out
 
     @classmethod
-    def pad(cls, x, pad_left, pad_right, pad_mode='reflect'):
+    def pad(cls, x, pad_left, pad_right, out=None, pad_mode='reflect', axis=-1):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -66,9 +70,16 @@ class NumpyBackend1D(NumpyBackend):
         """
         if pad_mode == 'zero':
             pad_mode = 'constant'
+        if out is not None:
+            return agnostic.pad(x, pad_left, pad_right, out=out)
 
-        paddings = ((0, 0),) * len(x.shape[:-1])
-        paddings += (pad_left, pad_right),
+        if axis == -1:
+            paddings = ((0, 0),) * len(x.shape[:-1])
+            paddings += (pad_left, pad_right),
+        elif axis == -2:
+            paddings = ((0, 0),) * (x.ndim - 2)
+            paddings += (pad_left, pad_right),
+            paddings += (0, 0),
 
         output = cls._np.pad(x, paddings, mode=pad_mode)
 

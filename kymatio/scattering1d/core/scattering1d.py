@@ -59,14 +59,10 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         name of padding to use.
 
     """
-    subsample_fourier = backend.subsample_fourier
-    modulus = backend.modulus
-    rfft = backend.rfft
-    ifft = backend.ifft
-    irfft = backend.irfft
-    cdgmm = backend.cdgmm
-    concatenate = backend.concatenate
-
+    (subsample_fourier, modulus, fft, rfft, ifft, irfft, cdgmm, concatenate,
+     zeros_like) = [getattr(backend, name) for name in
+                    ('subsample_fourier', 'modulus', 'fft', 'rfft', 'ifft',
+                     'irfft', 'cdgmm', 'concatenate', 'zeros_like')]
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
@@ -76,15 +72,57 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
+
+    # do short padding #######################################################
+    import math
+    N = x.shape[-1]
+    N_scale = math.ceil(math.log2(N))
+    J_pad_short = N_scale + 1
+    pad_right_short = (2**J_pad_short - N) // 2
+    pad_left_short = 2**J_pad_short - N - pad_right_short
+
+    U_0_short = pad(x, pad_left=pad_left_short, pad_right=pad_right_short,
+                    pad_mode=pad_mode)
+
+    # compute repad params ###################################################
+    ind_start_re = {0: pad_left_short}
+    ind_end_re = {0: 2**J_pad_short - pad_right_short}
+    for k in ind_start:
+        if k == 0:
+            continue
+        ind_start_re[k] = math.ceil(ind_start_re[k - 1] / 2)
+        ind_end_re[k] = math.ceil(ind_end_re[k - 1] / 2)
+
+    original_padded_len = U_0.shape[-1]
+    offset_correction = 0#1
+    commons = (N, offset_correction, ind_start_re, ind_end_re, J_pad_short,
+               original_padded_len)
+    ##########################################################################
+
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
+    U_0_short_hat = rfft(U_0_short)
 
     # Get S0
     k0 = max(log2_T - oversampling, 0)
 
+    arrs_c, arrs_r = {}, {}
+    shape = U_0_hat.shape[:-1]
+    padded_len = U_0_hat.shape[-1]
+
+    prealloc = 0
+    for k in range(J + 1):
+        if prealloc:
+            arrs_c[k] = zeros_like(U_0_hat, shape=shape + (padded_len // 2**k,))
+            arrs_r[k] = zeros_like(U_0, shape=shape + (padded_len // 2**k,))
+        else:
+            arrs_c[k] = None
+            arrs_r[k] = None
+    U_1_c0 = zeros_like(U_0_hat) if prealloc else None
+
     if average:
-        S_0_c = cdgmm(U_0_hat, phi[0])
-        S_0_hat = subsample_fourier(S_0_c, 2**k0)
+        S_0_c = cdgmm(U_0_hat, phi[0], out=arrs_c[0])
+        S_0_hat = subsample_fourier(S_0_c, 2**k0, out=arrs_c[k0])
         S_0_r = irfft(S_0_hat)
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
@@ -94,19 +132,37 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
                     'n': ()})
 
     # First order:
+    i = 0
+
+    # U_0_m0 = zeros_like(U_0)
+
+    # print(U_0_m0.shape, U_0_m0.dtype)
+
+    # U_1_c0 = np.zeros(U_0_hat.shape, dtype=U_0_hat.dtype)
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
-
         k1 = max(min(j1, log2_T) - oversampling, 0)
+        short = 0#psi1[n1]['short']
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
-        U_1_c = cdgmm(U_0_hat, psi1[n1][0])
-        U_1_hat = subsample_fourier(U_1_c, 2**k1)
+        if short:
+            U_1_c = cdgmm(U_0_short_hat, psi1[n1][0])
+        else:
+            U_1_c = cdgmm(U_0_hat, psi1[n1][0], out=U_1_c0)
+            # U_1_c = cdgmm(U_0_hat, psi1[n1][0])
+
+        # K1 = 0 if (short and (k1 <= 1 or offset_correction)) else k1
+        K1 = k1
+        U_1_hat = subsample_fourier(U_1_c, 2**K1, out=arrs_c[K1])
         U_1_c = ifft(U_1_hat)
 
-        # Take the modulus
-        U_1_m = modulus(U_1_c)
+        if 0:#short:
+            # repad + modulus
+            1#U_1_m = repad_and_modulus(U_1_c, U_0_m0, k1, K1, commons, backend)
+        else:
+            # Take the modulus
+            U_1_m = modulus(U_1_c, out=arrs_r[K1])
 
         if average or max_order > 1:
             U_1_hat = rfft(U_1_m)
@@ -114,8 +170,8 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         if average:
             # Convolve with phi_J
             k1_J = max(log2_T - k1 - oversampling, 0)
-            S_1_c = cdgmm(U_1_hat, phi[k1])
-            S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
+            S_1_c = cdgmm(U_1_hat, phi[k1], out=arrs_c[K1])
+            S_1_hat = subsample_fourier(S_1_c, 2**k1_J, out=arrs_c[K1 + k1_J])
             S_1_r = irfft(S_1_hat)
 
             S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
@@ -132,17 +188,18 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
                 j2 = psi2[n2]['j']
 
                 if j2 > j1:
+                    i += 1
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
 
                     # convolution + downsampling
                     k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
 
-                    U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
-                    U_2_hat = subsample_fourier(U_2_c, 2**k2)
+                    U_2_c = cdgmm(U_1_hat, psi2[n2][k1], out=arrs_c[k1])
+                    U_2_hat = subsample_fourier(U_2_c, 2**k2, out=arrs_c[k1+k2])
                     # take the modulus
                     U_2_c = ifft(U_2_hat)
 
-                    U_2_m = modulus(U_2_c)
+                    U_2_m = modulus(U_2_c, out=arrs_r[k1+k2])
 
                     if average:
                         U_2_hat = rfft(U_2_m)
@@ -150,8 +207,9 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
                         # Convolve with phi_J
                         k2_J = max(log2_T - k2 - k1 - oversampling, 0)
 
-                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
-                        S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
+                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2], out=arrs_c[k1+k2])
+                        S_2_hat = subsample_fourier(S_2_c, 2**k2_J,
+                                                    out=arrs_c[k1+k2+k2_J])
                         S_2_r = irfft(S_2_hat)
 
                         S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_J], ind_end[k1 + k2 + k2_J])
@@ -171,5 +229,42 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
         out_S = concatenate([x['coef'] for x in out_S])
 
     return out_S
+
+
+def repad_and_modulus(U_1_c, U_0_m0, k1, K1, commons, B):
+    (N, offset_correction, ind_start_re, ind_end_re, J_pad_short,
+     original_padded_len) = commons
+
+    if offset_correction and K1 != 0:
+        # U_1_c_u = B.unpad(U_1_c, ind_start_re[k1], ind_end_re[k1])
+        U_1_c_u = U_1_c
+        U_1_c_u_f = B.fft(U_1_c_u) * 2**K1
+
+        U_len = U_1_c_u_f.shape[-1]
+        U_1_c_u_f_ups = B.zeros_like(U_1_c, shape=(1, 1, 2*N))
+        U_1_c_u_f_ups[:,:,:U_len//2+1]    = U_1_c_u_f[:,:,:U_len//2+1]
+        U_1_c_u_f_ups[:,:,-(U_len//2-1):] = U_1_c_u_f[:,:,-(U_len//2-1):]
+
+        U_1_c_u_ups = B.ifft(U_1_c_u_f_ups)
+        U_1_c_u_ups = B.unpad(U_1_c_u_ups, ind_start_re[0], ind_end_re[0])
+    else:
+        U_1_c_u_ups = B.unpad(U_1_c, ind_start_re[k1], ind_end_re[k1])
+    U_1_m_u_ups = B.modulus(U_1_c_u_ups)
+
+    padded_len = (original_padded_len if offset_correction else
+                  original_padded_len // 2**k1)
+    to_pad = padded_len - U_1_m_u_ups.shape[-1]
+    repad_right = to_pad // 2
+    repad_left  = to_pad - repad_right
+
+    U_1_m_re_full = B.pad(U_1_m_u_ups, repad_left, repad_right, out=U_0_m0,
+                          pad_mode='reflect')
+    if offset_correction:
+        U_1_m_re = U_1_m_re_full[:, :, ::2**k1]
+    else:
+        U_1_m_re = U_1_m_re_full
+    U_1_m = U_1_m_re
+    return U_1_m
+
 
 __all__ = ['scattering1d']

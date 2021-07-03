@@ -791,7 +791,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     if max_subsampling is None:
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
-        log2_T = math.floor(math.log2(T))
+        log2_T = math.floor(math.log2(T))  # TODO floor??
         max_sub_phi = min(max(max_subsampling_after_psi1,
                               max_subsampling_after_psi2), log2_T)
     else:
@@ -806,14 +806,21 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
             phi_f[0], nperiods=factor_subsampling)
 
     # Embed the meta information within the filters
+    ca = dict(criterion_amplitude=criterion_amplitude)
     for (n1, j1) in enumerate(j1s):
         psi1_f[n1]['xi'] = xi1[n1]
         psi1_f[n1]['sigma'] = sigma1[n1]
         psi1_f[n1]['j'] = j1
+        psi1_f[n1]['width'] = {0: 2*compute_temporal_support(psi1_f[n1][0][None],
+                                                             **ca)}
+
     for (n2, j2) in enumerate(j2s):
         psi2_f[n2]['xi'] = xi2[n2]
         psi2_f[n2]['sigma'] = sigma2[n2]
         psi2_f[n2]['j'] = j2
+        psi2_f[n2]['width'] = {k: 2*compute_temporal_support(p[None], **ca)
+                               for k, p in psi2_f[n2].items()
+                               if isinstance(k, int)}
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
     phi_f['j'] = log2_T
@@ -829,6 +836,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 
 def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                    shape_fr_scale_min, max_pad_factor_fr, unrestricted_pad_fr,
+                   max_subsample_equiv_before_phi_fr,
                    subsample_equiv_relative_to_max_pad_init,
                    average_fr_global,
                    sampling_psi_fr='resample',  sampling_phi_fr='resample',
@@ -1015,6 +1023,12 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 j0_max = j0_prev
                 break
 
+            # j0 no longer strictly tied to shape_fr for logics that check it
+            # (that raise errors); account for this
+            j0_at_limit = bool(scale_diff >= max_subsample_equiv_before_phi_fr)
+            must_be_unique = bool(pad_contractive_phi and same_pad_limit and
+                                  not j0_at_limit)
+
             if j0 not in j0_to_scale_diff:
                 j0_to_scale_diff[j0] = scale_diff
             # ensure every `scale_diff` maps to one `j0`
@@ -1028,7 +1042,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                                  "`scale_diff` ({})\n{}").format(
                                      scale_diff, j0_to_scale_diff))
                 if sampling_psi_fr == 'exclude':
-                    if pad_contractive_phi and same_pad_limit:
+                    if must_be_unique:
                         # should not occur^1
                         # ^1: `min_to_pad` should halve with each
                         # lesser `shape_fr_scale`, guaranteeing unique padding
@@ -1041,7 +1055,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                         j0_prev = j0
                         continue
                 elif sampling_psi_fr == 'recalibrate':
-                    if pad_contractive_phi and same_pad_limit:
+                    if must_be_unique:
                         # should not occur^1 with `same_pad_limit`;
                         # not allowed either way per requiring triple-indexing
                         raise err
@@ -1165,28 +1179,29 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
     # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
     phi_f_fr[0] = [gauss_1d(N, sigma_low, P_max=P_max, eps=eps)[:, None]]
 
-    def compute_all_subsamplings(phi_f_fr, j_fr):
-        for j_fr_sub in range(1, 1 + log2_F):
-            phi_f_fr[j_fr].append(periodize_filter_fourier(
-                phi_f_fr[j_fr][0], nperiods=2**j_fr_sub))
+    def compute_all_subsamplings(phi_f_fr, j0):
+        for j0_sub in range(1, 1 + log2_F):
+            phi_f_fr[j0].append(periodize_filter_fourier(
+                phi_f_fr[j0][0], nperiods=2**j0_sub))
 
-    compute_all_subsamplings(phi_f_fr, j_fr=0)
+    compute_all_subsamplings(phi_f_fr, j0=0)
 
     # lowpass filters at all possible input lengths
     min_possible_pad_fr = shape_fr_scale_min
     max_possible_j0 = J_pad_fr_max_init - min_possible_pad_fr
-    for j_fr in range(1, 1 + max_possible_j0):
-        factor = 2**j_fr
-        J_pad_fr = J_pad_fr_max_init - j_fr  # == N // factor
-        if J_pad_fr < log2_F:
-            # Forbidden:
-            #   - 'resample': length is below target scale
-            #   - 'recalibrate': subsampling by more than log2_F
-            # Overrides `max_pad_factor_fr`.
+    for j0 in range(1, 1 + max_possible_j0):
+        factor = 2**j0
+        J_pad_fr = J_pad_fr_max_init - j0  # == N // factor
+        if sampling_phi_fr == 'resample' and J_pad_fr < log2_F:
+            # length is below target scale
             break
+        elif sampling_phi_fr == 'recalibrate' and j0 > log2_F:
+            # subsampling by more than log2_F
+            break
+        # ^ override `max_pad_factor_fr`
 
         if sampling_phi_fr == 'resample':
-            prev_phi = phi_f_fr[j_fr - 1][0].reshape(1, -1)
+            prev_phi = phi_f_fr[j0 - 1][0].reshape(1, -1)
             prev_phi_halfwidth = compute_temporal_support(
                 prev_phi, criterion_amplitude=criterion_amplitude)
 
@@ -1199,44 +1214,44 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                 # still be made to exclude unnecessarily short phi.
                 break
 
-            phi_f_fr[j_fr] = [gauss_1d(N // factor, sigma_low, P_max=P_max,
+            phi_f_fr[j0] = [gauss_1d(N // factor, sigma_low, P_max=P_max,
                                        eps=eps)[:, None]]
             # dedicate separate filters for *subsampled* as opposed to *trimmed*
             # inputs (i.e. `n1_fr_subsample` vs `J_pad_fr_max_init - J_pad_fr`)
             # note this increases maximum subsampling of phi_fr relative to
             # J_pad_fr_max_init
-            compute_all_subsamplings(phi_f_fr, j_fr=j_fr)
+            compute_all_subsamplings(phi_f_fr, j0=j0)
         else:
             # These won't differ from plain subsampling but we still index
             # via `subsample_equiv_relative_to_max_pad_init` and
             # `n1_fr_subsample` so just copy pointers.
             # `phi[::factor] == gauss_1d(N // factor, sigma_low * factor)`
             # when not aliased
-            phi_f_fr[j_fr] = [phi_f_fr[0][j_fr_sub]
-                              for j_fr_sub in range(j_fr, 1 + log2_F)]
+            phi_f_fr[j0] = [phi_f_fr[0][j0_sub]
+                            for j0_sub in range(j0, 1 + log2_F)]
 
     # embed meta info in filters
     phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j')})
-    j_frs = [j for j in phi_f_fr if isinstance(j, int)]
-    for j_fr in j_frs:
+    j0s = [j for j in phi_f_fr if isinstance(j, int)]
+    for j0 in j0s:
         xi_fr_0 = 0.
         sigma_fr_0 = (sigma_low if sampling_phi_fr == 'resample' else
-                      sigma_low * 2**j_fr)
-        j_fr_0 = (log2_F if sampling_phi_fr == 'resample' else
-                  log2_F - j_fr)
+                      sigma_low * 2**j0)
+        j0_0 = (log2_F if sampling_phi_fr == 'resample' else
+                log2_F - j0)
         for field in ('xi', 'sigma', 'j'):
-            phi_f_fr[field][j_fr] = []
-        for j_fr_sub in range(len(phi_f_fr[j_fr])):
-            phi_f_fr['xi'][j_fr].append(xi_fr_0)
-            phi_f_fr['sigma'][j_fr].append(sigma_fr_0 * 2**j_fr_sub)
-            phi_f_fr['j'][j_fr].append(j_fr_0 - j_fr_sub)
+            phi_f_fr[field][j0] = []
+        for j0_sub in range(len(phi_f_fr[j0])):
+            phi_f_fr['xi'][j0].append(xi_fr_0)
+            phi_f_fr['sigma'][j0].append(sigma_fr_0 * 2**j0_sub)
+            phi_f_fr['j'][j0].append(j0_0 - j0_sub)
 
-    for j_fr in j_frs:
-        for j_fr_sub in range(len(phi_f_fr[j_fr])):
+    for j0 in j0s:
+        for j0_sub in range(len(phi_f_fr[j0])):
             # no negative subsampling
-            assert phi_f_fr['j'][j_fr][j_fr_sub] >= 0
+            assert phi_f_fr['j'][j0][j0_sub] >= 0
             # no sigma exceeding `F==1` case
-            assert phi_f_fr['sigma'][j_fr][j_fr_sub] <= sigma0
+            assert phi_f_fr['sigma'][j0][j0_sub] <= sigma0
 
     # return results
     return phi_f_fr

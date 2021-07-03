@@ -40,7 +40,9 @@ class TorchBackend:
         return 'float' in str(x.dtype)
 
     @classmethod
-    def modulus(cls, x):
+    def modulus(cls, x, out=None):
+        if out is not None:
+            return torch.abs(x, out=out)
         cls.complex_check(x)
         return torch.abs(x)
 
@@ -53,7 +55,7 @@ class TorchBackend:
         return torch.cat(arrays, dim=axis)
 
     @classmethod
-    def cdgmm(cls, A, B):
+    def cdgmm(cls, A, B, out=None):
         """Complex pointwise multiplication.
 
             Complex pointwise multiplication between (batched) tensor A and tensor B.
@@ -86,6 +88,9 @@ class TorchBackend:
                 C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :].
 
         """
+        if out is not None:
+            torch.multiply(A, B, out=out)
+            return out
         if not cls._is_real(B):
             cls.complex_check(B)
         cls.complex_check(A)

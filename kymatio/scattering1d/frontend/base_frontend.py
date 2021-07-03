@@ -17,7 +17,7 @@ from ..utils import (compute_border_indices, compute_padding,
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, out_type='array', pad_mode='reflect',
-            max_pad_factor=2, backend=None):
+            max_pad_factor=2, shorten=False, backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -29,6 +29,7 @@ class ScatteringBase1D(ScatteringBase):
         self.out_type = out_type
         self.pad_mode = pad_mode
         self.max_pad_factor = max_pad_factor
+        self.shorten = shorten
         self.backend = backend
 
     def build(self):
@@ -58,6 +59,8 @@ class ScatteringBase1D(ScatteringBase):
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+        # dyadic scale of N, also min possible padding
+        self.N_scale = math.ceil(math.log2(self.N))
 
         # check pad_mode
         if self.pad_mode not in ('reflect', 'zero'):
@@ -91,12 +94,11 @@ class ScatteringBase1D(ScatteringBase):
         if self.average_global:
             min_to_pad = max(pad_psi1, pad_psi2)  # ignore phi's padding
 
-        J_pad = int(np.ceil(np.log2(self.N + 2 * min_to_pad)))
+        J_pad = math.ceil(math.log2(self.N + 2 * min_to_pad))
         if self.max_pad_factor is None:
             self.J_pad = J_pad
         else:
-            J_max_support = int(round(np.log2(self.N * 2**self.max_pad_factor)))
-            self.J_pad = min(J_pad, J_max_support)
+            self.J_pad = min(J_pad, self.N_scale + self.max_pad_factor)
 
         # compute the padding quantities:
         self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
@@ -116,6 +118,24 @@ class ScatteringBase1D(ScatteringBase):
             normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps)
+
+    def adjust_filters(self):
+        # TODO check if their length allows trimming to begin with
+        for psi in self.psi1_f:
+            min_to_pad = (psi['width'][0] if self.pad_mode != 'zero' else
+                          psi['width'][0] // 2)
+            J_pad = math.ceil(math.log2(self.N + min_to_pad))
+            if J_pad <= self.N_scale + 1 and self.shorten:
+                psi['short'] = True
+                for k in psi:
+                    if isinstance(k, int):
+                        # subsampling in freq <-> trimming in time
+                        # TODO validate for sure
+                        psi_scale = int(math.log2(len(psi[k])))
+                        target_scale = self.N_scale + 1
+                        psi[k] = psi[k][::2**(psi_scale - target_scale)]
+            else:
+                psi['short'] = False
 
     def meta(self):
         """Get meta information on the transform
@@ -442,7 +462,8 @@ class TimeFrequencyScatteringBase1D():
     def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
                  oversampling_fr=0, aligned=True, sampling_filters_fr='resample',
                  max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 out_3D=False, out_type='array', out_exclude=None):
+                 out_3D=False, out_type='array', out_exclude=None,
+                 shorten_fr=False):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
@@ -455,6 +476,7 @@ class TimeFrequencyScatteringBase1D():
         self.out_3D = out_3D
         self.out_type = out_type
         self.out_exclude = out_exclude
+        self.shorten_fr = shorten_fr
 
     def build(self):
         """Check args and instantiate `_FrequencyScatteringBase` object
@@ -494,7 +516,7 @@ class TimeFrequencyScatteringBase1D():
             self.average_fr, self.aligned, self.oversampling_fr,
             self.sampling_filters_fr, self.out_type, self.out_3D,
             self.max_pad_factor_fr, self.pad_mode_fr, self._n_psi1_f,
-            self.backend)
+            self.shorten_fr, self.backend)
         self.finish_creating_filters()
 
         # detach __init__ args, instead access `sc_freq`'s via `__getattr__`
@@ -1200,7 +1222,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                  average_fr=False, aligned=True, oversampling_fr=0,
                  sampling_filters_fr='resample', out_type='array', out_3D=False,
                  max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 n_psi1=None, backend=None):
+                 n_psi1=None, shorten_fr=False, backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.shape_fr = shape_fr
         self.J_fr = J_fr
@@ -1218,6 +1240,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.max_pad_factor_fr = max_pad_factor_fr
         self.pad_mode_fr = pad_mode_fr
         self._n_psi1_f = n_psi1
+        self.shorten_fr = shorten_fr
         self.backend = backend
 
         self.build()
@@ -1366,6 +1389,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             **self.get_params(
                 'shape_fr_scale_max', 'shape_fr_scale_min', 'pad_mode_fr',
                 'max_pad_factor_fr', 'unrestricted_pad_fr',
+                'max_subsample_equiv_before_phi_fr',
                 'subsample_equiv_relative_to_max_pad_init', 'average_fr_global',
                 'sampling_psi_fr', 'sampling_phi_fr',
                 'sigma_max_to_min_max_ratio',
@@ -1426,9 +1450,32 @@ class _FrequencyScatteringBase(ScatteringBase):
                 if j_fr > j0_max_realized:
                     del self.phi_f_fr[j_fr]
 
+        for psi_f in (self.psi1_f_fr_down, self.psi1_f_fr_up):
+            for psi in psi_f:
+                psi['short'] = {}
+                for j0 in psi:
+                    if not isinstance(j0, int):
+                        continue
+                    J_pad_fr = self.J_pad_fr_max_init - j0
+                    width = psi['width'][j0]
+                    min_to_pad = (width if self.pad_mode_fr != 'zero' else
+                                  width // 2)
+                    j0_scale = self.shape_fr_scale_max - j0
+                    target_scale = j0_scale + 1
+                    shape_fr_max_at_scale = 2**j0_scale
+                    psi_min_len = math.ceil(math.log2(shape_fr_max_at_scale +
+                                                      min_to_pad))
+                    if psi_min_len <= target_scale and self.shorten_fr:
+                        if j0 == 2:
+                            print(J_pad_fr, target_scale, psi_min_len)
+                            1==1
+                        psi['short'][j0] = True
+                        psi[j0] = psi[j0][::2**(J_pad_fr - target_scale)]
+                    else:
+                        psi['short'][j0] = False
+
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
-        # e.g. [0, None] would mean 0 for `shape_fr_max`, and `None` for rest.
         # tentative limit
         self.J_pad_fr_min_limit_due_to_phi = (
             self.J_pad_fr_max_init - self.max_subsample_equiv_before_phi_fr)
