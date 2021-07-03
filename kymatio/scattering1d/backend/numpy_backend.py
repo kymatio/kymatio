@@ -5,7 +5,7 @@ from scipy.fft import fft, ifft
 
 class NumpyBackend1D(NumpyBackend):
     @classmethod
-    def subsample_fourier(cls, x, k, out=None, axis=-1):
+    def subsample_fourier(cls, x, k, axis=-1):
         """Subsampling in the Fourier domain
         Subsampling in the temporal domain amounts to periodization in the Fourier
         domain, so the input is periodized according to the subsampling factor.
@@ -40,14 +40,11 @@ class NumpyBackend1D(NumpyBackend):
         s.insert(axis, re[1])
         s.insert(axis, re[0])
 
-        if out is None:
-            res = cls._np.reshape(x, s).mean(axis=axis)
-            return res
-        cls._np.reshape(x, s).mean(axis=axis, out=out)
-        return out
+        res = cls._np.reshape(x, s).mean(axis=axis)
+        return res
 
     @classmethod
-    def pad(cls, x, pad_left, pad_right, out=None, pad_mode='reflect', axis=-1):
+    def pad(cls, x, pad_left, pad_right, pad_mode='reflect', axis=-1):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -70,8 +67,6 @@ class NumpyBackend1D(NumpyBackend):
         """
         if pad_mode == 'zero':
             pad_mode = 'constant'
-        if out is not None:
-            return agnostic.pad(x, pad_left, pad_right, out=out)
 
         if axis == -1:
             paddings = ((0, 0),) * len(x.shape[:-1])

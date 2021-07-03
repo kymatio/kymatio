@@ -40,7 +40,7 @@ class NumpyBackend:
         return cls._np.concatenate(arrays, axis=axis)
 
     @classmethod
-    def modulus(cls, x, out=None):
+    def modulus(cls, x):
         """
             This function implements a modulus transform for complex numbers.
 
@@ -57,12 +57,10 @@ class NumpyBackend:
             output: a real tensor equal to the modulus of x.
 
         """
-        if out is not None:
-            return cls._np.abs(x, out=out)
         return cls._np.abs(x)
 
     @classmethod
-    def cdgmm(cls, A, B, out=None):
+    def cdgmm(cls, A, B):
         """
             Complex pointwise multiplication between (batched) tensor A and tensor B.
 
@@ -82,9 +80,6 @@ class NumpyBackend:
                 C[b, c, m, n, :] = A[b, c, m, n, :] * B[m, n, :]
 
         """
-        if out is not None:
-            return cls._np.multiply(A, B, out=out)
-
         if not cls._is_complex(A):
             raise TypeError('The first input must be complex.')
 

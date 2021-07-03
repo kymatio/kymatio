@@ -6,7 +6,7 @@ from . import agnostic_backend as agnostic
 
 class TorchBackend1D(TorchBackend):
     @classmethod
-    def subsample_fourier(cls, x, k, out=None,axis=-1):
+    def subsample_fourier(cls, x, k, axis=-1):
         """Subsampling in the Fourier domain
 
         Subsampling in the temporal domain amounts to periodization in the Fourier
@@ -40,10 +40,6 @@ class TorchBackend1D(TorchBackend):
         s.pop(axis)
         s.insert(axis, re[1])
         s.insert(axis, re[0])
-
-        if out is not None:
-            torch.mean(x.view(s), dim=axis, out=out)
-            return out
         s.append(2)  # view_as_real
 
         x = torch.view_as_real(x)
@@ -53,7 +49,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right, axis=-1, pad_mode='reflect'):
+    def pad(x, pad_left, pad_right, pad_mode='reflect'):
         """Pad N-dim tensor along one dimension.
 
         Pads PyTorch tensor by `pad_left` and `pad_right` along one axis.
@@ -78,7 +74,7 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis)
+        return agnostic.pad(x, pad_left, pad_right, pad_mode)
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):
