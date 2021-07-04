@@ -300,6 +300,9 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3, warn=False):
         temporal support which ensures (1) for all rows of h_f
 
     """
+    if h_f.shape[-1] == 1:
+        return 1
+
     h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
     # check if any value in half of worst case of abs(h) is below criterion
@@ -996,7 +999,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
         psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
                                 P_max=P_max, eps=eps)[:, None]
-        psi_down['width'] = {0: compute_temporal_support(psi_down[0].T, **ca)}
+        psi_down['width'] = {0: 2*compute_temporal_support(psi_down[0].T, **ca)}
 
         # j0 is ordered greater to lower, so reverse
         j0_prev = -1
@@ -1074,7 +1077,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
             xi, sigma, j = get_params(n1_fr, scale_diff)
             psi = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
                             P_max=P_max, eps=eps)[:, None]
-            psi_width = compute_temporal_support(psi.T, **ca)
+            psi_width = 2*compute_temporal_support(psi.T, **ca)
             if sampling_psi_fr == 'exclude':
                 # if wavelet exceeds max possible width at this scale, exclude it
                 if psi_width > 2**shape_fr_scale:
@@ -1215,7 +1218,7 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                 break
 
             phi_f_fr[j0] = [gauss_1d(N // factor, sigma_low, P_max=P_max,
-                                       eps=eps)[:, None]]
+                                     eps=eps)[:, None]]
             # dedicate separate filters for *subsampled* as opposed to *trimmed*
             # inputs (i.e. `n1_fr_subsample` vs `J_pad_fr_max_init - J_pad_fr`)
             # note this increases maximum subsampling of phi_fr relative to
@@ -1231,7 +1234,7 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                             for j0_sub in range(j0, 1 + log2_F)]
 
     # embed meta info in filters
-    phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j')})
+    phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j', 'width')})
     j0s = [j for j in phi_f_fr if isinstance(j, int)]
     for j0 in j0s:
         xi_fr_0 = 0.
@@ -1239,12 +1242,16 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                       sigma_low * 2**j0)
         j0_0 = (log2_F if sampling_phi_fr == 'resample' else
                 log2_F - j0)
-        for field in ('xi', 'sigma', 'j'):
+        for field in ('xi', 'sigma', 'j', 'width'):
             phi_f_fr[field][j0] = []
         for j0_sub in range(len(phi_f_fr[j0])):
             phi_f_fr['xi'][j0].append(xi_fr_0)
             phi_f_fr['sigma'][j0].append(sigma_fr_0 * 2**j0_sub)
             phi_f_fr['j'][j0].append(j0_0 - j0_sub)
+            width = 2*compute_temporal_support(
+                phi_f_fr[j0][j0_sub].reshape(1, -1),
+                criterion_amplitude=criterion_amplitude)
+            phi_f_fr['width'][j0].append(width)
 
     for j0 in j0s:
         for j0_sub in range(len(phi_f_fr[j0])):

@@ -755,10 +755,13 @@ def test_output():
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
+        if test_num != 2:
+            continue
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
 
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
+        jmeta = jtfs.meta()
         out = jtfs(x)
 
         # assert equal total number of coefficients
@@ -777,12 +780,16 @@ def test_output():
         already_printed_test_info, max_mean_info, max_max_info = False, None, None
         for pair in out:
             for i, o in enumerate(out[pair]):
+                n = jmeta['n'][pair][i]
+                while n.squeeze().ndim > 1:
+                    n = n[0]
                 # assert equal shapes
                 o = o if params['out_type'] == 'dict:array' else o['coef']
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
-                errmsg = ("out[{}][{}].shape != out_stored[{}].shape\n"
+                errmsg = ("out[{}][{}].shape != out_stored[{}].shape | n={}\n"
                           "({} != {})\n"
-                          ).format(pair, i, o_stored_key, o.shape, o_stored.shape)
+                          ).format(pair, i, o_stored_key, n,
+                                   o.shape, o_stored.shape)
                 if not already_printed_test_info:
                     errmsg += params_str
 
@@ -795,19 +802,20 @@ def test_output():
                     assert o.shape == o_stored.shape, errmsg
 
                 # store info for printing
-                adiff = np.abs(o - o_stored)
+                ref = (o + o_stored)/2 + (o.max() + o_stored.max())/2000
+                adiff = np.abs(o - o_stored) / ref
                 mean_ae, max_ae = adiff.mean(), adiff.max()
                 if mean_ae > max(mean_aes):
-                    max_mean_info = "out[%s][%s]" % (pair, i)
+                    max_mean_info = "out[%s][%s] | n=%s" % (pair, i, n)
                 if max_ae > max(max_aes):
-                    max_max_info  = "out[%s][%s]" % (pair, i)
+                    max_max_info  = "out[%s][%s] | n=%s" % (pair, i, n)
                 mean_aes.append(mean_ae)
                 max_aes.append(max_ae)
 
                 # assert equal values
-                errmsg = ("out[{}][{}] != out_stored[{}]\n"
+                errmsg = ("out[{}][{}] != out_stored[{}] | n={}\n"
                           "(MeanAE={:.2e}, MaxAE={:.2e})\n"
-                          ).format(pair, i, o_stored_key,
+                          ).format(pair, i, o_stored_key, n,
                                    mean_aes[-1], max_aes[-1],)
                 if not already_printed_test_info:
                     errmsg += params_str
