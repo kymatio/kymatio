@@ -701,11 +701,12 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
+        # TODO make test 1 test 0
 
           (aligned, average_fr, out_3D, out_type,     F)
-        0. True     True        False   'dict:list'   8
-        1. True     True        True    'dict:array'  8  # TODO make this test 0
-        2. False    True        True    'dict:array'  8
+        0. True     True        False   'dict:list'   4
+        1. True     True        True    'dict:array'  16
+        2. False    True        True    'dict:array'  32
         3. True     True        False   'dict:list'   'global'
         4. True     False       False   'dict:array'  8
 
@@ -714,6 +715,8 @@ def test_output():
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
             `(U1 * phi_t * psi_f) * phi_t * phi_f`.
+
+    For complete info see `data['code']` (`_load_data()`).
     """
     def _load_data(test_num, test_data_dir):
         """Also see data['code']."""
