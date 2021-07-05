@@ -1,3 +1,5 @@
+import math
+
 
 def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
@@ -606,6 +608,7 @@ def timefrequency_scattering(
                'psi_t * phi_f': [],
                'phi_t * psi_f': [[]]}
 
+    N = x.shape[-1]
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
     # compute the Fourier transform
@@ -1045,8 +1048,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
         # energy correction due to integer-rounded unpad indices # TODO time?
-        total_conv_stride_over_U1_realized = (n1_fr_subsample +
-                                              lowpass_subsample_fr)
         ind_end_exact = (sc_freq.shape_fr_max /
                          2**total_conv_stride_over_U1_realized)
         energy_correction = B.sqrt(ind_end_exact / ind_end_fr)
