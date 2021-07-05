@@ -479,7 +479,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         if n1_fr != -1:
             j1_fr = sc_freq.psi1_f_fr_up[n1_fr]['j'][subsample_equiv_due_to_pad]
         else:
-            j1_fr = sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad][0]
+            j1_fr = (sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad]
+                     if not sc_freq.average_fr_global else
+                     min(pad_fr, sc_freq.log2_F))
 
         # `* phi_f` pairs always behave per `average_fr=True`
         _average_fr = (True if n1_fr == -1 else sc_freq.average_fr)
@@ -509,14 +511,19 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             lowpass_subsample_fr = 0
 
         if not sc_freq.average_fr_global:
-            total_downsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
-            total_downsample_fr = total_downsample_so_far + lowpass_subsample_fr
+            total_downsample_fr = n1_fr_subsample + lowpass_subsample_fr
             if out_3D:
-                ind_start_fr = sc_freq.ind_start_fr_max[total_downsample_fr]
-                ind_end_fr   = sc_freq.ind_end_fr_max[total_downsample_fr]
+                pad_ref = (sc_freq.J_pad_fr_min if aligned else
+                           sc_freq.J_pad_fr_max)
+                subsample_equiv_due_to_pad_ref = (sc_freq.J_pad_fr_max_init -
+                                                  pad_ref)
+                stride_ref = _get_stride(
+                    None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
+                ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
+                ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
             else:
                 ind_start_fr = sc_freq.ind_start_fr[n2][total_downsample_fr]
-                ind_end_fr   = sc_freq.ind_end_fr[n2][total_downsample_fr]
+                ind_end_fr   = sc_freq.ind_end_fr[  n2][total_downsample_fr]
         else:
             ind_start_fr, ind_end_fr = -1, -1
 
@@ -526,7 +533,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 n1_fr_subsample, subsample_equiv_due_to_pad,
                 ind_start_fr, ind_end_fr)
 
-    def _get_fr_params(n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample):
+    def _get_fr_params(n1_fr, subsample_equiv_due_to_pad):
         k = subsample_equiv_due_to_pad
         if n1_fr != -1:
             if sampling_psi_fr in ('resample', 'exclude'):
@@ -535,9 +542,13 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 p = (xi1s_fr_new[k][n1_fr], sigma1s_fr_new[k][n1_fr],
                      j1s_fr_new[k][n1_fr])
         else:
-            n1_fr_subsample = 0
-            p = [m[k][n1_fr_subsample] for m in (xi1s_fr_phi, sigma1_fr_phi,
-                                                 j1s_fr_phi)]
+            if not sc_freq.average_fr_global:
+                p = [m[k] for m in (xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi)]
+            else:
+                pad_fr = sc_freq.J_pad_fr_max_init - subsample_equiv_due_to_pad
+                j1_fr = min(pad_fr, sc_freq.log2_F)
+                p = (0, sc_freq.sigma0 / 2**j1_fr, j1_fr)
+
         xi1_fr, sigma1_fr, j1_fr = p
         return xi1_fr, sigma1_fr, j1_fr
 
@@ -560,7 +571,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             xi2, sigma2, j2 = 0, sigma_low, log2_T
         xi1_fr, sigma1_fr, j1_fr = _get_fr_params(
-            n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample)
+            n1_fr, subsample_equiv_due_to_pad)
 
         # get temporal stride info
         if average_global:
@@ -641,7 +652,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     for field in ('xi', 'sigma', 'j'):
         meta_phi[field] = {}
         for k in sc_freq.phi_f_fr[field]:
-            meta_phi[field][k] = [v for v in sc_freq.phi_f_fr[field][k]]
+            meta_phi[field][k] = sc_freq.phi_f_fr[field][k]
     xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi = list(meta_phi.values())
 
     meta = {}

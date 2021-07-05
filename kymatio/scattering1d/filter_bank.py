@@ -1244,21 +1244,16 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                 log2_F - j0)
         for field in ('xi', 'sigma', 'j', 'width'):
             phi_f_fr[field][j0] = []
+        phi_f_fr['xi'][j0] = xi_fr_0
+        phi_f_fr['sigma'][j0] = sigma_fr_0
+        phi_f_fr['j'][j0] = j0_0
+        phi_f_fr['width'][j0] = []
         for j0_sub in range(len(phi_f_fr[j0])):
-            phi_f_fr['xi'][j0].append(xi_fr_0)
-            phi_f_fr['sigma'][j0].append(sigma_fr_0 * 2**j0_sub)
-            phi_f_fr['j'][j0].append(j0_0 - j0_sub)
+            # should halve with subsequent j0_sub, but compute exactly
             width = 2*compute_temporal_support(
                 phi_f_fr[j0][j0_sub].reshape(1, -1),
                 criterion_amplitude=criterion_amplitude)
             phi_f_fr['width'][j0].append(width)
-
-    for j0 in j0s:
-        for j0_sub in range(len(phi_f_fr[j0])):
-            # no negative subsampling
-            assert phi_f_fr['j'][j0][j0_sub] >= 0
-            # no sigma exceeding `F==1` case
-            assert phi_f_fr['sigma'][j0][j0_sub] <= sigma0
 
     # return results
     return phi_f_fr

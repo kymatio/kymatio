@@ -761,6 +761,33 @@ class TimeFrequencyScatteringBase1D():
         Note: `sampling_psi_fr = 'recalibrate'` breaks global alignment, but
         preserves it on per-`subsample_equiv_due_to_pad` basis, i.e. per-`n2`.
 
+        **Illustration**:
+
+        `x` == zero, `0, 4, ...` == indices of actual (nonpadded) data
+
+            data -> padded
+            16   -> 128
+            64   -> 128
+
+            False:
+              [0,  4,  8, 16,  x]
+              [0, 16, 32, 48, 64]
+
+            True:
+              [0,  4,  8, 16,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x]
+              [0,  4,  8, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
+
+        `False` is more information dense (less zeros), but `True` has more
+        total information (less stride).
+
+        In terms of unpadding with `out_3D=True`:
+            - `aligned=True`: unpad subsampling factor decided from min
+              padded case (as is `total_conv_stride_over_U1`); then maximum
+              of all unpads across `n2` is taken for this factor and reused
+              across `n2`.
+            - `aligned=False`: decided from max padded case with max subsampling,
+              and reused across `n2` (even with less subsampling).
+
     sampling_filters_fr: str / tuple[str]
         Controls filter properties for input lengths below maximum.
 
@@ -1504,17 +1531,10 @@ class _FrequencyScatteringBase(ScatteringBase):
         assert j0 >= 0, "%s > %s | %s" % (J_pad, self.J_pad_fr_max_init, shape_fr)
 
         # compute unpad indices for all possible subsamplings
-        ind_start, ind_end = [], []
-        for j in range(self.J_pad_fr_max_init + 1):
-            if j == j0:  # no actual subsampling done, unpad original
-                ind_start.append(0)
-                ind_end.append(shape_fr)
-            elif j > j0:  # subsampled, adjust indices
-                ind_start.append(0)
-                ind_end.append(math.ceil(ind_end[-1] / 2))
-            else:  # smaller than equiv padded, won't occur
-                ind_start.append(-1)
-                ind_end.append(-1)
+        ind_start, ind_end = [0], [shape_fr]
+        for j in range(1, max(self.J_fr, self.log2_F) + 1):
+            ind_start.append(0)
+            ind_end.append(math.ceil(ind_end[-1] / 2))
         return j0, pad_left, pad_right, ind_start, ind_end
 
     def compute_J_pad(self, shape_fr, n2_reverse, recompute=False, Q=(0, 0)):
