@@ -1002,8 +1002,6 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
      average, average_global, unpad, log2_T, phi, ind_start, ind_end) = commons
 
     # compute subsampling logic ##############################################
-    total_downsample_so_far = subsample_equiv_due_to_pad + n1_fr_subsample
-
     if sc_freq.average_fr_global:
         lowpass_subsample_fr = total_conv_stride_over_U1 - n1_fr_subsample
     elif average_fr:
@@ -1028,10 +1026,10 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     else:
         S_2_fr = U_2_m
 
+    total_conv_stride_over_U1_realized = (n1_fr_subsample +
+                                          lowpass_subsample_fr)
     if not sc_freq.average_fr_global:
         # unpad frequency
-        # total_downsample_fr = total_downsample_so_far + lowpass_subsample_fr
-        total_downsample_fr = n1_fr_subsample + lowpass_subsample_fr
         if out_3D:
             pad_ref = (sc_freq.J_pad_fr_min if aligned else
                        sc_freq.J_pad_fr_max)
@@ -1041,8 +1039,9 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
             ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
         else:
-            ind_start_fr = sc_freq.ind_start_fr[n2][total_downsample_fr]
-            ind_end_fr   = sc_freq.ind_end_fr[  n2][total_downsample_fr]
+            _stride = total_conv_stride_over_U1_realized
+            ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
+            ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
         # energy correction due to integer-rounded unpad indices # TODO time?
@@ -1064,21 +1063,19 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             S_2_c = B.cdgmm(U_2_hat, phi[k1_plus_k2])
             S_2_hat = B.subsample_fourier(S_2_c, 2**k2_tm_J)
             S_2_r = B.irfft(S_2_hat)
-            total_downsample_tm = k1_plus_k2 + k2_tm_J
+            total_subsample_tm = k1_plus_k2 + k2_tm_J
     else:
         S_2_r = S_2_fr
-        total_downsample_tm = k1_plus_k2
+        total_subsample_tm = k1_plus_k2
 
     # TODO unpad sooner?
     if not average_global:
-        S_2 = unpad(S_2_r, ind_start[total_downsample_tm],
-                    ind_end[total_downsample_tm])
+        S_2 = unpad(S_2_r, ind_start[total_subsample_tm],
+                    ind_end[total_subsample_tm])
     elif not do_averaging:
         S_2 = S_2_r
 
     # sanity checks (see "Subsampling, padding") #############################
-    total_conv_stride_over_U1_realized = (n1_fr_subsample +
-                                          lowpass_subsample_fr)
     if aligned and not sc_freq.average_fr_global:
         # `total_conv_stride_over_U1` renamed; comment for searchability
         if n1_fr != -1:
@@ -1104,7 +1101,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             else:
                 assert (total_conv_stride_over_U1_realized ==
                         sc_freq.__total_conv_stride_over_U1_phi)
-    total_conv_stride_tm = (total_downsample_tm if not average_global else
+    total_conv_stride_tm = (total_subsample_tm if not average_global else
                             log2_T)
     stride = (total_conv_stride_over_U1_realized, total_conv_stride_tm)
     return S_2, stride
