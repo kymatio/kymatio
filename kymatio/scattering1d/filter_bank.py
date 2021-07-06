@@ -827,11 +827,12 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
     phi_f['j'] = log2_T
+    phi_f['width'] = 2*compute_temporal_support(phi_f[0].reshape(1, -1), **ca)
+
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
-    t_max_phi = compute_temporal_support(
-        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
+    t_max_phi = phi_f['width']
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi

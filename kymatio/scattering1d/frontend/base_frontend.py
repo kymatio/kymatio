@@ -523,11 +523,39 @@ class TimeFrequencyScatteringBase1D():
         """Handles necessary adjustments in time scattering filters unaccounted
         for in default construction.
         """
-        # ensure phi is subsampled up to (log2_T - 1) for `phi_t * psi_f` pairs
+        # ensure phi is subsampled up to log2_T for `phi_t * psi_f` pairs
         max_sub_phi = lambda: max(k for k in self.phi_f if isinstance(k, int))
         while max_sub_phi() < self.log2_T:
             self.phi_f[max_sub_phi() + 1] = periodize_filter_fourier(
                 self.phi_f[0], nperiods=2**(max_sub_phi() + 1))
+
+        # for early unpadding in joint scattering
+        # copy filters, assign to `0` trim (time's `subsample_equiv_due_to_pad`)
+        phi_f = {0: [v for k, v in self.phi_f.items() if isinstance(k, int)]}
+        # copy meta
+        for k, v in self.phi_f.items():
+            if not isinstance(k, int):
+                phi_f[k] = v
+
+        diff = min(self.J - self.log2_T, self.J_pad - self.N_scale)
+        if diff > 0:
+            for trim_tm in range(1, diff + 1):
+                # subsample in Fourier <-> trim in time
+                phi_f[trim_tm] = [v[::2**trim_tm] for v in phi_f[0]]
+        self.phi_f = phi_f
+
+        # adjust padding
+        ind_start = {0: {k: v for k, v in self.ind_start.items()}}
+        ind_end   = {0: {k: v for k, v in self.ind_end.items()}}
+        if diff > 0:
+            for trim_tm in range(1, diff + 1):
+                pad_left, pad_right = compute_padding(self.J_pad - trim_tm,
+                                                      self.N)
+                start, end = compute_border_indices(
+                    self.log2_T, self.J, pad_left, pad_left + self.N)
+                ind_start[trim_tm] = start
+                ind_end[trim_tm] = end
+        self.ind_start, self.ind_end = ind_start, ind_end
 
     def meta(self):
         """Get meta information on the transform
