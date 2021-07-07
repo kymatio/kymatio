@@ -789,7 +789,6 @@ def timefrequency_scattering(
     # `U1 * (psi_t * psi_f)` (up & down), and `U1 * (psi_t * phi_f)`
     skip_spinned = bool('psi_t * psi_f_up'   in out_exclude and
                         'psi_t * psi_f_down' in out_exclude)
-
     if not (skip_spinned and 'psi_t * phi_f' in out_exclude):
         for n2 in range(len(psi2)):
             j2 = psi2[n2]['j']
