@@ -47,6 +47,8 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
             xlims = (-.02 * Nmax, 1.02 * Nmax)
         else:
             xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
+        if isinstance(p0[0], list):
+            p0 = p0[0]
         plot(p0[0], color='k', xlims=xlims, title=title, show=1)
 
     # define colors & linestyles
@@ -652,7 +654,7 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
 def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
          xlims=None, ylims=None, vlines=None, hlines=None,
          xlabel=None, ylabel=None, xticks=None, yticks=None, ticks=True,
-         ax=None, fig=None, **kw):
+         ax=None, fig=None, squeeze=True, **kw):
     """
     norm: color norm, tuple of (vmin, vmax)
     abs: take abs(data) before plotting
@@ -667,10 +669,14 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
     if x is None and y is None:
         raise Exception("`x` and `y` cannot both be None")
     elif x is None:
+        y = y if isinstance(y, list) or not squeeze else y.squeeze()
         x = np.arange(len(y))
     elif y is None:
+        x = x if isinstance(x, list) or not squeeze else x.squeeze()
         y = x
         x = np.arange(len(x))
+    x = x if isinstance(x, list) or not squeeze else x.squeeze()
+    y = y if isinstance(y, list) or not squeeze else y.squeeze()
 
     if complex:
         ax.plot(x, y.real, color='tab:blue', **kw)

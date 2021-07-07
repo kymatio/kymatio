@@ -1,7 +1,8 @@
+import math
 from ...toolkit import _infer_backend
 
 
-def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1):
+def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
     """Backend-agnostic padding.
 
     Parameters
@@ -33,13 +34,17 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1):
     axis_idx = axis if axis >= 0 else (x.ndim + axis)
     padded_shape = (x.shape[:axis_idx] + (N + pad_left + pad_right,) +
                     x.shape[axis_idx + 1:])
-    out = backend.zeros(padded_shape, **kw)
+    if out is None:
+        out = backend.zeros(padded_shape, **kw)
+    else:
+        assert out.shape == padded_shape, (out.shape, padded_shape)
     if backend_name == 'tensorflow':  # TODO
         out = out.numpy()
 
     pad_right_idx = (out.shape[axis] -
                      (pad_right if pad_right != 0 else None))
     out[index_axis(pad_left, pad_right_idx, axis, x.ndim)] = x
+    # out[pad_left:pad_right_idx] = x
 
     if pad_mode == 'zero':
         pass  # already done
@@ -71,10 +76,11 @@ def _pad_reflect(x, xflip, out, pad_left, pad_right, N, axis):
         max_step = min(N - 1, pad_left - already_stepped)
         end = pad_left - already_stepped
         start = end - max_step
+        ix0, ix1 = idx(start, end), idx(-(max_step + 1), -1)
         if step % 2 == 0:
-            out[idx(start, end)] = xflip[idx(-(max_step + 1), -1)]
+            out[ix0] = xflip[ix1]
         else:
-            out[idx(start, end)] = x[idx(-(max_step + 1), -1)]
+            out[ix0] = x[ix1]
         step += 1
         already_stepped += max_step
 
@@ -84,52 +90,91 @@ def _pad_reflect(x, xflip, out, pad_left, pad_right, N, axis):
         max_step = min(N - 1, pad_right - already_stepped)
         start = N + pad_left + already_stepped
         end = start + max_step
+        ix0, ix1 = idx(start, end), idx(1, max_step + 1)
         if step % 2 == 0:
-            out[idx(start, end)] = xflip[idx(1, max_step + 1)]
+            out[ix0] = xflip[ix1]
         else:
-            out[idx(start, end)] = x[idx(1, max_step + 1)]
+            out[ix0] = x[ix1]
         step += 1
         already_stepped += max_step
     return out
 
 
-def conj_reflections(backend, x, ind_start, ind_end):
-    is_numpy = bool(type(backend).__module__ == 'numpy')
-    N = ind_end - ind_start
-    Np = x.shape[-1]
+def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
+                     trim_tm):
+    """Conjugate reflections to mirror spins rather than negate them.
 
-    # right
-    start = ind_end
-    end = start + N
-    reflected = True
-    while True:
-        if reflected:
-            if is_numpy:
-                backend.conj(x[..., start:end], inplace=True)
-            else:  # TODO any faster solution?
-                x[..., start:end] = backend.conj(x[..., start:end])
-        if end >= Np:
-            break
-        start += N
-        end = min(start + N, Np)
-        reflected = not reflected
+    Won't conjugate *at* boundaries:
 
-    # left
-    end = ind_start
-    start = end - N
-    reflected = True
-    while True:
-        if reflected:
-            if is_numpy:
-                backend.conj(x[..., start:end], inplace=True)
-            else:
-                x[..., start:end] = backend.conj(x[..., start:end])
-        if start <= 0:
-            break
-        end -= N
-        start = max(end - N, 0)
-        reflected = not reflected
+        [..., 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7]
+        [..., 1, 2, 3, 4, 5, 6, 7,-6,-5,-4,-3,-2, 1, 2, 3, 4, 5, 6, 7]
+    """
+    import numpy as np
 
+    is_numpy = bool('numpy' in backend.__module__.lower())
+
+    # compute boundary indices from simulated reflected ramp at original length
+    r = np.arange(N)
+    rpo = np.pad(r, [pad_left, pad_right], mode='reflect')
+    if trim_tm > 0:
+        rpo = unpad_dyadic(rpo, N, len(rpo), len(rpo) // 2**trim_tm)
+
+    # will conjugate where sign is negative
+    rpdiffo = np.diff(rpo)
+    rpdiffo = np.hstack([rpdiffo[0], rpdiffo])
+    # mark rising ramp as +1, including bounds, and everything else as -1;
+    # -1 will conjugate. This instructs to not conjugate: non-reflections, bounds.
+    # diff will mark endpoints with sign opposite to rise's; correct manually
+    rpdiffo[np.where(np.diff(rpdiffo) > 0)[0]] = 1
+    rpdiff = rpdiffo[::2**k]
+
+    idxs = np.where(rpdiff == -1)[0]
+    # conjugate to left of left bound
+    assert ind_start - 1 in idxs, (ind_start - 1, idxs)
+    # do not conjugate left bound
+    assert ind_start not in idxs, (ind_start, idxs)
+    # conjugate to right of right bound
+    # (Python indexing excludes `ind_end`, so `ind_end - 1` is the right bound)
+    assert ind_end in idxs, (ind_end, idxs)
+    # do not conjugate the right bound
+    assert ind_end - 1 not in idxs, (ind_end - 1, idxs)
+
+    if is_numpy or getattr(x, 'requires_grad', False):
+        ic = [0, *(np.where(np.diff(idxs) > 1)[0] + 1)]
+        ic.append(None)
+        ic = np.array(ic)
+        slices_contiguous = []
+        for i in range(len(ic) - 1):
+            s, e = ic[i], ic[i + 1]
+            start = idxs[s]
+            end = idxs[e - 1] + 1 if e is not None else None
+            slices_contiguous.append(slice(start, end))
+
+        inplace = is_numpy or not getattr(x, 'requires_grad', False)
+        for slc in slices_contiguous:
+            backend.conj(x[..., slc], inplace=inplace)
+    else:  # TODO any faster solution?
+        x[..., idxs] = backend.conj(x[..., idxs])
+
+
+def unpad_dyadic(x, N, orig_padded_len, target_padded_len, k=0):
+    current_log2_N = math.ceil(math.log2(N))
+    current_N_dyadic = 2**current_log2_N
+
+    J_pad = math.log2(orig_padded_len)
+    current_padded = 2**(J_pad - k)
+    current_to_pad_dyadic = current_padded - current_N_dyadic
+
+    start_dyadic = current_to_pad_dyadic // 2
+    end_dyadic = start_dyadic + current_N_dyadic
+
+    log2_target_to_pad = target_padded_len - 2**current_log2_N
+    # x[3072:3072+2048] -> x[3072-1024:3072+2048+1024]
+    # == x[2048:6144]; len: 8192 --> 4096
+    unpad_start = int(start_dyadic - log2_target_to_pad // 2)
+    unpad_end = int(end_dyadic + log2_target_to_pad // 2)
+    x = x[..., unpad_start:unpad_end]
+    return x
 
 ## helpers ###################################################################
 def index_axis(i0, i1, axis, ndim, step=1):

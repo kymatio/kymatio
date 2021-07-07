@@ -1,14 +1,18 @@
 import pytest
 import numpy as np
 import scipy.signal
-import warnings
+from utils import cant_import
 from kymatio import Scattering1D
 from kymatio.scattering1d.backend.agnostic_backend import pad, stride_axis
+from kymatio.toolkit import l2
 
 # set True to execute all test functions without pytest
 run_without_pytest = 1
+# will run most tests with this backend
+default_frontend = 'numpy'
 
 
+#### Scattering tests ########################################################
 def test_T():
     """Test that `T` controls degree of invariance as intended."""
     # configure scattering & signal
@@ -30,15 +34,15 @@ def test_T():
 
     # make scattering objects
     kw = dict(J=J, Q=Q, shape=N, average=1, out_type="array", pad_mode="zero",
-              max_pad_factor=1, frontend='numpy')
+              max_pad_factor=1, frontend=default_frontend)
     ts0 = Scattering1D(T=T0, **kw)
     ts1 = Scattering1D(T=T1, **kw)
 
     # scatter
-    ts0_x  = ts0.scattering(x)
-    ts0_xs = ts0.scattering(xs)
-    ts1_x  = ts1.scattering(x)
-    ts1_xs = ts1.scattering(xs)
+    ts0_x  = ts0(x)
+    ts0_xs = ts0(xs)
+    ts1_x  = ts1(x)
+    ts1_xs = ts1(xs)
 
     # compare distances
     l2_00_xxs = l2(ts0_x, ts0_xs)
@@ -49,6 +53,7 @@ def test_T():
     assert l2_11_xxs > th1, "{} < {}".format(l2_11_xxs, th1)
 
 
+#### Primitives tests ########################################################
 def _test_padding(backend_name):
     """Test that agnostic implementation matches numpy's."""
     def _arange(N):
@@ -156,6 +161,7 @@ def test_subsample_fourier_tensorflow():
     _test_subsample_fourier_axis('tensorflow')
 
 
+#### utilities ###############################################################
 def _get_backend(backend_name):
     if backend_name == 'numpy':
         backend = np
@@ -179,33 +185,6 @@ def _get_kymatio_backend(backend_name):
         from kymatio.scattering1d.backend.tensorflow_backend import (
             TensorFlowBackend1D)
         return TensorFlowBackend1D
-
-
-def _l2(x):
-    return np.sqrt(np.sum(np.abs(x)**2))
-
-def l2(x0, x1):
-    """Coeff distance measure; Eq 2.24 in
-    https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
-    """
-    return _l2(x1 - x0) / _l2(x0)
-
-
-def cant_import(backend_name):
-    if backend_name == 'numpy':
-        return False
-    elif backend_name == 'torch':
-        try:
-            import torch
-        except ImportError:
-            warnings.warn("Failed to import torch")
-            return True
-    elif backend_name == 'tensorflow':
-        try:
-            import tensorflow
-        except ImportError:
-            warnings.warn("Failed to import tensorflow")
-            return True
 
 
 if __name__ == '__main__':

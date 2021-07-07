@@ -58,6 +58,8 @@ class ScatteringBase1D(ScatteringBase):
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+        # dyadic scale of N, also min possible padding
+        self.N_scale = math.ceil(math.log2(self.N))
 
         # check pad_mode
         if self.pad_mode not in ('reflect', 'zero'):
@@ -91,12 +93,11 @@ class ScatteringBase1D(ScatteringBase):
         if self.average_global:
             min_to_pad = max(pad_psi1, pad_psi2)  # ignore phi's padding
 
-        J_pad = int(np.ceil(np.log2(self.N + 2 * min_to_pad)))
+        J_pad = math.ceil(math.log2(self.N + 2 * min_to_pad))
         if self.max_pad_factor is None:
             self.J_pad = J_pad
         else:
-            J_max_support = int(round(np.log2(self.N * 2**self.max_pad_factor)))
-            self.J_pad = min(J_pad, J_max_support)
+            self.J_pad = min(J_pad, self.N_scale + self.max_pad_factor)
 
         # compute the padding quantities:
         self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
@@ -522,11 +523,39 @@ class TimeFrequencyScatteringBase1D():
         """Handles necessary adjustments in time scattering filters unaccounted
         for in default construction.
         """
-        # ensure phi is subsampled up to (log2_T - 1) for `phi_t * psi_f` pairs
+        # ensure phi is subsampled up to log2_T for `phi_t * psi_f` pairs
         max_sub_phi = lambda: max(k for k in self.phi_f if isinstance(k, int))
         while max_sub_phi() < self.log2_T:
             self.phi_f[max_sub_phi() + 1] = periodize_filter_fourier(
                 self.phi_f[0], nperiods=2**(max_sub_phi() + 1))
+
+        # for early unpadding in joint scattering
+        # copy filters, assign to `0` trim (time's `subsample_equiv_due_to_pad`)
+        phi_f = {0: [v for k, v in self.phi_f.items() if isinstance(k, int)]}
+        # copy meta
+        for k, v in self.phi_f.items():
+            if not isinstance(k, int):
+                phi_f[k] = v
+
+        diff = min(self.J - self.log2_T, self.J_pad - self.N_scale)
+        if diff > 0:
+            for trim_tm in range(1, diff + 1):
+                # subsample in Fourier <-> trim in time
+                phi_f[trim_tm] = [v[::2**trim_tm] for v in phi_f[0]]
+        self.phi_f = phi_f
+
+        # adjust padding
+        ind_start = {0: {k: v for k, v in self.ind_start.items()}}
+        ind_end   = {0: {k: v for k, v in self.ind_end.items()}}
+        if diff > 0:
+            for trim_tm in range(1, diff + 1):
+                pad_left, pad_right = compute_padding(self.J_pad - trim_tm,
+                                                      self.N)
+                start, end = compute_border_indices(
+                    self.log2_T, self.J, pad_left, pad_left + self.N)
+                ind_start[trim_tm] = start
+                ind_end[trim_tm] = end
+        self.ind_start, self.ind_end = ind_start, ind_end
 
     def meta(self):
         """Get meta information on the transform
@@ -759,6 +788,33 @@ class TimeFrequencyScatteringBase1D():
 
         Note: `sampling_psi_fr = 'recalibrate'` breaks global alignment, but
         preserves it on per-`subsample_equiv_due_to_pad` basis, i.e. per-`n2`.
+
+        **Illustration**:
+
+        `x` == zero, `0, 4, ...` == indices of actual (nonpadded) data
+
+            data -> padded
+            16   -> 128
+            64   -> 128
+
+            False:
+              [0,  4,  8, 16,  x]
+              [0, 16, 32, 48, 64]
+
+            True:
+              [0,  4,  8, 16,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x]
+              [0,  4,  8, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
+
+        `False` is more information dense (less zeros), but `True` has more
+        total information (less stride).
+
+        In terms of unpadding with `out_3D=True`:
+            - `aligned=True`: unpad subsampling factor decided from min
+              padded case (as is `total_conv_stride_over_U1`); then maximum
+              of all unpads across `n2` is taken for this factor and reused
+              across `n2`.
+            - `aligned=False`: decided from max padded case with max subsampling,
+              and reused across `n2` (even with less subsampling).
 
     sampling_filters_fr: str / tuple[str]
         Controls filter properties for input lengths below maximum.
@@ -1366,6 +1422,7 @@ class _FrequencyScatteringBase(ScatteringBase):
             **self.get_params(
                 'shape_fr_scale_max', 'shape_fr_scale_min', 'pad_mode_fr',
                 'max_pad_factor_fr', 'unrestricted_pad_fr',
+                'max_subsample_equiv_before_phi_fr',
                 'subsample_equiv_relative_to_max_pad_init', 'average_fr_global',
                 'sampling_psi_fr', 'sampling_phi_fr',
                 'sigma_max_to_min_max_ratio',
@@ -1428,7 +1485,6 @@ class _FrequencyScatteringBase(ScatteringBase):
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
-        # e.g. [0, None] would mean 0 for `shape_fr_max`, and `None` for rest.
         # tentative limit
         self.J_pad_fr_min_limit_due_to_phi = (
             self.J_pad_fr_max_init - self.max_subsample_equiv_before_phi_fr)
@@ -1503,17 +1559,10 @@ class _FrequencyScatteringBase(ScatteringBase):
         assert j0 >= 0, "%s > %s | %s" % (J_pad, self.J_pad_fr_max_init, shape_fr)
 
         # compute unpad indices for all possible subsamplings
-        ind_start, ind_end = [], []
-        for j in range(self.J_pad_fr_max_init + 1):
-            if j == j0:  # no actual subsampling done, unpad original
-                ind_start.append(0)
-                ind_end.append(shape_fr)
-            elif j > j0:  # subsampled, adjust indices
-                ind_start.append(0)
-                ind_end.append(math.ceil(ind_end[-1] / 2))
-            else:  # smaller than equiv padded, won't occur
-                ind_start.append(-1)
-                ind_end.append(-1)
+        ind_start, ind_end = [0], [shape_fr]
+        for j in range(1, max(self.J_fr, self.log2_F) + 1):
+            ind_start.append(0)
+            ind_end.append(math.ceil(ind_end[-1] / 2))
         return j0, pad_left, pad_right, ind_start, ind_end
 
     def compute_J_pad(self, shape_fr, n2_reverse, recompute=False, Q=(0, 0)):

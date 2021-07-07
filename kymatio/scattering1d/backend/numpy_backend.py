@@ -28,6 +28,8 @@ class NumpyBackend1D(NumpyBackend):
             The input tensor periodized along the next to last axis to yield a
             tensor of size x.shape[-2] // k along that dimension.
         """
+        if k == 0:
+            return x
         cls.complex_check(x)
 
         axis = axis if axis >= 0 else x.ndim + axis  # ensure positive
@@ -39,11 +41,10 @@ class NumpyBackend1D(NumpyBackend):
         s.insert(axis, re[0])
 
         res = cls._np.reshape(x, s).mean(axis=axis)
-
         return res
 
     @classmethod
-    def pad(cls, x, pad_left, pad_right, pad_mode='reflect'):
+    def pad(cls, x, pad_left, pad_right, pad_mode='reflect', axis=-1):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -71,7 +72,6 @@ class NumpyBackend1D(NumpyBackend):
         paddings += (pad_left, pad_right),
 
         output = cls._np.pad(x, paddings, mode=pad_mode)
-
         return output
 
     @staticmethod
@@ -134,8 +134,10 @@ class NumpyBackend1D(NumpyBackend):
         return x.mean(axis, keepdims=True)
 
     @classmethod
-    def conj_reflections(cls, x, ind_start, ind_end):
-        return agnostic.conj_reflections(cls, x, ind_start, ind_end)
+    def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
+                         trim_tm):
+        return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
+                                         pad_left, pad_right, trim_tm)
 
 
 backend = NumpyBackend1D

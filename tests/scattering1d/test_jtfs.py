@@ -137,7 +137,7 @@ def test_jtfs_vs_ts():
 
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down
-    assert l2_jtfs / l2_ts > 21, ("'nJTFS/TS: %s \nTS: %s\nJTFS: %s"
+    assert l2_jtfs / l2_ts > 20, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   )% (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
     # TODO take l2 distance from stride-adjusted coeffs?
@@ -226,7 +226,7 @@ def test_up_vs_down():
 
     E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
     E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 81
+    th = 84
     assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
 
     if metric_verbose:
@@ -399,9 +399,9 @@ def test_global_averaging():
         reldiff01 = abs(T0F1[pair] - ref) / ref
         reldiff10 = abs(T1F0[pair] - ref) / ref
         reldiff11 = abs(T1F1[pair] - ref) / ref
-        assert reldiff01 < th, "%s > %s" % (reldiff01, th)
-        assert reldiff10 < th, "%s > %s" % (reldiff10, th)
-        assert reldiff11 < th, "%s > %s" % (reldiff11, th)
+        assert reldiff01 < th, "%s > %s | %s" % (reldiff01, th, pair)
+        assert reldiff10 < th, "%s > %s | %s" % (reldiff10, th, pair)
+        assert reldiff11 < th, "%s > %s | %s" % (reldiff11, th, pair)
 
         if metric_verbose:
             print("(01, 10, 11) = ({:.2e}, {:.2e}, {:.2e}) | {}".format(
@@ -446,7 +446,7 @@ def test_backends():
 
         E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        th = 43
+        th = 40
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 
@@ -701,11 +701,12 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
+        # TODO make test 1 test 0
 
           (aligned, average_fr, out_3D, out_type,     F)
-        0. True     True        False   'dict:list'   8
-        1. True     True        True    'dict:array'  8  # TODO make this test 0
-        2. False    True        True    'dict:array'  8
+        0. True     True        False   'dict:list'   4
+        1. True     True        True    'dict:array'  16
+        2. False    True        True    'dict:array'  32
         3. True     True        False   'dict:list'   'global'
         4. True     False       False   'dict:array'  8
 
@@ -714,6 +715,8 @@ def test_output():
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
             `(U1 * phi_t * psi_f) * phi_t * phi_f`.
+
+    For complete info see `data['code']` (`_load_data()`).
     """
     def _load_data(test_num, test_data_dir):
         """Also see data['code']."""
@@ -755,10 +758,13 @@ def test_output():
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
+        if 0:#test_num != 0:
+            continue
         (x, out_stored, out_stored_keys, params, params_str
          ) = _load_data(test_num, test_data_dir)
 
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
+        jmeta = jtfs.meta()
         out = jtfs(x)
 
         # assert equal total number of coefficients
@@ -777,12 +783,16 @@ def test_output():
         already_printed_test_info, max_mean_info, max_max_info = False, None, None
         for pair in out:
             for i, o in enumerate(out[pair]):
+                n = jmeta['n'][pair][i]
+                while n.squeeze().ndim > 1:
+                    n = n[0]
                 # assert equal shapes
                 o = o if params['out_type'] == 'dict:array' else o['coef']
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
-                errmsg = ("out[{}][{}].shape != out_stored[{}].shape\n"
+                errmsg = ("out[{}][{}].shape != out_stored[{}].shape | n={}\n"
                           "({} != {})\n"
-                          ).format(pair, i, o_stored_key, o.shape, o_stored.shape)
+                          ).format(pair, i, o_stored_key, n,
+                                   o.shape, o_stored.shape)
                 if not already_printed_test_info:
                     errmsg += params_str
 
@@ -795,19 +805,20 @@ def test_output():
                     assert o.shape == o_stored.shape, errmsg
 
                 # store info for printing
-                adiff = np.abs(o - o_stored)
+                ref = (o + o_stored)/2 + (o.max() + o_stored.max())/2000
+                adiff = np.abs(o - o_stored) / ref
                 mean_ae, max_ae = adiff.mean(), adiff.max()
                 if mean_ae > max(mean_aes):
-                    max_mean_info = "out[%s][%s]" % (pair, i)
+                    max_mean_info = "out[%s][%s] | n=%s" % (pair, i, n)
                 if max_ae > max(max_aes):
-                    max_max_info  = "out[%s][%s]" % (pair, i)
+                    max_max_info  = "out[%s][%s] | n=%s" % (pair, i, n)
                 mean_aes.append(mean_ae)
                 max_aes.append(max_ae)
 
                 # assert equal values
-                errmsg = ("out[{}][{}] != out_stored[{}]\n"
+                errmsg = ("out[{}][{}] != out_stored[{}] | n={}\n"
                           "(MeanAE={:.2e}, MaxAE={:.2e})\n"
-                          ).format(pair, i, o_stored_key,
+                          ).format(pair, i, o_stored_key, n,
                                    mean_aes[-1], max_aes[-1],)
                 if not already_printed_test_info:
                     errmsg += params_str
@@ -824,8 +835,8 @@ def test_output():
                 print("// max_meanAE = {:.2e} | {}\n".format(max(mean_aes),
                                                              max_mean_info))
             if max_max_info is not None:
-                print("// max_maxAE = {:.2e} | {}\n".format(max(max_aes),
-                                                            max_max_info))
+                print("// max_maxAE  = {:.2e} | {}\n".format(max(max_aes),
+                                                             max_max_info))
 
 ### helper methods ###########################################################
 def energy(x):
