@@ -136,8 +136,10 @@ class TorchBackend1D(TorchBackend):
         return x.mean(axis, keepdim=True)
 
     @classmethod
-    def conj_reflections(cls, x, ind_start, ind_end):
-        return agnostic.conj_reflections(cls, x, ind_start, ind_end)
+    def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
+                         trim_tm):
+        return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
+                                         pad_left, pad_right, trim_tm)
 
 
 backend = TorchBackend1D

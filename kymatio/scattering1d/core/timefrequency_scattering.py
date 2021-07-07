@@ -1,4 +1,5 @@
 import math
+from ..backend.agnostic_backend import unpad_dyadic
 
 
 def timefrequency_scattering(
@@ -822,12 +823,9 @@ def timefrequency_scattering(
             Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             if pad_mode == 'reflect' and average:  # TODO implem for non-dyadic N
-                if n2 > 7:
-                    1==1
-                print(n2, trim_tm)
                 B.conj_reflections(Y_2_arr, ind_start[trim_tm][k1_plus_k2],
                                    ind_end[trim_tm][k1_plus_k2], k1_plus_k2,
-                                   N, pad_left, pad_right)
+                                   N, pad_left, pad_right, trim_tm)
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
@@ -1179,20 +1177,8 @@ def _maybe_unpad_time(Y_2_c, k1_plus_k2, commons2):
         # (and thus `padded < pad_log2_T`); need `trim_tm` for indexing later
         diff = max(int(min(padded - pad_log2_T, J_pad - N_scale)), 0)
         if diff > 0:
-            # [3072 pad, 2048 data, 3072 pad] -->
-            # [1024 pad, 2048 data, 1024 pad]
-            current_log2_N = math.ceil(math.log2(end - start))
-            current_N_dyadic = 2**current_log2_N
-            current_padded = 2**(J_pad - k1_plus_k2)
-            current_to_pad_dyadic = current_padded - current_N_dyadic
-            start_dyadic = current_to_pad_dyadic // 2
-            end_dyadic = start_dyadic + current_N_dyadic
-            to_pad_log2_T = 2**pad_log2_T - 2**current_log2_N
-            # x[3072:3072+2048] -> x[3072-1024:3072+2048+1024]
-            # == x[2048:6144]; len: 8192 --> 4096
-            unpad_start = int(start_dyadic - to_pad_log2_T // 2)
-            unpad_end = int(end_dyadic + to_pad_log2_T // 2)
-            Y_2_c = unpad(Y_2_c, unpad_start, unpad_end)
+            Y_2_c = unpad_dyadic(Y_2_c, end - start, 2**J_pad, 2**pad_log2_T,
+                                 k1_plus_k2)
     elif not average:
         Y_2_c = unpad(Y_2_c, start, end)
     trim_tm = diff

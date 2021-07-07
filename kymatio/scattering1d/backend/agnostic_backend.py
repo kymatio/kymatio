@@ -1,3 +1,4 @@
+import math
 from ...toolkit import _infer_backend
 
 
@@ -99,7 +100,8 @@ def _pad_reflect(x, xflip, out, pad_left, pad_right, N, axis):
     return out
 
 
-def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right):
+def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
+                     trim_tm):
     """Conjugate reflections to mirror spins rather than negate them.
 
     Won't conjugate *at* boundaries:
@@ -109,14 +111,14 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right):
     """
     import numpy as np
 
-    is_numpy = bool(type(backend).__module__ == 'numpy')
-    # N = ind_end - ind_start
-    Np = x.shape[-1]
+    is_numpy = bool('numpy' in backend.__module__.lower())
 
     # compute boundary indices from simulated reflected ramp at original length
     r = np.arange(N)
     rpo = np.pad(r, [pad_left, pad_right], mode='reflect')
-    rp = rpo[::2**k]
+    if trim_tm > 0:
+        rpo = unpad_dyadic(rpo, N, len(rpo), len(rpo) // 2**trim_tm)
+
     # will conjugate where sign is negative
     rpdiffo = np.diff(rpo)
     rpdiffo = np.hstack([rpdiffo[0], rpdiffo])
@@ -124,100 +126,55 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right):
     # -1 will conjugate. This instructs to not conjugate: non-reflections, bounds.
     # diff will mark endpoints with sign opposite to rise's; correct manually
     rpdiffo[np.where(np.diff(rpdiffo) > 0)[0]] = 1
-    rpdiffo[np.where(np.diff(rpdiffo) < 0)[0] + 1] = 1
-
-
     rpdiff = rpdiffo[::2**k]
 
-    # boundary indices
-    rpdiffo_d = np.diff(rpdiffo)
-    rpdiff_d  = np.diff(rpdiff)
-    idxso = np.where(rpdiffo_d != 0)[0]
-    idxs  = np.where(rpdiff_d  != 0)[0]
+    idxs = np.where(rpdiff == -1)[0]
+    # conjugate to left of left bound
+    assert ind_start - 1 in idxs, (ind_start - 1, idxs)
+    # do not conjugate left bound
+    assert ind_start not in idxs, (ind_start, idxs)
+    # conjugate to right of right bound
+    # (Python indexing excludes `ind_end`, so `ind_end - 1` is the right bound)
+    assert ind_end in idxs, (ind_end, idxs)
+    # do not conjugate the right bound
+    assert ind_end - 1 not in idxs, (ind_end - 1, idxs)
 
-    # strided "boundary" is ambiguous by seeking against change in direction
-    # of ramp; we disambiguate by defining per original bounds:
-    #   "start" is first sample to right of where ramp stops falling
-    #   "end" is sample at which ramp stops rising
-    # but this is more a preferred perspective as it's a reformulation of
-    # "change in direction"; what remains is to incorporate information on
-    # location of original boundaries
-    idxs_o_match = [np.where(idxs == io)[0] for io in idxso // 2**k]
-    idxs_o_match = np.array([iom for iom in idxs_o_match if len(iom) > 0])
-    # a positive diff(diff) indicates [fall -> rise], or left bound in original;
-    # negative thus right bound. adjust left such that, if it doesn't land *at*
-    # unsubsampled bound, we increment by 1 - and opposite for right.
-    for i, idx in enumerate(idxs):
-        assert rpdiff_d[idx] != 0, (idx, rpdiff_d, rpdiff_d[idx])
-        if rpdiff_d[idx] > 0 and idx not in idxs_o_match:
-            idxs[i] += 1
-        elif rpdiff_d[idx] < 0 and idx in idxs_o_match:
-            idxs[i] += 1
+    if is_numpy or getattr(x, 'requires_grad', False):
+        ic = [0, *(np.where(np.diff(idxs) > 1)[0] + 1)]
+        ic.append(None)
+        ic = np.array(ic)
+        slices_contiguous = []
+        for i in range(len(ic) - 1):
+            s, e = ic[i], ic[i + 1]
+            start = idxs[s]
+            end = idxs[e - 1] + 1 if e is not None else None
+            slices_contiguous.append(slice(start, end))
 
-
-
-    try:
-        assert ind_start   in idxs, (ind_start,   idxs)
-        # `ind_end` indexes *beyond* the bound to *include* it in unpadding
-        # per Pythonic indexing (i.e. x[start:end], end is excluded),
-        # whereas `idxs` are placed *at* bounds.
-        assert ind_end - 1 in idxs, (ind_end - 1, idxs)
-    except:
-        1/0
-    if k > 1:
-        a0, b0 = ind_start - 3, ind_start + 3
-        a1, b1 = ind_end   - 3 - 1, ind_end   + 3 - 1
-        print(rp[a0:b0])
-        print(rpdiff[a0:b0])
-        print(rp[a1:b1])
-        print(rpdiff[a1:b1])
-        print()
+        inplace = is_numpy or not getattr(x, 'requires_grad', False)
+        for slc in slices_contiguous:
+            backend.conj(x[..., slc], inplace=inplace)
+    else:  # TODO any faster solution?
+        x[..., idxs] = backend.conj(x[..., idxs])
 
 
-    idxs_right = idxs[idxs >= ind_end]
-    idxs_left  = idxs[idxs <= ind_start]
+def unpad_dyadic(x, N, orig_padded_len, target_padded_len, k=0):
+    current_log2_N = math.ceil(math.log2(N))
+    current_N_dyadic = 2**current_log2_N
 
-    # right
-    start = idxs_right[0] + 1  # don't conjugate at boundaries
-    end   = (idxs_right[1] if len(idxs_right) >= 2 else
-             Np)
-    i = 2
-    reflected = True
-    while True:
-        if reflected:
-            if is_numpy:
-                backend.conj(x[..., start:end], inplace=True)
-            else:  # TODO any faster solution?
-                x[..., start:end] = backend.conj(x[..., start:end])
-        # if end >= Np:
-        #     break
-        # 'reflect' adds N - 1 samples rather than N (the boundary sample skipped)
-        start = idxs_right[i] + 1
-        end   = (idxs_right[i + 1] if len(idxs_right) >= i + 2 else
-                 Np)
-        i += 2
-        # start += (N - 1)
-        # end = min(start + (N - 1), Np)
-        reflected = not reflected
-        if i > len(idxs_right) - 1:
-            break
+    J_pad = math.log2(orig_padded_len)
+    current_padded = 2**(J_pad - k)
+    current_to_pad_dyadic = current_padded - current_N_dyadic
 
-    # left
-    end = ind_start
-    start = end - N
-    reflected = True
-    while True:
-        if reflected:
-            if is_numpy:
-                backend.conj(x[..., start:end], inplace=True)
-            else:
-                x[..., start:end] = backend.conj(x[..., start:end])
-        if start <= 0:
-            break
-        end -= N
-        start = max(end - N, 0)
-        reflected = not reflected
+    start_dyadic = current_to_pad_dyadic // 2
+    end_dyadic = start_dyadic + current_N_dyadic
 
+    log2_target_to_pad = target_padded_len - 2**current_log2_N
+    # x[3072:3072+2048] -> x[3072-1024:3072+2048+1024]
+    # == x[2048:6144]; len: 8192 --> 4096
+    unpad_start = int(start_dyadic - log2_target_to_pad // 2)
+    unpad_end = int(end_dyadic + log2_target_to_pad // 2)
+    x = x[..., unpad_start:unpad_end]
+    return x
 
 ## helpers ###################################################################
 def index_axis(i0, i1, axis, ndim, step=1):

@@ -134,9 +134,10 @@ class NumpyBackend1D(NumpyBackend):
         return x.mean(axis, keepdims=True)
 
     @classmethod
-    def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right):
+    def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
+                         trim_tm):
         return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
-                                         pad_left, pad_right)
+                                         pad_left, pad_right, trim_tm)
 
 
 backend = NumpyBackend1D

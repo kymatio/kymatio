@@ -667,13 +667,14 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
     if x is None and y is None:
         raise Exception("`x` and `y` cannot both be None")
     elif x is None:
-        y = y if not squeeze else y.squeeze()
+        y = y if isinstance(y, list) or not squeeze else y.squeeze()
         x = np.arange(len(y))
     elif y is None:
-        x = x if not squeeze else x.squeeze()
+        x = x if isinstance(x, list) or not squeeze else x.squeeze()
         y = x
         x = np.arange(len(x))
-    x, y = (x, y) if not squeeze else (x.squeeze(), y.squeeze())
+    x = x if isinstance(x, list) or not squeeze else x.squeeze()
+    y = y if isinstance(y, list) or not squeeze else y.squeeze()
 
     if complex:
         ax.plot(x, y.real, color='tab:blue', **kw)
