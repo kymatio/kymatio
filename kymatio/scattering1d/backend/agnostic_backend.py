@@ -99,14 +99,89 @@ def _pad_reflect(x, xflip, out, pad_left, pad_right, N, axis):
     return out
 
 
-def conj_reflections(backend, x, ind_start, ind_end):
+def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right):
+    """Conjugate reflections to mirror spins rather than negate them.
+
+    Won't conjugate *at* boundaries:
+
+        [..., 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7]
+        [..., 1, 2, 3, 4, 5, 6, 7,-6,-5,-4,-3,-2, 1, 2, 3, 4, 5, 6, 7]
+    """
+    import numpy as np
+
     is_numpy = bool(type(backend).__module__ == 'numpy')
-    N = ind_end - ind_start
+    # N = ind_end - ind_start
     Np = x.shape[-1]
 
+    # compute boundary indices from simulated reflected ramp at original length
+    r = np.arange(N)
+    rpo = np.pad(r, [pad_left, pad_right], mode='reflect')
+    rp = rpo[::2**k]
+    # will conjugate where sign is negative
+    rpdiffo = np.diff(rpo)
+    rpdiffo = np.hstack([rpdiffo[0], rpdiffo])
+    # mark rising ramp as +1, including bounds, and everything else as -1;
+    # -1 will conjugate. This instructs to not conjugate: non-reflections, bounds.
+    # diff will mark endpoints with sign opposite to rise's; correct manually
+    rpdiffo[np.where(np.diff(rpdiffo) > 0)[0]] = 1
+    rpdiffo[np.where(np.diff(rpdiffo) < 0)[0] + 1] = 1
+
+
+    rpdiff = rpdiffo[::2**k]
+
+    # boundary indices
+    rpdiffo_d = np.diff(rpdiffo)
+    rpdiff_d  = np.diff(rpdiff)
+    idxso = np.where(rpdiffo_d != 0)[0]
+    idxs  = np.where(rpdiff_d  != 0)[0]
+
+    # strided "boundary" is ambiguous by seeking against change in direction
+    # of ramp; we disambiguate by defining per original bounds:
+    #   "start" is first sample to right of where ramp stops falling
+    #   "end" is sample at which ramp stops rising
+    # but this is more a preferred perspective as it's a reformulation of
+    # "change in direction"; what remains is to incorporate information on
+    # location of original boundaries
+    idxs_o_match = [np.where(idxs == io)[0] for io in idxso // 2**k]
+    idxs_o_match = np.array([iom for iom in idxs_o_match if len(iom) > 0])
+    # a positive diff(diff) indicates [fall -> rise], or left bound in original;
+    # negative thus right bound. adjust left such that, if it doesn't land *at*
+    # unsubsampled bound, we increment by 1 - and opposite for right.
+    for i, idx in enumerate(idxs):
+        assert rpdiff_d[idx] != 0, (idx, rpdiff_d, rpdiff_d[idx])
+        if rpdiff_d[idx] > 0 and idx not in idxs_o_match:
+            idxs[i] += 1
+        elif rpdiff_d[idx] < 0 and idx in idxs_o_match:
+            idxs[i] += 1
+
+
+
+    try:
+        assert ind_start   in idxs, (ind_start,   idxs)
+        # `ind_end` indexes *beyond* the bound to *include* it in unpadding
+        # per Pythonic indexing (i.e. x[start:end], end is excluded),
+        # whereas `idxs` are placed *at* bounds.
+        assert ind_end - 1 in idxs, (ind_end - 1, idxs)
+    except:
+        1/0
+    if k > 1:
+        a0, b0 = ind_start - 3, ind_start + 3
+        a1, b1 = ind_end   - 3 - 1, ind_end   + 3 - 1
+        print(rp[a0:b0])
+        print(rpdiff[a0:b0])
+        print(rp[a1:b1])
+        print(rpdiff[a1:b1])
+        print()
+
+
+    idxs_right = idxs[idxs >= ind_end]
+    idxs_left  = idxs[idxs <= ind_start]
+
     # right
-    start = ind_end
-    end = start + N
+    start = idxs_right[0] + 1  # don't conjugate at boundaries
+    end   = (idxs_right[1] if len(idxs_right) >= 2 else
+             Np)
+    i = 2
     reflected = True
     while True:
         if reflected:
@@ -114,11 +189,18 @@ def conj_reflections(backend, x, ind_start, ind_end):
                 backend.conj(x[..., start:end], inplace=True)
             else:  # TODO any faster solution?
                 x[..., start:end] = backend.conj(x[..., start:end])
-        if end >= Np:
-            break
-        start += N
-        end = min(start + N, Np)
+        # if end >= Np:
+        #     break
+        # 'reflect' adds N - 1 samples rather than N (the boundary sample skipped)
+        start = idxs_right[i] + 1
+        end   = (idxs_right[i + 1] if len(idxs_right) >= i + 2 else
+                 Np)
+        i += 2
+        # start += (N - 1)
+        # end = min(start + (N - 1), Np)
         reflected = not reflected
+        if i > len(idxs_right) - 1:
+            break
 
     # left
     end = ind_start

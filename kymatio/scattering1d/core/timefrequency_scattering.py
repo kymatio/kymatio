@@ -822,8 +822,12 @@ def timefrequency_scattering(
             Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             if pad_mode == 'reflect' and average:  # TODO implem for non-dyadic N
+                if n2 > 7:
+                    1==1
+                print(n2, trim_tm)
                 B.conj_reflections(Y_2_arr, ind_start[trim_tm][k1_plus_k2],
-                                   ind_end[trim_tm][k1_plus_k2])
+                                   ind_end[trim_tm][k1_plus_k2], k1_plus_k2,
+                                   N, pad_left, pad_right)
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
