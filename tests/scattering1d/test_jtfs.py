@@ -137,7 +137,7 @@ def test_jtfs_vs_ts():
 
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down
-    assert l2_jtfs / l2_ts > 21, ("'nJTFS/TS: %s \nTS: %s\nJTFS: %s"
+    assert l2_jtfs / l2_ts > 20, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   )% (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
     # TODO take l2 distance from stride-adjusted coeffs?
@@ -226,7 +226,7 @@ def test_up_vs_down():
 
     E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
     E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 81
+    th = 84
     assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
 
     if metric_verbose:
@@ -399,9 +399,9 @@ def test_global_averaging():
         reldiff01 = abs(T0F1[pair] - ref) / ref
         reldiff10 = abs(T1F0[pair] - ref) / ref
         reldiff11 = abs(T1F1[pair] - ref) / ref
-        assert reldiff01 < th, "%s > %s" % (reldiff01, th)
-        assert reldiff10 < th, "%s > %s" % (reldiff10, th)
-        assert reldiff11 < th, "%s > %s" % (reldiff11, th)
+        assert reldiff01 < th, "%s > %s | %s" % (reldiff01, th, pair)
+        assert reldiff10 < th, "%s > %s | %s" % (reldiff10, th, pair)
+        assert reldiff11 < th, "%s > %s | %s" % (reldiff11, th, pair)
 
         if metric_verbose:
             print("(01, 10, 11) = ({:.2e}, {:.2e}, {:.2e}) | {}".format(
@@ -446,7 +446,7 @@ def test_backends():
 
         E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        th = 43
+        th = 40
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 

@@ -1030,30 +1030,28 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     else:
         S_2_fr = U_2_m
 
-    total_conv_stride_over_U1_realized = (n1_fr_subsample +
-                                          lowpass_subsample_fr)
+    total_conv_stride_over_U1_realized = n1_fr_subsample + lowpass_subsample_fr
+    # unpad frequency
+    if out_3D:
+        pad_ref = (sc_freq.J_pad_fr_min if aligned else
+                   sc_freq.J_pad_fr_max)
+        subsample_equiv_due_to_pad_ref = sc_freq.J_pad_fr_max_init - pad_ref
+        stride_ref = _get_stride(
+            None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
+        ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
+        ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
+    else:
+        _stride = total_conv_stride_over_U1_realized
+        ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
+        ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
     if not sc_freq.average_fr_global:
-        # unpad frequency
-        if out_3D:
-            pad_ref = (sc_freq.J_pad_fr_min if aligned else
-                       sc_freq.J_pad_fr_max)
-            subsample_equiv_due_to_pad_ref = sc_freq.J_pad_fr_max_init - pad_ref
-            stride_ref = _get_stride(
-                None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
-            ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
-            ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
-        else:
-            _stride = total_conv_stride_over_U1_realized
-            ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
-            ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
-        # energy correction due to integer-rounded unpad indices # TODO time?
-        # TODO shape_fr_max -> shape_fr[n2]
-        ind_end_exact = (sc_freq.shape_fr_max /
-                         2**total_conv_stride_over_U1_realized)
-        energy_correction = B.sqrt(ind_end_exact / ind_end_fr)
-        S_2_fr *= energy_correction
+    # energy correction due to integer-rounded unpad indices # TODO time?
+    ind_end_exact = (sc_freq.shape_fr[n2] /
+                     2**total_conv_stride_over_U1_realized)
+    energy_correction = B.sqrt(ind_end_exact / ind_end_fr)
+    S_2_fr *= energy_correction
 
     do_averaging = average and n2 != -1
     if do_averaging:
