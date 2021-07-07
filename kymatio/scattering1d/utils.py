@@ -775,7 +775,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 del meta[field][pair]
 
     # ensure time / freq stride doesn't exceed log2_T / log2_F in averaged cases,
-    # and J / J_fr in unaveraged  # TODO make it happen
+    # and J / J_fr in unaveraged
     smax_t = log2_T if average else J
     smax_f = log2_F if sc_freq.average_fr else sc_freq.J_fr
     for pair in meta['stride']:
