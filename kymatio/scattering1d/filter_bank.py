@@ -978,7 +978,9 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
             j0 += 1
     elif sampling_psi_fr == 'exclude':
         # this is built precisely to enable `j0_max=None` while preserving
-        # temporal behavior
+        # temporal behavior (so long as there's at least one filter remaining;
+        # j0_max is set later)
+        j0_max_exclude = {}
         pass
 
     def get_params(n1_fr, scale_diff):
@@ -1083,7 +1085,9 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 # if wavelet exceeds max possible width at this scale, exclude it
                 if psi_width > 2**shape_fr_scale:
                     # subsequent `shape_fr_scale` are only lesser, and `psi_width`
-                    # doesn't change (approx w/ discretization error)
+                    # doesn't change (approx w/ discretization error).
+                    # `j0_max_exclude` can compute from `n1_fr=0` case alone
+                    j0_max_exclude[n1_fr] = j0 - 1
                     break
 
             psi_down[j0] = psi
@@ -1114,6 +1118,12 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 psi_f[n1_fr]['xi'][j0] = xi
                 psi_f[n1_fr]['sigma'][j0] = sigma
                 psi_f[n1_fr]['j'][j0] = j
+
+    # to ensure at least one wavelet for every `shape_fr_scale`
+    if sampling_psi_fr == 'exclude' and 0 in j0_max_exclude:
+        j0_max = max(j0_max_exclude.values())
+        # `n1_fr==0` should be the most trimmable (lowest time width)
+        assert j0_max == j0_max_exclude[0], (j0_max, j0_max_exclude)
 
     # return results
     return psi1_f_fr_up, psi1_f_fr_down, j0_max
