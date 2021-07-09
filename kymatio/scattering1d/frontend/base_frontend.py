@@ -112,7 +112,7 @@ class ScatteringBase1D(ScatteringBase):
 
     def create_filters(self):
         # Create the filters
-        self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
+        self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
             self.J_pad, self.J, self.Q, self.T,
             normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude, r_psi=self.r_psi,

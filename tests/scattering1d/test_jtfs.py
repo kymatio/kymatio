@@ -499,7 +499,6 @@ def test_reconstruction_torch():
 
     y = torch.from_numpy(echirp(N).astype('float32')).to(device)
     Sy = jtfs(y)
-    # needed since stride energy correction was implemented # TODO why?
     div = Sy.max()
     Sy /= div
 

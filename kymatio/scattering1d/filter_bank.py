@@ -508,11 +508,16 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
 
     Returns
     -------
-    xi : dictionary
-        dictionary containing the central frequencies of the wavelets.
-    sigma : dictionary
-        dictionary containing the frequential widths of the wavelets.
-    # TODO j
+    xi : list[float]
+        list containing the central frequencies of the wavelets.
+    sigma : list[float]
+        list containing the frequential widths of the wavelets.
+    j : list[int]
+        list containing the subsampling factors of the wavelets (closely
+        related to their dyadic scales)
+    is_cqt : list[bool]
+        list containing True if a wavelet was built per Constant Q Transform
+        (fixed `xi / sigma`), else False for the STFT portion
 
     Refs
     ----
@@ -527,6 +532,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
     xi = []
     sigma = []
     j = []
+    is_cqt = []
 
     if sigma_max <= sigma_min or xi_max <= xi_min:
         # in this exceptional case, we will not go through the loop, so
@@ -540,6 +546,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
+            is_cqt.append(True)
             current = move_one_dyadic_step(current, Q, alpha=alpha)
         # get the last key
         last_xi = xi[-1]
@@ -554,8 +561,9 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
         xi.append(new_xi)
         sigma.append(new_sigma)
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
+        is_cqt.append(False)
     # return results
-    return xi, sigma, j
+    return xi, sigma, j, is_cqt
 
 
 def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
@@ -607,19 +615,16 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     -------
     sigma_low : float
         frequential width of the low-pass filter
-    xi1 : dictionary
-        dictionary containing the center frequencies of the first order
-        filters. See above for a decsription of the keys.
-    sigma1 : dictionary
-        dictionary containing the frequential width of the first order
-        filters. See above for a description of the keys.
-    xi2 : dictionary
-        dictionary containing the center frequencies of the second order
-        filters. See above for a decsription of the keys.
-    sigma2 : dictionary
-        dictionary containing the frequential width of the second order
-        filters. See above for a description of the keys.
-    # TODO j1 & j2
+    xi1 : list[float]
+        Center frequencies of the first order filters.
+    sigma1 : list[float]
+        Frequential widths of the first order filters.
+    j1 : list[int]
+        Subsampling factors of the first order filters.
+    is_cqt1 : list[bool]
+        Constant Q Transform construction flag of the first order filters.
+    xi2, sigma2, j2, is_cqt2 :
+        `xi1, sigma1, j1, is_cqt1` for second order filters.
     """
     Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
     if Q1 < 1 or Q2 < 1:
@@ -629,14 +634,14 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     # for default T = 2**(J), this coincides with sigma_low
     sigma_min = sigma0 / math.pow(2, J)
 
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q1, r_psi=r_psi,
-                                                alpha=alpha, xi_min=xi_min)
-    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, Q2, r_psi=r_psi,
-                                                alpha=alpha, xi_min=xi_min)
+    xi1s, sigma1s, j1s, is_cqt1s = compute_params_filterbank(
+        sigma_min, Q1, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+    xi2s, sigma2s, j2s, is_cqt2s = compute_params_filterbank(
+        sigma_min, Q2, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
-    return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
+    return sigma_low, xi1s, sigma1s, j1s, is_cqt1s, xi2s, sigma2s, j2s, is_cqt2s
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T,
@@ -746,7 +751,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     N = 2**J_support
     xi_min = 2 / N  # minimal peak at bin 2
     # compute the spectral parameters of the filters
-    (sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s
+    (sigma_low, xi1s, sigma1s, j1s, is_cqt1s, xi2s, sigma2s, j2s, is_cqt2s
      ) = calibrate_scattering_filters(J_scattering, Q, T, r_psi=r_psi,
                                       sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
@@ -773,7 +778,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         # We first compute the filter without subsampling
         psi_f = {}
         psi_f[0] = morlet_1d(
-            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max, eps=eps)
+            N, xi2s[n2], sigma2s[n2], normalize=normalize, P_max=P_max, eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -786,7 +791,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         psi1_f.append({0: morlet_1d(
-            N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max, eps=eps)})
+            N, xi1s[n1], sigma1s[n1], normalize=normalize, P_max=P_max, eps=eps)})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
@@ -811,16 +816,18 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     # Embed the meta information within the filters
     ca = dict(criterion_amplitude=criterion_amplitude)
     for (n1, j1) in enumerate(j1s):
-        psi1_f[n1]['xi'] = xi1[n1]
-        psi1_f[n1]['sigma'] = sigma1[n1]
+        psi1_f[n1]['xi'] = xi1s[n1]
+        psi1_f[n1]['sigma'] = sigma1s[n1]
         psi1_f[n1]['j'] = j1
+        psi1_f[n1]['is_cqt'] = is_cqt1s[n1]
         psi1_f[n1]['width'] = {0: 2*compute_temporal_support(psi1_f[n1][0][None],
                                                              **ca)}
 
     for (n2, j2) in enumerate(j2s):
-        psi2_f[n2]['xi'] = xi2[n2]
-        psi2_f[n2]['sigma'] = sigma2[n2]
+        psi2_f[n2]['xi'] = xi2s[n2]
+        psi2_f[n2]['sigma'] = sigma2s[n2]
         psi2_f[n2]['j'] = j2
+        psi2_f[n2]['is_cqt'] = is_cqt2s[n2]
         psi2_f[n2]['width'] = {k: 2*compute_temporal_support(p[None], **ca)
                                for k, p in psi2_f[n2].items()
                                if isinstance(k, int)}
@@ -829,13 +836,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     phi_f['j'] = log2_T
     phi_f['width'] = 2*compute_temporal_support(phi_f[0].reshape(1, -1), **ca)
 
-
-    # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
-    t_max_phi = phi_f['width']
-
     # return results
-    return phi_f, psi1_f, psi2_f, t_max_phi
+    return phi_f, psi1_f, psi2_f
 
 
 def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
@@ -941,8 +943,9 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     N = 2**J_support
     xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
-    _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
-        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha, xi_min=xi_min)
+    (_, xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, *_
+     ) = calibrate_scattering_filters(J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0,
+                                      alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
@@ -952,16 +955,18 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     ca = dict(criterion_amplitude=criterion_amplitude)
     if sampling_psi_fr == 'recalibrate':
         # recalibrate filterbank to each j0
-        xi1_new, sigma1_new, j1s_new, scale_diff_max = _recalibrate_psi_fr(
-            xi1, sigma1, j1s, N, alpha, shape_fr_scale_min, shape_fr_scale_max,
-            sigma_max_to_min_max_ratio)
+        (xi1_frs_new, sigma1_frs_new, j1_frs_new, scale_diff_max
+         ) = _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, N, alpha,
+                                 shape_fr_scale_min, shape_fr_scale_max,
+                                 sigma_max_to_min_max_ratio)
     elif sampling_psi_fr == 'resample' and unrestricted_pad_fr:
         # in this case filter temporal behavior is preserved across all lengths
         # so we must restrict lowest length such that widest filter still decays
         j0 = 0
         while True:
-            psi_widest = morlet_1d(N // 2**j0, xi1[-1], sigma1[-1], P_max=P_max,
-                                   normalize=normalize, eps=eps)[:, None]
+            psi_widest = morlet_1d(N // 2**j0, xi1_frs[-1], sigma1_frs[-1],
+                                   P_max=P_max, normalize=normalize, eps=eps
+                                   )[:, None]
             psi_widest_halfwidth = compute_temporal_support(psi_widest.T, **ca)
             if psi_widest_halfwidth == len(psi_widest) // 2:
                 j0_max = j0 - 1
@@ -985,10 +990,13 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
     def get_params(n1_fr, scale_diff):
         if sampling_psi_fr in ('resample', 'exclude'):
-            return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
+            return (xi1_frs[n1_fr], sigma1_frs[n1_fr], j1_frs[n1_fr],
+                    is_cqt1_frs[n1_fr])
         elif sampling_psi_fr == 'recalibrate':
-            return (xi1_new[scale_diff][n1_fr], sigma1_new[scale_diff][n1_fr],
-                    j1s_new[scale_diff][n1_fr])
+            return (xi1_frs_new[scale_diff][n1_fr],
+                    sigma1_frs_new[scale_diff][n1_fr],
+                    j1_frs_new[scale_diff][n1_fr],
+                    False)
 
     # keep a mapping from `j0` to `scale_diff`
     j0_to_scale_diff = {}
@@ -997,11 +1005,12 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                       all(p == max_pad_factor_fr[0] for p in max_pad_factor_fr))
     pad_contractive_phi = (average_fr_global or sampling_phi_fr == 'recalibrate')
     # sample spin down and up wavelets
-    for n1_fr in range(len(j1s)):
+    for n1_fr in range(len(j1_frs)):
         psi_down = {}
         # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
-        psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
-                                P_max=P_max, eps=eps)[:, None]
+        psi_down[0] = morlet_1d(N, xi1_frs[n1_fr], sigma1_frs[n1_fr],
+                                normalize=normalize, P_max=P_max, eps=eps
+                                )[:, None]
         psi_down['width'] = {0: 2*compute_temporal_support(psi_down[0].T, **ca)}
 
         # j0 is ordered greater to lower, so reverse
@@ -1077,7 +1086,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
             #### Compute wavelet #############################################
             # fetch wavelet params, sample wavelet, compute its spatial width
-            xi, sigma, j = get_params(n1_fr, scale_diff)
+            xi, sigma, j, _ = get_params(n1_fr, scale_diff)
             psi = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
                             P_max=P_max, eps=eps)[:, None]
             psi_width = 2*compute_temporal_support(psi.T, **ca)
@@ -1105,19 +1114,21 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         psi1_f_fr_up.append(psi_up)
 
     # Embed meta information within the filters
-    for (n1_fr, j1_fr) in enumerate(j1s):
+    for (n1_fr, j1_fr) in enumerate(j1_frs):
         for psi_f in (psi1_f_fr_down, psi1_f_fr_up):
             # create initial meta
-            meta = {'xi': xi1[n1_fr], 'sigma': sigma1[n1_fr], 'j': j1_fr}
+            meta = {'xi': xi1_frs[n1_fr], 'sigma': sigma1_frs[n1_fr], 'j': j1_fr,
+                    'is_cqt': is_cqt1_frs[n1_fr]}
             for field, value in meta.items():
                 psi_f[n1_fr][field] = {0: value}
             # fill for j0s
             j0s = [k for k in psi_f[n1_fr] if (isinstance(k, int) and k != 0)]
             for j0 in j0s:
-                xi, sigma, j = get_params(n1_fr, j0_to_scale_diff[j0])
+                xi, sigma, j, is_cqt = get_params(n1_fr, j0_to_scale_diff[j0])
                 psi_f[n1_fr]['xi'][j0] = xi
                 psi_f[n1_fr]['sigma'][j0] = sigma
                 psi_f[n1_fr]['j'][j0] = j
+                psi_f[n1_fr]['is_cqt'][j0] = is_cqt
 
     # to ensure at least one wavelet for every `shape_fr_scale`
     if sampling_psi_fr == 'exclude' and 0 in j0_max_exclude:
