@@ -490,6 +490,12 @@ class TimeFrequencyScatteringBase1D():
         # number of psi1 filters
         self._n_psi1_f = len(self.psi1_f)
 
+        if self.F is None:
+            # default to one octave (Q wavelets per octave, J octaves,
+            # approx Q*J total frequency rows, so averaging scale is `Q/total`)
+            # F is processed further in `_FrequencyScatteringBase`
+            self.F = self.Q[0]
+
         self.sc_freq = _FrequencyScatteringBase(
             self._shape_fr, self.J_fr, self.Q_fr, self.F, max_order_fr,
             self.average_fr, self.aligned, self.oversampling_fr,
@@ -556,6 +562,27 @@ class TimeFrequencyScatteringBase1D():
                 ind_start[trim_tm] = start
                 ind_end[trim_tm] = end
         self.ind_start, self.ind_end = ind_start, ind_end
+
+        # energy norm
+        self.energy_norm_filterbank()
+
+    def energy_norm_filterbank(self):
+        # compute Littlewood-Paley sum
+        lp_sum = {0: {}, 1: {}}
+        for order, psi_f in enumerate([self.psi1_f, self.psi2_f]):
+            lp_sum[order] = 0
+            for psi in psi_f:
+                lp_sum[order] += np.abs(psi[0])**2
+        for order in lp_sum:
+            # `[0]` for `trim_tm=0`
+            lp_sum[order] += np.abs(self.phi_f[0][0])**2
+
+        # ensure LP sum peaks at 2
+        for order, psi_f in enumerate([self.psi1_f, self.psi2_f]):
+            for psi in psi_f:
+                for k in psi:
+                    if isinstance(k, int):
+                        psi[k] *= np.sqrt(2 / lp_sum[order].max())
 
     def meta(self):
         """Get meta information on the transform
@@ -735,12 +762,30 @@ class TimeFrequencyScatteringBase1D():
 
     Q_fr : int
         Number of wavelets per octave for frequential scattering.
-        # TODO make recommendations on 1 vs 2 vs etc
+
+        Greater values better capture quefrential variations of multiple rates
+        - that is, variations and structures along frequency axis of the wavelet
+        transform's 2D time-frequency plane. Suited for inputs of many frequencies
+        or intricate AM-FM variations. 2 or 1 should work for most purposes.
+
+    Q : int / tuple[int]
+        `(Q1, Q2)`, where `Q2=1` if `Q` is int. `Q1` is the number of first-order
+        wavelets per octave, and `Q2` the second-order.
+
+          - `Q1`, together with `J`, determines `shape_fr_max` and `shape_fr`,
+            or length of inputs to frequential scattering.
+          - `Q2`, together with `J`, determines `shape_fr` (via `j2 > j1`
+            criterion), and total number of joint slices.
+          - Greater `Q2` values better capture temporal AM modulations of
+            multiple rates. Suited for inputs of multirate or intricate AM.
+            `Q2=2` is in close correspondence with the mamallian auditory cortex:
+            https://asa.scitation.org/doi/full/10.1121/1.1945807
+            2 or 1 should work for most purposes.
 
     F : int / str['global'] / None
         Temporal support of frequential low-pass filter, controlling amount of
         imposed frequency transposition invariance and maximum frequential
-        subsampling. Defaults to `2**J_fr`.
+        subsampling. Defaults to `Q`, i.e. one octave.
 
           - If `'global'`, sets to maximum possible `F` based on `shape_fr_max`.
           - Used even with `average_fr=False` (see its docs); this is likewise
@@ -805,8 +850,8 @@ class TimeFrequencyScatteringBase1D():
               [0,  4,  8, 16,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x,  x]
               [0,  4,  8, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64]
 
-        `False` is more information dense (less zeros), but `True` has more
-        total information (less stride).
+        `False` is more information dense, containing same information with
+        fewer datapoints.
 
         In terms of unpadding with `out_3D=True`:
             - `aligned=True`: unpad subsampling factor decided from min
@@ -822,7 +867,7 @@ class TimeFrequencyScatteringBase1D():
           - 'resample': preserve physical dimensionality (center frequeny, width)
             at every length (trimming in time domain).
             E.g. `psi = psi_fn(N/2) == psi_fn(N)[N/4:-N/4]`.
-          - 'recalibrate': recalibrate filter to each length.
+          - 'recalibrate': recalibrate filters to each length.
             - widths (in time): widest filter is halved in width, narrowest is
               kept unchanged, and other widths are re-distributed from the
               new minimum to same maximum.
@@ -831,7 +876,7 @@ class TimeFrequencyScatteringBase1D():
               New max is set by halving distance between old max and 0.5
               (greatest possible), e.g. 0.44 -> 0.47, then 0.47 -> 0.485, etc.
           - 'exclude': same as 'resample' except filters wider than `widest / 2`
-            are excluded. (and `widest / 4` for next short input, etc).
+            are excluded. (and `widest / 4` for next `shape_fr_scale`, etc).
 
         Tuple can set separately `(sampling_psi_fr, sampling_phi_fr)`, else
         both set to same value.
@@ -856,7 +901,7 @@ class TimeFrequencyScatteringBase1D():
 
         Note: `sampling_phi_fr = 'exclude'` will re-set to `'resample'`, as
         `'exclude'` isn't a valid option (there must exist a lowpass for every
-        input length).
+        input length). # TODO re-set to `'recalibrate'` instead?
 
     max_pad_factor_fr : int / None (default) / list[int], optional
         `max_pad_factor` for frequential axis in frequential scattering.
@@ -878,7 +923,7 @@ class TimeFrequencyScatteringBase1D():
         padding values, but are overridden by others.
 
         Overrides:
-            - Padding to lower boundary effects and wavelet distortion
+            - Padding that lessens boundary effects and wavelet distortion
               (`min_to_pad`).
 
         Overridden by:
@@ -888,7 +933,7 @@ class TimeFrequencyScatteringBase1D():
 
     out_type : str, optional
         Affects output structure (but not how coefficients are computed).
-        See `help(scattering)` for further info.
+        See `help(TimeFrequencyScattering1D.scattering)` for further info.
 
             - 'list': coeffs are packed in a list of dictionaries, each dict
               storing meta info, and output tensor keyed by `'coef.`.
@@ -1319,9 +1364,7 @@ class _FrequencyScatteringBase(ScatteringBase):
                                   2**(self.J_fr), 2**self.shape_fr_scale_max)))
 
         # check F or set default
-        if self.F is None:
-            self.F = 2**min(self.J_fr, 2)  # TODO docs
-        elif self.F == 'global':
+        if self.F == 'global':
             self.F = 2**self.shape_fr_scale_max
         elif self.F > 2**self.shape_fr_scale_max:
             raise ValueError("The temporal support F of the low-pass filter "
@@ -1482,6 +1525,41 @@ class _FrequencyScatteringBase(ScatteringBase):
             for j_fr in j_frs:
                 if j_fr > j0_max_realized:
                     del self.phi_f_fr[j_fr]
+
+        # energy norm
+        self.energy_norm_filterbank()
+
+    def energy_norm_filterbank(self):
+        # compute Littlewood-Paley sum
+        lp_sum = {}
+        for s1_fr, psi1_fs in enumerate([self.psi1_f_fr_down, self.psi1_f_fr_up]):
+            lp_sum[s1_fr] = {}
+            for psi1_f in psi1_fs:
+                for j0 in psi1_f:
+                    if isinstance(j0, int):
+                        if j0 not in lp_sum[s1_fr]:
+                            lp_sum[s1_fr][j0] = 0
+                        lp_sum[s1_fr][j0] += np.abs(psi1_f[j0])**2
+
+        # compute maxima
+        if self.sampling_psi_fr in ('resample', 'exclude'):
+            # 'resample': avoid changing rescaling due to small discretization
+            # differences
+            # 'exclude': reuse `j0=0`'s values in accords with 'exclude' being
+            # a subset of 'resample' (+ 'resample''s rationale)
+            lp_sum_max = {s1_fr: {j0 : lp_sum[s1_fr][0].max()
+                                  for j0 in lp_sum[s1_fr]} for s1_fr in lp_sum}
+        else:
+            # compute separately for each
+            lp_sum_max = {s1_fr: {j0 : lp_sum[s1_fr][j0].max()
+                                  for j0 in lp_sum[s1_fr]} for s1_fr in lp_sum}
+
+        # ensure LP sum peaks at 1
+        for s1_fr, psi1_fs in enumerate([self.psi1_f_fr_down, self.psi1_f_fr_up]):
+            for psi1_f in psi1_fs:
+                for j0 in psi1_f:
+                    if isinstance(j0, int):
+                        psi1_f[j0] /= np.sqrt(lp_sum_max[s1_fr][j0])
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""

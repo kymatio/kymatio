@@ -44,7 +44,8 @@ def drop_batch_dim_jtfs(Scx):
     return out
 
 
-def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
+def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
+                 kind='l2'):
     """Computes energy of JTFS coefficients.
 
     Parameters
@@ -67,6 +68,28 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
             - E_slices = energy of every joint slice (if not `'S0', 'S1'`),
               in a pair. That is, sum of coeff energies on per-`(n2, n1_fr)`
               basis.
+
+    correction : bool (default False)
+        Whether to apply stride and filterbank norm correction factors:
+            - stride: if subsampled by 2, energy will reduce by 2
+            - filterbank: since input is assumed real, we convolve only over
+              positive frequencies, getting half the energy
+
+        Current JTFS implementation accounts for both so default is `False`.
+
+        Filterbank energy correction is as follows:
+
+            - S0 -> 1
+            - U1 -> 2 (because psi_t is only analytic)
+            - phi_t * phi_f -> 2 (because U1)
+            - psi_t * phi_f -> 4 (because U1 and another psi_t that's
+                                  only analytic)
+            - phi_t * psi_f -> 4 (because U1 and psi_f is only for one spin)
+            - psi_t * psi_f -> 4 (because U1 and another psi_t that's
+                                  only analytic)
+
+        For coefficient correction (e.g. distance computation) we instead
+        scale the coefficients by square root of these values.
 
     kind: str['l1', 'l2']
         Kind of energy to compute. L1==`sum(abs(x))`, L2==`sum(abs(x)**2)`
@@ -109,9 +132,10 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
                          "(got %s)" % pair)
 
     # compute compensation factor # TODO better comment
-    factor = _get_pair_factor(pair)
+    factor = _get_pair_factor(pair, correction)
     fn = lambda c: energy(c, kind=kind)
-    norm_fn = lambda total_joint_stride: 2**total_joint_stride
+    norm_fn = lambda total_joint_stride: (2**total_joint_stride
+                                          if correction else 1)
 
     E_flat, E_slices = _iterate_coeffs(Scx, meta, pair, fn, norm_fn, factor)
     Es = []
@@ -124,14 +148,17 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, kind='l2'):
     return E_flat, E_slices
 
 
-def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, kind='l2'):
+def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
+                   kind='l2'):
     if meta1 is None:
         meta1 = meta0
     # compute compensation factor # TODO better comment
-    factor = _get_pair_factor(pair)
+    factor = _get_pair_factor(pair, correction)
     fn = lambda c: c
 
     def norm_fn(total_joint_stride):
+        if not correction:
+            return 1
         return (2**(total_joint_stride / 2) if kind == 'l2' else
                 2**total_joint_stride)
 
@@ -168,8 +195,8 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, kind='l2'):
     return reldist_flat, reldist_slices
 
 
-def _get_pair_factor(pair):
-    if pair == 'S0':
+def _get_pair_factor(pair, correction):
+    if pair == 'S0' or not correction:
         factor = 1
     elif 'psi' in pair:
         factor = 4
@@ -301,6 +328,19 @@ def _l1(x):
 def l1(x0, x1, adj=False):
     ref = _l1(x0) if not adj else (_l1(x0) + _l1(x1)) / 2
     return _l1(x1 - x0) / ref
+
+
+def rel_ae(x0, x1, eps=None, ref_both=True):
+    """Relative absolute error."""
+    if ref_both:
+        if eps is None:
+            eps = (np.abs(x0).max() + np.abs(x1).max()) / 2000
+        ref = (x0 + x1)/2 + eps
+    else:
+        if eps is None:
+            eps = np.abs(x0).max() / 1000
+        ref = x0 + eps
+    return np.abs(x0 - x1) / ref
 
 
 #### test signals ###########################################################

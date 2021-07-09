@@ -17,7 +17,8 @@ __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
            'energy_profile_jtfs']
 
 
-def filterbank_scattering(scattering, zoom=0, second_order=False):
+def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
+                          second_order=False):
     """
     # Arguments:
         scattering: kymatio.scattering1d.Scattering1D
@@ -32,24 +33,36 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
         scattering = Scattering1D(shape=2048, J=8, Q=8)
         filterbank_scattering(scattering)
     """
-    def _plot_filters(ps, p0, title):
-        # Morlets
-        for p in ps:
-            j = p['j']
-            plot(p[0], color=colors[j], linestyle=linestyles[j])
-
-        # octave bounds
-        Nmax = len(p[0])
-        plot([], vlines=([Nmax//2**j for j in range(1, scattering.J + 2)],
-                         dict(color='k', linewidth=1)))
-        # lowpass
+    def _plot_filters(ps, p0, lp, title):
+        # determine plot parameters ##########################################
+        # vertical lines (octave bounds)
+        Nmax = len(ps[0][0])
+        # x-axis zoom
         if zoom == -1:
             xlims = (-.02 * Nmax, 1.02 * Nmax)
         else:
             xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
-        if isinstance(p0[0], list):
-            p0 = p0[0]
-        plot(p0[0], color='k', xlims=xlims, title=title, show=1)
+
+        # plot filterbank ####################################################
+        if filterbank:
+            # Morlets
+            for p in ps:
+                j = p['j']
+                plot(p[0], color=colors[j], linestyle=linestyles[j])
+            # vlines
+            plot([], vlines=([Nmax//2**j for j in range(1, scattering.J + 2)],
+                             dict(color='k', linewidth=1)))
+            # lowpass
+            if isinstance(p0[0], list):
+                p0 = p0[0]
+            plot(p0[0], color='k', xlims=xlims, title=title, show=1)
+
+        # plot LP sum ########################################################
+        if lp_sum:
+            plot(lp, xlims=xlims, title="Littlewood-Paley sum", show=1,
+                 hlines=(2, dict(color='tab:red', linestyle='--')),
+                 vlines=(Nmax//2, dict(color='k', linewidth=1)))
+
 
     # define colors & linestyles
     colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "
@@ -65,16 +78,150 @@ def filterbank_scattering(scattering, zoom=0, second_order=False):
     # shorthand references
     p0 = scattering.phi_f
     p1 = scattering.psi1_f
-
-    title = "First-order filterbank | J, Q1 = {}, {}".format(
-        scattering.J, scattering.Q[0])
-    _plot_filters(p1, p0, title=title)
-
     if second_order:
         p2 = scattering.psi2_f
-        title = "Second-order filterbank | J, Q2 = {}, {}".format(
-            scattering.J, scattering.Q[1])
-        _plot_filters(p2, p0, title=title)
+
+    # compute LP sum
+    lp1, lp2 = 0, 0
+    if lp_sum:
+        # it's list for JTFS
+        p0_longest = p0[0] if not isinstance(p0[0], list) else p0[0][0]
+        for p in p1:
+            lp1 += np.abs(p[0])**2
+        lp1 += np.abs(p0_longest)**2
+
+        if second_order:
+            for p in p2:
+                lp2 += np.abs(p[0])**2
+            lp2 += np.abs(p0_longest)**2
+
+    # title & plot
+    title = "First-order filterbank | J, Q1, T = {}, {}, {}".format(
+        scattering.J, scattering.Q[0], scattering.T)
+    _plot_filters(p1, p0, lp1, title=title)
+
+    if second_order:
+        title = "Second-order filterbank | J, Q2, T = {}, {}, {}".format(
+            scattering.J, scattering.Q[1], scattering.T)
+        _plot_filters(p2, p0, lp2, title=title)
+
+
+def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
+                       plot_kw=None):
+    """
+    # Arguments:
+        scattering: kymatio.scattering1d.TimeFrequencyScattering1D
+            Scattering object.
+        zoom: int
+            Will zoom plots by this many octaves.
+            If -1, will show full frequency axis (including negatives),
+            and both spins.
+        j0: int
+            `subsample_equiv_due_to_pad`
+        filterbank : False
+            Whether to plot the filterbank.
+        lp_sum: False
+            Whether to plot Littlewood-Paley sum of the filterbank.
+        plot_kw: None / dict
+            Will pass to `plot(**plot_kw)`.
+
+    # Example:
+        scattering = Scattering1D(shape=2048, J=8, Q=8)
+        filterbank_scattering(scattering)
+    """
+    def _plot_filters(ps, p0, lp, title_base, up):
+        # determine plot parameters ##########################################
+        # vertical lines (octave bounds)
+        Nmax = len(ps[0][j0])
+        if up:
+            vlines = [Nmax - Nmax//2**j for j in range(1, jtfs.J_fr + 1)]
+        else:
+            vlines = [Nmax//2**j for j in range(1, jtfs.J_fr + 1)]
+        # x-axis zoom
+        if zoom == -1:
+            xlims = (-.02 * Nmax, 1.02 * Nmax)
+        else:
+            if up:
+                xlims = (.45 * Nmax * (1 + ( 1 - 1/2**zoom)), Nmax)
+            else:
+                xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
+
+        # title
+        show = (zoom != -1) or not up
+        if zoom != -1:
+            title = title_base % "up" if up else title_base % "down"
+        else:
+            title = title_base
+
+        # handle `plot_kw`
+        if 'xlims' not in plot_kw:
+            plot_kw['xlims'] = xlims
+        if 'title' not in plot_kw:
+            plot_kw['title'] = title
+
+        # plot filterbank ####################################################
+        if filterbank:
+            for p in ps:
+                if j0 not in p:  # sampling_psi_fr == 'exclude'
+                    continue
+                j = p['j'][j0]
+                plot(p[j0], color=colors[j], linestyle=linestyles[j])
+            plot(p0[j0][0], color='k', **plot_kw, show=show,
+                 vlines=(vlines, dict(color='k', linewidth=1)))
+
+        # plot LP sum ########################################################
+        if 'title' not in plot_kw:
+            plot_kw['title'] = "Littlewood-Paley sum"
+        if lp_sum and not (zoom == -1 and up):
+            plot(lp, **plot_kw, show=show,
+                 hlines=(1, dict(color='tab:red', linestyle='--')),
+                 vlines=(Nmax//2, dict(color='k', linewidth=1)))
+
+    # handle `plot_kw`
+    if plot_kw is not None:
+        # don't alter external dict
+        plot_kw = deepcopy(plot_kw)
+    else:
+        plot_kw = {}
+
+    # define colors & linestyles
+    colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "
+                                   "gray olive cyan".split())]
+    linestyles = ('-', '--', '-.')
+    nc = len(colors)
+    nls = len(linestyles)
+
+    # support J up to nc * nls
+    colors = colors * nls
+    linestyles = [ls_set for ls in "- -- -.".split() for ls_set in [ls]*nc]
+
+    # shorthand references
+    p0 = jtfs.sc_freq.phi_f_fr
+    pup = jtfs.psi1_f_fr_up
+    pdn = jtfs.psi1_f_fr_down
+
+    # compute LP sum
+    lp = 0
+    if lp_sum:
+        for psi1_f in (pup, pdn):
+            for p in psi1_f:
+                if j0 not in p:  # sampling_psi_fr == 'exclude'
+                    continue
+                lp += np.abs(p[j0])**2
+        lp += np.abs(p0[j0][0])**2
+
+    # title
+    params = (jtfs.J_fr, jtfs.Q_fr, jtfs.F)
+    if zoom != -1:
+        title_base = ("Frequential filterbank | spin %s | J_fr, Q_fr, F = "
+                      "{}, {}, {}").format(*params)
+    else:
+        title_base = ("Frequential filterbank | J_fr, Q_fr, F = "
+                      "{}, {}, {}").format(*params)
+
+    # plot
+    _plot_filters(pup, p0, lp, title_base=title_base, up=True)
+    _plot_filters(pdn, p0, lp, title_base=title_base, up=False)
 
 
 def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,

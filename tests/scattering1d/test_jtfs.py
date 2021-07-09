@@ -2,7 +2,8 @@ import pytest
 import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
-from kymatio.toolkit import drop_batch_dim_jtfs, coeff_energy, fdts, echirp, l2
+from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
+                             l2, rel_ae)
 from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
 from utils import cant_import
 
@@ -137,7 +138,7 @@ def test_jtfs_vs_ts():
 
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down
-    assert l2_jtfs / l2_ts > 20, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
+    assert l2_jtfs / l2_ts > 25, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   )% (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
     # TODO take l2 distance from stride-adjusted coeffs?
@@ -241,7 +242,7 @@ def test_sampling_psi_fr_exclude():
     N = 1024
     x = echirp(N)
 
-    params = dict(shape=N, J=9, Q=8, J_fr=3, Q_fr=2, average_fr=True,
+    params = dict(shape=N, J=9, Q=8, J_fr=3, Q_fr=2, F=4, average_fr=True,
                   out_type='dict:list', frontend=default_backend)
     test_params_str = '\n'.join(f'{k}={v}' for k, v in params.items())
     jtfs0 = TimeFrequencyScattering1D(
@@ -279,13 +280,12 @@ def test_sampling_psi_fr_exclude():
                     "mismatched `n`)").format(pad, pad_max, info)
                 continue
 
-            assert c0.shape == c1.shape, ("shape mismatch: {} != {} | {}".format(
-                c0.shape, c1.shape, info))
-            ae = np.abs(c0 - c1)
-            # lower threshold because pad differences are possible
-            assert np.allclose(c0, c1, atol=5e-7), (
-                "{} | MeanAE={:.2e}, MaxAE={:.2e}"
-                ).format(info, ae.mean(), ae.max())
+            assert c0.shape == c1.shape, "shape mismatch: {} != {} | {}".format(
+                c0.shape, c1.shape, info)
+            # TODO use relative measure, & chk other places
+            ae = rel_ae(c0, c1)
+            assert np.allclose(c0, c1), ("{} | MeanAE={:.2e}, MaxAE={:.2e}"
+                                         ).format(info, ae.mean(), ae.max())
             i1 += 1
 
 
@@ -378,6 +378,11 @@ def test_global_averaging():
         # shape_fr_max ~= Q*max(p2['j'] for p2 in psi2_f); found 29 at runtime
         for F in Fs:
             jtfs = TimeFrequencyScattering1D(**params, T=T, F=F)
+            assert (jtfs.average_fr_global if F == Fs[-1] else
+                    not jtfs.average_fr_global)
+            assert (jtfs.average_global if T == Ts[-1] else
+                    not jtfs.average_global)
+
             outs[ (T, F)] = jtfs(x)
             metas[(T, F)] = jtfs.meta()
             # print(T, F, '--',
@@ -487,36 +492,46 @@ def test_reconstruction_torch():
     J = 6
     Q = 6
     N = 512
-    n_iters = 22
+    n_iters = 20
     jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
 
     y = torch.from_numpy(echirp(N).astype('float32')).to(device)
     Sy = jtfs(y)
+    # needed since stride energy correction was implemented # TODO why?
+    div = Sy.max()
+    Sy /= div
 
     torch.manual_seed(0)
-    x = torch.randn(N, requires_grad=True, device=device)
-    optimizer = torch.optim.Adam([x], lr=.4)
+    x = torch.randn(N, device=device)
+    x /= torch.max(torch.abs(x))
+    x.requires_grad = True
+    optimizer = torch.optim.SGD([x], lr=50000, momentum=.8, nesterov=True)
     loss_fn = torch.nn.MSELoss()
 
-    losses = []
+    losses, losses_recon = [], []
     for i in range(n_iters):
         optimizer.zero_grad()
         Sx = jtfs(x)
+        Sx /= div
         loss = loss_fn(Sx, Sy)
         loss.backward()
         optimizer.step()
         losses.append(float(loss.detach().cpu().numpy()))
+        xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
+        losses_recon.append(l2(yn, xn))
 
-    th = 1e-5
+    th, th_recon = 1e-5, .94
     end_ratio = losses[0] / losses[-1]
-    assert end_ratio > 25, end_ratio
+    assert end_ratio > 35, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
-
+    assert min(losses_recon) < th_recon, "{:.2e} > {}".format(min(losses_recon),
+                                                              th_recon)
     if metric_verbose:
-        print(("\nReconstruction (torch):\n(end_start_ratio, min_loss) = "
-               "({:.1f}, {:.2e})").format(end_ratio, min(losses)))
+        print(("\nReconstruction (torch):\n(end_start_ratio, min_loss, "
+               "min_loss_recon) = ({:.1f}, {:.2e}, {:.2f})").format(
+                   end_ratio, min(losses), min(losses_recon)))
 
 
 def test_meta():
@@ -805,8 +820,7 @@ def test_output():
                     assert o.shape == o_stored.shape, errmsg
 
                 # store info for printing
-                ref = (o + o_stored)/2 + (o.max() + o_stored.max())/2000
-                adiff = np.abs(o - o_stored) / ref
+                adiff = rel_ae(o_stored, o, ref_both=False)
                 mean_ae, max_ae = adiff.mean(), adiff.max()
                 if mean_ae > max(mean_aes):
                     max_mean_info = "out[%s][%s] | n=%s" % (pair, i, n)

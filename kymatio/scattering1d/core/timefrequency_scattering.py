@@ -632,6 +632,8 @@ def timefrequency_scattering(
             S_0 = unpad(S_0_r, ind_start[0][k0], ind_end[0][k0])
         else:
             S_0 = x
+        if average:
+            S_0 *= B.sqrt(2**k0)  # subsampling energy correction
         out_S_0.append({'coef': S_0,
                         'j': (log2_T,) if average else (),
                         'n': (-1,)     if average else (),
@@ -1087,7 +1089,8 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     param_fr = (sc_freq.shape_fr[n2], ind_start_fr,
                 ind_end_fr, total_conv_stride_over_U1_realized)
     S_2 = (_energy_correction(S_2, B, param_tm, param_fr) if n2 != -1 else
-           _energy_correction(S_2, B, param_fr=param_fr))  # already did time
+           # `n2=-1` already did time
+           _energy_correction(S_2, B, param_fr=param_fr, phi_t_psi_f=True))
 
     # sanity checks (see "Subsampling, padding") #############################
     if aligned and not sc_freq.average_fr_global:
@@ -1154,7 +1157,7 @@ def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
         c = coeff_list_new[idx]
         c = c if reflect else B.conj(c)
         right_rows.append(c)
-        if idx in (-1, -len(coeff_list_new)):
+        if idx in (-1, -len(coeff_list_new)):  # TODO bounds correctly excluded?
             reflect = not reflect
         idx += 1 if reflect else -1
 
@@ -1238,18 +1241,17 @@ def _get_stride(j1_fr, pad_fr, subsample_equiv_due_to_pad, sc_freq,
     return total_conv_stride_over_U1
 
 
-def _energy_correction(x, B, param_tm=None, param_fr=None):
+def _energy_correction(x, B, param_tm=None, param_fr=None, phi_t_psi_f=False):
+    energy_correction_tm, energy_correction_fr = 1, 1
     if param_tm is not None:
         N, ind_start_tm, ind_end_tm, total_conv_stride_tm = param_tm
         # time energy correction due to integer-rounded unpad indices
         unpad_len_exact = N / 2**total_conv_stride_tm
         unpad_len = ind_end_tm - ind_start_tm
         if not (unpad_len_exact.is_integer() and unpad_len == unpad_len_exact):
-            energy_correction_tm = B.sqrt(unpad_len_exact / unpad_len)
-        else:
-            energy_correction_tm = 1
-    else:
-        energy_correction_tm = 1
+            energy_correction_tm *= B.sqrt(unpad_len_exact / unpad_len)
+        # compensate for subsampling
+        energy_correction_tm *= B.sqrt(2**total_conv_stride_tm)
 
     if param_fr is not None:
         (N_fr, ind_start_fr, ind_end_fr, total_conv_stride_over_U1_realized
@@ -1258,11 +1260,13 @@ def _energy_correction(x, B, param_tm=None, param_fr=None):
         unpad_len_exact = N_fr / 2**total_conv_stride_over_U1_realized
         unpad_len = ind_end_fr - ind_start_fr
         if not (unpad_len_exact.is_integer() and unpad_len == unpad_len_exact):
-            energy_correction_fr = B.sqrt(unpad_len_exact / unpad_len)
-        else:
-            energy_correction_fr = 1
-    else:
-        energy_correction_fr = 1
+            energy_correction_fr *= B.sqrt(unpad_len_exact / unpad_len)
+        # compensate for subsampling
+        energy_correction_fr *= B.sqrt(2**total_conv_stride_over_U1_realized)
+
+        if phi_t_psi_f:
+            # since we only did one spin
+            energy_correction_fr *= B.sqrt(2)
 
     if energy_correction_tm != 1 or energy_correction_fr != 1:
         x *= (energy_correction_tm * energy_correction_fr)
