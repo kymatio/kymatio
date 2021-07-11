@@ -955,9 +955,9 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     ca = dict(criterion_amplitude=criterion_amplitude)
     if sampling_psi_fr == 'recalibrate':
         # recalibrate filterbank to each j0
-        (xi1_frs_new, sigma1_frs_new, j1_frs_new, scale_diff_max
-         ) = _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, N, alpha,
-                                 shape_fr_scale_min, shape_fr_scale_max,
+        (xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new, scale_diff_max
+         ) = _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N,
+                                 alpha, shape_fr_scale_min, shape_fr_scale_max,
                                  sigma_max_to_min_max_ratio)
     elif sampling_psi_fr == 'resample' and unrestricted_pad_fr:
         # in this case filter temporal behavior is preserved across all lengths
@@ -996,7 +996,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
             return (xi1_frs_new[scale_diff][n1_fr],
                     sigma1_frs_new[scale_diff][n1_fr],
                     j1_frs_new[scale_diff][n1_fr],
-                    False)
+                    is_cqt1_frs_new[scale_diff][n1_fr])
 
     # keep a mapping from `j0` to `scale_diff`
     j0_to_scale_diff = {}
@@ -1281,44 +1281,194 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
     return phi_f_fr
 
 
-def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
+def energy_norm_filterbank_tm(J, log2_T, psi1_f, psi2_f, phi_f):
+    # TODO docs
+    psi_fs_all = (psi1_f, psi2_f)
+    lp_sum = _compute_lp_sum_tm(*psi_fs_all, phi_f, J, log2_T)
+
+    lp_max_cqt, lp_max_non_cqt = {}, {}
+    for order in lp_sum:
+        lp_max_cqt[order], lp_max_non_cqt[order] = (
+            _get_lp_sum_maxima(lp_sum[order], psi_fs_all[order]))
+
+    # ensure LP sum peaks at 2
+    for order, psi_fs in enumerate(psi_fs_all):
+        for psi_f in psi_fs:
+            lp_max = (lp_max_cqt[order] if psi_f['is_cqt'] else
+                      lp_max_non_cqt[order])
+            for k in psi_f:
+                if isinstance(k, int):
+                    psi_f[k] *= np.sqrt(2 / lp_max)
+
+
+def energy_norm_filterbank_fr(J_fr, log2_F, sampling_psi_fr,
+                              psi1_f_fr_up, psi1_f_fr_down, phi_f_fr):
+    psi1_fs_all = (psi1_f_fr_up, psi1_f_fr_down)
+    lp_sum = _compute_lp_sum_fr(*psi1_fs_all, phi_f_fr, J_fr, log2_F)
+
+    # compute maxima
+    lp_max_cqt, lp_max_non_cqt = {}, {}
+    for s1_fr in lp_sum:
+        lp_max_cqt[s1_fr], lp_max_non_cqt[s1_fr] = {}, {}
+        for j0 in lp_sum[s1_fr]:
+            if j0 == 0 or sampling_psi_fr == 'recalibrate':
+                # for `j=0` all configurations are identical
+                # for `j!=0` and `'recalibrate'`, compute separately for each
+                (lp_max_cqt[s1_fr][j0], lp_max_non_cqt[s1_fr][j0]
+                 ) = _get_lp_sum_maxima(lp_sum[s1_fr][j0],
+                                        psi1_fs_all[s1_fr], j0=j0,
+                                        anti_analytic=(s1_fr==0))
+            elif sampling_psi_fr in ('resample', 'exclude'):
+                # 'resample': avoid changing rescaling due to small
+                # discretization differences
+                # 'exclude': reuse `j0=0`'s values in accords with 'exclude'
+                # being a subset of 'resample' (+ 'resample''s rationale)
+                (lp_max_cqt[s1_fr][j0], lp_max_non_cqt[s1_fr][j0]
+                 ) = lp_max_cqt[s1_fr][0], lp_max_non_cqt[s1_fr][0]
+
+    # ensure LP sum peaks at 1
+    for s1_fr, psi1_fs in enumerate(psi1_fs_all):
+        for psi1_f in psi1_fs:
+            for j0 in psi1_f:
+                if isinstance(j0, int):
+                    lp_max = (lp_max_cqt[s1_fr][j0] if psi1_f['is_cqt'][j0]
+                              else lp_max_non_cqt[s1_fr][j0])
+                    psi1_f[j0] *= np.sqrt(1 / lp_max)
+
+
+#### helpers #################################################################
+def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
+                      J=None, log2_T=None, force_phi=False):
+    lp_sum = {0: {}, 1: {}}
+    psi_fs_all = (psi1_f, psi2_f)
+    for order, psi_fs in enumerate(psi_fs_all):
+        lp_sum[order] = 0
+        for psi_f in psi_fs:
+            lp_sum[order] += np.abs(psi_f[0])**2
+    if force_phi or log2_T >= J:
+        # else lowest frequency bandpasses are too attenuated
+        for order in lp_sum:
+            # `[0]` for `trim_tm=0`
+            lp_sum[order] += np.abs(phi_f[0][0])**2
+    return lp_sum
+
+
+def _compute_lp_sum_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr=None,
+                      J_fr=None, log2_F=None, force_phi=False):
+    lp_sum = {}
+    psi1_fs_all = (psi1_f_fr_up, psi1_f_fr_down)
+    for s1_fr, psi1_fs in enumerate(psi1_fs_all):
+        lp_sum[s1_fr] = {}
+        for psi1_f in psi1_fs:
+            for j0 in psi1_f:
+                if isinstance(j0, int):
+                    if j0 not in lp_sum[s1_fr]:
+                        lp_sum[s1_fr][j0] = 0
+                    # bandpass
+                    lp_sum[s1_fr][j0] += np.abs(psi1_f[j0])**2
+    # lowpass
+    if force_phi or log2_F >= J_fr:
+        # else lowest frequency bandpasses are too attenuated
+        for s1_fr in lp_sum:
+            for j0 in lp_sum[s1_fr]:
+                lp_sum[s1_fr][j0] += np.abs(phi_f_fr[j0][0])**2
+    return lp_sum
+
+
+def _get_lp_sum_maxima(lp_sum, psi_fs, j0=None, anti_analytic=False):
+    # compute number of non-CQT filters
+    n_non_cqt = 0
+    for p in psi_fs:
+        n_non_cqt += int(not p['is_cqt'] if j0 is None else
+                         not p['is_cqt'][j0])
+
+    # for later, to rescale analytic and anti-analytic separately;
+    # include Nyquist in analytic, exclude in anti-analytic
+    N = len(psi_fs[0][0] if j0 is None else psi_fs[0][j0])
+
+    # rescale non-CQT separately (lesser overlap -> lesser LP-sum peak)
+    # compute non-CQT bounds in sample indices
+    if n_non_cqt > 0:
+        if j0 is None:
+            non_cqt_psis = [p[0]  for p in psi_fs if not p['is_cqt']]
+        else:
+            non_cqt_psis = [p[j0] for p in psi_fs if not p['is_cqt'][j0]]
+
+        # be safe and pick next to last to lessen overlap with CQT
+        # `+1` to include peak in indexing
+        peak_idx = (np.argmax(non_cqt_psis[1]) if n_non_cqt > 1 else
+                    np.argmax(non_cqt_psis[0]))  # no other choice
+        if anti_analytic:  # TODO move to N//2?
+            assert peak_idx > N//2, ("found anti-analytic wavelet peak "
+                                     "to left of Nyquist ({} <= {})".format(
+                                         peak_idx, N//2))
+            # no dc on negative freqs side
+            non_cqt_start, non_cqt_end = peak_idx, None
+            cqt_start, cqt_end = N//2, non_cqt_start
+        else:
+            assert peak_idx <= N//2, ("found analytic wavelet peak "
+                                      "to right of Nyquist ({} > {})".format(
+                                          peak_idx, N//2))
+            # exclude dc
+            non_cqt_start, non_cqt_end = 1, peak_idx + 1  # include peak
+            cqt_start, cqt_end = non_cqt_end, N//2 + 1    # include Nyquist
+        lp_max_non_cqt = lp_sum[non_cqt_start:non_cqt_end].max()
+
+        # recompute CQT separately to be safe
+        lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
+    else:
+        if anti_analytic:
+            cqt_start, cqt_end = N//2, None
+        else:
+            cqt_start, cqt_end = 1, N//2 + 1
+        lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
+        lp_max_non_cqt = lp_max_cqt
+
+    return lp_max_cqt, lp_max_non_cqt
+
+
+def _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N, alpha,
                         shape_fr_scale_min, shape_fr_scale_max,
                         sigma_max_to_min_max_ratio):
     # recalibrate filterbank to each j0
     # j0=0 is the original length, no change needed
-    xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
+    xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new = (
+        {0: xi1_frs}, {0: sigma1_frs}, {0: j1_frs}, {0: is_cqt1_frs})
     scale_diff_max = None
 
     for shape_fr_scale in range(shape_fr_scale_max - 1, shape_fr_scale_min - 1,
                                 -1):
         scale_diff = shape_fr_scale_max - shape_fr_scale
-        xi1_new[scale_diff], sigma1_new[scale_diff], j1s_new[scale_diff] = (
-            [], [], [])
+        (xi1_frs_new[scale_diff], sigma1_frs_new[scale_diff],
+         j1_frs_new[scale_diff], is_cqt1_frs_new[scale_diff]) = [], [], [], []
         factor = 2**scale_diff
 
         # contract largest temporal width of any wavelet by 2**j0,
         # but not above sigma_max/sigma_max_to_min_max_ratio
-        sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
-        new_sigma_min = min(sigma1) * factor
+        sigma_min_max = max(sigma1_frs) / sigma_max_to_min_max_ratio
+        new_sigma_min = min(sigma1_frs) * factor
         if new_sigma_min > sigma_min_max:
             scale_diff_max = scale_diff
             break
 
         # halve distance from existing xi_max to .5 (max possible)
-        new_xi_max = .5 - (.5 - max(xi1)) / factor
+        new_xi_max = .5 - (.5 - max(xi1_frs)) / factor
         new_xi_min = 2 / (N // factor)
         # logarithmically distribute
         new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
-                             len(xi1), endpoint=True)[::-1]
-        xi1_new[scale_diff].extend(new_xi)
-        new_sigma = np.logspace(np.log10(new_sigma_min), np.log10(max(sigma1)),
-                                len(xi1), endpoint=True)[::-1]
-        sigma1_new[scale_diff].extend(new_sigma)
+                             len(xi1_frs), endpoint=True)[::-1]
+        xi1_frs_new[scale_diff].extend(new_xi)
+        new_sigma = np.logspace(np.log10(new_sigma_min),
+                                np.log10(max(sigma1_frs)),
+                                len(xi1_frs), endpoint=True)[::-1]
+        sigma1_frs_new[scale_diff].extend(new_sigma)
         for xi, sigma in zip(new_xi, new_sigma):
-            j1s_new[scale_diff].append(get_max_dyadic_subsampling(
+            j1_frs_new[scale_diff].append(get_max_dyadic_subsampling(
                 xi, sigma, alpha=alpha))
+            is_cqt1_frs_new[scale_diff].append(False)
 
-    return xi1_new, sigma1_new, j1s_new, scale_diff_max
+    return (xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new,
+            scale_diff_max)
 
 
 def conj_fr(x):

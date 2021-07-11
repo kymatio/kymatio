@@ -2,6 +2,7 @@
 """Convenience utilities."""
 import numpy as np
 import scipy.signal
+import warnings
 from copy import deepcopy
 
 
@@ -294,6 +295,529 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     assert np.allclose(np.sum(E_flat), Es_sum), "MAE=%.3f" % adiff
 
     return E_flat, E_slices
+
+
+#### Validating 1D filterbank ################################################
+def validate_filterbank_tm(sc=None, psi1_f=None, psi2_f=None, phi_f=None,
+                           criterion_amplitude=1e-3):
+    """Runs `validate_filterbank()` on temporal filters; supports `Scattering1D`
+    and `TimeFrequencyScattering1D`.
+
+    Parameters
+    ----------
+        sc : `Scattering1D` / `TimeFrequencyScattering1D` / None
+            If None, then `psi1_f_fr_up`, `psi1_f_fr_down`, and `phi_f_fr` must
+            be not None.
+
+        psi1_f : list[tensor] / None
+            First-order bandpasses in frequency domain.
+            Overridden if `sc` is not None.
+
+        psi2_f : list[tensor] / None
+            Second-order bandpasses in frequency domain.
+            Overridden if `sc` is not None.
+
+        phi_f : tensor / None
+            Lowpass filter in frequency domain.
+            Overridden if `sc` is not None.
+
+        criterion_amplitude : float
+            Used for various thresholding in `validate_filterbank()`.
+
+    Returns
+    -------
+        data1, data2 : dict, dict
+            Returns from `validate_filterbank()` for `psi1_f` and `psi2_f`.
+    """
+    if sc is None:
+        assert not any(arg is None for arg in (psi1_f, psi2_f, phi_f))
+    else:
+        psi1_f, psi2_f, phi_f = [getattr(sc, k) for k in
+                                 ('psi1_f', 'psi2_f', 'phi_f')]
+    psi1_f, psi2_f = [[p[0] for p in ps] for ps in (psi1_f, psi2_f)]
+    phi_f = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
+
+    print("\n// FIRST-ORDER")
+    data1 = validate_filterbank(psi1_f, phi_f, criterion_amplitude,
+                                for_real_inputs=True, unimodal=True)
+    print("\n\n// SECOND-ORDER")
+    data2 = validate_filterbank(psi2_f, phi_f, criterion_amplitude,
+                                for_real_inputs=True, unimodal=True)
+    return data1, data2
+
+
+def validate_filterbank_fr(sc=None, psi1_f_fr_up=None, psi1_f_fr_down=None,
+                           phi_f_fr=None, j0=0, criterion_amplitude=1e-3):
+    """Runs `validate_filterbank()` on frequential filters of JTFS.
+
+    Parameters
+    ----------
+        sc : `TimeFrequencyScattering1D` / None
+            JTFS instance. If None, then `psi1_f_fr_up`, `psi1_f_fr_down`, and
+            `phi_f_fr` must be not None.
+
+        psi1_f_fr_up : list[tensor] / None
+            Spin up bandpasses in frequency domain.
+            Overridden if `sc` is not None.
+
+        psi1_f_fr_down : list[tensor] / None
+            Spin down bandpasses in frequency domain.
+            Overridden if `sc` is not None.
+
+        phi_f_fr : tensor / None
+            Lowpass filter in frequency domain.
+            Overridden if `sc` is not None.
+
+        j0 : int
+            See `subsample_equiv_due_to_pad` in `help(TimeFrequencyScattering1D)`.
+
+        criterion_amplitude : float
+            Used for various thresholding in `validate_filterbank()`.
+
+    Returns
+    -------
+        data_up, data_down : dict, dict
+            Returns from `validate_filterbank()` for `psi1_f_fr_up` and
+            `psi1_f_fr_down`.
+    """
+    if sc is None:
+        assert not any(arg is None for arg in
+                       (psi1_f_fr_up, psi1_f_fr_down, phi_f_fr))
+    else:
+        psi1_f_fr_up, psi1_f_fr_down, phi_f_fr = [
+            getattr(sc, k) for k in
+            ('psi1_f_fr_up', 'psi1_f_fr_down', 'phi_f_fr')]
+    psi1_f_fr_up, psi1_f_fr_down = [[p[j0] for p in ps] for ps in
+                                    (psi1_f_fr_up, psi1_f_fr_down)]
+    phi_f_fr = phi_f_fr[j0][0]
+
+    print("\n// SPIN UP")
+    data_up = validate_filterbank(psi1_f_fr_up, phi_f_fr, criterion_amplitude,
+                                  for_real_inputs=False, unimodal=True)
+    print("\n\n// SPIN DOWN")
+    data_down = validate_filterbank(psi1_f_fr_down, phi_f_fr, criterion_amplitude,
+                                    for_real_inputs=False, unimodal=True)
+    return data_up, data_down
+
+
+def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
+                        for_real_inputs=True, unimodal=True, verbose=True):
+    """Checks whether the wavelet filterbank is well-behaved against several
+    criterion:
+
+        1. Analyticity:
+          - A: Whether analytic *and* anti-analytic filters are present
+               (input should contain only one)
+          - B: Extent of (anti-)analyticity - whether there's components
+               on other side of Nyquist
+        2. Aliasing:
+          - A. Whether peaks are sorted (left to right or right to left).
+               If not, it's possible aliasing (or sloppy user input).
+          - B. Whether peaks are distributed exponentially or linearly.
+               If neither, it's possible aliasing. (Detection isn't foulproof.)
+        3. Zero-mean: whether filters are zero-mean (in time domain)
+        4. Zero-phase: whether filters are zero-phase
+        5. Frequency coverage: whether filters capture every frequency,
+           and whether they do so excessively or insufficiently.
+             - Measured with Littlewood-Paley sum (sum of energies).
+        6. Redundancy: whether filters overlap excessively (this isn't
+           necessarily bad).
+             - Measured as ratio of product of energies to sum of energies
+               of adjacent filters
+        7. Decay:
+          - A: Whether any filter is a pure sine (occurs if we try to sample
+               a wavelet at too low of a center frequency)
+          - B: Whether filters decay sufficiently (in time domain) to avoid
+               boundary effects
+        8. Temporal peaks:
+          - A: Whether peak is at t==0
+          - B: Whether there is only one peak
+
+    Parameters
+    ----------
+        psi_fs : list[tensor]
+            Wavelets in frequency domain, of same length.
+
+        phi_f : tensor
+            Lowpass filter in frequency domain, of same length as `psi_fs`.
+
+        criterion_amplitude : float
+            Used for various thresholding.
+
+        for_real_inputs : bool (default True)
+            Whether the filterbank is intended for real-only inputs.
+            E.g. `False` for spinned bandpasses in JTFS.
+
+        unimodal : bool (default True)
+            Whether the wavelets have a single peak in frequency domain.
+            If `False`, some checks are omitted, and others might be inaccurate.
+            Always `True` for Morlet wavelets.
+
+        verbose : bool (default True)
+            Whether to print the report.
+
+    Returns
+    -------
+        data : dict
+            Aggregated testing info, along with the report. For keys, see
+            `print(list(data))`.
+    """
+    def pop_if_no_header(report, did_header):
+        if not did_header:
+            report.pop(-1)
+
+    # fetch basic metadata
+    psi_f_0 = psi_fs[0]  # reference filter
+    N = len(psi_f_0)
+
+    # assert all inputs are same length
+    for n, p in enumerate(psi_fs):
+        assert len(p) == N, (len(p), N)
+    if phi_f is not None:
+        assert len(phi_f) == N, (len(phi_f), N)
+    # squeeze into 1D for convenience later
+    psi_fs = [p.squeeze() for p in psi_fs]
+    if phi_f is not None:
+        phi_f = phi_f.squeeze()
+
+    # initialize report
+    report = []
+    data = {k: {} for k in ('analytic_a_ratio', 'nonzero_mean', 'sine', 'decay',
+                            'imag_mean', 'time_peak_idx', 'n_inflections',
+                            'redundancy')}
+    data['opposite_analytic'] = []
+
+    def title(txt):
+        return ("\n== {} " + "=" * (80 - len(txt)) + "\n").format(txt)
+    # for later
+    w_pos = np.linspace(0, .5, N//2 + 1, endpoint=True)
+    w_neg = - w_pos[1:-1][::-1]
+    w = np.hstack([w_pos, w_neg])
+    eps = np.finfo(psi_f_0.dtype).eps
+
+    peak_idxs = np.array([np.argmax(np.abs(p)) for p in psi_fs])
+    peak_idxs_sorted = np.sort(peak_idxs)
+    if unimodal and not (np.all(peak_idxs == peak_idxs_sorted) or
+                         np.all(peak_idxs == peak_idxs_sorted[::-1])):
+        warnings.warn("`psi_fs` peak locations are not sorted; a possible reason "
+                      "is aliasing. Will sort, breaking mapping with input's.")
+        data['not_sorted'] = True
+        peak_idxs = peak_idxs_sorted
+
+    # Analyticity ############################################################
+    # check if there are both analytic and anti-analytic bandpasses ##########
+    report += [title("ANALYTICITY")]
+    did_header = False
+
+    peak_idx_0 = np.argmax(psi_f_0)
+    analytic_0 = bool(peak_idx_0 <= N//2 + 1)
+    # assume entire filterbank is per psi_0
+    analyticity = "analytic" if analytic_0 else "anti-analytic"
+
+    for n, p in enumerate(psi_fs):
+        peak_idx_n = np.argmax(p)
+        analytic_n = bool(peak_idx_n <= N//2 + 1)
+        if not (analytic_0 is analytic_n):
+            if not did_header:
+                report += [("Found analytic AND anti-analytic filters in same "
+                            "filterbank! psi_fs[0] is {}, but the following "
+                            "aren't:\n").format(analyticity)]
+                did_header = True
+            report += [f"psi_fs[{n}]\n"]
+            data['opposite_analytic'].append(n)
+
+    # check if any bandpass isn't strictly analytic/anti- ####################
+    did_header = False
+    th_ratio = (1 / criterion_amplitude)
+    for n, p in enumerate(psi_fs):
+        ap = np.abs(p)
+        # assume entire filterbank is per psi_0; share Nyquist bin
+        an, not_an = ap[:N//2 + 1].sum(), ap[N//2:].sum()
+        a_ratio = (an / (not_an + eps) if analytic_0 else
+                   not_an / (an + eps))
+        if a_ratio < th_ratio:
+            if not did_header:
+                report += [("Found not strictly {} filter(s); threshold for "
+                            "ratio of `spectral sum` to `spectral sum past "
+                            "Nyquist` is {} - got (less is worse):\n"
+                            ).format(analyticity, th_ratio)]
+                did_header = True
+            report += ["psi_fs[{}]: {:.1f}\n".format(n, a_ratio)]
+            data['analytic_a_ratio'][n] = a_ratio
+
+    # check if any bandpass isn't zero-mean ##################################
+    pop_if_no_header(report, did_header)
+    report += [title("ZERO-MEAN")]
+    did_header = False
+
+    for n, p in enumerate(psi_fs):
+        if p[0] != 0:
+            if not did_header:
+                report += ["Found non-zero mean filter(s)!:\n"]
+                did_header = True
+            report += ["psi_fs[{}][0] == {:.2e}\n".format(n, p[0])]
+            data['nonzero_mean'][n] = p[0]
+
+    # Littlewood-Paley sum ###################################################
+    def report_lp_sum(report, phi):
+        with_phi = not isinstance(phi, int)
+        s = "with" if with_phi else "without"
+        report += [title("LP-SUM (%s phi)" % s)]
+        did_header = False
+
+        lp_sum = lp_sum_psi + np.abs(phi)**2
+        lp_sum = (lp_sum[:N//2 + 1] if analytic_0 else
+                  lp_sum[N//2:])
+        if not with_phi and analytic_0:
+            lp_sum = lp_sum[1:]  # exclude dc
+
+        diff_over  = lp_sum - th_lp_sum_over
+        diff_under = th_lp_sum_under - lp_sum
+        excess_over  = np.where(diff_over  > th_sum_excess)[0]
+        excess_under = np.where(diff_under > th_sum_excess)[0]
+        diff_over_max, diff_under_max = diff_over.max(), diff_under.max()
+        if not analytic_0:
+            excess_over  += N//2
+            excess_under += N//2
+
+        if with_phi:
+            data['lp'] = lp_sum
+        else:
+            data['lp_no_phi'] = lp_sum
+
+        input_kind = "real" if for_real_inputs else "complex"
+        if len(excess_over) > 0:
+            # show at most 30 values
+            stride = max(int(round(len(excess_over) / 30)), 1)
+            s = f", shown skipping every {stride-1} values" if stride != 1 else ""
+            report += [("LP sum exceeds threshold of {} (for {} inputs) by "
+                        "at most {:.3f} (more is worse) at following frequencies "
+                        "(0 to 0.5{}):\n"
+                        ).format(th_lp_sum_over, input_kind, diff_over_max, s)]
+            report += ["{}\n\n".format(np.round(w[excess_over][::stride], 3))]
+            did_header = True
+            if with_phi:
+                data['lp_excess_over'] = excess_over
+                data['lp_excess_over_max'] = diff_over_max
+            else:
+                data['lp_no_phi_excess_over'] = excess_over
+                data['lp_no_phi_excess_over_max'] = diff_over_max
+
+        if len(excess_under) > 0:
+            # show at most 30 values
+            stride = max(int(round(len(excess_under) / 30)), 1)
+            s = f", shown skipping every {stride-1} values" if stride != 1 else ""
+            report += [("LP sum falls below threshold of {} (for {} inputs) by "
+                        "at most {:.3f} (more is worse; ~{} implies ~zero "
+                        "capturing of the frequency!) at following frequencies "
+                        "(0 to 0.5{}):\n"
+                        ).format(th_lp_sum_under, input_kind, diff_under_max,
+                                 th_lp_sum_under, s)]
+            report += ["{}\n\n".format(np.round(w[excess_under][::stride], 3))]
+            did_header = True
+            if with_phi:
+                data['lp_excess_under'] = excess_under
+                data['lp_excess_under_max'] = diff_under_max
+            else:
+                data['lp_no_phi_excess_under'] = excess_under
+                data['lp_no_phi_excess_under_max'] = diff_under_max
+
+        if did_header:
+            stdev = np.abs(lp_sum[lp_sum >= th_lp_sum_under] -
+                           th_lp_sum_under).std()
+            report += [("Mean absolute deviation from tight frame: {:.2f}\n"
+                        "Standard deviation from tight frame: {:.2f} "
+                        "(excluded LP sum values below {})\n").format(
+                            np.abs(diff_over).mean(), stdev, th_lp_sum_under)]
+
+        pop_if_no_header(report, did_header)
+
+    pop_if_no_header(report, did_header)
+    th_lp_sum_over = 2 if for_real_inputs else 1
+    th_lp_sum_under = th_lp_sum_over / 2
+    th_sum_excess = (1 + criterion_amplitude)**2 - 1
+    lp_sum_psi = np.sum([np.abs(p)**2 for p in psi_fs], axis=0)
+
+    # do both cases
+    if phi_f is not None:
+        report_lp_sum(report, phi=phi_f)
+    report_lp_sum(report, phi=0)
+
+    # Redundancy #############################################################
+    report += [title("REDUNDANCY")]
+    did_header = False
+    th_r = .4 if for_real_inputs else .2
+
+    for n in range(len(psi_fs) - 1):
+        p0sq, p1sq = np.abs(psi_fs[n])**2, np.abs(psi_fs[n + 1])**2
+        # energy overlap relative to sum of individual energies
+        r = 2 * np.sum(p0sq * p1sq) / (p0sq.sum() + p1sq.sum())
+        data['redundancy'][(n, n + 1)] = r
+        if r > th_r:
+            if not did_header:
+                report += [("Found filters with redundancy exceeding {} (energy "
+                            "overlap relative to sum of individual energies):\n"
+                            ).format(th_r)]
+                did_header = True
+            report += ["psi_fs[{}] & psi_fs[{}]: {:.3f}\n".format(n, n + 1, r)]
+
+    # Decay: check if any bandpass is a pure sine ############################
+    pop_if_no_header(report, did_header)
+    report += [title("DECAY (check for pure sines)")]
+    did_header = False
+    th_ratio_max_to_next_max = (1 / criterion_amplitude)
+
+    for n, p in enumerate(psi_fs):
+        psort = np.sort(np.abs(p))  # least to greatest
+        ratio = psort[-1] / (psort[-2] + eps)
+        if ratio > th_ratio_max_to_next_max:
+            if not did_header:
+                report += [("Found filter(s) that are pure sines! (Threshold for "
+                            "ratio of peak to next-highest value is {} - got "
+                            "(more is worse):\n"
+                            ).format(th_ratio_max_to_next_max)]
+                did_header = True
+            report += ["psi_fs[{}]: {:.2e}\n".format(n, ratio)]
+            data['sine'][n] = ratio
+
+    # Decay: boundary effects ################################################
+    pop_if_no_header(report, did_header)
+    report += [title("DECAY (boundary effects)")]
+    did_header = False
+    th_ratio_max_to_min = (1 / criterion_amplitude)
+
+    psis = [np.fft.ifft(p) for p in psi_fs]
+    apsis = [np.abs(p) for p in psis]
+    for n, ap in enumerate(apsis):
+        ratio = ap.max() / (ap.min() + eps)
+        if ratio < th_ratio_max_to_min:
+            if not did_header:
+                report += [("Found filter(s) with incomplete decay (will incur "
+                            "boundary effects), with following ratios of "
+                            "amplitude max to edge (less is worse; threshold "
+                            "is {}):\n").format(1 / criterion_amplitude)]
+                did_header = True
+            report += ["psi_fs[{}]: {:.1f}\n".format(n, ratio)]
+            data['decay'][n] = ratio
+
+    # check lowpass
+    aphi = np.abs(np.fft.ifft(phi_f))
+    ratio = aphi.max() / (aphi.min() + eps)
+    if ratio < th_ratio_max_to_min:
+        report += [("Lowpass filter has incomplete decay (will incur boundary "
+                    "effects), with following ratio of amplitude max to edge: "
+                    "{:.1f} > {}").format(ratio, th_ratio_max_to_min)]
+        did_header = True
+        data['decay'][-1] = ratio
+
+    # Phase ##################################################################
+    pop_if_no_header(report, did_header)
+    report += [title("PHASE")]
+    did_header = False
+    th_imag_mean = eps
+
+    for n, p in enumerate(psi_fs):
+        imag_mean = np.abs(p.imag).mean()
+        if imag_mean > th_imag_mean:
+            if not did_header:
+                report += [("Found filters with non-zero phase, with following "
+                            "absolute mean imaginary values:\n")]
+            report += ["psi_fs[{}]: {:.1e}\n".format(n, imag_mean)]
+            data['imag_mean'][n] = imag_mean
+
+    # Aliasing ###############################################################
+    if unimodal:
+        pop_if_no_header(report, did_header)
+        report += [title("ALIASING")]
+        did_header = False
+        eps_big = eps * 100  # ease threshold for "zero"
+
+        # check whether peak locations follow a linear or exponential
+        # distribution, progressively dropping those that do to see if any remain
+
+        # x[n] = A^n + C; x[n] - x[n - 1] = A^n - A^(n-1) = A^n*(1 - A) = A^n*C
+        # log(A^n*C) = K + n; diff(diff(K + n)) == 0
+        # `abs` for anti-analytic case with descending idxs
+        logdiffs = np.diff(np.log(np.abs(np.diff(peak_idxs))), 2)
+        # In general it's impossible to determine whether a rounded sequence
+        # samples an exponential, since if the exponential rate (A in A^n) is
+        # sufficiently small, its rounded values will be linear over some portion.
+        # However, it cannot be anything else, and we are okay with linear
+        # (unless constant, i.e. duplicate, captured elsewhere) - thus the net
+        # case of `exp + lin` is still captured. The only uncertainty is in
+        # the threshold; assuming deviation by at most 1 sample, we set it to 1.
+        # A test is:
+        # `for b in linspace(1.2, 6.5, 500): x = round(b**arange(10) + 50)`
+        # with `if any(abs(diff, o).min() == 0 for o in (1, 2, 3)): continue`,
+        # Another with: `linspace(.2, 1, 500)` and `round(256*b**arange(10) + 50)`
+        # to exclude `x` with repeated or linear values
+        # However, while this has no false positives (never misses an exp/lin),
+        # it can also count some non-exp/lin as exp/lin, but this is rare.
+        # To be safe, per above test, we use the empirical value of 0.9
+        keep = np.where(np.abs(logdiffs) > .9)
+        # note due to three `diff`s we artificially exclude 3 samples
+        peak_idxs_remainder = peak_idxs[keep]
+
+        # now constant (diff_order==1) and linear (diff_order==2)
+        for diff_order in (1, 2):
+            idxs_diff2 = np.diff(peak_idxs_remainder, diff_order)
+            keep = np.where(np.abs(idxs_diff2) > eps_big)
+            peak_idxs_remainder = peak_idxs_remainder[keep]
+
+        # if anything remains, it's neither
+        if len(peak_idxs_remainder) > 0:
+            report += [("Found Fourier peaks that are spaced neither "
+                        "exponentially nor linearly, suggesting possible "
+                        "aliasing.\npsi_fs[n], n={}").format(peak_idxs_remainder)]
+            data['alias_peak_idxs'] = peak_idxs_remainder
+            did_header = True
+
+    # Temporal peak ##########################################################
+    if unimodal:
+        # check that temporal peak is at t==0 ################################
+        pop_if_no_header(report, did_header)
+        report += [title("TEMPORAL PEAK")]
+        did_header = False
+
+        for n, ap in enumerate(apsis):
+            peak_idx = np.argmax(ap)
+            if peak_idx != 0:
+                if not did_header:
+                    report += [("Found filters with temporal peak not at t=0!, "
+                                "with following peak locations:\n")]
+                    did_header = True
+                report += ["psi_fs[{}]: {}\n".format(n, peak_idx)]
+                data[n] = peak_idx
+
+        # check that there is only one temporal peak #########################
+        pop_if_no_header(report, did_header)
+        did_header = False
+
+        for n, ap in enumerate(apsis):
+            # count number of inflection points (where sign of derivative changes)
+            # exclude very small values
+            inflections = np.diff(np.sign(np.diff(ap[ap > 10*eps])))
+            n_inflections = sum(np.abs(inflections) > eps)
+
+            if n_inflections > 1:
+                if not did_header:
+                    report += [("\nFound filters with multiple temporal peaks! "
+                                "(more precisely, >1 inflection points) with "
+                                "following number of inflection points:\n")]
+                    did_header = True
+                report += ["psi_fs[{}]: {}\n".format(n, n_inflections)]
+                data['n_inflections'] = n_inflections
+
+    # Print report ###########################################################
+    pop_if_no_header(report, did_header)
+    report = ''.join(report)
+    data['report'] = report
+    if verbose:
+        if len(report) == 0:
+            print("Perfect filterbank!")
+        else:
+            print(report)
+    return data
 
 
 #### energy & distance #######################################################

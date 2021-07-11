@@ -141,10 +141,9 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         if zoom == -1:
             xlims = (-.02 * Nmax, 1.02 * Nmax)
         else:
+            xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
             if up:
-                xlims = (.45 * Nmax * (1 + ( 1 - 1/2**zoom)), Nmax)
-            else:
-                xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
+                xlims = (Nmax - xlims[1], Nmax - .2 * xlims[0])
 
         # title
         show = (zoom != -1) or not up
@@ -154,9 +153,9 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
             title = title_base
 
         # handle `plot_kw`
-        if 'xlims' not in plot_kw:
+        if 'xlims' not in user_plot_kw_names:
             plot_kw['xlims'] = xlims
-        if 'title' not in plot_kw:
+        if 'title' not in user_plot_kw_names:
             plot_kw['title'] = title
 
         # plot filterbank ####################################################
@@ -170,10 +169,13 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
                  vlines=(vlines, dict(color='k', linewidth=1)))
 
         # plot LP sum ########################################################
-        if 'title' not in plot_kw:
+        plot_kw_lp = {}
+        if 'title' not in user_plot_kw_names:
             plot_kw['title'] = "Littlewood-Paley sum"
+        if 'ylims' not in user_plot_kw_names:
+            plot_kw_lp['ylims'] = (0, None)
         if lp_sum and not (zoom == -1 and up):
-            plot(lp, **plot_kw, show=show,
+            plot(lp, **plot_kw, **plot_kw_lp, show=show,
                  hlines=(1, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
 
@@ -183,6 +185,7 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         plot_kw = deepcopy(plot_kw)
     else:
         plot_kw = {}
+    user_plot_kw_names = list(plot_kw)
 
     # define colors & linestyles
     colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "

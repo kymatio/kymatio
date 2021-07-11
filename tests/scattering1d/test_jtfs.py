@@ -139,7 +139,7 @@ def test_jtfs_vs_ts():
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down
     assert l2_jtfs / l2_ts > 25, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
-                                  )% (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
+                                  ) % (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
     # TODO take l2 distance from stride-adjusted coeffs?
     # TODO also compare max per-coeff ratio
@@ -227,7 +227,7 @@ def test_up_vs_down():
 
     E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
     E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 84
+    th = 83
     assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
 
     if metric_verbose:
@@ -521,9 +521,9 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon = 1e-5, .94
+    th, th_recon, th_end_ratio = 1e-5, .95, 35
     end_ratio = losses[0] / losses[-1]
-    assert end_ratio > 35, end_ratio
+    assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
     assert min(losses_recon) < th_recon, "{:.2e} > {}".format(min(losses_recon),
                                                               th_recon)
@@ -716,6 +716,8 @@ def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
         # TODO make test 1 test 0
+        # TODO make them all `dict:list`
+        # TODO non-dyadic input length
 
           (aligned, average_fr, out_3D, out_type,     F)
         0. True     True        False   'dict:list'   4
@@ -830,7 +832,7 @@ def test_output():
 
                 # assert equal values
                 errmsg = ("out[{}][{}] != out_stored[{}] | n={}\n"
-                          "(MeanAE={:.2e}, MaxAE={:.2e})\n"
+                          "(MeanRAE={:.2e}, MaxRAE={:.2e})\n"
                           ).format(pair, i, o_stored_key, n,
                                    mean_aes[-1], max_aes[-1],)
                 if not already_printed_test_info:
@@ -845,11 +847,11 @@ def test_output():
 
         if output_test_print_mode:
             if max_mean_info is not None:
-                print("// max_meanAE = {:.2e} | {}\n".format(max(mean_aes),
-                                                             max_mean_info))
+                print("// max_meanRAE = {:.2e} | {}\n".format(max(mean_aes),
+                                                              max_mean_info))
             if max_max_info is not None:
-                print("// max_maxAE  = {:.2e} | {}\n".format(max(max_aes),
-                                                             max_max_info))
+                print("// max_maxRAE  = {:.2e} | {}\n".format(max(max_aes),
+                                                              max_max_info))
 
 ### helper methods ###########################################################
 def energy(x):

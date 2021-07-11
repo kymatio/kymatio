@@ -554,7 +554,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                      is_cqt1_frs[n1_fr])
             elif sampling_psi_fr == 'recalibrate':
                 p = (xi1s_fr_new[k][n1_fr], sigma1s_fr_new[k][n1_fr],
-                     j1s_fr_new[k][n1_fr], False)
+                     j1s_fr_new[k][n1_fr], is_cqt1_frs_new[k][n1_fr])
         else:
             if not sc_freq.average_fr_global:
                 p = [m[k] for m in (xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi)
@@ -661,10 +661,11 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     # compute modified meta if `resample_=False`
     sampling_psi_fr, sampling_phi_fr = sampling_filters_fr
     if sampling_psi_fr == 'recalibrate':
-        xi1s_fr_new, sigma1s_fr_new, j1s_fr_new, _ = _recalibrate_psi_fr(
-            xi1s_fr, sigma1s_fr, j1s_fr, N_fr, sc_freq.alpha,
-            sc_freq.shape_fr_scale_min, sc_freq.shape_fr_scale_max,
-            sc_freq.sigma_max_to_min_max_ratio)
+        (xi1s_fr_new, sigma1s_fr_new, j1s_fr_new, is_cqt1_frs_new, _
+         ) = _recalibrate_psi_fr(xi1s_fr, sigma1s_fr, j1s_fr, is_cqt1_frs, N_fr,
+                                 sc_freq.alpha, sc_freq.shape_fr_scale_min,
+                                 sc_freq.shape_fr_scale_max,
+                                 sc_freq.sigma_max_to_min_max_ratio)
 
     # fetch phi meta; must access `phi_f_fr` as `j1s_fr` requires sampling phi
     meta_phi = {}

@@ -6,7 +6,8 @@ import warnings
 import numpy as np
 
 from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
-                           psi_fr_factory, phi_fr_factory)
+                           psi_fr_factory, phi_fr_factory,
+                           energy_norm_filterbank_tm, energy_norm_filterbank_fr)
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
@@ -564,25 +565,8 @@ class TimeFrequencyScatteringBase1D():
         self.ind_start, self.ind_end = ind_start, ind_end
 
         # energy norm
-        self.energy_norm_filterbank()
-
-    def energy_norm_filterbank(self):
-        # compute Littlewood-Paley sum
-        lp_sum = {0: {}, 1: {}}
-        for order, psi_f in enumerate([self.psi1_f, self.psi2_f]):
-            lp_sum[order] = 0
-            for psi in psi_f:
-                lp_sum[order] += np.abs(psi[0])**2
-        for order in lp_sum:
-            # `[0]` for `trim_tm=0`
-            lp_sum[order] += np.abs(self.phi_f[0][0])**2
-
-        # ensure LP sum peaks at 2
-        for order, psi_f in enumerate([self.psi1_f, self.psi2_f]):
-            for psi in psi_f:
-                for k in psi:
-                    if isinstance(k, int):
-                        psi[k] *= np.sqrt(2 / lp_sum[order].max())
+        energy_norm_filterbank_tm(self.J, self.log2_T, self.psi1_f, self.psi2_f,
+                                  self.phi_f)
 
     def meta(self):
         """Get meta information on the transform
@@ -1527,39 +1511,9 @@ class _FrequencyScatteringBase(ScatteringBase):
                     del self.phi_f_fr[j_fr]
 
         # energy norm
-        self.energy_norm_filterbank()
-
-    def energy_norm_filterbank(self):
-        # compute Littlewood-Paley sum
-        lp_sum = {}
-        for s1_fr, psi1_fs in enumerate([self.psi1_f_fr_down, self.psi1_f_fr_up]):
-            lp_sum[s1_fr] = {}
-            for psi1_f in psi1_fs:
-                for j0 in psi1_f:
-                    if isinstance(j0, int):
-                        if j0 not in lp_sum[s1_fr]:
-                            lp_sum[s1_fr][j0] = 0
-                        lp_sum[s1_fr][j0] += np.abs(psi1_f[j0])**2
-
-        # compute maxima
-        if self.sampling_psi_fr in ('resample', 'exclude'):
-            # 'resample': avoid changing rescaling due to small discretization
-            # differences
-            # 'exclude': reuse `j0=0`'s values in accords with 'exclude' being
-            # a subset of 'resample' (+ 'resample''s rationale)
-            lp_sum_max = {s1_fr: {j0 : lp_sum[s1_fr][0].max()
-                                  for j0 in lp_sum[s1_fr]} for s1_fr in lp_sum}
-        else:
-            # compute separately for each
-            lp_sum_max = {s1_fr: {j0 : lp_sum[s1_fr][j0].max()
-                                  for j0 in lp_sum[s1_fr]} for s1_fr in lp_sum}
-
-        # ensure LP sum peaks at 1
-        for s1_fr, psi1_fs in enumerate([self.psi1_f_fr_down, self.psi1_f_fr_up]):
-            for psi1_f in psi1_fs:
-                for j0 in psi1_f:
-                    if isinstance(j0, int):
-                        psi1_f[j0] /= np.sqrt(lp_sum_max[s1_fr][j0])
+        energy_norm_filterbank_fr(self.J_fr, self.log2_F, self.sampling_psi_fr,
+                                  self.psi1_f_fr_up, self.psi1_f_fr_down,
+                                  self.phi_f_fr)
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""
