@@ -370,7 +370,7 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
 
 def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                       out_exclude, sampling_filters_fr, average, average_global,
-                      oversampling, sc_freq):
+                      oversampling, r_psi, sc_freq):
     """Get metadata on the Joint Time-Frequency Scattering transform.
 
     This information specifies the content of each scattering coefficient,
@@ -654,9 +654,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     log2_F = math.floor(math.log2(F))
     # extract filter meta
     sigma_low, xi1s, sigma1s, j1s, is_cqt1s, xi2s, sigma2s, j2s, is_cqt2s = \
-        calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
+        calibrate_scattering_filters(J, Q, T, xi_min=xi_min, r_psi=r_psi)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, is_cqt1_frs, *_ = \
-        calibrate_scattering_filters(J_fr, Q_fr, F, xi_min=xi_min_fr)
+        calibrate_scattering_filters(J_fr, Q_fr, F, xi_min=xi_min_fr,
+                                     r_psi=sc_freq.r_psi)
 
     # compute modified meta if `resample_=False`
     sampling_psi_fr, sampling_phi_fr = sampling_filters_fr

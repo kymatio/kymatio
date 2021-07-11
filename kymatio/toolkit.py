@@ -531,10 +531,12 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     th_ratio = (1 / criterion_amplitude)
     for n, p in enumerate(psi_fs):
         ap = np.abs(p)
-        # assume entire filterbank is per psi_0; share Nyquist bin
-        an, not_an = ap[:N//2 + 1].sum(), ap[N//2:].sum()
-        a_ratio = (an / (not_an + eps) if analytic_0 else
-                   not_an / (an + eps))
+        # assume entire filterbank is per psi_0
+        if analytic_0:
+            # Nyquist is *at* N//2, so to include in sum, index up to N//2 + 1
+            a_ratio = (ap[:N//2 + 1].sum() / (ap[N//2 + 1:].sum() + eps))
+        else:
+            a_ratio = (ap[N//2:].sum() / (ap[:N//2].sum() + eps))
         if a_ratio < th_ratio:
             if not did_header:
                 report += [("Found not strictly {} filter(s); threshold for "
@@ -801,7 +803,8 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
 
             if n_inflections > 1:
                 if not did_header:
-                    report += [("\nFound filters with multiple temporal peaks! "
+                    report += [("\nFound filters with multiple temporal peaks "
+                                "(or incomplete/non-smooth decay)! "
                                 "(more precisely, >1 inflection points) with "
                                 "following number of inflection points:\n")]
                     did_header = True

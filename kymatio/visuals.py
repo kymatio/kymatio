@@ -18,7 +18,7 @@ __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
 
 
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
-                          second_order=False):
+                          second_order=False, plot_kw=None):
     """
     # Arguments:
         scattering: kymatio.scattering1d.Scattering1D
@@ -43,6 +43,11 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
         else:
             xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
 
+        if 'xlims' not in user_plot_kw_names:
+            plot_kw['xlims'] = xlims
+        if 'title' not in user_plot_kw_names:
+            plot_kw['title'] = title
+
         # plot filterbank ####################################################
         if filterbank:
             # Morlets
@@ -55,14 +60,23 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
             # lowpass
             if isinstance(p0[0], list):
                 p0 = p0[0]
-            plot(p0[0], color='k', xlims=xlims, title=title, show=1)
+            plot(p0[0], color='k', **plot_kw, show=1)
 
         # plot LP sum ########################################################
+        if 'title' not in user_plot_kw_names:
+            plot_kw['title'] = "Littlewood-Paley sum"
         if lp_sum:
-            plot(lp, xlims=xlims, title="Littlewood-Paley sum", show=1,
+            plot(lp, **plot_kw, show=1,
                  hlines=(2, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
 
+    # handle `plot_kw`
+    if plot_kw is not None:
+        # don't alter external dict
+        plot_kw = deepcopy(plot_kw)
+    else:
+        plot_kw = {}
+    user_plot_kw_names = list(plot_kw)
 
     # define colors & linestyles
     colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "

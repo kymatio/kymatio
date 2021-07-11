@@ -584,7 +584,7 @@ class TimeFrequencyScatteringBase1D():
                                  self.out_type, self.out_exclude,
                                  self.sampling_filters_fr, self.average,
                                  self.average_global, self.oversampling,
-                                 self.sc_freq)
+                                 self.r_psi, self.sc_freq)
 
     @property
     def fr_attributes(self):
