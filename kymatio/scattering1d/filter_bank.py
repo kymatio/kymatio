@@ -1394,35 +1394,43 @@ def _get_lp_sum_maxima(lp_sum, psi_fs, j0=None, anti_analytic=False):
         else:
             non_cqt_psis = [p[j0] for p in psi_fs if not p['is_cqt'][j0]]
 
-        # be safe and pick next to last to lessen overlap with CQT
-        # `+1` to include peak in indexing
-        peak_idx = (np.argmax(non_cqt_psis[1]) if n_non_cqt > 1 else
-                    np.argmax(non_cqt_psis[0]))  # no other choice
-        if anti_analytic:  # TODO move to N//2?
-            assert peak_idx > N//2, ("found anti-analytic wavelet peak "
-                                     "to left of Nyquist ({} <= {})".format(
-                                         peak_idx, N//2))
-            # no dc on negative freqs side
+        peak_idx = np.argmax(non_cqt_psis[0])
+        if anti_analytic:
+            assert peak_idx >= N//2, ("found anti-analytic wavelet peak "
+                                      "to left of Nyquist ({} <= {})".format(
+                                          peak_idx, N//2))
+            # no dc on negative freqs side; include peak & Nyquist
             non_cqt_start, non_cqt_end = peak_idx, None
-            cqt_start, cqt_end = N//2, non_cqt_start
+            if peak_idx != N // 2:
+                # CQT is to left of non-CQT
+                cqt_start, cqt_end = N//2, non_cqt_start
+            else:
+                # everything is non-CQT (e.g. 'recalibrate')
+                cqt_start, cqt_end = None, None
         else:
             assert peak_idx <= N//2, ("found analytic wavelet peak "
                                       "to right of Nyquist ({} > {})".format(
                                           peak_idx, N//2))
-            # exclude dc
-            non_cqt_start, non_cqt_end = 1, peak_idx + 1  # include peak
-            cqt_start, cqt_end = non_cqt_end, N//2 + 1    # include Nyquist
+            # exclude dc; include peak & Nyquist
+            non_cqt_start, non_cqt_end = 1, peak_idx + 1
+            if peak_idx != N // 2:
+                # CQT is to right of non-CQT
+                cqt_start, cqt_end = non_cqt_end, N//2 + 1
+            else:
+                # everything is non-CQT (e.g. 'recalibrate')
+                cqt_start, cqt_end = None, None
         lp_max_non_cqt = lp_sum[non_cqt_start:non_cqt_end].max()
-
-        # recompute CQT separately to be safe
-        lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
+        if cqt_start is not None:
+            lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
+        else:
+            lp_max_cqt = None
     else:
         if anti_analytic:
             cqt_start, cqt_end = N//2, None
         else:
             cqt_start, cqt_end = 1, N//2 + 1
         lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
-        lp_max_non_cqt = lp_max_cqt
+        lp_max_non_cqt = None
 
     return lp_max_cqt, lp_max_non_cqt
 
@@ -1479,8 +1487,3 @@ def conj_fr(x):
     out[0] = x[0]
     out[1:] = x[:0:-1]
     return out
-
-
-def assert_not_pure_sine(psi_f, ratio_threshold=100):  # TODO apply this?
-    psi_fr_sorted = np.sort(psi_f)[::-1]
-    assert psi_fr_sorted[0] / psi_fr_sorted[1] < ratio_threshold

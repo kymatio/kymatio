@@ -510,13 +510,15 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     did_header = False
 
     peak_idx_0 = np.argmax(psi_f_0)
-    analytic_0 = bool(peak_idx_0 <= N//2 + 1)
+    if peak_idx_0 == N // 2:  # ambiguous case; check next filter
+        peak_idx_0 = np.argmax(psi_fs[1])
+    analytic_0 = bool(peak_idx_0 < N//2)
     # assume entire filterbank is per psi_0
     analyticity = "analytic" if analytic_0 else "anti-analytic"
 
-    for n, p in enumerate(psi_fs):
+    for n, p in enumerate(psi_fs[1:]):
         peak_idx_n = np.argmax(p)
-        analytic_n = bool(peak_idx_n <= N//2 + 1)
+        analytic_n = bool(peak_idx_n < N//2)
         if not (analytic_0 is analytic_n):
             if not did_header:
                 report += [("Found analytic AND anti-analytic filters in same "
@@ -703,14 +705,16 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
             data['decay'][n] = ratio
 
     # check lowpass
-    aphi = np.abs(np.fft.ifft(phi_f))
-    ratio = aphi.max() / (aphi.min() + eps)
-    if ratio < th_ratio_max_to_min:
-        report += [("Lowpass filter has incomplete decay (will incur boundary "
-                    "effects), with following ratio of amplitude max to edge: "
-                    "{:.1f} > {}").format(ratio, th_ratio_max_to_min)]
-        did_header = True
-        data['decay'][-1] = ratio
+    if phi_f is not None:
+        aphi = np.abs(np.fft.ifft(phi_f))
+        ratio = aphi.max() / (aphi.min() + eps)
+        if ratio < th_ratio_max_to_min:
+            report += [("Lowpass filter has incomplete decay (will incur "
+                        "boundary effects), with following ratio of amplitude "
+                        "max to edge: {:.1f} > {}").format(ratio,
+                                                           th_ratio_max_to_min)]
+            did_header = True
+            data['decay'][-1] = ratio
 
     # Phase ##################################################################
     pop_if_no_header(report, did_header)
@@ -728,6 +732,37 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
             data['imag_mean'][n] = imag_mean
 
     # Aliasing ###############################################################
+    def diff_extend(diff, th, cond='gt', order=1):
+        # the idea is to take `diff` without losing samples, if the goal is
+        # `where(diff == 0)`; `diff` is forward difference, and two samples
+        # participated in producing the zero, where later one's index is dropped
+        # E.g. detecting duplicate peak indices:
+        # [0, 1, 3, 3, 5] -> diff gives [2], so take [2, 3]
+        # but instead of adding an index, replace next sample with zero such that
+        # its `where == 0` produces that index
+        if order > 1:
+            diff_e = diff_extend(diff, th)
+            for o in range(order - 1):
+                diff_e = diff_e(diff_e, th)
+            return diff_e
+
+        diff_e = []
+        d_extend = 2*th if cond == 'gt' else th
+        prev_true = False
+        for d in diff:
+            if prev_true:
+                diff_e.append(d_extend)
+                prev_true = False
+            else:
+                diff_e.append(d)
+            if (cond == 'gt' and np.abs(d) > th or
+                cond == 'eq' and np.abs(d) == th):
+                prev_true = True
+        if prev_true:
+            # last sample was zero; extend
+            diff_e.append(d_extend)
+        return np.array(diff_e)
+
     if unimodal:
         pop_if_no_header(report, did_header)
         report += [title("ALIASING")]
@@ -756,7 +791,13 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         # However, while this has no false positives (never misses an exp/lin),
         # it can also count some non-exp/lin as exp/lin, but this is rare.
         # To be safe, per above test, we use the empirical value of 0.9
-        keep = np.where(np.abs(logdiffs) > .9)
+        logdiffs_extended = diff_extend(logdiffs, .9)
+        if len(logdiffs_extended) > len(logdiffs) + 2:
+            # this could be `assert` but not worth erroring over this
+            warnings.warn("`len(logdiffs_extended) > len(logdiffs) + 2`; will "
+                          "use more conservative estimate on peaks distribution")
+            logdiffs_extended = logdiffs
+        keep = np.where(np.abs(logdiffs_extended) > .9)
         # note due to three `diff`s we artificially exclude 3 samples
         peak_idxs_remainder = peak_idxs[keep]
 
@@ -772,6 +813,15 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                         "exponentially nor linearly, suggesting possible "
                         "aliasing.\npsi_fs[n], n={}").format(peak_idxs_remainder)]
             data['alias_peak_idxs'] = peak_idxs_remainder
+            did_header = True
+
+        # check if any peaks repeat ##########################################
+        # e.g. [0, 1, 5, 5, 3] -> diff gives [3], so take [3, 4]
+        peak_idxs_zeros = diff_extend(np.diff(peak_idxs), th=0, cond='eq')
+        peak_idxs_zeros = np.where(peak_idxs_zeros == 0)[0]
+        if len(peak_idxs_zeros) > 0:
+            report += ["Found duplicate Fourier peaks!:\n{}".format(
+                np.where(peak_idxs_zeros == 0)[0])]
             did_header = True
 
     # Temporal peak ##########################################################
@@ -792,9 +842,6 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                 data[n] = peak_idx
 
         # check that there is only one temporal peak #########################
-        pop_if_no_header(report, did_header)
-        did_header = False
-
         for n, ap in enumerate(apsis):
             # count number of inflection points (where sign of derivative changes)
             # exclude very small values
@@ -807,7 +854,6 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                                 "(or incomplete/non-smooth decay)! "
                                 "(more precisely, >1 inflection points) with "
                                 "following number of inflection points:\n")]
-                    did_header = True
                 report += ["psi_fs[{}]: {}\n".format(n, n_inflections)]
                 data['n_inflections'] = n_inflections
 
