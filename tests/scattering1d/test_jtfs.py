@@ -715,16 +715,13 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-        # TODO make test 1 test 0
-        # TODO make them all `dict:list`
-        # TODO non-dyadic input length
 
-          (aligned, average_fr, out_3D, out_type,     F)
-        0. True     True        False   'dict:list'   4
-        1. True     True        True    'dict:array'  16
-        2. False    True        True    'dict:array'  32
-        3. True     True        False   'dict:list'   'global'
-        4. True     False       False   'dict:array'  8
+          (aligned, average_fr, out_3D,   F)
+        0. True     True        False     32
+        1. True     True        True      4
+        2. False    True        True      16
+        3. True     True        False     'global'
+        4. True     False       False     8
 
         5. [2.] + `sampling_psi_fr = sampling_phi_fr = 'recalibrate'`
         6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
