@@ -1338,7 +1338,7 @@ def energy_norm_filterbank_fr(J_fr, log2_F, sampling_psi_fr,
 
 #### helpers #################################################################
 def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
-                      J=None, log2_T=None, force_phi=False):
+                       J=None, log2_T=None, force_phi=False):
     lp_sum = {0: {}, 1: {}}
     psi_fs_all = (psi1_f, psi2_f)
     for order, psi_fs in enumerate(psi_fs_all):
@@ -1349,7 +1349,8 @@ def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
         # else lowest frequency bandpasses are too attenuated
         for order in lp_sum:
             # `[0]` for `trim_tm=0`
-            lp_sum[order] += np.abs(phi_f[0][0])**2
+            phi = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
+            lp_sum[order] += np.abs(phi)**2
     return lp_sum
 
 

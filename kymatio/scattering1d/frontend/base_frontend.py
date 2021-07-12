@@ -18,7 +18,7 @@ from ..utils import (compute_border_indices, compute_padding,
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, out_type='array', pad_mode='reflect',
-            max_pad_factor=2, backend=None):
+            max_pad_factor=2, r_psi=math.sqrt(.5), backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -30,6 +30,7 @@ class ScatteringBase1D(ScatteringBase):
         self.out_type = out_type
         self.pad_mode = pad_mode
         self.max_pad_factor = max_pad_factor
+        self.r_psi = r_psi
         self.backend = backend
 
     def build(self):
@@ -41,7 +42,6 @@ class ScatteringBase1D(ScatteringBase):
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
-        self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 4.
         self.P_max = 5
@@ -118,6 +118,10 @@ class ScatteringBase1D(ScatteringBase):
             normalize=self.normalize,
             criterion_amplitude=self.criterion_amplitude, r_psi=self.r_psi,
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps)
+
+        # energy norm
+        energy_norm_filterbank_tm(self.J, self.log2_T, self.psi1_f, self.psi2_f,
+                                  self.phi_f)
 
     def meta(self):
         """Get meta information on the transform
@@ -563,10 +567,6 @@ class TimeFrequencyScatteringBase1D():
                 ind_start[trim_tm] = start
                 ind_end[trim_tm] = end
         self.ind_start, self.ind_end = ind_start, ind_end
-
-        # energy norm
-        energy_norm_filterbank_tm(self.J, self.log2_T, self.psi1_f, self.psi2_f,
-                                  self.phi_f)
 
     def meta(self):
         """Get meta information on the transform

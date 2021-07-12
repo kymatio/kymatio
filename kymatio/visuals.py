@@ -818,7 +818,7 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
 def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
          xlims=None, ylims=None, vlines=None, hlines=None,
          xlabel=None, ylabel=None, xticks=None, yticks=None, ticks=True,
-         ax=None, fig=None, squeeze=True, **kw):
+         ax=None, fig=None, squeeze=True, auto_xlims=None, **kw):
     """
     norm: color norm, tuple of (vmin, vmax)
     abs: take abs(data) before plotting
@@ -829,6 +829,10 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
     """
     ax  = ax  or plt.gca()
     fig = fig or plt.gcf()
+
+    if auto_xlims is None:
+        auto_xlims = bool((x is not None and len(x) != 0) or
+                          (y is not None and len(y) != 0))
 
     if x is None and y is None:
         raise Exception("`x` and `y` cannot both be None")
@@ -864,15 +868,19 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
     if title is not None:
         _title(title, ax=ax)
     _scale_plot(fig, ax, show=show, w=w, h=h, xlims=xlims, ylims=ylims,
-                xlabel=xlabel, ylabel=ylabel)
+                xlabel=xlabel, ylabel=ylabel, auto_xlims=auto_xlims)
 
 
 def scat(x, y=None, title=None, show=0, s=18, w=None, h=None,
          xlims=None, ylims=None, vlines=None, hlines=None, ticks=1,
          complex=False, abs=False, xlabel=None, ylabel=None, ax=None, fig=None,
-         **kw):
+         auto_xlims=None, **kw):
     ax  = ax  or plt.gca()
     fig = fig or plt.gcf()
+
+    if auto_xlims is None:
+        auto_xlims = bool((x is not None and len(x) != 0) or
+                          (y is not None and len(y) != 0))
 
     if x is None and y is None:
         raise Exception("`x` and `y` cannot both be None")
@@ -900,7 +908,15 @@ def scat(x, y=None, title=None, show=0, s=18, w=None, h=None,
     if hlines:
         vhlines(hlines, kind='h')
     _scale_plot(fig, ax, show=show, w=w, h=h, xlims=xlims, ylims=ylims,
-                xlabel=xlabel, ylabel=ylabel)
+                xlabel=xlabel, ylabel=ylabel, auto_xlims=auto_xlims)
+
+
+def plotscat(*args, **kw):
+    show = kw.pop('show', False)
+    plot(*args, **kw)
+    scat(*args, **kw)
+    if show:
+        plt.show()
 
 
 def vhlines(lines, kind='v'):
@@ -950,13 +966,15 @@ def _title(title, ax=None):
 
 
 def _scale_plot(fig, ax, show=False, ax_equal=False, w=None, h=None,
-                xlims=None, ylims=None, xlabel=None, ylabel=None):
-    xmin, xmax = ax.get_xlim()
-    rng = xmax - xmin
-
-    ax.set_xlim(xmin + .018 * rng, xmax - .018 * rng)
+                xlims=None, ylims=None, xlabel=None, ylabel=None,
+                auto_xlims=True):
     if xlims:
         ax.set_xlim(*xlims)
+    elif auto_xlims:
+        xmin, xmax = ax.get_xlim()
+        rng = xmax - xmin
+        ax.set_xlim(xmin + .018 * rng, xmax - .018 * rng)
+
     if ylims:
         ax.set_ylim(*ylims)
     if w or h:

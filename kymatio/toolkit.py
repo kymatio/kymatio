@@ -432,6 +432,7 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         8. Temporal peaks:
           - A: Whether peak is at t==0
           - B: Whether there is only one peak
+          - C: Whether decay is smooth (else will incur inflection points)
 
     Parameters
     ----------
