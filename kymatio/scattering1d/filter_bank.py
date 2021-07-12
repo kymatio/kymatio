@@ -863,8 +863,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
     Parameters
     ----------
-    J_pad_fr_max_init : int  # TODO
-        `2**J_pad_fr_max` is the desired support size (length) of the filters.
+    J_pad_fr_max_init : int
+        `2**J_pad_fr_max_init` is the largest length of all filters.
 
     J_fr : int
         The maximum log-scale of frequential scattering in joint scattering
@@ -874,9 +874,28 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     Q_fr : int
         Number of wavelets per octave for frequential scattering.
 
+    shape_fr, shape_fr_scale_max, shape_fr_scale_min : list[int], int, int
+        See `help(TimeFrequencyScattering1D)`. Used for filter computation at
+        various lengths/scales depending on `sampling_psi_fr`.
+
+    max_pad_factor_fr : list[int] / None
+        See `help(TimeFrequencyScattering1D)`. Restricts filter length, but
+        may be overridden.
+
+    unrestricted_pad_fr : bool
+        `== max_pad_factor is None`. `True` adds a few checks to ensure filters
+        are constructed fully correctly and devoid of boundary effects.
+
+    max_subsample_equiv_before_phi_fr : int
+        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+        checks if `shape_fr_scale` is too small.
+
     subsample_equiv_relative_to_max_pad_init : int
-        Amount of *equivalent subsampling* of frequential padding relative to
-        `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
+        See `help(TimeFrequencyScattering1D)`. Controls filter lengths.
+
+    average_fr_global : bool
+        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+        checks.
 
     sampling_psi_fr : str['resample', 'recalibrate', 'exclude']
         See `help(TimeFrequencyScattering1D)`.
@@ -1154,12 +1173,14 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
 
     Parameters
     ----------
-    J_pad_fr_max : int
-        `2**J_pad_fr_max` is the desired support size (length) of the filters.
+    J_pad_fr_max_init : int
+        `2**J_pad_fr_max_init` is the largest length of the filters.
+
     F : int
         temporal support of frequential low-pass filter, controlling amount of
         imposed frequency transposition invariance and maximum frequential
         subsampling.
+
     log2_F : int
         Equal to `log2(prevpow2(F))`, sets maximum subsampling factor.
         If `sampling_phi_fr=True`, this factor may not be reached *by the filter*,
@@ -1168,8 +1189,18 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
         `phi_f_fr` is fine, thus the restriction is to not subsample by more than
         the most subsampled `phi_f_fr` *before* convolving with it - set by
         `max_subsample_before_phi_fr`.
+
+    shape_fr_scale_min : int
+        Used to determine the shortest filter.
+
+    unrestricted_pad_fr : bool
+        `== max_pad_factor is None`. If True, will terminate filter construction
+        if lowpass decays insufficiently. Thus `max_pad_factor_fr` (not None)
+        overrides boundary effect / filter distortion considerations.
+
     sampling_phi_fr : str['resample', 'recalibrate']
         See `help(TimeFrequencyScattering1D)`.
+
     criterion_amplitude, sigma, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
@@ -1282,7 +1313,14 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
 
 
 def energy_norm_filterbank_tm(J, log2_T, psi1_f, psi2_f, phi_f):
-    # TODO docs
+    """Rescale wavelets such that their frequency-domain energy sum
+    (Littlewood-Paley sum) peaks at 2 (since time scattering is analytic only
+    for real inputs). This makes the filterbank energy non-expansive.
+
+    Non-CQT ("intermediate", linear center frequency spacing) wavelets are
+    rescaled separately, as they overlap less. This also corrects non-CQT
+    energy contributions relative to CQT.
+    """
     psi_fs_all = (psi1_f, psi2_f)
     lp_sum = _compute_lp_sum_tm(*psi_fs_all, phi_f, J, log2_T)
 
@@ -1303,6 +1341,14 @@ def energy_norm_filterbank_tm(J, log2_T, psi1_f, psi2_f, phi_f):
 
 def energy_norm_filterbank_fr(J_fr, log2_F, sampling_psi_fr,
                               psi1_f_fr_up, psi1_f_fr_down, phi_f_fr):
+    """Rescale wavelets such that their frequency-domain energy sum
+    (Littlewood-Paley sum) peaks at 1. This makes the filterbank energy
+    non-expansive.
+
+    Non-CQT ("intermediate", linear center frequency spacing) wavelets are
+    rescaled separately, as they overlap less. This also corrects non-CQT
+    energy contributions relative to CQT.
+    """
     psi1_fs_all = (psi1_f_fr_up, psi1_f_fr_down)
     lp_sum = _compute_lp_sum_fr(*psi1_fs_all, phi_f_fr, J_fr, log2_F)
 
