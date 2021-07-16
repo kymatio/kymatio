@@ -1182,7 +1182,7 @@ def _maybe_unpad_time(Y_2_c, k1_plus_k2, commons2):
     start, end = ind_start[0][k1_plus_k2], ind_end[0][k1_plus_k2]
     diff = 0
     if average and log2_T < J:
-        min_to_pad = phi['width']
+        min_to_pad = phi['support']
         pad_log2_T = math.ceil(math.log2(N + min_to_pad)) - k1_plus_k2
         padded = J_pad - k1_plus_k2
         N_scale = math.ceil(math.log2(N))

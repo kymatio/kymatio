@@ -18,7 +18,7 @@ __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
 
 
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
-                          second_order=False, plot_kw=None):
+                          first_order=True, second_order=False, plot_kw=None):
     """
     # Arguments:
         scattering: kymatio.scattering1d.Scattering1D
@@ -110,9 +110,10 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
             lp2 += np.abs(p0_longest)**2
 
     # title & plot
-    title = "First-order filterbank | J, Q1, T = {}, {}, {}".format(
-        scattering.J, scattering.Q[0], scattering.T)
-    _plot_filters(p1, p0, lp1, title=title)
+    if first_order:
+        title = "First-order filterbank | J, Q1, T = {}, {}, {}".format(
+            scattering.J, scattering.Q[0], scattering.T)
+        _plot_filters(p1, p0, lp1, title=title)
 
     if second_order:
         title = "Second-order filterbank | J, Q2, T = {}, {}, {}".format(

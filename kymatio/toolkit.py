@@ -347,7 +347,8 @@ def validate_filterbank_tm(sc=None, psi1_f=None, psi2_f=None, phi_f=None,
 
 
 def validate_filterbank_fr(sc=None, psi1_f_fr_up=None, psi1_f_fr_down=None,
-                           phi_f_fr=None, j0=0, criterion_amplitude=1e-3):
+                           phi_f_fr=None, j0=0, criterion_amplitude=1e-3,
+                           verbose=True):
     """Runs `validate_filterbank()` on frequential filters of JTFS.
 
     Parameters
@@ -391,12 +392,16 @@ def validate_filterbank_fr(sc=None, psi1_f_fr_up=None, psi1_f_fr_down=None,
                                     (psi1_f_fr_up, psi1_f_fr_down)]
     phi_f_fr = phi_f_fr[j0][0]
 
-    print("\n// SPIN UP")
+    if verbose:
+        print("\n// SPIN UP")
     data_up = validate_filterbank(psi1_f_fr_up, phi_f_fr, criterion_amplitude,
-                                  for_real_inputs=False, unimodal=True)
-    print("\n\n// SPIN DOWN")
+                                  for_real_inputs=False, unimodal=True,
+                                  verbose=verbose)
+    if verbose:
+        print("\n\n// SPIN DOWN")
     data_down = validate_filterbank(psi1_f_fr_down, phi_f_fr, criterion_amplitude,
-                                    for_real_inputs=False, unimodal=True)
+                                    for_real_inputs=False, unimodal=True,
+                                    verbose=verbose)
     return data_up, data_down
 
 
@@ -491,7 +496,8 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     def title(txt):
         return ("\n== {} " + "=" * (80 - len(txt)) + "\n").format(txt)
     # for later
-    w_pos = np.linspace(0, .5, N//2 + 1, endpoint=True)
+    # w_pos = np.linspace(0, .5, N//2 + 1, endpoint=True)  # TODO
+    w_pos = np.linspace(0, N//2, N//2 + 1, endpoint=True).astype(int)
     w_neg = - w_pos[1:-1][::-1]
     w = np.hstack([w_pos, w_neg])
     eps = np.finfo(psi_f_0.dtype).eps
@@ -573,22 +579,24 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         lp_sum = lp_sum_psi + np.abs(phi)**2
         lp_sum = (lp_sum[:N//2 + 1] if analytic_0 else
                   lp_sum[N//2:])
+        if with_phi:
+            data['lp'] = lp_sum
+        else:
+            data['lp_no_phi'] = lp_sum
         if not with_phi and analytic_0:
             lp_sum = lp_sum[1:]  # exclude dc
 
         diff_over  = lp_sum - th_lp_sum_over
         diff_under = th_lp_sum_under - lp_sum
+        diff_over_max, diff_under_max = diff_over.max(), diff_under.max()
         excess_over  = np.where(diff_over  > th_sum_excess)[0]
         excess_under = np.where(diff_under > th_sum_excess)[0]
-        diff_over_max, diff_under_max = diff_over.max(), diff_under.max()
         if not analytic_0:
             excess_over  += N//2
             excess_under += N//2
-
-        if with_phi:
-            data['lp'] = lp_sum
-        else:
-            data['lp_no_phi'] = lp_sum
+        elif analytic_0 and not with_phi:
+            excess_over += 1
+            excess_under += 1  # dc
 
         input_kind = "real" if for_real_inputs else "complex"
         if len(excess_over) > 0:
@@ -596,10 +604,12 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
             stride = max(int(round(len(excess_over) / 30)), 1)
             s = f", shown skipping every {stride-1} values" if stride != 1 else ""
             report += [("LP sum exceeds threshold of {} (for {} inputs) by "
-                        "at most {:.3f} (more is worse) at following frequencies "
-                        "(0 to 0.5{}):\n"
-                        ).format(th_lp_sum_over, input_kind, diff_over_max, s)]
-            report += ["{}\n\n".format(np.round(w[excess_over][::stride], 3))]
+                        "at most {:.3f} (more is worse) at following frequency "
+                        "bin indices (0 to {}{}):\n"
+                        ).format(th_lp_sum_over, input_kind, diff_over_max,
+                                 N//2, s)]
+            # report += ["{}\n\n".format(np.round(w[excess_over][::stride], 3))]
+            report += ["{}\n\n".format(w[excess_over][::stride])]
             did_header = True
             if with_phi:
                 data['lp_excess_over'] = excess_over
@@ -614,11 +624,12 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
             s = f", shown skipping every {stride-1} values" if stride != 1 else ""
             report += [("LP sum falls below threshold of {} (for {} inputs) by "
                         "at most {:.3f} (more is worse; ~{} implies ~zero "
-                        "capturing of the frequency!) at following frequencies "
-                        "(0 to 0.5{}):\n"
+                        "capturing of the frequency!) at following frequency "
+                        "bin indices (0 to {}{}):\n"
                         ).format(th_lp_sum_under, input_kind, diff_under_max,
-                                 th_lp_sum_under, s)]
-            report += ["{}\n\n".format(np.round(w[excess_under][::stride], 3))]
+                                 th_lp_sum_under, N//2, s)]
+            # w_show = np.round(w[excess_under][::stride], 3)
+            report += ["{}\n\n".format(w[excess_under][::stride])]
             did_header = True
             if with_phi:
                 data['lp_excess_under'] = excess_under
@@ -649,22 +660,29 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     report_lp_sum(report, phi=0)
 
     # Redundancy #############################################################
+    # TODO limit printing
     report += [title("REDUNDANCY")]
     did_header = False
     th_r = .4 if for_real_inputs else .2
 
+    max_to_print = 20
+    printed = 0
     for n in range(len(psi_fs) - 1):
         p0sq, p1sq = np.abs(psi_fs[n])**2, np.abs(psi_fs[n + 1])**2
         # energy overlap relative to sum of individual energies
-        r = 2 * np.sum(p0sq * p1sq) / (p0sq.sum() + p1sq.sum())
+        r = np.sum(p0sq * p1sq) / ((p0sq.sum() + p1sq.sum()) / 2)
         data['redundancy'][(n, n + 1)] = r
         if r > th_r:
             if not did_header:
                 report += [("Found filters with redundancy exceeding {} (energy "
-                            "overlap relative to sum of individual energies):\n"
-                            ).format(th_r)]
+                            "overlap relative to sum of individual energies) "
+                            "-- This isn't necessarily bad. Showing up to 20 "
+                            "filters:\n").format(th_r)]
                 did_header = True
             report += ["psi_fs[{}] & psi_fs[{}]: {:.3f}\n".format(n, n + 1, r)]
+            printed += 1
+            if printed >= max_to_print:
+                break
 
     # Decay: check if any bandpass is a pure sine ############################
     pop_if_no_header(report, did_header)
@@ -677,9 +695,9 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         ratio = psort[-1] / (psort[-2] + eps)
         if ratio > th_ratio_max_to_next_max:
             if not did_header:
-                report += [("Found filter(s) that are pure sines! (Threshold for "
-                            "ratio of peak to next-highest value is {} - got "
-                            "(more is worse):\n"
+                report += [("Found filter(s) that are pure sines! Threshold for "
+                            "ratio of Fourier peak to next-highest value is {} "
+                            "- got (more is worse):\n"
                             ).format(th_ratio_max_to_next_max)]
                 did_header = True
             report += ["psi_fs[{}]: {:.2e}\n".format(n, ratio)]
@@ -710,10 +728,11 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         aphi = np.abs(np.fft.ifft(phi_f))
         ratio = aphi.max() / (aphi.min() + eps)
         if ratio < th_ratio_max_to_min:
-            report += [("Lowpass filter has incomplete decay (will incur "
+            nl = "\n" if did_header else ""
+            report += [("{}Lowpass filter has incomplete decay (will incur "
                         "boundary effects), with following ratio of amplitude "
-                        "max to edge: {:.1f} > {}").format(ratio,
-                                                           th_ratio_max_to_min)]
+                        "max to edge: {:.1f} > {}\n").format(nl, ratio,
+                                                             th_ratio_max_to_min)]
             did_header = True
             data['decay'][-1] = ratio
 
@@ -812,7 +831,8 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         if len(peak_idxs_remainder) > 0:
             report += [("Found Fourier peaks that are spaced neither "
                         "exponentially nor linearly, suggesting possible "
-                        "aliasing.\npsi_fs[n], n={}").format(peak_idxs_remainder)]
+                        "aliasing.\npsi_fs[n], n={}\n"
+                        ).format(peak_idxs_remainder)]
             data['alias_peak_idxs'] = peak_idxs_remainder
             did_header = True
 
@@ -821,8 +841,9 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         peak_idxs_zeros = diff_extend(np.diff(peak_idxs), th=0, cond='eq')
         peak_idxs_zeros = np.where(peak_idxs_zeros == 0)[0]
         if len(peak_idxs_zeros) > 0:
-            report += ["Found duplicate Fourier peaks!:\n{}".format(
-                np.where(peak_idxs_zeros == 0)[0])]
+            nl = "\n" if did_header else ""
+            report += ["{}Found duplicate Fourier peaks!:\n{}\n".format(
+                nl, peak_idxs_zeros)]
             did_header = True
 
     # Temporal peak ##########################################################
@@ -846,6 +867,8 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
         for n, ap in enumerate(apsis):
             # count number of inflection points (where sign of derivative changes)
             # exclude very small values
+            # center for proper `diff`
+            ap = np.fft.ifftshift(ap)
             inflections = np.diff(np.sign(np.diff(ap[ap > 10*eps])))
             n_inflections = sum(np.abs(inflections) > eps)
 
@@ -855,6 +878,7 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                                 "(or incomplete/non-smooth decay)! "
                                 "(more precisely, >1 inflection points) with "
                                 "following number of inflection points:\n")]
+                    did_header = True
                 report += ["psi_fs[{}]: {}\n".format(n, n_inflections)]
                 data['n_inflections'] = n_inflections
 

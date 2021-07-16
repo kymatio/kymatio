@@ -120,8 +120,8 @@ class ScatteringBase1D(ScatteringBase):
             sigma0=self.sigma0, alpha=self.alpha, P_max=self.P_max, eps=self.eps)
 
         # energy norm
-        energy_norm_filterbank_tm(self.J, self.log2_T, self.psi1_f, self.psi2_f,
-                                  self.phi_f)
+        energy_norm_filterbank_tm(self.psi1_f, self.psi2_f, self.phi_f,
+                                  self.J, self.log2_T)
 
     def meta(self):
         """Get meta information on the transform
@@ -1480,8 +1480,11 @@ class _FrequencyScatteringBase(ScatteringBase):
                                        self.J_pad_fr_min_limit)
 
                     self.J_pad_fr[n2] = J_pad_fr
-                    j0, pad_left, pad_right, ind_start, ind_end = (
-                        self._compute_padding_params(J_pad_fr, shape_fr))
+                    try:
+                        j0, pad_left, pad_right, ind_start, ind_end = (
+                            self._compute_padding_params(J_pad_fr, shape_fr))
+                    except:
+                        1/0
                     self.subsample_equiv_relative_to_max_pad_init[n2] = j0
                     self.pad_left_fr[n2] = pad_left
                     self.pad_right_fr[n2] = pad_right
@@ -1511,9 +1514,8 @@ class _FrequencyScatteringBase(ScatteringBase):
                     del self.phi_f_fr[j_fr]
 
         # energy norm
-        energy_norm_filterbank_fr(self.J_fr, self.log2_F, self.sampling_psi_fr,
-                                  self.psi1_f_fr_up, self.psi1_f_fr_down,
-                                  self.phi_f_fr)
+        energy_norm_filterbank_fr(self.psi1_f_fr_up, self.psi1_f_fr_down,
+                                  self.phi_f_fr, self.J_fr, self.log2_F)
 
     def compute_padding_fr(self):
         """Docs in `TimeFrequencyScatteringBase1D`."""

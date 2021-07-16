@@ -373,7 +373,7 @@ def test_global_averaging():
 
     outs = {}
     metas = {}
-    Ts, Fs = (N - 1, N), (2**5 - 1, 2**5)
+    Ts, Fs = (N - 50, N), (2**5 - 10, 2**5)
     for T in Ts:
         # shape_fr_max ~= Q*max(p2['j'] for p2 in psi2_f); found 29 at runtime
         for F in Fs:
@@ -411,6 +411,82 @@ def test_global_averaging():
         if metric_verbose:
             print("(01, 10, 11) = ({:.2e}, {:.2e}, {:.2e}) | {}".format(
                 reldiff01, reldiff10, reldiff11, pair))
+
+
+def test_lp_sum():
+    """Test that filterbank energy renormalization works as expected."""
+    def _get_th_and_text(k, j0, th_loc):
+        if k is not None:  # temporal
+            s = "k=%s" % k
+            peak_target = 2
+        elif j0 is not None:  # frequential
+            s = "j0=%s" % j0
+            peak_target = 1
+        th = peak_target * th_loc
+        return th, peak_target, s
+
+    def check_above(lp, test_params_str, k=None, j0=None):
+        th, peak_target, s = _get_th_and_text(k, j0, th_above)
+        assert lp.max() - peak_target < th, (
+            "{} - {} > {} | {}\n{}").format(lp.max(), peak_target, th, s,
+                                            test_params_str)
+
+    def check_below(lp, test_params_str, psi_fs, k=None, j0=None):
+        th, peak_target, s = _get_th_and_text(k, j0, th_below)
+        first_peak = np.argmax(psi_fs[-1])
+        last_peak  = np.argmax(psi_fs[0])
+        lp_min = lp[first_peak:last_peak + 1].min()
+
+        assert peak_target - lp_min > th, (
+            "{} - {} < {} | between peaks {} and {} | {}\n{}"
+            ).format(peak_target, lp_min, th, first_peak, last_peak,
+                     s, test_params_str)
+
+    N = 1024
+    J = int(np.log2(N))
+    common_params = dict(shape=N, J=J, frontend=default_backend)
+    th_above = 1e-2
+    th_below = .5
+
+    for Q in (1, 8, 16):
+      for r_psi in (np.sqrt(.5), .85):
+        for max_pad_factor in (None, 1):
+          for max_pad_factor_fr in (None, 1):
+            for sampling_filters_fr in ('resample', 'exclude', 'recalibrate')[1:]:
+              test_params = dict(Q=Q, r_psi=r_psi, max_pad_factor=max_pad_factor,
+                                 max_pad_factor_fr=max_pad_factor_fr,
+                                 sampling_filters_fr=sampling_filters_fr,
+                                 # ensure total LP sum is poorly behaved
+                                 # (but does not affect psi-only LP sum)
+                                 T=2**(common_params['J'] - 1))
+              test_params_str = '\n'.join(f'{k}={v}' for k, v in
+                                          test_params.items())
+              jtfs = TimeFrequencyScattering1D(**common_params, **test_params)
+
+              # temporal filterbank
+              for order, psi_fs in enumerate([jtfs.psi1_f, jtfs.psi2_f]):
+                  for k in psi_fs[-1]:
+                      if not isinstance(k, int):
+                          continue
+                      # check psis only
+                      lp = np.sum([np.abs(p[k])**2 for p in psi_fs if k in p],
+                                  axis=0)
+
+                      check_above(lp, test_params_str, k=k)
+                      check_below(lp, test_params_str, psi_fs, k=k)
+
+              # frequential filterbank
+              for s1_fr, psi_fs in enumerate([jtfs.psi1_f_fr_up,
+                                              jtfs.psi1_f_fr_down]):
+                  j0_max = max(j for p in psi_fs for j in p if isinstance(j, int))
+                  # check per j0
+                  for j0 in range(j0_max):
+                      lp = 0
+                      for p in psi_fs:
+                          if j0 in p:
+                              lp += np.abs(p[j0])**2
+                      check_above(lp, test_params_str, j0=j0)
+                      check_below(lp, test_params_str, psi_fs, j0=j0)
 
 
 def test_no_second_order_filters():
@@ -883,20 +959,21 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
-        test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_up_vs_down()
-        test_sampling_psi_fr_exclude()
-        test_no_second_order_filters()
-        test_max_pad_factor_fr()
-        test_out_exclude()
+        # test_alignment()
+        # test_shapes()
+        # test_jtfs_vs_ts()
+        # test_freq_tp_invar()
+        # test_up_vs_down()
+        # test_sampling_psi_fr_exclude()
+        # test_no_second_order_filters()
+        # test_max_pad_factor_fr()
+        # test_out_exclude()
         test_global_averaging()
-        test_backends()
-        test_differentiability_torch()
-        test_reconstruction_torch()
-        test_meta()
-        test_output()
+        # test_lp_sum()
+        # test_backends()
+        # test_differentiability_torch()
+        # test_reconstruction_torch()
+        # test_meta()
+        # test_output()
     else:
         pytest.main([__file__, "-s"])
