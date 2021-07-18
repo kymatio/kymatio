@@ -1712,8 +1712,7 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
     estimates blow up as `T -> N` - but we only seek to quantify invariance
     up to `N`. Also, Gaussians of widths `T = N - const` and `T = N` have
     very close L2 measures up to a generous `const`; see `test_global_averaging()`
-    `test_global_averaging()` in `tests/scattering1d/test_jtfs.py` for `T = N - 1`
-    (and try e.g. `N - 64`).
+    in `tests/scattering1d/test_jtfs.py` for `T = N - 1` (and try e.g. `N - 64`).
     """
     if len(p_f) == 1:  # edge case
         return 1
