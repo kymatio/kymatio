@@ -1430,9 +1430,9 @@ class _FrequencyScatteringBase(ScatteringBase):
         """See `filter_bank.phi_fr_factory`."""
         self.phi_f_fr = phi_fr_factory(
             self.J_pad_fr_max_init, self.F, self.log2_F,
-            **self.get_params('shape_fr_scale_min', 'unrestricted_pad_fr',
-                              'sampling_phi_fr', 'criterion_amplitude',
-                              'sigma0', 'P_max', 'eps'))
+            **self.get_params('shape_fr_scale_min', 'shape_fr_scale_max',
+                              'unrestricted_pad_fr', 'sampling_phi_fr',
+                              'criterion_amplitude', 'sigma0', 'P_max', 'eps'))
 
         # if we pad less, `phi_f_fr[subsample_equiv_due_to_pad]` fails
         # Overrides `max_pad_factor_fr`.
@@ -1454,6 +1454,14 @@ class _FrequencyScatteringBase(ScatteringBase):
                 'sampling_psi_fr', 'sampling_phi_fr',
                 'sigma_max_to_min_max_ratio',
                 'r_psi', 'normalize', 'sigma0', 'alpha', 'P_max', 'eps'))
+
+        # cannot do energy norm with 3 filters, and generally filterbank
+        # isn't well-behaved
+        n_psi_frs = len(self.psi1_f_fr_up)
+        if n_psi_frs <= 3:
+            raise Exception(("configuration yielded %s wavelets for frequential "
+                             "scattering, need a minimum of 4; try increasing "
+                             "J, Q, J_fr, or Q_fr." % n_psi_frs))
 
     def adjust_padding_and_filters(self):
         # adjust padding
@@ -1480,11 +1488,8 @@ class _FrequencyScatteringBase(ScatteringBase):
                                        self.J_pad_fr_min_limit)
 
                     self.J_pad_fr[n2] = J_pad_fr
-                    try:
-                        j0, pad_left, pad_right, ind_start, ind_end = (
-                            self._compute_padding_params(J_pad_fr, shape_fr))
-                    except:
-                        1/0
+                    j0, pad_left, pad_right, ind_start, ind_end = (
+                        self._compute_padding_params(J_pad_fr, shape_fr))
                     self.subsample_equiv_relative_to_max_pad_init[n2] = j0
                     self.pad_left_fr[n2] = pad_left
                     self.pad_right_fr[n2] = pad_right

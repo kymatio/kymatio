@@ -18,7 +18,8 @@ __all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
 
 
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
-                          first_order=True, second_order=False, plot_kw=None):
+                          lp_phi=True, first_order=True, second_order=False,
+                          plot_kw=None):
     """
     # Arguments:
         scattering: kymatio.scattering1d.Scattering1D
@@ -102,12 +103,14 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
         p0_longest = p0[0] if not isinstance(p0[0], list) else p0[0][0]
         for p in p1:
             lp1 += np.abs(p[0])**2
-        lp1 += np.abs(p0_longest)**2
+        if lp_phi:
+            lp1 += np.abs(p0_longest)**2
 
         if second_order:
             for p in p2:
                 lp2 += np.abs(p[0])**2
-            lp2 += np.abs(p0_longest)**2
+            if lp_phi:
+                lp2 += np.abs(p0_longest)**2
 
     # title & plot
     if first_order:
@@ -122,7 +125,7 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
 
 
 def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
-                       plot_kw=None):
+                       lp_phi=True, plot_kw=None):
     """
     # Arguments:
         scattering: kymatio.scattering1d.TimeFrequencyScattering1D
@@ -226,7 +229,8 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
                 if j0 not in p:  # sampling_psi_fr == 'exclude'
                     continue
                 lp += np.abs(p[j0])**2
-        lp += np.abs(p0[j0][0])**2
+        if lp_phi:
+            lp += np.abs(p0[j0][0])**2
 
     # title
     params = (jtfs.J_fr, jtfs.Q_fr, jtfs.F)

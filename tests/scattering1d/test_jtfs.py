@@ -5,6 +5,7 @@ from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
                              l2, rel_ae)
 from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
+from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
 # backend to use for most tests
@@ -217,7 +218,7 @@ def test_up_vs_down():
     N = 2048
     x = echirp(N)
 
-    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, F=4, Q_fr=2,
+    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, F=8, Q_fr=2,
                                      average_fr=True, out_type='dict:array',
                                      pad_mode='reflect',
                                      pad_mode_fr='conj-reflect-zero',
@@ -227,7 +228,7 @@ def test_up_vs_down():
 
     E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
     E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 83
+    th = 68
     assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
 
     if metric_verbose:
@@ -269,12 +270,16 @@ def test_sampling_psi_fr_exclude():
             info = "{}, (i0, i1)=({}, {}); (n0, n1)=({}, {})".format(
                 pair, i0, i1, n0, n1)
 
+            is_joint = bool(pair not in ('S0', 'S1'))
+            if is_joint:
+                pad, pad_max = jtfs1.J_pad_fr[n0[0]], jtfs1.J_pad_fr_max
             if n0 != n1:
+                assert is_joint, (
+                    "found mismatch in time scattered coefficients\n%s" % info)
                 # Mismatched `n` should only happen for mismatched `pad_fr`.
                 # Check 1's pad as indexed by 0, since n0 lags n1 and might
                 # have e.g. pad1[n0=5]==(max-1), pad[n1=6]==max, but we're still
                 # iterating n==5 so appropriate comparison is at 5
-                pad, pad_max = jtfs1.J_pad_fr[n0[0]], jtfs1.J_pad_fr_max
                 assert pad != pad_max, (
                     "{} == {} | {}\n(must have sub-maximal `J_pad_fr` for "
                     "mismatched `n`)").format(pad, pad_max, info)
@@ -282,10 +287,12 @@ def test_sampling_psi_fr_exclude():
 
             assert c0.shape == c1.shape, "shape mismatch: {} != {} | {}".format(
                 c0.shape, c1.shape, info)
-            # TODO use relative measure, & chk other places
             ae = rel_ae(c0, c1)
-            assert np.allclose(c0, c1), ("{} | MeanAE={:.2e}, MaxAE={:.2e}"
-                                         ).format(info, ae.mean(), ae.max())
+            # due to different energy renorms (LP sum)
+            atol = 1e-8 if (not is_joint or pad == pad_max) else 1e-2
+            assert np.allclose(c0, c1, atol=atol), (
+                "{} | MeanAE={:.2e}, MaxAE={:.2e}").format(
+                    info, ae.mean(), ae.max())
             i1 += 1
 
 
@@ -373,7 +380,7 @@ def test_global_averaging():
 
     outs = {}
     metas = {}
-    Ts, Fs = (N - 50, N), (2**5 - 10, 2**5)
+    Ts, Fs = (N - 1, N), (2**5 - 1, 2**5)
     for T in Ts:
         # shape_fr_max ~= Q*max(p2['j'] for p2 in psi2_f); found 29 at runtime
         for F in Fs:
@@ -385,10 +392,6 @@ def test_global_averaging():
 
             outs[ (T, F)] = jtfs(x)
             metas[(T, F)] = jtfs.meta()
-            # print(T, F, '--',
-            #       *[getattr(jtfs.sc_freq, k) for k in
-            #         ('J_pad_fr_max', 'min_to_pad_fr_max', '_pad_fr_phi',
-            #          '_pad_fr_psi')])  # TODO
 
     T0F0 = coeff_energy(outs[(Ts[0], Fs[0])], metas[(Ts[0], Fs[0])])
     T0F1 = coeff_energy(outs[(Ts[0], Fs[1])], metas[(Ts[0], Fs[1])])
@@ -444,7 +447,7 @@ def test_lp_sum():
 
     N = 1024
     J = int(np.log2(N))
-    common_params = dict(shape=N, J=J, frontend=default_backend)
+    common_params = dict(shape=N, J=J, Q_fr=3, frontend=default_backend)
     th_above = 1e-2
     th_below = .5
 
@@ -452,7 +455,12 @@ def test_lp_sum():
       for r_psi in (np.sqrt(.5), .85):
         for max_pad_factor in (None, 1):
           for max_pad_factor_fr in (None, 1):
-            for sampling_filters_fr in ('resample', 'exclude', 'recalibrate')[1:]:
+            for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
+              # if max_pad_factor != 1 or max_pad_factor_fr != 1:
+              #     continue
+              # if Q != 8 or sampling_filters_fr != 'recalibrate':
+              #     continue
+              # print("DONE")
               test_params = dict(Q=Q, r_psi=r_psi, max_pad_factor=max_pad_factor,
                                  max_pad_factor_fr=max_pad_factor_fr,
                                  sampling_filters_fr=sampling_filters_fr,
@@ -461,7 +469,11 @@ def test_lp_sum():
                                  T=2**(common_params['J'] - 1))
               test_params_str = '\n'.join(f'{k}={v}' for k, v in
                                           test_params.items())
-              jtfs = TimeFrequencyScattering1D(**common_params, **test_params)
+              try:
+                  jtfs = TimeFrequencyScattering1D(**common_params, **test_params)
+              except Exception as e:
+                  print(test_params_str)
+                  raise e
 
               # temporal filterbank
               for order, psi_fs in enumerate([jtfs.psi1_f, jtfs.psi2_f]):
@@ -489,14 +501,72 @@ def test_lp_sum():
                       check_below(lp, test_params_str, psi_fs, j0=j0)
 
 
+def test_compute_temporal_width():
+    """Tests that `compute_temporal_width` works as intended."""
+    # library defaults
+    sigma0 = .1
+    criterion_amplitude = 1e-3
+    complete_decay_factor = 16  # follows from above
+
+    J_pad = 9
+    filter_len = 2**J_pad
+    pts_per_scale = 6
+    # don't allow underestimating by more than this
+    th_undershoot = -5
+    # consider `T` above this as close to global averaging
+    T_global_avg_earliest = int(.6 * filter_len // 2)
+    T_global_avg_latest = int(.8 * filter_len // 2)
+
+    Ts = np.arange(2, 256)
+    # test for different input sizes relative to filter sizes
+    for N in (filter_len, filter_len // 2, filter_len // 4):
+        T_ests = []
+        for T in Ts:
+            phi_f = gauss_1d(filter_len, sigma=sigma0/T)
+            if T > N // 2:
+                break
+            T_est = compute_temporal_width(
+                phi_f, N, sigma0=sigma0, criterion_amplitude=criterion_amplitude,
+                pts_per_scale=pts_per_scale)
+            T_ests.append(T_est)
+        Ts = Ts[:len(T_ests)]
+        T_ests = np.array(T_ests)
+
+        for (T, T_est) in zip(Ts, T_ests):
+            test_params_str = 'T={}, N={}, T_est={}'.format(T, N, T_est)
+
+            # check global averaging cases
+            if N == filter_len:
+                if T_est == N:
+                    assert T >= T_global_avg_earliest, "{} < {} | {}".format(
+                        T, T_global_avg_earliest, test_params_str)
+                elif T >= T_global_avg_latest:
+                    assert T_est == N, "{} != {} | {}".format(
+                        T_est, N, test_params_str)
+            elif T == Ts[-1]:
+                # last is max
+                assert T_est == T_ests.max(), "{} != {} | {}".format(
+                    T_est, T_ests.max(), test_params_str)
+
+            # check other cases
+            complete_decay = bool(T <= filter_len // complete_decay_factor)
+            if complete_decay:
+                # must match perfectly
+                assert T_est == T, "{} != {} | {}".format(
+                    T_est, T, test_params_str)
+            else:
+                assert T_est - T > th_undershoot, "{} - {} <= {} | {}".format(
+                    T_est, T, th_undershoot, test_params_str)
+
+
 def test_no_second_order_filters():
     """Reproduce edge case: configuration yields no second-order wavelets
     so can't do JTFS.
     """
     with pytest.raises(ValueError) as record:
-        _ = TimeFrequencyScattering1D(shape=512, J=1, Q=1,
+        _ = TimeFrequencyScattering1D(shape=8192, J=1, Q=2, r_psi=.9,
                                       frontend=default_backend)
-        assert "no second-order filters" in record.value.args[0]
+    assert "no second-order filters" in record.value.args[0]
 
 
 def test_backends():
@@ -527,7 +597,7 @@ def test_backends():
 
         E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        th = 40
+        th = 35
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 
@@ -959,21 +1029,22 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_sampling_psi_fr_exclude()
-        # test_no_second_order_filters()
-        # test_max_pad_factor_fr()
-        # test_out_exclude()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_sampling_psi_fr_exclude()
+        test_no_second_order_filters()
+        test_max_pad_factor_fr()
+        test_out_exclude()
         test_global_averaging()
-        # test_lp_sum()
-        # test_backends()
-        # test_differentiability_torch()
-        # test_reconstruction_torch()
-        # test_meta()
-        # test_output()
+        test_lp_sum()
+        test_compute_temporal_width()
+        test_backends()
+        test_differentiability_torch()
+        test_reconstruction_torch()
+        test_meta()
+        test_output()
     else:
         pytest.main([__file__, "-s"])
