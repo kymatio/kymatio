@@ -444,10 +444,14 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                a wavelet at too low of a center frequency)
           - B: Whether filters decay sufficiently (in time domain) to avoid
                boundary effects
+          B may fail for same reason as 8A & 8B (see these).
         8. Temporal peaks:
           - A: Whether peak is at t==0
           - B: Whether there is only one peak
           - C: Whether decay is smooth (else will incur inflection points)
+          A and B may fail to hold for lowest xi due to Morlet's corrective
+          term; this is proper behavior.
+          See https://www.desmos.com/calculator/3ycdx1n9j6
 
     Parameters
     ----------
@@ -870,9 +874,11 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                                 "with following peak locations:\n")]
                     did_header = True
                 report += ["psi_fs[{}]: {}\n".format(n, peak_idx)]
-                data[n] = peak_idx
+                data['time_peak_idx'][n] = peak_idx
 
         # check that there is only one temporal peak #########################
+        pop_if_no_header(report, did_header)
+        did_header = False
         for n, ap in enumerate(apsis):
             # count number of inflection points (where sign of derivative changes)
             # exclude very small values
