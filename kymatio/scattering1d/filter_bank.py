@@ -302,6 +302,8 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3, warn=False):
     """
     if h_f.shape[-1] == 1:
         return 1
+    elif h_f.ndim == 1:
+        h_f = h_f[None]
 
     h = ifft(h_f, axis=1)
     half_support = h.shape[1] // 2
@@ -361,7 +363,7 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
             continue
 
         p_halfwidth = compute_temporal_support(
-            p_fr.reshape(1, -1), criterion_amplitude=criterion_amplitude)
+            p_fr, criterion_amplitude=criterion_amplitude)
 
         if N > 1e9:  # avoid crash
             raise Exception("couldn't satisfy stop criterion before `N > 1e9`; "
@@ -508,11 +510,16 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
 
     Returns
     -------
-    xi : dictionary
-        dictionary containing the central frequencies of the wavelets.
-    sigma : dictionary
-        dictionary containing the frequential widths of the wavelets.
-    # TODO j
+    xi : list[float]
+        list containing the central frequencies of the wavelets.
+    sigma : list[float]
+        list containing the frequential widths of the wavelets.
+    j : list[int]
+        list containing the subsampling factors of the wavelets (closely
+        related to their dyadic scales)
+    is_cqt : list[bool]
+        list containing True if a wavelet was built per Constant Q Transform
+        (fixed `xi / sigma`), else False for the STFT portion
 
     Refs
     ----
@@ -527,6 +534,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
     xi = []
     sigma = []
     j = []
+    is_cqt = []
 
     if sigma_max <= sigma_min or xi_max <= xi_min:
         # in this exceptional case, we will not go through the loop, so
@@ -540,6 +548,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
+            is_cqt.append(True)
             current = move_one_dyadic_step(current, Q, alpha=alpha)
         # get the last key
         last_xi = xi[-1]
@@ -554,8 +563,9 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=4.,
         xi.append(new_xi)
         sigma.append(new_sigma)
         j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
+        is_cqt.append(False)
     # return results
-    return xi, sigma, j
+    return xi, sigma, j, is_cqt
 
 
 def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
@@ -607,19 +617,16 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     -------
     sigma_low : float
         frequential width of the low-pass filter
-    xi1 : dictionary
-        dictionary containing the center frequencies of the first order
-        filters. See above for a decsription of the keys.
-    sigma1 : dictionary
-        dictionary containing the frequential width of the first order
-        filters. See above for a description of the keys.
-    xi2 : dictionary
-        dictionary containing the center frequencies of the second order
-        filters. See above for a decsription of the keys.
-    sigma2 : dictionary
-        dictionary containing the frequential width of the second order
-        filters. See above for a description of the keys.
-    # TODO j1 & j2
+    xi1 : list[float]
+        Center frequencies of the first order filters.
+    sigma1 : list[float]
+        Frequential widths of the first order filters.
+    j1 : list[int]
+        Subsampling factors of the first order filters.
+    is_cqt1 : list[bool]
+        Constant Q Transform construction flag of the first order filters.
+    xi2, sigma2, j2, is_cqt2 :
+        `xi1, sigma1, j1, is_cqt1` for second order filters.
     """
     Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
     if Q1 < 1 or Q2 < 1:
@@ -629,14 +636,14 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     # for default T = 2**(J), this coincides with sigma_low
     sigma_min = sigma0 / math.pow(2, J)
 
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q1, r_psi=r_psi,
-                                                alpha=alpha, xi_min=xi_min)
-    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, Q2, r_psi=r_psi,
-                                                alpha=alpha, xi_min=xi_min)
+    xi1s, sigma1s, j1s, is_cqt1s = compute_params_filterbank(
+        sigma_min, Q1, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+    xi2s, sigma2s, j2s, is_cqt2s = compute_params_filterbank(
+        sigma_min, Q2, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
-    return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
+    return sigma_low, xi1s, sigma1s, j1s, is_cqt1s, xi2s, sigma2s, j2s, is_cqt2s
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T,
@@ -656,6 +663,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         Each value for k is an array (or tensor) of size 2**(J_support - k)
         containing the Fourier transform of the filter after subsampling by
         2**k
+    * 'width': temporal width
+    * 'support': temporal support
 
     Parameters
     ----------
@@ -732,10 +741,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         The keys of this dictionary are of th etype (j, n) where n is an
         integer counting the filters and j is the maximal dyadic subsampling
         which can be performed on top of this filter without aliasing.
-    t_max_phi : int
-        temporal size to use to pad the signal on the right and on the
-        left by making at most criterion_amplitude error. Assumes that the
-        temporal support of the low-pass filter is larger than all filters.
 
     Refs
     ----
@@ -746,7 +751,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     N = 2**J_support
     xi_min = 2 / N  # minimal peak at bin 2
     # compute the spectral parameters of the filters
-    (sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s
+    (sigma_low, xi1s, sigma1s, j1s, is_cqt1s, xi2s, sigma2s, j2s, is_cqt2s
      ) = calibrate_scattering_filters(J_scattering, Q, T, r_psi=r_psi,
                                       sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
@@ -773,7 +778,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         # We first compute the filter without subsampling
         psi_f = {}
         psi_f[0] = morlet_1d(
-            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max, eps=eps)
+            N, xi2s[n2], sigma2s[n2], normalize=normalize, P_max=P_max, eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -786,15 +791,15 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         psi1_f.append({0: morlet_1d(
-            N, xi1[n1], sigma1[n1], normalize=normalize, P_max=P_max, eps=eps)})
+            N, xi1s[n1], sigma1s[n1], normalize=normalize, P_max=P_max, eps=eps)})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
     # input it can accept (both 1st and 2nd order)
+    log2_T = math.floor(math.log2(T))
     if max_subsampling is None:
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
-        log2_T = math.floor(math.log2(T))
         max_sub_phi = min(max(max_subsampling_after_psi1,
                               max_subsampling_after_psi2), log2_T)
     else:
@@ -810,32 +815,39 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
 
     # Embed the meta information within the filters
     ca = dict(criterion_amplitude=criterion_amplitude)
+    s0ca = dict(N=N, sigma0=sigma0, criterion_amplitude=criterion_amplitude)
     for (n1, j1) in enumerate(j1s):
-        psi1_f[n1]['xi'] = xi1[n1]
-        psi1_f[n1]['sigma'] = sigma1[n1]
+        psi1_f[n1]['xi'] = xi1s[n1]
+        psi1_f[n1]['sigma'] = sigma1s[n1]
         psi1_f[n1]['j'] = j1
-        psi1_f[n1]['width'] = {0: 2*compute_temporal_support(psi1_f[n1][0][None],
-                                                             **ca)}
+        psi1_f[n1]['is_cqt'] = is_cqt1s[n1]
+        psi1_f[n1]['width'] = {0: 2*compute_temporal_width(
+            psi1_f[n1][0], **s0ca)}
+        psi1_f[n1]['support'] = {0: 2*compute_temporal_support(
+            psi1_f[n1][0], **ca)}
 
     for (n2, j2) in enumerate(j2s):
-        psi2_f[n2]['xi'] = xi2[n2]
-        psi2_f[n2]['sigma'] = sigma2[n2]
+        psi2_f[n2]['xi'] = xi2s[n2]
+        psi2_f[n2]['sigma'] = sigma2s[n2]
         psi2_f[n2]['j'] = j2
-        psi2_f[n2]['width'] = {k: 2*compute_temporal_support(p[None], **ca)
-                               for k, p in psi2_f[n2].items()
-                               if isinstance(k, int)}
+        psi2_f[n2]['is_cqt'] = is_cqt2s[n2]
+        psi2_f[n2]['width'] = {}
+        psi2_f[n2]['support'] = {}
+        for k in psi2_f[n2]:
+            if isinstance(k, int):
+                psi2_f[n2]['width'][k] = 2*compute_temporal_width(
+                    psi2_f[n2][k], **s0ca)
+                psi2_f[n2]['support'][k] = 2*compute_temporal_support(
+                    psi2_f[n2][k], **ca)
+
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
     phi_f['j'] = log2_T
-    phi_f['width'] = 2*compute_temporal_support(phi_f[0].reshape(1, -1), **ca)
-
-
-    # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
-    t_max_phi = phi_f['width']
+    phi_f['width'] = 2*compute_temporal_width(phi_f[0], **s0ca)
+    phi_f['support'] = 2*compute_temporal_support(phi_f[0], **ca)
 
     # return results
-    return phi_f, psi1_f, psi2_f, t_max_phi
+    return phi_f, psi1_f, psi2_f
 
 
 def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
@@ -843,7 +855,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                    max_subsample_equiv_before_phi_fr,
                    subsample_equiv_relative_to_max_pad_init,
                    average_fr_global,
-                   sampling_psi_fr='resample',  sampling_phi_fr='resample',
+                   sampling_psi_fr='resample', sampling_phi_fr='resample',
                    pad_mode_fr='reflect', sigma_max_to_min_max_ratio=1.2,
                    r_psi=math.sqrt(0.5), normalize='l1', criterion_amplitude=1e-3,
                    sigma0=0.1, alpha=4., P_max=5, eps=1e-7):
@@ -851,18 +863,17 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     Builds in Fourier the Morlet filters used for the scattering transform.
 
     Each single filter is provided as a dictionary with the following keys:
-    * 'xi': central frequency, defaults to 0 for low-pass filters.
+    * 'xi': central frequency
     * 'sigma': frequential width
-    * k where k is an integer bounded below by 0. The maximal value for k
-        depends on the type of filter, it is dynamically chosen depending
-        on max_subsampling and the characteristics of the filters.
-        Each value for k is an array (or tensor) of size 2**(J_support - k)
-        containing the Fourier transform of the filter after subsampling by 2**k
+    * 'j': subsampling factor from 0 to `J_fr` (or potentially less if
+      `sampling_psi_fr != 'resample'`).
+    * 'width': temporal width
+    * 'support': temporal support
 
     Parameters
     ----------
-    J_pad_fr_max_init : int  # TODO
-        `2**J_pad_fr_max` is the desired support size (length) of the filters.
+    J_pad_fr_max_init : int
+        `2**J_pad_fr_max_init` is the largest length of all filters.
 
     J_fr : int
         The maximum log-scale of frequential scattering in joint scattering
@@ -872,9 +883,28 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     Q_fr : int
         Number of wavelets per octave for frequential scattering.
 
+    shape_fr, shape_fr_scale_max, shape_fr_scale_min : list[int], int, int
+        See `help(TimeFrequencyScattering1D)`. Used for filter computation at
+        various lengths/scales depending on `sampling_psi_fr`.
+
+    max_pad_factor_fr : list[int] / None
+        See `help(TimeFrequencyScattering1D)`. Restricts filter length, but
+        may be overridden.
+
+    unrestricted_pad_fr : bool
+        `== max_pad_factor is None`. `True` adds a few checks to ensure filters
+        are constructed fully correctly and devoid of boundary effects.
+
+    max_subsample_equiv_before_phi_fr : int
+        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+        checks if `shape_fr_scale` is too small.
+
     subsample_equiv_relative_to_max_pad_init : int
-        Amount of *equivalent subsampling* of frequential padding relative to
-        `J_pad_fr_max`, indexed by `n2`. See `help(sc_freq.compute_padding_fr())`.
+        See `help(TimeFrequencyScattering1D)`. Controls filter lengths.
+
+    average_fr_global : bool
+        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+        checks.
 
     sampling_psi_fr : str['resample', 'recalibrate', 'exclude']
         See `help(TimeFrequencyScattering1D)`.
@@ -941,8 +971,9 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     N = 2**J_support
     xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
-    _, xi1, sigma1, j1s, *_ = calibrate_scattering_filters(
-        J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0, alpha=alpha, xi_min=xi_min)
+    (_, xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, *_
+     ) = calibrate_scattering_filters(J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0,
+                                      alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
@@ -950,20 +981,23 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
     j0_max, scale_diff_max = None, None
     ca = dict(criterion_amplitude=criterion_amplitude)
+    s0ca = dict(criterion_amplitude=criterion_amplitude, sigma0=sigma0)
     if sampling_psi_fr == 'recalibrate':
         # recalibrate filterbank to each j0
-        xi1_new, sigma1_new, j1s_new, scale_diff_max = _recalibrate_psi_fr(
-            xi1, sigma1, j1s, N, alpha, shape_fr_scale_min, shape_fr_scale_max,
-            sigma_max_to_min_max_ratio)
+        (xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new, scale_diff_max
+         ) = _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N,
+                                 alpha, shape_fr_scale_min, shape_fr_scale_max,
+                                 sigma_max_to_min_max_ratio)
     elif sampling_psi_fr == 'resample' and unrestricted_pad_fr:
         # in this case filter temporal behavior is preserved across all lengths
         # so we must restrict lowest length such that widest filter still decays
         j0 = 0
         while True:
-            psi_widest = morlet_1d(N // 2**j0, xi1[-1], sigma1[-1], P_max=P_max,
-                                   normalize=normalize, eps=eps)[:, None]
-            psi_widest_halfwidth = compute_temporal_support(psi_widest.T, **ca)
-            if psi_widest_halfwidth == len(psi_widest) // 2:
+            psi_widest = morlet_1d(N // 2**j0, xi1_frs[-1], sigma1_frs[-1],
+                                   P_max=P_max, normalize=normalize, eps=eps
+                                   )[:, None]
+            psi_widest_support = 2*compute_temporal_support(psi_widest.T, **ca)
+            if psi_widest_support == len(psi_widest):
                 j0_max = j0 - 1
                 # in zero padding we cut padding in half, which distorts
                 # the wavelet but negligibly relative to the scattering scale
@@ -978,15 +1012,20 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
             j0 += 1
     elif sampling_psi_fr == 'exclude':
         # this is built precisely to enable `j0_max=None` while preserving
-        # temporal behavior
+        # temporal behavior (so long as there's at least one filter remaining;
+        # j0_max is set later)
+        j0_max_exclude = {}
         pass
 
     def get_params(n1_fr, scale_diff):
         if sampling_psi_fr in ('resample', 'exclude'):
-            return xi1[n1_fr], sigma1[n1_fr], j1s[n1_fr]
+            return (xi1_frs[n1_fr], sigma1_frs[n1_fr], j1_frs[n1_fr],
+                    is_cqt1_frs[n1_fr])
         elif sampling_psi_fr == 'recalibrate':
-            return (xi1_new[scale_diff][n1_fr], sigma1_new[scale_diff][n1_fr],
-                    j1s_new[scale_diff][n1_fr])
+            return (xi1_frs_new[scale_diff][n1_fr],
+                    sigma1_frs_new[scale_diff][n1_fr],
+                    j1_frs_new[scale_diff][n1_fr],
+                    is_cqt1_frs_new[scale_diff][n1_fr])
 
     # keep a mapping from `j0` to `scale_diff`
     j0_to_scale_diff = {}
@@ -994,16 +1033,20 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     same_pad_limit = (unrestricted_pad_fr or
                       all(p == max_pad_factor_fr[0] for p in max_pad_factor_fr))
     pad_contractive_phi = (average_fr_global or sampling_phi_fr == 'recalibrate')
+    cleanup = False  # for later
     # sample spin down and up wavelets
-    for n1_fr in range(len(j1s)):
+    for n1_fr in range(len(j1_frs)):
         psi_down = {}
         # expand dim to multiply along freq like (2, 32, 4) * (32, 1)
-        psi_down[0] = morlet_1d(N, xi1[n1_fr], sigma1[n1_fr], normalize=normalize,
-                                P_max=P_max, eps=eps)[:, None]
-        psi_down['width'] = {0: 2*compute_temporal_support(psi_down[0].T, **ca)}
+        psi_down[0] = morlet_1d(N, xi1_frs[n1_fr], sigma1_frs[n1_fr],
+                                normalize=normalize, P_max=P_max, eps=eps
+                                )[:, None]
+        psi_down['width'] = {0: 2*compute_temporal_width(
+            psi_down[0], N=2**shape_fr_scale_max, **s0ca)}
+        psi_down['support'] = {0: 2*compute_temporal_support(psi_down[0].T, **ca)}
 
         # j0 is ordered greater to lower, so reverse
-        j0_prev = -1
+        j0_prev = 0
         for j0, N_fr in zip(subsample_equiv_relative_to_max_pad_init[::-1],
                             shape_fr[::-1]):
             #### Validate `j0` & compute scale params ########################
@@ -1071,23 +1114,34 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
             # if checks pass, our logic is correct; now ensure no recomputation
             if j0 == j0_prev:
                 continue
-            j0_prev = j0
 
             #### Compute wavelet #############################################
             # fetch wavelet params, sample wavelet, compute its spatial width
-            xi, sigma, j = get_params(n1_fr, scale_diff)
-            psi = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
-                            P_max=P_max, eps=eps)[:, None]
-            psi_width = 2*compute_temporal_support(psi.T, **ca)
+            xi, sigma, j, _ = get_params(n1_fr, scale_diff)
+            try:
+                psi = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
+                                P_max=P_max, eps=eps)[:, None]
+            except ValueError as e:
+                if sampling_psi_fr == 'resample':
+                    j0_max = j0_prev
+                    cleanup = True
+                    break
+                raise e
+
+            psi_width = 2*compute_temporal_width(psi, N=2**shape_fr_scale, **s0ca)
             if sampling_psi_fr == 'exclude':
                 # if wavelet exceeds max possible width at this scale, exclude it
                 if psi_width > 2**shape_fr_scale:
                     # subsequent `shape_fr_scale` are only lesser, and `psi_width`
-                    # doesn't change (approx w/ discretization error)
+                    # doesn't change (approx w/ discretization error).
+                    # `j0_max_exclude` can compute from `n1_fr=0` case alone
+                    j0_max_exclude[n1_fr] = j0_prev
                     break
 
             psi_down[j0] = psi
             psi_down['width'][j0] = psi_width
+            psi_down['support'][j0] = 2*compute_temporal_support(psi, **ca)
+            j0_prev = j0
 
         psi1_f_fr_down.append(psi_down)
         # compute spin up
@@ -1098,30 +1152,52 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 # compute spin up by conjugating spin down in frequency domain
                 psi_up[j0] = conj_fr(psi_down[j0])
         psi_up['width'] = psi_down['width'].copy()
+        psi_up['support'] = psi_down['support'].copy()
         psi1_f_fr_up.append(psi_up)
 
+    # construction terminated early; remove unused `j0`
+    if cleanup:
+        for psi_fs in (psi1_f_fr_up, psi1_f_fr_down):
+            for psi_f in psi_fs:
+                j0s = [j0 for j0 in psi_f if isinstance(j0, int)]
+                for j0 in j0s:
+                    if j0 > j0_max:
+                        del psi_f[j0]
+
     # Embed meta information within the filters
-    for (n1_fr, j1_fr) in enumerate(j1s):
+    for (n1_fr, j1_fr) in enumerate(j1_frs):
         for psi_f in (psi1_f_fr_down, psi1_f_fr_up):
             # create initial meta
-            meta = {'xi': xi1[n1_fr], 'sigma': sigma1[n1_fr], 'j': j1_fr}
+            meta = {'xi': xi1_frs[n1_fr], 'sigma': sigma1_frs[n1_fr], 'j': j1_fr,
+                    'is_cqt': is_cqt1_frs[n1_fr]}
             for field, value in meta.items():
                 psi_f[n1_fr][field] = {0: value}
             # fill for j0s
             j0s = [k for k in psi_f[n1_fr] if (isinstance(k, int) and k != 0)]
             for j0 in j0s:
-                xi, sigma, j = get_params(n1_fr, j0_to_scale_diff[j0])
+                xi, sigma, j, is_cqt = get_params(n1_fr, j0_to_scale_diff[j0])
                 psi_f[n1_fr]['xi'][j0] = xi
                 psi_f[n1_fr]['sigma'][j0] = sigma
                 psi_f[n1_fr]['j'][j0] = j
+                psi_f[n1_fr]['is_cqt'][j0] = is_cqt
+
+    # to ensure at least one wavelet for every `shape_fr_scale`
+    if sampling_psi_fr == 'exclude' and 0 in j0_max_exclude:
+        j0_max = max(j0_max_exclude.values())
+        # `n1_fr==0` should be the most trimmable (lowest time width)
+        assert j0_max == j0_max_exclude[0], (j0_max, j0_max_exclude)
+    # ensure non-negative
+    if j0_max is not None:
+        assert j0_max >= 0, j0_max
 
     # return results
     return psi1_f_fr_up, psi1_f_fr_down, j0_max
 
 
-def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
-                   unrestricted_pad_fr, sampling_phi_fr='resample',
-                   criterion_amplitude=1e-3, sigma0=0.1, P_max=5, eps=1e-7):
+def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
+                   shape_fr_scale_min, shape_fr_scale_max, unrestricted_pad_fr,
+                   sampling_phi_fr='resample', criterion_amplitude=1e-3,
+                   sigma0=0.1, P_max=5, eps=1e-7):
     """
     Builds in Fourier the lowpass Gabor filters used for JTFS.
 
@@ -1129,16 +1205,20 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
     * 'xi': central frequency, defaults to 0 for low-pass filters.
     * 'sigma': frequential width
     * 'j': subsampling factor from 0 to `log2_F` (or potentially less if
-      `sampling_phi_fr=False`).
+      `sampling_phi_fr = 'recalibrate'`).
+    * 'width': temporal width
+    * 'support': temporal support
 
     Parameters
     ----------
-    J_pad_fr_max : int
-        `2**J_pad_fr_max` is the desired support size (length) of the filters.
+    J_pad_fr_max_init : int
+        `2**J_pad_fr_max_init` is the largest length of the filters.
+
     F : int
-        temporal support of frequential low-pass filter, controlling amount of
+        temporal width of frequential low-pass filter, controlling amount of
         imposed frequency transposition invariance and maximum frequential
         subsampling.
+
     log2_F : int
         Equal to `log2(prevpow2(F))`, sets maximum subsampling factor.
         If `sampling_phi_fr=True`, this factor may not be reached *by the filter*,
@@ -1147,8 +1227,18 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
         `phi_f_fr` is fine, thus the restriction is to not subsample by more than
         the most subsampled `phi_f_fr` *before* convolving with it - set by
         `max_subsample_before_phi_fr`.
+
+    shape_fr_scale_min : int
+        Used to determine the shortest filter.
+
+    unrestricted_pad_fr : bool
+        `== max_pad_factor is None`. If True, will terminate filter construction
+        if lowpass decays insufficiently. Thus `max_pad_factor_fr` (not None)
+        overrides boundary effect / filter distortion considerations.
+
     sampling_phi_fr : str['resample', 'recalibrate']
         See `help(TimeFrequencyScattering1D)`.
+
     criterion_amplitude, sigma, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
@@ -1205,7 +1295,7 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
         # ^ override `max_pad_factor_fr`
 
         if sampling_phi_fr == 'resample':
-            prev_phi = phi_f_fr[j0 - 1][0].reshape(1, -1)
+            prev_phi = phi_f_fr[j0 - 1][0]
             prev_phi_halfwidth = compute_temporal_support(
                 prev_phi, criterion_amplitude=criterion_amplitude)
 
@@ -1235,7 +1325,8 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                             for j0_sub in range(j0, 1 + log2_F)]
 
     # embed meta info in filters
-    phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j', 'width')})
+    phi_f_fr.update({field: {} for field in ('xi', 'sigma', 'j', 'width',
+                                             'support')})
     j0s = [j for j in phi_f_fr if isinstance(j, int)]
     for j0 in j0s:
         xi_fr_0 = 0.
@@ -1243,63 +1334,276 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F, shape_fr_scale_min,
                       sigma_low * 2**j0)
         j0_0 = (log2_F if sampling_phi_fr == 'resample' else
                 log2_F - j0)
-        for field in ('xi', 'sigma', 'j', 'width'):
+        for field in ('xi', 'sigma', 'j', 'support', 'width'):
             phi_f_fr[field][j0] = []
         phi_f_fr['xi'][j0] = xi_fr_0
         phi_f_fr['sigma'][j0] = sigma_fr_0
         phi_f_fr['j'][j0] = j0_0
         phi_f_fr['width'][j0] = []
+        phi_f_fr['support'][j0] = []
         for j0_sub in range(len(phi_f_fr[j0])):
             # should halve with subsequent j0_sub, but compute exactly
-            width = 2*compute_temporal_support(
-                phi_f_fr[j0][j0_sub].reshape(1, -1),
+            # `j0`-to-`shape_fr` uniqueness asserted in `psi_fr_factory`
+            N_j0 = 2**(shape_fr_scale_max - j0_sub)
+            width = compute_temporal_width(
+                phi_f_fr[j0][j0_sub], N=N_j0, sigma0=sigma0,
                 criterion_amplitude=criterion_amplitude)
+            support = 2*compute_temporal_support(
+                phi_f_fr[j0][j0_sub], criterion_amplitude=criterion_amplitude)
             phi_f_fr['width'][j0].append(width)
+            phi_f_fr['support'][j0].append(support)
 
     # return results
     return phi_f_fr
 
 
-def _recalibrate_psi_fr(xi1, sigma1, j1s, N, alpha,
-                        shape_fr_scale_min, shape_fr_scale_max,
-                        sigma_max_to_min_max_ratio):
-    # recalibrate filterbank to each j0
-    # j0=0 is the original length, no change needed
-    xi1_new, sigma1_new, j1s_new = {0: xi1}, {0: sigma1}, {0: j1s}
-    scale_diff_max = None
+#### Energy renormalization ##################################################
+def energy_norm_filterbank_tm(psi1_f, psi2_f, phi_f, J, log2_T):
+    """Energy-renormalize temporal filterbank; used by `base_frontend`.
+    See `help(kymatio.scattering1d.filter_bank.energy_norm_filterbank)`.
+    """
+    # in case of `trim_tm` for JTFS
+    phi = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
+    kw = dict(phi_f=phi, J=J, log2_T=log2_T)
+    psi1_f0 = [p[0] for p in psi1_f]
+    psi2_f0 = [p[0] for p in psi2_f]
 
-    for shape_fr_scale in range(shape_fr_scale_max - 1, shape_fr_scale_min - 1,
-                                -1):
-        scale_diff = shape_fr_scale_max - shape_fr_scale
-        xi1_new[scale_diff], sigma1_new[scale_diff], j1s_new[scale_diff] = (
-            [], [], [])
-        factor = 2**scale_diff
+    energy_norm_filterbank(psi1_f0, **kw)
+    scaling_factors2 = energy_norm_filterbank(psi2_f0, **kw)
 
-        # contract largest temporal width of any wavelet by 2**j0,
-        # but not above sigma_max/sigma_max_to_min_max_ratio
-        sigma_min_max = max(sigma1) / sigma_max_to_min_max_ratio
-        new_sigma_min = min(sigma1) * factor
-        if new_sigma_min > sigma_min_max:
-            scale_diff_max = scale_diff
+    # apply unsubsampled scaling factors on subsampled
+    for n2 in range(len(psi2_f)):
+        for k in psi2_f[n2]:
+            if isinstance(k, int) and k != 0:
+                psi2_f[n2][k] *= scaling_factors2[n2]
+
+
+def energy_norm_filterbank_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr,
+                              J_fr, log2_F):
+    """Energy-renormalize frequential filterbank; used by `base_frontend`.
+    See `help(kymatio.scattering1d.filter_bank.energy_norm_filterbank)`.
+    """
+    # assumes same `j0` for up and down
+    j0_max = max(j0 for psi_f in psi1_f_fr_up for j0 in psi_f
+                 if isinstance(j0, int))
+
+    j0_break = None
+    for j0 in range(j0_max + 1):
+        psi_fs_up   = [p[j0] for p in psi1_f_fr_up if j0 in p]
+        psi_fs_down = [p[j0] for p in psi1_f_fr_down if j0 in p]
+        if len(psi_fs_up) <= 3:  # possible with `sampling_psi_fr = 'exclude'`
+            if j0 == 0:
+                raise Exception("largest scale filterbank must have >=4 filters")
+            j0_break = j0
             break
+        scaling_factors = energy_norm_filterbank(
+            psi_fs_up, psi_fs_down, phi_f_fr[j0][0], J_fr, log2_F)
 
-        # halve distance from existing xi_max to .5 (max possible)
-        new_xi_max = .5 - (.5 - max(xi1)) / factor
-        new_xi_min = 2 / (N // factor)
-        # logarithmically distribute
-        new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
-                             len(xi1), endpoint=True)[::-1]
-        xi1_new[scale_diff].extend(new_xi)
-        new_sigma = np.logspace(np.log10(new_sigma_min), np.log10(max(sigma1)),
-                                len(xi1), endpoint=True)[::-1]
-        sigma1_new[scale_diff].extend(new_sigma)
-        for xi, sigma in zip(new_xi, new_sigma):
-            j1s_new[scale_diff].append(get_max_dyadic_subsampling(
-                xi, sigma, alpha=alpha))
-
-    return xi1_new, sigma1_new, j1s_new, scale_diff_max
+    # reuse last's
+    if j0_break is not None:
+        for n1_fr in range(len(psi1_f_fr_down)):
+            for j0 in range(j0_break, j0_max + 1):
+                if j0 in psi1_f_fr_down[n1_fr]:
+                    psi1_f_fr_down[n1_fr][j0] *= scaling_factors[n1_fr]
+                    psi1_f_fr_up[  n1_fr][j0] *= scaling_factors[n1_fr]
 
 
+def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
+                           J=None, log2_T=None, r_th=.3, passes=3,
+                           scaling_factors=None):
+    """Rescale wavelets such that their frequency-domain energy sum
+    (Littlewood-Paley sum) peaks at 2 for an analytic-only filterbank
+    (e.g. time scattering for real inputs) or 1 for analytic + anti-analytic.
+    This makes the filterbank energy non-expansive.
+
+    Parameters
+    ----------
+    psi_fs0 : list[np.ndarray]
+        Analytic filters if `psi_fs1=None`, else anti-analytic (spin up).
+
+    psi_fs1 : list[np.ndarray] / None
+        Analytic filters (spin down). If None, filterbank is treated as
+        analytic-only, and LP peaks are scaled to 2 instead of 1.
+
+    phi_f : np.ndarray / None
+        Lowpass filter. If `log2_T > J`, will exclude from computation as
+        it will excessively attenuate low frequency bandpasses.
+
+    J, log2_T : int, int
+        See `phi_f`. For JTFS frequential scattering these are `J_fr, log2_F`.
+
+    r_th : float
+        Redundancy threshold, determines whether "Nyquist correction" is done
+        (see Algorithm below).
+
+    passes : int
+        Number of times to call this function recursively; see Algorithm.
+
+    scaling_factors : None / dict[float]
+        Used internally if `passes > 1`.
+
+    Returns
+    -------
+    scaling_factors : None / dict[float]
+        Used internally if `passes > 1`.
+
+    Algorithm
+    ---------
+    Wavelets are scaled by maximum of *neighborhood* LP sum - precisely, LP sum
+    spanning from previous to next peak location relative to wavelet of interest:
+    `max(lp_sum[peak_idx[n + 1]:peak_idx[n - 1]])`. This reliably accounts for
+    discretization artifacts, including the non-CQT portion.
+
+    "Nyquist correction" is done for the highest frequency wavelet; since it
+    has no "preceding" wavelet, it's its own right bound (analytic; left for
+    anti-), which overestimates necessary rescaling and makes resulting LP sum
+    peak above target for the *next* wavelet. This correction is done only if
+    the filterbank is below a threshold redundancy (empirically determined
+    `r_th=.3`), since otherwise the direct estimate is accurate.
+
+    Multiple "passes" are done to improve overall accuracy, as not all edge
+    case behavior is accounted for in one go (which is possible but complicated);
+    the computational burden is minimal.
+    """
+    def norm_filter(psi_fs, peak_idxs, lp_sum, n, s_idx=1):
+        if n - 1 in peak_idxs:
+            # midpoint
+            pi0, pi1 = peak_idxs[n], peak_idxs[n - 1]
+            if pi1 == pi0:
+                # handle duplicate peaks
+                lookback = 2
+                while n - lookback in peak_idxs:
+                    pi1 = peak_idxs[n - lookback]
+                    if pi1 != pi0:
+                        break
+                    lookback += 1
+            midpt = (pi0 + pi1) / 2
+            a = (math.ceil(midpt) if s_idx == 1 else
+                 math.floor(midpt))
+        else:
+            a = peak_idxs[n]
+
+        if n + 1 in peak_idxs:
+            if n == 0 and do_nyquist_correction:
+                b = a + 1 if s_idx == 0 else a - 1
+            else:
+                b = peak_idxs[n + 1]
+        else:
+            b = None
+
+        # peak duplicate
+        if a == b:
+            if s_idx == 0:
+                b += 1
+            else:
+                b -= 1
+        start, end = (a, b) if s_idx == 0 else (b, a)
+
+        # include endpoint
+        end = end + 1 if end is not None else None
+
+        # if we're at endpoints, don't base estimate on single point
+        if start is None:
+            end = max(end, 2)
+        elif end is None:
+            start = min(start, len(lp_sum) - 1)
+        elif end - start == 1:
+            if start == 0:
+                end += 1
+            elif end == len(lp_sum) - 1:
+                start -= 1
+
+        lp_max = lp_sum[start:end].max()
+        factor = np.sqrt(peak_target / lp_max)
+        psi_fs[n] *= factor
+        scaling_factors[n] = factor
+
+    def correct_nyquist(psi_fs_all, peak_idxs, lp_sum):
+        def _do_correction(start, end):
+            lp_max = lp_sum[start:end].max()
+            factor = np.sqrt(peak_target / lp_max)
+            for n in (0, 1):
+                psi_fs[n] *= factor
+                scaling_factors[n] *= factor
+
+        # first (Nyquist-nearest) psi rescaling may drive LP sum above bound
+        # for second psi, since peak was taken only at itself
+        if analytic_only:
+            psi_fs = psi_fs_all
+            # include endpoint
+            start, end = peak_idxs[2], peak_idxs[0] + 1
+            _do_correction(start, end)
+        else:
+            for s_idx, psi_fs in enumerate(psi_fs_all):
+                a = peak_idxs[s_idx][0]
+                b = peak_idxs[s_idx][2]
+                start, end = (a, b) if s_idx == 0 else (b, a)
+                # include endpoint
+                end += 1
+                _do_correction(start, end)
+
+    # run input checks
+    assert len(psi_fs0) >= 3, (
+        "must have at least 3 filters in filterbank (got %s)" % len(psi_fs0))
+    if psi_fs1 is not None:
+        assert len(psi_fs0) == len(psi_fs1), (
+            "analytic & anti-analytic filterbanks "
+            "must have same number of filters")
+
+    # as opposed to `analytic_and_anti_analytic`
+    analytic_only = psi_fs1 is None
+    peak_target = 2 if analytic_only else 1
+
+    # store rescaling factors
+    if scaling_factors is None:  # else means passes>1
+        scaling_factors = {}
+
+    # determine whether to do Nyquist correction
+    # assume same overlap for analytic and anti-analytic
+    r = compute_filter_redundancy(psi_fs0[0], psi_fs0[1])
+    do_nyquist_correction = bool(r < r_th)
+
+    # compute peak indices
+    if analytic_only:
+        psi_fs_all = psi_fs0
+        peak_idxs = {}
+        for n, psi_f in enumerate(psi_fs0):
+            peak_idxs[n] = np.argmax(psi_f)
+    else:
+        psi_fs_all = (psi_fs0, psi_fs1)
+        peak_idxs = {}
+        for s_idx, psi_fs in enumerate(psi_fs_all):
+            peak_idxs[s_idx] = {}
+            for n, psi_f in enumerate(psi_fs):
+                peak_idxs[s_idx][n] = np.argmax(psi_f)
+
+    # ensure LP sum peaks at 2 (analytic-only) or 1 (analytic + anti-analytic)
+    def get_lp_sum():
+        if analytic_only:
+            return _compute_lp_sum(psi_fs0, phi_f, J, log2_T)
+        return (_compute_lp_sum(psi_fs0, phi_f, J, log2_T) +
+                _compute_lp_sum(psi_fs1))
+
+    lp_sum = get_lp_sum()
+    if analytic_only:
+        for n in range(len(psi_fs0)):
+            norm_filter(psi_fs0, peak_idxs, lp_sum, n)
+    else:
+        for s_idx, psi_fs in enumerate(psi_fs_all):
+            for n in range(len(psi_fs)):
+                norm_filter(psi_fs, peak_idxs[s_idx], lp_sum, n, s_idx)
+
+    if do_nyquist_correction:
+        lp_sum = get_lp_sum()
+        correct_nyquist(psi_fs_all, peak_idxs, lp_sum)
+
+    if passes == 1:
+        return scaling_factors
+    return energy_norm_filterbank(psi_fs0, psi_fs1, phi_f, J, log2_T,
+                                  r_th, passes - 1, scaling_factors)
+
+
+#### misc / long #############################################################
 def conj_fr(x):
     """Conjugate in frequency domain by swapping all bins (except dc);
     assumes frequency along first axis.
@@ -1310,6 +1614,379 @@ def conj_fr(x):
     return out
 
 
-def assert_not_pure_sine(psi_f, ratio_threshold=100):  # TODO apply this?
-    psi_fr_sorted = np.sort(psi_f)[::-1]
-    assert psi_fr_sorted[0] / psi_fr_sorted[1] < ratio_threshold
+def compute_filter_redundancy(p0_f, p1_f):
+    """Measures "redundancy" as overlap of energies. Namely, ratio of
+    product of energies to mean of energies of Frequency-domain filters
+    `p0_f` and `p1_f`.
+    """
+    p0sq, p1sq = np.abs(p0_f)**2, np.abs(p1_f)**2
+    # energy overlap relative to sum of individual energies
+    r = np.sum(p0sq * p1sq) / ((p0sq.sum() + p1sq.sum()) / 2)
+    return r
+
+
+def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
+                           sigma0=.1, criterion_amplitude=1e-3):
+    """Measures "width" in terms of amount of invariance imposed via convolution.
+    See below for detailed description.
+
+    Parameters
+    ----------
+
+    p_f: np.ndarray
+        Frequency-domain filter of length >= N. "Length" must be along dim0,
+        i.e. `(freqs, ...)`.
+
+    N: int / None
+        Unpadded output length. (In scattering we convolve at e.g. x4 input's
+        length, then unpad to match input's length).
+        Defaults to `len(p_f) // 2`.
+
+    pts_per_scale: int
+        Used only in `fast=False`: number of Gaussians generated per dyadic
+        scale. Greater improves approximation accuracy but is slower.
+
+    sigma0, criterion_amplitude: float, float
+        See `help(kymatio.scattering1d.filter_bank.gauss_1d)`. Parameters
+        defining the Gaussian lowpass used as reference for computing `width`.
+        That is, `width` is defined *in terms of* this Gaussian.
+
+    Returns
+    -------
+    width: int
+        The estimated width of `p_f`.
+
+    Motivation
+    ----------
+    The measure is, a relative L2 distance (Euclidean distance relative to
+    input norms) between inner products of `p_f` with an input, at different
+    time shifts (i.e. `L2(A, B); A = sum(p(t) * x(t)), B = sum(p(t) * x(t - T))`).
+      - The time shift is made to be "maximal", i.e. half of unpadded output
+        length (`N/2`), which provides the most sensitive measure to "width".
+      - The input is a Dirac delta, thus we're really measuring distances between
+        impulse responses of `p_f`, or of `p_f` with itself. This provides a
+        measure that's close to that of input being WGN, many-trials averaged.
+
+    This yields `l2_reference`. It's then compared against `l2_Ts`, which is
+    a list of measures obtained the same way except replacing `p_f` with a fully
+    decayed (undistorted) Gaussian lowpass - and the `l2_T` which most closely
+    matches `l2_reference` is taken to be the `width`.
+
+    The interpretation is, "width" of `p_f` is the width of the (properly decayed)
+    Gaussian lowpass that imposes the same amount of invariance that `p_f` does.
+
+    Algorithm
+    ---------
+    The actual algorithm is different, since L2 is a problematic measure with
+    unpadding; there's ambiguity: `T=1` can be measured as "closer" to `T=64`
+    than `T=63`). Namely, we take inner product (similarity) of `p_f` with
+    Gaussians at varied `T`, and the largest such product is the `width`.
+    The result is very close to that described under "Motivation", but without
+    the ambiguity that requires correction steps.
+
+    Fast algorithm
+    --------------
+    Approximates `fast=False`. If `p_f` is fully decayed, the result is exactly
+    same as `fast=False`. If `p_f` is very wide (nearly global average), the
+    result is also same as `fast=False`. The disagreement is in the intermediate
+    zone, but is not significant.
+
+    We compute `ratio = p_t.max() / p_t.min()`, and compare against a fully
+    decayed reference. For the intermediate zone, a quadratic interpolation
+    is used to approximate `fast=False`.
+
+    Assumption
+    ----------
+    `abs(p_t)`, where `p_t = ifft(p_f)`, is assumed to be Gaussian-like.
+    An ideal measure is devoid of such an assumption, but is difficult to devise
+    in finite sample settings.
+
+    Note
+    ----
+    `width` saturates at `N` past a certain point in "incomplete decay" regime.
+    The intution is, in incomplete decay, the measure of width is ambiguous:
+    for one, we lack compact support. For other, the case `width == N` is a
+    global averaging (simple mean, dc, etc), which is really `width = inf`.
+
+    If we let the algorithm run with unrestricted `T_max`, we'll see `width`
+    estimates blow up as `T -> N` - but we only seek to quantify invariance
+    up to `N`. Also, Gaussians of widths `T = N - const` and `T = N` have
+    very close L2 measures up to a generous `const`; see `test_global_averaging()`
+    `test_global_averaging()` in `tests/scattering1d/test_jtfs.py` for `T = N - 1`
+    (and try e.g. `N - 64`).
+    """
+    if len(p_f) == 1:  # edge case
+        return 1
+
+    # obtain temporal filter
+    p_f = p_f.squeeze()
+    p_t = np.abs(ifft(p_f))
+
+    # relevant params
+    Np = len(p_f)
+    if N is None:
+        N = Np // 2
+    ca = dict(criterion_amplitude=criterion_amplitude)
+
+    # compute "complete decay" factor
+    if sigma0 == .1 and criterion_amplitude == 1e-3:
+        # precomputed
+        complete_decay_factor = 16
+        fast_approx_amp_ratio = 0.8208687174155399
+    else:
+        T = Np
+        phi_f_fn = lambda Np_phi: gauss_1d(Np_phi, sigma0 / T)
+        Np_min = compute_minimum_required_length(phi_f_fn, Np, **ca)
+        complete_decay_factor = 2 ** math.ceil(math.log2(Np_min / Np))
+        phi_t = phi_f_fn(Np_min, sigma0 / T)
+        fast_approx_amp_ratio = phi_t[T] / phi_t[0]
+
+    if fast:
+        ratio = (p_t / p_t[0])[:len(p_t)//2]  # assume ~symmetry about halflength
+        rmin = ratio.min()
+        if rmin > fast_approx_amp_ratio:
+            # equivalent of `not complete_decay`
+            th_global_avg = .96
+            # never sufficiently decays
+            if rmin > th_global_avg:
+                return N
+            # quadratic interpolation
+            # y0 = A + B*x0^2
+            # y1 = A + B*x1^2
+            # B = (y0 - y1) / (x0^2 - x1^2)
+            # A = y0 - B*x0^2
+            y0 = .5 * Np
+            y1 = N
+            x0 = fast_approx_amp_ratio
+            x1 = th_global_avg
+            B = (y0 - y1) / (x0**2 - x1**2)
+            A = y0 - B*x0**2
+            T_est = A + B*rmin**2
+            # do not exceed `N`
+            width = min(T_est, N)
+        else:
+            width = np.argmin(np.abs(ratio - fast_approx_amp_ratio))
+        return width
+
+    # if complete decay, search within length's scale
+    support = 2 * compute_temporal_support(p_f, **ca)
+    complete_decay = bool(support != Np)
+    too_short = bool(N == 2 or Np == 2)
+    if too_short:
+        return (1 if complete_decay else 2)
+    elif not complete_decay:
+        # cannot exceed by definition
+        T_max = N
+        # if it were less, we'd have `complete_decay`
+        T_min = 2 ** math.ceil(math.log2(Np / complete_decay_factor))
+    else:  # complete decay
+        # if it were more, we'd have `not complete_decay`
+        # the `+ 1` is to be safe in edge cases
+        T_max = 2 ** math.ceil(math.log2(Np / complete_decay_factor) + 1)
+        # follows from relation of `complete_decay_factor` to `width`
+        # `width \propto support`, `support = complete_decay_factor * stuff`
+        # (asm. full decay); so approx `support ~= complete_decay_factor * width`
+        T_min = 2 ** math.floor(math.log2(support / complete_decay_factor))
+    T_min = max(min(T_min, T_max // 2), 1)  # ensure max > min and T_min >= 1
+    T_max = max(T_max, 2)  # ensure T_max >= 2
+    T_min_orig, T_max_orig = T_min, T_max
+
+    n_scales = math.log2(T_max) - math.log2(T_min)
+    search_pts = int(n_scales * pts_per_scale)
+
+    # search T ###############################################################
+    def search_T(T_min, T_max, search_pts, log):
+        Ts = (np.linspace(T_min, T_max, search_pts) if not log else
+              np.logspace(np.log10(T_min), np.log10(T_max), search_pts))
+        Ts = np.unique(np.round(Ts).astype(int))
+
+        Ts_done = []
+        corrs = []
+        for T_test in Ts:
+            N_phi = max(int(T_test * complete_decay_factor), Np)
+            phi_f = gauss_1d(N_phi, sigma=sigma0 / T_test)
+            phi_t = ifft(phi_f).real
+
+            trim = min(min(len(p_t), len(phi_t))//2, N)
+            p0, p1 = p_t[:trim], phi_t[:trim]
+            p0 /= np.linalg.norm(p0)  # /= sqrt(sum(x**2))
+            p1 /= np.linalg.norm(p1)
+            corrs.append((p0 * p1).sum())
+            Ts_done.append(T_test)
+
+        T_est = int(round(Ts_done[np.argmax(corrs)]))
+        T_stride = int(Ts[1] - Ts[0])
+        return T_est, T_stride
+
+    # first search in log space
+    T_est, _ = search_T(T_min, T_max, search_pts, log=True)
+    # refine search, now in linear space
+    T_min = max(2**math.floor(math.log2(max(T_est - 1, 1))), T_min_orig)
+    # +1 to ensure T_min != T_max
+    T_max = min(2**math.ceil(math.log2(T_est + 1)), T_max_orig)
+    # only one scale now
+    search_pts = pts_per_scale
+    T_est, T_stride = search_T(T_min, T_max, search_pts, log=False)
+    # only within one zoom
+    diff = pts_per_scale // 2
+    T_min, T_max = max(T_est - diff, 1), max(T_est + diff - 1, 3)
+    T_est, _ = search_T(T_min, T_max, search_pts, log=False)
+
+    width = T_est
+    return width
+
+#### helpers #################################################################
+def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None, force_phi=False):
+    lp_sum = 0
+    for psi_f in psi_fs:
+        lp_sum += np.abs(psi_f)**2
+    if force_phi or (log2_T is not None and J is not None and log2_T >= J):
+        # else lowest frequency bandpasses are too attenuated
+        lp_sum += np.abs(phi_f)**2
+    return lp_sum
+
+def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
+                       J=None, log2_T=None, force_phi=False):
+    lp_sum = {0: {}, 1: {}}
+    psi_fs_all = (psi1_f, psi2_f)
+    for order, psi_fs in enumerate(psi_fs_all):
+        lp_sum[order] = 0
+        for psi_f in psi_fs:
+            lp_sum[order] += np.abs(psi_f[0])**2
+    if force_phi or log2_T >= J:
+        # else lowest frequency bandpasses are too attenuated
+        for order in lp_sum:
+            # `[0]` for `trim_tm=0`
+            phi = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
+            lp_sum[order] += np.abs(phi)**2
+    return lp_sum
+
+
+def _compute_lp_sum_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr=None,
+                       J_fr=None, log2_F=None, force_phi=False):
+    lp_sum = {}
+    psi1_fs_all = (psi1_f_fr_up, psi1_f_fr_down)
+    for s1_fr, psi1_fs in enumerate(psi1_fs_all):
+        lp_sum[s1_fr] = {}
+        for psi1_f in psi1_fs:
+            for j0 in psi1_f:
+                if isinstance(j0, int):
+                    if j0 not in lp_sum[s1_fr]:
+                        lp_sum[s1_fr][j0] = 0
+                    # bandpass
+                    lp_sum[s1_fr][j0] += np.abs(psi1_f[j0])**2
+    # lowpass
+    if force_phi or log2_F >= J_fr:
+        # else lowest frequency bandpasses are too attenuated
+        for s1_fr in lp_sum:
+            for j0 in lp_sum[s1_fr]:
+                lp_sum[s1_fr][j0] += np.abs(phi_f_fr[j0][0])**2
+    return lp_sum
+
+
+def _get_lp_sum_maxima(lp_sum, psi_fs, j0=None, anti_analytic=False):
+    def _find_cqt_start(lp_sum, peak_idx):
+        # it's possible to get
+        pass
+
+    # compute number of non-CQT filters
+    n_non_cqt = 0
+    for p in psi_fs:
+        n_non_cqt += int(not p['is_cqt'] if j0 is None else
+                         not p['is_cqt'][j0])
+
+    # for later, to rescale analytic and anti-analytic separately;
+    # include Nyquist in analytic, exclude in anti-analytic
+    N = len(psi_fs[0][0] if j0 is None else psi_fs[0][j0])
+
+    # rescale non-CQT separately (lesser overlap -> lesser LP-sum peak)
+    # compute non-CQT bounds in sample indices
+    if n_non_cqt > 0:
+        if j0 is None:
+            non_cqt_psis = [p[0]  for p in psi_fs if not p['is_cqt']]
+        else:
+            non_cqt_psis = [p[j0] for p in psi_fs if not p['is_cqt'][j0]]
+
+        peak_idx = np.argmax(non_cqt_psis[0])
+        if anti_analytic:
+            assert peak_idx >= N//2, ("found anti-analytic wavelet peak "
+                                      "to left of Nyquist ({} <= {})".format(
+                                          peak_idx, N//2))
+            # no dc on negative freqs side; include peak & Nyquist
+            non_cqt_start, non_cqt_end = peak_idx, None
+            if peak_idx != N // 2:
+                # CQT is to left of non-CQT
+                cqt_start, cqt_end = N//2, non_cqt_start
+            else:
+                # everything is non-CQT (e.g. 'recalibrate')
+                cqt_start, cqt_end = None, None
+        else:
+            assert peak_idx <= N//2, ("found analytic wavelet peak "
+                                      "to right of Nyquist ({} > {})".format(
+                                          peak_idx, N//2))
+            # exclude dc; include peak & Nyquist
+            non_cqt_start, non_cqt_end = 1, peak_idx + 1
+            if peak_idx != N // 2:
+                # CQT is to right of non-CQT
+                cqt_start, cqt_end = non_cqt_end, N//2 + 1
+            else:
+                # everything is non-CQT (e.g. 'recalibrate')
+                cqt_start, cqt_end = None, None
+        lp_max_non_cqt = lp_sum[non_cqt_start:non_cqt_end].max()
+        if cqt_start is not None:
+            lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
+        else:
+            lp_max_cqt = None
+    else:
+        if anti_analytic:
+            cqt_start, cqt_end = N//2, None
+        else:
+            cqt_start, cqt_end = 1, N//2 + 1
+        lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
+        lp_max_non_cqt = None
+
+    return lp_max_cqt, lp_max_non_cqt
+
+
+def _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N, alpha,
+                        shape_fr_scale_min, shape_fr_scale_max,
+                        sigma_max_to_min_max_ratio):
+    # recalibrate filterbank to each j0
+    # j0=0 is the original length, no change needed
+    xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new = (
+        {0: xi1_frs}, {0: sigma1_frs}, {0: j1_frs}, {0: is_cqt1_frs})
+    scale_diff_max = None
+
+    for shape_fr_scale in range(shape_fr_scale_max - 1, shape_fr_scale_min - 1,
+                                -1):
+        scale_diff = shape_fr_scale_max - shape_fr_scale
+        (xi1_frs_new[scale_diff], sigma1_frs_new[scale_diff],
+         j1_frs_new[scale_diff], is_cqt1_frs_new[scale_diff]) = [], [], [], []
+        factor = 2**scale_diff
+
+        # contract largest temporal width of any wavelet by 2**j0,
+        # but not above sigma_max/sigma_max_to_min_max_ratio
+        sigma_min_max = max(sigma1_frs) / sigma_max_to_min_max_ratio
+        new_sigma_min = min(sigma1_frs) * factor
+        if new_sigma_min > sigma_min_max:
+            scale_diff_max = scale_diff
+            break
+
+        # halve distance from existing xi_max to .5 (max possible)
+        new_xi_max = .5 - (.5 - max(xi1_frs)) / factor
+        new_xi_min = 2 / (N // factor)
+        # logarithmically distribute
+        new_xi = np.logspace(np.log10(new_xi_min), np.log10(new_xi_max),
+                             len(xi1_frs), endpoint=True)[::-1]
+        xi1_frs_new[scale_diff].extend(new_xi)
+        new_sigma = np.logspace(np.log10(new_sigma_min),
+                                np.log10(max(sigma1_frs)),
+                                len(xi1_frs), endpoint=True)[::-1]
+        sigma1_frs_new[scale_diff].extend(new_sigma)
+        for xi, sigma in zip(new_xi, new_sigma):
+            j1_frs_new[scale_diff].append(get_max_dyadic_subsampling(
+                xi, sigma, alpha=alpha))
+            is_cqt1_frs_new[scale_diff].append(False)
+
+    return (xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new,
+            scale_diff_max)

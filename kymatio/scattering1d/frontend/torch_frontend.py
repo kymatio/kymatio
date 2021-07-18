@@ -1,4 +1,5 @@
 import torch
+import math
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
@@ -11,10 +12,11 @@ from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, out_type='array', pad_mode='reflect',
-            max_pad_factor=2, register_filters=True, backend='torch'):
+            max_pad_factor=2, r_psi=math.sqrt(.5), register_filters=True,
+            backend='torch'):
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
-                oversampling, out_type, pad_mode, max_pad_factor, backend)
+                oversampling, out_type, pad_mode, max_pad_factor, r_psi, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -131,7 +133,8 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                  oversampling_fr=None, aligned=True, sampling_filters_fr='resample',
                  out_type="array", out_3D=False, out_exclude=None,
                  pad_mode='reflect', max_pad_factor=2, max_pad_factor_fr=None,
-                 pad_mode_fr='conj-reflect-zero', backend="torch"):
+                 pad_mode_fr='conj-reflect-zero', r_psi=math.sqrt(.5),
+                 backend="torch"):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         # Second-order scattering object for the time variable
@@ -139,7 +142,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         scattering_out_type = out_type.lstrip('dict:')
         ScatteringTorch1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            scattering_out_type, pad_mode, max_pad_factor,
+            scattering_out_type, pad_mode, max_pad_factor, r_psi=r_psi,
             register_filters=False, backend=backend)
 
         TimeFrequencyScatteringBase1D.__init__(
