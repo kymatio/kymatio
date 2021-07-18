@@ -299,7 +299,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
 
 #### Validating 1D filterbank ################################################
 def validate_filterbank_tm(sc=None, psi1_f=None, psi2_f=None, phi_f=None,
-                           criterion_amplitude=1e-3):
+                           criterion_amplitude=1e-3, verbose=True):
     """Runs `validate_filterbank()` on temporal filters; supports `Scattering1D`
     and `TimeFrequencyScattering1D`.
 
@@ -324,6 +324,9 @@ def validate_filterbank_tm(sc=None, psi1_f=None, psi2_f=None, phi_f=None,
         criterion_amplitude : float
             Used for various thresholding in `validate_filterbank()`.
 
+        verbose : bool (default True)
+            Whether to print the report.
+
     Returns
     -------
         data1, data2 : dict, dict
@@ -337,11 +340,15 @@ def validate_filterbank_tm(sc=None, psi1_f=None, psi2_f=None, phi_f=None,
     psi1_f, psi2_f = [[p[0] for p in ps] for ps in (psi1_f, psi2_f)]
     phi_f = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
 
-    print("\n// FIRST-ORDER")
+    if verbose:
+        print("\n// FIRST-ORDER")
     data1 = validate_filterbank(psi1_f, phi_f, criterion_amplitude,
+                                verbose=verbose,
                                 for_real_inputs=True, unimodal=True)
-    print("\n\n// SECOND-ORDER")
+    if verbose:
+        print("\n\n// SECOND-ORDER")
     data2 = validate_filterbank(psi2_f, phi_f, criterion_amplitude,
+                                verbose=verbose,
                                 for_real_inputs=True, unimodal=True)
     return data1, data2
 
@@ -375,6 +382,9 @@ def validate_filterbank_fr(sc=None, psi1_f_fr_up=None, psi1_f_fr_down=None,
         criterion_amplitude : float
             Used for various thresholding in `validate_filterbank()`.
 
+        verbose : bool (default True)
+            Whether to print the report.
+
     Returns
     -------
         data_up, data_down : dict, dict
@@ -395,13 +405,13 @@ def validate_filterbank_fr(sc=None, psi1_f_fr_up=None, psi1_f_fr_down=None,
     if verbose:
         print("\n// SPIN UP")
     data_up = validate_filterbank(psi1_f_fr_up, phi_f_fr, criterion_amplitude,
-                                  for_real_inputs=False, unimodal=True,
-                                  verbose=verbose)
+                                  verbose=verbose,
+                                  for_real_inputs=False, unimodal=True)
     if verbose:
         print("\n\n// SPIN DOWN")
     data_down = validate_filterbank(psi1_f_fr_down, phi_f_fr, criterion_amplitude,
-                                    for_real_inputs=False, unimodal=True,
-                                    verbose=verbose)
+                                    verbose=verbose,
+                                    for_real_inputs=False, unimodal=True)
     return data_up, data_down
 
 
@@ -660,7 +670,8 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     report_lp_sum(report, phi=0)
 
     # Redundancy #############################################################
-    # TODO limit printing
+    from .scattering1d.filter_bank import compute_filter_redundancy
+
     report += [title("REDUNDANCY")]
     did_header = False
     th_r = .4 if for_real_inputs else .2
@@ -668,9 +679,7 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     max_to_print = 20
     printed = 0
     for n in range(len(psi_fs) - 1):
-        p0sq, p1sq = np.abs(psi_fs[n])**2, np.abs(psi_fs[n + 1])**2
-        # energy overlap relative to sum of individual energies
-        r = np.sum(p0sq * p1sq) / ((p0sq.sum() + p1sq.sum()) / 2)
+        r = compute_filter_redundancy(psi_fs[n], psi_fs[n + 1])
         data['redundancy'][(n, n + 1)] = r
         if r > th_r:
             if not did_header:

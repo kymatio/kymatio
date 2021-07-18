@@ -914,6 +914,9 @@ class TimeFrequencyScatteringBase1D():
             - `J_pad_fr_min_limit_due_to_phi`
             - `J_pad_fr_min_limit_due_to_psi`
             - Will not allow any `J_pad_fr > J_pad_fr_max_init`
+            - With `sampling_psi_fr = 'resample'`, will not allow `J_pad_fr`
+              that yields a pure sinusoid wavelet (raises `ValueError` in
+              `filter_bank.get_normalizing_factor`).
 
     out_type : str, optional
         Affects output structure (but not how coefficients are computed).

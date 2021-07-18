@@ -3,7 +3,8 @@ import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
-                             l2, rel_ae)
+                             l2, rel_ae, validate_filterbank_tm,
+                             validate_filterbank_fr)
 from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
@@ -142,7 +143,6 @@ def test_jtfs_vs_ts():
     assert l2_jtfs / l2_ts > 25, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   ) % (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
-    # TODO take l2 distance from stride-adjusted coeffs?
     # TODO also compare max per-coeff ratio
 
     if metric_verbose:
@@ -695,6 +695,9 @@ def test_meta():
         - average_fr_global
         - oversampling_fr
         - max_padding_fr
+
+    For compute convenience, also tests that `validate_filterbank_tm` and
+    `validate_filterbank_fr` run without error on each configuration.
     """
     def assert_equal_lengths(Scx, jmeta, field, pair, out_3D, test_params_str,
                              jtfs):
@@ -783,6 +786,8 @@ def test_meta():
         jtfs = TimeFrequencyScattering1D(**params, **test_params,
                                          frontend=default_backend)
         test_params_str = '\n'.join(f'{k}={v}' for k, v in test_params.items())
+        _ = validate_filterbank_tm(jtfs, verbose=0)
+        _ = validate_filterbank_fr(jtfs, verbose=0)
 
         sampling_psi_fr = test_params['sampling_filters_fr'][0]
         if sampling_psi_fr in ('recalibrate', 'exclude'):

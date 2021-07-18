@@ -1122,7 +1122,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 psi = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
                                 P_max=P_max, eps=eps)[:, None]
             except ValueError as e:
-                if sampling_psi_fr == 'resample':  # TODO doc
+                if sampling_psi_fr == 'resample':
                     j0_max = j0_prev
                     cleanup = True
                     break
@@ -1359,13 +1359,8 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
 
 #### Energy renormalization ##################################################
 def energy_norm_filterbank_tm(psi1_f, psi2_f, phi_f, J, log2_T):
-    """Rescale wavelets such that their frequency-domain energy sum
-    (Littlewood-Paley sum) peaks at 2 (since time scattering is analytic only
-    for real inputs). This makes the filterbank energy non-expansive.
-
-    Non-CQT ("intermediate", linear center frequency spacing) wavelets are
-    rescaled separately, as they overlap less. This also corrects non-CQT
-    energy contributions relative to CQT.
+    """Energy-renormalize temporal filterbank; used by `base_frontend`.
+    See `help(kymatio.scattering1d.filter_bank.energy_norm_filterbank)`.
     """
     # in case of `trim_tm` for JTFS
     phi = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
@@ -1385,6 +1380,9 @@ def energy_norm_filterbank_tm(psi1_f, psi2_f, phi_f, J, log2_T):
 
 def energy_norm_filterbank_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr,
                               J_fr, log2_F):
+    """Energy-renormalize frequential filterbank; used by `base_frontend`.
+    See `help(kymatio.scattering1d.filter_bank.energy_norm_filterbank)`.
+    """
     # assumes same `j0` for up and down
     j0_max = max(j0 for psi_f in psi1_f_fr_up for j0 in psi_f
                  if isinstance(j0, int))
@@ -1413,9 +1411,59 @@ def energy_norm_filterbank_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr,
 def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
                            J=None, log2_T=None, r_th=.3, passes=3,
                            scaling_factors=None):
-    """Standalone function to norm a wavelet-only filterbank or complete with
-    lowpass - for analytic-only (real inputs) or analytic and anti-analytic
-    (complex inputs) filterbanks.
+    """Rescale wavelets such that their frequency-domain energy sum
+    (Littlewood-Paley sum) peaks at 2 for an analytic-only filterbank
+    (e.g. time scattering for real inputs) or 1 for analytic + anti-analytic.
+    This makes the filterbank energy non-expansive.
+
+    Parameters
+    ----------
+    psi_fs0 : list[np.ndarray]
+        Analytic filters if `psi_fs1=None`, else anti-analytic (spin up).
+
+    psi_fs1 : list[np.ndarray] / None
+        Analytic filters (spin down). If None, filterbank is treated as
+        analytic-only, and LP peaks are scaled to 2 instead of 1.
+
+    phi_f : np.ndarray / None
+        Lowpass filter. If `log2_T > J`, will exclude from computation as
+        it will excessively attenuate low frequency bandpasses.
+
+    J, log2_T : int, int
+        See `phi_f`. For JTFS frequential scattering these are `J_fr, log2_F`.
+
+    r_th : float
+        Redundancy threshold, determines whether "Nyquist correction" is done
+        (see Algorithm below).
+
+    passes : int
+        Number of times to call this function recursively; see Algorithm.
+
+    scaling_factors : None / dict[float]
+        Used internally if `passes > 1`.
+
+    Returns
+    -------
+    scaling_factors : None / dict[float]
+        Used internally if `passes > 1`.
+
+    Algorithm
+    ---------
+    Wavelets are scaled by maximum of *neighborhood* LP sum - precisely, LP sum
+    spanning from previous to next peak location relative to wavelet of interest:
+    `max(lp_sum[peak_idx[n + 1]:peak_idx[n - 1]])`. This reliably accounts for
+    discretization artifacts, including the non-CQT portion.
+
+    "Nyquist correction" is done for the highest frequency wavelet; since it
+    has no "preceding" wavelet, it's its own right bound (analytic; left for
+    anti-), which overestimates necessary rescaling and makes resulting LP sum
+    peak above target for the *next* wavelet. This correction is done only if
+    the filterbank is below a threshold redundancy (empirically determined
+    `r_th=.3`), since otherwise the direct estimate is accurate.
+
+    Multiple "passes" are done to improve overall accuracy, as not all edge
+    case behavior is accounted for in one go (which is possible but complicated);
+    the computational burden is minimal.
     """
     def norm_filter(psi_fs, peak_idxs, lp_sum, n, s_idx=1):
         if n - 1 in peak_idxs:
@@ -1479,7 +1527,7 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
                 scaling_factors[n] *= factor
 
         # first (Nyquist-nearest) psi rescaling may drive LP sum above bound
-        # for second psi, since peak was taken only at itsefl
+        # for second psi, since peak was taken only at itself
         if analytic_only:
             psi_fs = psi_fs_all
             # include endpoint
@@ -1512,7 +1560,7 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
 
     # determine whether to do Nyquist correction
     # assume same overlap for analytic and anti-analytic
-    r = compute_filter_redundancy(psi_fs0[0], psi_fs0[1], analytic=analytic_only)
+    r = compute_filter_redundancy(psi_fs0[0], psi_fs0[1])
     do_nyquist_correction = bool(r < r_th)
 
     # compute peak indices
@@ -1566,8 +1614,12 @@ def conj_fr(x):
     return out
 
 
-def compute_filter_redundancy(p0, p1, analytic=True):
-    p0sq, p1sq = np.abs(p0)**2, np.abs(p1)**2
+def compute_filter_redundancy(p0_f, p1_f):
+    """Measures "redundancy" as overlap of energies. Namely, ratio of
+    product of energies to mean of energies of Frequency-domain filters
+    `p0_f` and `p1_f`.
+    """
+    p0sq, p1sq = np.abs(p0_f)**2, np.abs(p1_f)**2
     # energy overlap relative to sum of individual energies
     r = np.sum(p0sq * p1sq) / ((p0sq.sum() + p1sq.sum()) / 2)
     return r
@@ -1606,7 +1658,6 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
 
     Motivation
     ----------
-
     The measure is, a relative L2 distance (Euclidean distance relative to
     input norms) between inner products of `p_f` with an input, at different
     time shifts (i.e. `L2(A, B); A = sum(p(t) * x(t)), B = sum(p(t) * x(t - T))`).
@@ -1626,7 +1677,6 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
 
     Algorithm
     ---------
-
     The actual algorithm is different, since L2 is a problematic measure with
     unpadding; there's ambiguity: `T=1` can be measured as "closer" to `T=64`
     than `T=63`). Namely, we take inner product (similarity) of `p_f` with
@@ -1636,7 +1686,6 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
 
     Fast algorithm
     --------------
-
     Approximates `fast=False`. If `p_f` is fully decayed, the result is exactly
     same as `fast=False`. If `p_f` is very wide (nearly global average), the
     result is also same as `fast=False`. The disagreement is in the intermediate
@@ -1648,14 +1697,12 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
 
     Assumption
     ----------
-
     `abs(p_t)`, where `p_t = ifft(p_f)`, is assumed to be Gaussian-like.
     An ideal measure is devoid of such an assumption, but is difficult to devise
     in finite sample settings.
 
     Note
     ----
-
     `width` saturates at `N` past a certain point in "incomplete decay" regime.
     The intution is, in incomplete decay, the measure of width is ambiguous:
     for one, we lack compact support. For other, the case `width == N` is a
