@@ -597,26 +597,30 @@ def test_pack_coeffs_jtfs():
             paired_flat[pair].append(out_stored[i])
         return paired_flat
 
-    def validate_n2s(o):
+    def validate_n2s(o, info, spin):
+        info = info + "\nspin={}".format(spin)
         # ensure 4-dim
-        assert o.ndim == 4, o.shape
+        assert o.ndim == 4, "{}{}".format(o.shape, info)
 
         # pack here directly via arrays, see if they match
-        n2s = o[:, 0, 0, 0]
+        n2s = o[:, :, 0, 0]
 
         # if phi_t is present, ensure it's the first
         if -1 in n2s:
-            assert n2s[0] == -1, n2s
-        # exclude phis
-        n2s = np.array([n2 for n2 in n2s if n2 != -1])
+            n_n2s = np.sum(n2s == -1)
+            assert np.sum(n2s[0] == -1) == n_n2s, "{}{}".format(n2s, info)
 
         # should never require to pad along `n2`
-        assert -2 not in n2s, n2s
+        assert -2 not in n2s, "{}{}".format(n2s, info)
+
+        # exclude phis
+        n2s = n2s[n2s != -1]
 
         # ensure high-to-low n2 (low-to-high freq)
-        assert np.all(n2s == sorted(n2s, reverse=True)), n2s
+        assert np.all(n2s == sorted(n2s, reverse=True)), "{}{}".format(n2s, info)
 
-    def validate_n1s(o):
+    def validate_n1s(o, info, spin):
+        info = info + "\nspin={}".format(spin)
         # ensure n1s ordered low to high (high-to-low freq) for every n2, n1_fr
         for n2_idx in range(len(o)):
             for n1_fr_idx in range(len(o[n2_idx])):
@@ -624,12 +628,15 @@ def test_pack_coeffs_jtfs():
                 if -2 in n1s:
                     # assert right-padded
                     n_pad = sum(n1s == -2)
-                    assert np.all(n1s[-n_pad:] == -2), (n_pad, n1s)
+                    assert np.all(n1s[-n_pad:] == -2), (
+                        "{}, {}{}").format(n_pad, n1s, info)
                 # remove padded
                 n1s = np.array([n1 for n1 in n1s if n1 != -2])
-                assert np.all(n1s == sorted(n1s)), (n2_idx, n1_fr_idx, n1s)
+                assert np.all(n1s == sorted(n1s)), (
+                    "{}, {}, {}{}").format(n2_idx, n1_fr_idx, n1s, info)
 
-    def validate_spin(out_s, up=True):
+    def validate_spin(out_s, info, up=True):
+        info = info + "\nspin={}".format("up" if up else "down")
         # check every n1_fr
         for n2_idx in range(len(out_s)):
             n1_frs = out_s[n2_idx, :, 0, 1]
@@ -646,41 +653,56 @@ def test_pack_coeffs_jtfs():
             # ensure only psi_f pairs present
             assert -1 not in n1_frs, n1_frs
 
-            if up:
-                assert np.all(n1_frs == sorted(n1_frs)), n1_frs
-            else:
-                assert np.all(n1_frs == sorted(n1_frs, reverse=True)), n1_frs
+            # check padding
+            if -2 in n1_frs:
+                n_pad = sum(n1_frs == -2)
+                if up:
+                    # ensure right-padded
+                    assert np.all(n1_frs[-n_pad:] == -2), (n_pad, n1_frs)
+                else:
+                    # ensure left-padded
+                    assert np.all(n1_frs[:n_pad]  == -2), (n_pad, n1_frs)
+                # exclude pad values
+                n1_frs = np.array([n1_fr for n1_fr in n1_frs if n1_fr != -2])
 
-    def validate_packing(out):
+            errmsg = "{}{}".format(n1_frs, info)
+            if up:
+                assert np.all(n1_frs == sorted(n1_frs)), errmsg
+            else:
+                assert np.all(n1_frs == sorted(n1_frs, reverse=True)), errmsg
+
+    def validate_packing(out, info):
         # unpack into `out_up, out_down, out_phi`
         out_phi = None
         if structure in (1, 2):
             if structure == 1:
                 out = out.transpose(1, 0, 2, 3)
-            outs = [out]
             s = out.shape
             out_up   = out[:, :s[1]//2 + 1]
             out_down = out[:, s[1]//2:]
 
         elif structure == 7:
-            outs = out
             out_up, out_down, out_phi = out
 
         elif structure == 8:
-            outs = out
             out_up, out_down = out
 
+        # ensure sliced properly
+        assert out_up.shape == out_down.shape, (
+            "{} != {}{}").format(out_up.shape, out_down.shape, info)
+
         # do validation
-        for o in outs:
-            validate_n2s(o)
-            validate_n1s(o)
-        validate_spin(out_up,   up=True)
-        validate_spin(out_down, up=False)
+        for spin, o in zip([1, -1, 0], [out_up, out_down, out_phi]):
+            if o is not None:
+                validate_n2s(o, info, spin)
+                validate_n1s(o, info, spin)
+        validate_spin(out_up,   info, up=True)
+        validate_spin(out_down, info, up=False)
         if out_phi is not None:
             out_phi_n1_fr = out_phi[:, :, :, 1]
             # exclude pad
             out_phi_n1_fr[out_phi_n1_fr == -2] = -1
-            assert np.all(out_phi[:, :, :, 1] == -1), out_phi[:, :, :, 1]
+            assert np.all(out_phi[:, :, :, 1] == -1), (out_phi[:, :, :, 1], info)
 
     tests_params = {
         1: dict(average=True, average_fr=True, aligned=True,  out_3D=True),
@@ -704,7 +726,9 @@ def test_pack_coeffs_jtfs():
         for structure in (1, 2, 7, 8):
             out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
                                    **test_params, debug=True)
-            validate_packing(out)
+            info = "\nstructure={}\n{}".format(
+                structure, "\n".join(f'{k}={v}' for k, v in test_params.items()))
+            validate_packing(out, info)
 
 
 def test_no_second_order_filters():
@@ -1204,24 +1228,24 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
-        # test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_sampling_psi_fr_exclude()
-        # test_no_second_order_filters()
-        # test_max_pad_factor_fr()
-        # test_out_exclude()
-        # test_global_averaging()
-        # test_lp_sum()
-        # test_compute_temporal_width()
-        # test_tensor_padded()
+        test_alignment()
+        test_shapes()
+        test_jtfs_vs_ts()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_sampling_psi_fr_exclude()
+        test_no_second_order_filters()
+        test_max_pad_factor_fr()
+        test_out_exclude()
+        test_global_averaging()
+        test_lp_sum()
+        test_compute_temporal_width()
+        test_tensor_padded()
         test_pack_coeffs_jtfs()
-        # test_backends()
-        # test_differentiability_torch()
-        # test_reconstruction_torch()
-        # test_meta()
-        # test_output()
+        test_backends()
+        test_differentiability_torch()
+        test_reconstruction_torch()
+        test_meta()
+        test_output()
     else:
         pytest.main([__file__, "-s"])

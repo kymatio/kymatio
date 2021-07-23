@@ -85,7 +85,6 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
         5. `False, True`: list of variable length 1D tensors
         6. `False, False`: list of variable length 1D tensors
         # TODO
-        # TODO mention channels
         7. `(2*n2, n1_fr//2,     n1, time)`, `(n2, 1, n1, time)`
         8. `(2*n2, n1_fr//2 + 1, n1, time)`
     where
@@ -97,6 +96,8 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
            correlates with frequential bands (independent components/modes) of
            varying widths, decay factors, and recurrences, per temporal slice)
         - time: time [sec]
+        - For convolutions, first dim is assumed to be channels (unless doing
+          4D convs with 1 or 2).
 
     The interpretations for convolution (and equivalently, spatial coherence)
     are as follows:
@@ -152,22 +153,22 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
     structures_available = [1, 2, 3, 4, 5, 6, 7, 8]
     # average, average_fr
     if not average:
-        drop(1, 2, 3, 4)
+        drop(1, 2, 3, 4, 7, 8)
     if not average_fr:
         drop(1, 2, 3)
     if not average and not average_fr:
         drop(5)
     # aligned
-    if not aligned:
-        drop(1)
+    # if not aligned:  # TODO
+    #     drop(1)
     # out_3D  # TODO
     # if not out_3D:
     #     drop(1, 2)
     # sampling_psi_fr
-    if sampling_psi_fr == 'exclude':
-        drop(1, 2)
-    elif sampling_psi_fr == 'recalibrate':
-        drop(1)
+    # if sampling_psi_fr == 'exclude':  # TODO
+    #     drop(1, 2)
+    # elif sampling_psi_fr == 'recalibrate':
+    #     drop(1)
 
     # validate `structure` / set default
     if structure is None:
@@ -189,13 +190,10 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
         for coef in Scx[pair]:
             if list_coeffs and (isinstance(coef, dict) and 'coef' in coef):
                 coef = coef['coef']
-            if out_3D:  # TODO holds for list?
+            if out_3D:
                 Scx_unpacked[pair].extend(coef)
             else:
                 Scx_unpacked[pair].append(coef)
-
-    def pas(x):
-        print(np.array(x).shape)
 
     # pack into dictionary indexed by `n1_fr`, `n2` ##########################
     packed = {}
@@ -246,17 +244,16 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
             continue
         for n2_idx in range(len(packed[pair])):
             ref = tensor_padded(packed[pair][n2_idx][0], pad_value)
+            # n2 will be same, everything else variable
+            ref[..., 1:] = ref[..., 1:] * 0 + pad_value
             while len(packed[pair][n2_idx]) < n_n1_frs_max:
                 assert sampling_psi_fr == 'exclude'  # should not occur otherwise
                 packed[pair][n2_idx].append(ref)
 
-        # pas(packed[pair])
-    # print()
     # pack into list ready to convert to 4D tensor ###########################
     # current indexing: `(n2, n1_fr, n1, time)`
     # reverse every `psi_t` ordering into low-to-high frequency
     combined = packed['psi_t * psi_f_up'][::-1]
-    # pas(combined)
     coeffs = packed['psi_t * phi_f'][::-1]
     for n2 in range(len(coeffs)):
         for n1_fr in range(len(coeffs[n2])):
@@ -264,26 +261,19 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
 
     # revert `psi_t` ordering
     combined_down = packed['psi_t * psi_f_down'][::-1]
-    # pas(combined_down)
     assert len(combined_down) == len(combined)
     for n2 in range(len(combined)):
         # and `psi_f` ordering
         combined[n2].extend(combined_down[n2][::-1])
 
     c_phi_t = deepcopy(packed['phi_t * psi_f'])
-    # pas(c_phi_t)
     c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
-    # pas(c_phi_t)
     c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
-    # pas(c_phi_t)
 
-    # pas(combined)
     combined.insert(0, c_phi_t[0])
-    # pas(combined)
 
     # finalize ###############################################################
     # TODO backends
-    # out = np.array(combined)
     # this will pad along `n1`
     out = tensor_padded(combined, pad_value=0 if not debug else -2)
     assert out.ndim == 4, out.ndim
@@ -291,8 +281,6 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
 
     if structure == 1:
         out = out.transpose(1, 0, 2, 3)
-    elif structure == 3:
-        out = out.reshape(-1, s[2], s[3])
     elif structure == 7:
         out_phi = out[:, s[1]//2][:, None]
         # exclude phi_f
