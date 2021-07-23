@@ -759,7 +759,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             for n1_fr, j1_fr in enumerate(j1s_fr):
                 _fill_n1_info(pair, n2, n1_fr, spin=spin)
 
-    array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's', 'stride']
+    array_fields = ['order', 'xi', 'sigma', 'j', 'is_cqt', 'n', 's', 'stride']
     for field in array_fields:
         for pair, v in meta[field].items():
             meta[field][pair] = np.array(v)

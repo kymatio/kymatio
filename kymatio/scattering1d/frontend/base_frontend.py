@@ -947,7 +947,7 @@ class TimeFrequencyScatteringBase1D():
         From an information/classification standpoint,
 
           - `True` yields the 'true' 3D structure for joint coeffs, shaped
-            `(n_coeffs, freq, time)`, where
+            `(n_coeffs, freq, time)`, where # TODO
               - `n_coeffs`: number of joint slices from conv by joint wavelets
               - `freq`: number of log-frequency rows per slice, derived from
                 first-order scattering rows
@@ -1145,8 +1145,8 @@ class TimeFrequencyScatteringBase1D():
     Given an input `{array}` of size `(B, N)`, where `B` is the batch size
     and `N` is the length of the individual signals, computes its JTFS.
 
-    Output is always a dictionary of arrays or lists, keying time or joint
-    scattering coefficients (see `out_type` for exact behavior):
+    Output format is specified by `out_type`: a list, array, or dictionary of
+    either with keys specifying coefficient names as follows:
 
     ::
 
@@ -1159,14 +1159,17 @@ class TimeFrequencyScatteringBase1D():
          'psi_t * psi_f_up': ...,  # (joint) spin down
          }}
 
-    Coefficient structure depends on `average, average_fr, aligned, out_3D`.
-    Assuming `aligned=True` and `out_3D=True` (where possible), then for
-    `average, average_fr`:
-        - `True, True`: 3D, `(n_coeffs, freq, time)`; see `out_3D` docs.
-        - `True, False`: 2D, `(n_coeffs * freq, time)`; see `out_3D` docs.
-        - `False, True`: list of 1D tensors.
-        - `False, False`: list of 1D tensors.  # TODO 4D
-    For differences with `aligned, out_3D`, see their docs.
+    Coefficient structure depends on `average, average_fr, aligned, out_3D`, and
+    indirectly `sampling_filters_fr`. Assuming `aligned=True` and `out_3D=True`
+    (where possible), then for `average, average_fr`:
+        1. `True, True`: 4D, `(n2, n1_fr, freq, time)`
+        2. `True, True`: 3D, `(n2 * n1_fr, freq, time)`
+        3. `True, False`: 2D, `(n2 * n1_fr * freq, time)`
+        4. `False, True`: list of variable length 1D tensors
+        5. `False, False`: list of variable length 1D tensors
+    For differences with `aligned, out_3D`, see their docs. Coefficients
+    can be packed into additional formats, including the "true" 4D structure;
+    see `help(kymatio.toolkit.pack_coeffs_jtfs)`.
 
     Parameters
     ----------
@@ -1184,12 +1187,13 @@ class TimeFrequencyScatteringBase1D():
     Builds padding logic of frequential scattering.
 
       - `pad_left_fr, ind_start_fr`: always zero since we right-pad
-      - `pad_right_fr`: computed to avoid boundary effects *for each* `shape_fr.
+      - `pad_right_fr`: computed to avoid boundary effects *for each* `shape_fr`.
       - `ind_end_fr`: computed to undo `pad_right_fr`
       - `subsample_equiv_relative_to_max_pad_init`: indexed by `n2`, is the
-         amount of *equivalent subsampling* of padding relative to `J_pad_fr_max`.
+         amount of *equivalent subsampling* of padding relative to
+         `J_pad_fr_max_init`.
          E.g.:
-             - if max pad length is 128 and we pad to 64 at `n2 = 3`, then
+             - if `J_pad_fr_max_init=128` and we pad to 64 at `n2 = 3`, then
                `subsample_equiv_relative_to_max_pad_init[3] == 1`.
       - `ind_end_fr_max`: maximum unpad index across all `n2` for a given
         subsampling factor. E.g.:

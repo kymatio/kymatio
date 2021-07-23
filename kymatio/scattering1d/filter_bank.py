@@ -1632,7 +1632,6 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
 
     Parameters
     ----------
-
     p_f: np.ndarray
         Frequency-domain filter of length >= N. "Length" must be along dim0,
         i.e. `(freqs, ...)`.

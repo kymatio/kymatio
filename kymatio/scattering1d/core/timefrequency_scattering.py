@@ -797,13 +797,7 @@ def timefrequency_scattering(
             if j2 == 0:
                 continue
 
-            # preallocate output slice
-            if aligned and out_3D:
-                pad_fr = sc_freq.J_pad_fr_max
-            else:
-                pad_fr = sc_freq.J_pad_fr[n2]
             Y_2_list = []
-
             # Wavelet transform over time
             for n1 in range(len(psi1)):
                 # Retrieve first-order coefficient in the list
@@ -829,6 +823,11 @@ def timefrequency_scattering(
                 Y_2_c, trim_tm = _maybe_unpad_time(Y_2_c, k1_plus_k2, commons2)
                 Y_2_list.append(Y_2_c)
 
+            # frequential pad
+            if aligned and out_3D:
+                pad_fr = sc_freq.J_pad_fr_max
+            else:
+                pad_fr = sc_freq.J_pad_fr[n2]
             Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             if pad_mode == 'reflect' and average:
