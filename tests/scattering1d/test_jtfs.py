@@ -1216,11 +1216,11 @@ if __name__ == '__main__':
         # test_lp_sum()
         # test_compute_temporal_width()
         # test_tensor_padded()
-        test_pack_coeffs_jtfs()
+        # test_pack_coeffs_jtfs()
         # test_backends()
         # test_differentiability_torch()
         # test_reconstruction_torch()
         # test_meta()
-        # test_output()
+        test_output()
     else:
         pytest.main([__file__, "-s"])
