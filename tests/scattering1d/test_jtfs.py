@@ -683,8 +683,8 @@ def test_pack_coeffs_jtfs():
             assert np.all(out_phi[:, :, :, 1] == -1), out_phi[:, :, :, 1]
 
     tests_params = {
-        1: dict(average=True, average_fr=True, aligned=True, out_3D=True),
-        0: dict(average=True, average_fr=True, aligned=True, out_3D=False),
+        1: dict(average=True, average_fr=True, aligned=True,  out_3D=True),
+        0: dict(average=True, average_fr=True, aligned=False, out_3D=False),
     }
 
     for test_num, test_params in tests_params.items():
@@ -694,7 +694,8 @@ def test_pack_coeffs_jtfs():
         for k in test_params:
             if k != 'average':
                 assert test_params[k] == params[k]
-        test_params['sampling_psi_fr'] = 'resample'
+        test_params['sampling_psi_fr'] = ('resample' if test_num != 0 else
+                                          'exclude')
 
         # flatten rather than re-pack into original shape since it's flattened
         # in `pack_coeffs_jtfs` anyway
@@ -1015,7 +1016,7 @@ def test_output():
     a previously calculated version. Tests for:
     # TODO 'exclude'
           (aligned, average_fr, out_3D,   F)
-        0. True     True        False     32
+        0. False    True        False     32
         1. True     True        True      4
         2. False    True        True      16
         3. True     True        False     'global'
@@ -1216,11 +1217,11 @@ if __name__ == '__main__':
         # test_lp_sum()
         # test_compute_temporal_width()
         # test_tensor_padded()
-        # test_pack_coeffs_jtfs()
+        test_pack_coeffs_jtfs()
         # test_backends()
         # test_differentiability_torch()
         # test_reconstruction_torch()
         # test_meta()
-        test_output()
+        # test_output()
     else:
         pytest.main([__file__, "-s"])
