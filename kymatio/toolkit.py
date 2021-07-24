@@ -51,7 +51,7 @@ def drop_batch_dim_jtfs(Scx):
 
 def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
                      sampling_psi_fr=None, out_exclude=None, debug=False):
-    """Packs JTFS coefficients into one of valid structures.
+    """Packs JTFS coefficients into one of valid 4D structures.
 
     Parameters
     ----------

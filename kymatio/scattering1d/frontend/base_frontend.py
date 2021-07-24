@@ -944,17 +944,18 @@ class TimeFrequencyScatteringBase1D():
               See `sc_freq_compute_padding_fr()`.
             - See `aligned` for its interactions with `out_3D`
 
+        Both `True` and `False` can still be concatenated into the 'true' JTFS
+        4D structure; see `help(kymatio.toolkit.pack_coeffs_jtfs)` for a complete
+        description on coefficient structuring.
+
+        The difference is in how values are computed, esp. near boundaries.
         From an information/classification standpoint,
 
-          - `True` yields the 'true' 3D structure for joint coeffs, shaped
-            `(n_coeffs, freq, time)`, where # TODO
-              - `n_coeffs`: number of joint slices from conv by joint wavelets
-              - `freq`: number of log-frequency rows per slice, derived from
-                first-order scattering rows
-          - `False` yields 2D tensors for joint coeffs, where `freq` and
-            `n_coeffs` are flattened into one dimension, yielding
-            `(n_coeffs * freq, time)`. This breaks inter-wavelet spatial coherence
-            but is the standard used in classification.
+          - `True` is more information-rich. The 1D equivalent case is unpadding
+            by 3, instead of by 6 and then zero-padding by 3: same final length,
+            but former fills gaps with partial convolutions where latter fills
+            with zeros.
+          - `False` is the "latter" case.
 
     out_exclude: list/tuple[str] / None
         Will exclude coefficients with these names from computation and output

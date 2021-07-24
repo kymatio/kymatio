@@ -790,7 +790,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
           elif pair == 'phi_t * phi_f':
               number_of_n2 = 1
               number_of_n1_fr = 1
-          n_coeffs = number_of_n2 * number_of_n1_fr
+          n_coeffs = number_of_n2 * number_of_n1_fr  # TODO exclude?
           meta[field][pair] = meta[field][pair].reshape(n_coeffs, -1, meta_len)
 
     if out_exclude is not None:
