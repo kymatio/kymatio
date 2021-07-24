@@ -671,42 +671,72 @@ def test_pack_coeffs_jtfs():
             else:
                 assert np.all(n1_frs == sorted(n1_frs, reverse=True)), errmsg
 
-    def validate_packing(out, info):
+    def validate_packing(out, separate_lowpass, structure, info):
         # unpack into `out_up, out_down, out_phi`
-        out_phi = None
+        out_phi_f, out_phi_t = None, None
         if structure in (1, 2):
+            if separate_lowpass:
+                out, out_phi_f, out_phi_t = out
+
             if structure == 1:
                 out = out.transpose(1, 0, 2, 3)
+                if separate_lowpass:
+                    out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
+                    out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
+
             s = out.shape
-            out_up   = out[:, :s[1]//2 + 1]
+            out_up   = (out[:, :s[1]//2 + 1] if not separate_lowpass else
+                        out[:, :s[1]//2])
             out_down = out[:, s[1]//2:]
 
-        elif structure == 7:
-            out_up, out_down, out_phi = out
+        elif structure == 3:
+            if not separate_lowpass:
+                out_up, out_down, out_phi_f = out
+            else:
+                out_up, out_down, out_phi_f, out_phi_t = out
 
-        elif structure == 8:
-            out_up, out_down = out
+        elif structure == 4:
+            if not separate_lowpass:
+                out_up, out_down = out
+            else:
+                out_up, out_down, out_phi_t = out
 
         # ensure sliced properly
         assert out_up.shape == out_down.shape, (
             "{} != {}{}").format(out_up.shape, out_down.shape, info)
 
-        # do validation
-        for spin, o in zip([1, -1, 0], [out_up, out_down, out_phi]):
+        # do validation ######################################################
+        # n1s and n2s
+        outs = (out_up, out_down, out_phi_f, out_phi_t)
+        for spin, o in zip([1, -1, 0, 0], outs):
             if o is not None:
                 validate_n2s(o, info, spin)
                 validate_n1s(o, info, spin)
+
+        # n1_frs
         validate_spin(out_up,   info, up=True)
         validate_spin(out_down, info, up=False)
-        if out_phi is not None:
-            out_phi_n1_fr = out_phi[:, :, :, 1]
-            # exclude pad
-            out_phi_n1_fr[out_phi_n1_fr == -2] = -1
-            assert np.all(out_phi[:, :, :, 1] == -1), (out_phi[:, :, :, 1], info)
 
+        # `phi_f`
+        if out_phi_f is not None:
+            out_phi_f_n1_fr = out_phi_f[:, :, :, 1]
+            # exclude pad
+            out_phi_f_n1_fr[out_phi_f_n1_fr == -2] = -1
+            assert np.all(out_phi_f_n1_fr == -1), (out_phi_f_n1_fr, info)
+
+        # `phi_t`
+        if out_phi_t is not None:
+            out_phi_t_n2 = out_phi_t[:, :, :, 0]
+            # exclude pad
+            out_phi_t_n2[out_phi_t_n2 == -2] = -1
+            assert np.all(out_phi_t_n2 == -1), (out_phi_t_n2, info)
+
+    # end of helper methods ##################################################
+    # test
     tests_params = {
-        1: dict(average=True, average_fr=True, aligned=True,  out_3D=True),
-        0: dict(average=True, average_fr=True, aligned=False, out_3D=False),
+        1: dict(average=True, average_fr=True,  aligned=True,  out_3D=True),
+        0: dict(average=True, average_fr=True,  aligned=False, out_3D=False),
+        4: dict(average=True, average_fr=False, aligned=True,  out_3D=False),
     }
 
     for test_num, test_params in tests_params.items():
@@ -723,12 +753,18 @@ def test_pack_coeffs_jtfs():
         # in `pack_coeffs_jtfs` anyway
         paired_flat = out_stored_into_pairs(out_stored, out_stored_keys)
 
-        for structure in (1, 2, 7, 8):
-            out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
-                                   **test_params, debug=True)
-            info = "\nstructure={}\n{}".format(
-                structure, "\n".join(f'{k}={v}' for k, v in test_params.items()))
-            validate_packing(out, info)
+        for separate_lowpass in (False, True):
+            for structure in (1, 2, 3, 4):
+                kw = {k: v for k, v in test_params.items()
+                      if k in ('sampling_psi_fr', 'out_3D')}
+                info = "\nstructure={}\nseparate_lowpass={}\n{}".format(
+                    structure, separate_lowpass,
+                    "\n".join(f'{k}={v}' for k, v in test_params.items()))
+
+                out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
+                                       separate_lowpass=separate_lowpass,
+                                       **kw, debug=True)
+                validate_packing(out, separate_lowpass, structure, info)
 
 
 def test_no_second_order_filters():
@@ -1205,6 +1241,7 @@ def energy(x):
     elif 'tensorflow' in str(type(x)):
         import tensorflow as tf
         return tf.reduce_sum(tf.abs(x)**2)
+
 
 def concat_joint(Scx):
     Scx = drop_batch_dim_jtfs(Scx)

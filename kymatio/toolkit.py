@@ -49,100 +49,176 @@ def drop_batch_dim_jtfs(Scx):
     return out
 
 
-def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
-                     sampling_psi_fr, structure=None, out_exclude=None,
-                     debug=False):
+def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
+                     sampling_psi_fr=None, out_exclude=None, debug=False):
     """Packs JTFS coefficients into one of valid structures.
 
     Parameters
     ----------
     Scx : tensor/list/dict
         JTFS output.
+
     meta : dict
         JTFS meta.
-    average, average_fr, aligned, out_3D, sampling_psi_fr : *bool, str
-        JTFS parameters, determining available `structure`.
+
+    out_3D : bool
+        Used for unpacking coefficients.
+        Must match what was passed to `TimeFrequencyScattering1D`.
+
+    sampling_psi_fr : str / None
+        Used for sanity check for padding along `n1_fr`.
+        Must match what was passed to `TimeFrequencyScattering1D`.
+
     structure : int / None
-        Structure to pack `Scx` into (see "Structures" below). Can only pack
-        into what's permitted by JTFS parameters; will default into the
-        topmost permitted structure (lowest integer in the 1-6 table).
+        Structure to pack `Scx` into (see "Structures" below), integer 1 to 4.
+        Will pack into a structure even if not suitable for convolution (as
+        determined by JTFS parameters); see "Structures" if convs are relevant.
+
+          - If can pack into one structure, can pack into any other (1 to 4).
+          - 5 to 8 aren't implemented since they're what's already returned
+            as output.
+
+    separate_lowpass : bool (default False)
+        If True, will pack spinned (`psi_t * psi_f_up`, `psi_t * psi_f_down`)
+        and lowpass (`phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`) pairs
+        separately. Recommended for convolutions (see Structures & Ordinality).
+
     out_exclude : None / tuple[str]
         If not None, will account via meta for non-dict `Scx`.
 
+    debug : bool (defualt False)
+        If True, coefficient values will be replaced by meta `n` values for
+        debugging purposes, where the last dim is size 4 and contains
+        `(n1_fr, n2, n1, time)` assuming `structure == 1`.
+
     Returns
     -------
-    Scx_packed: tensor
-        Packed `Scx`.
+    out: tensor / tuple[tensor]
+        Packed `Scx`, depending on `structure` and `separate_lowpass`:
+
+          - 1: `out` if False else
+               `(out, out_phi_f, out_phi_t)`
+          - 2: same as 1
+          - 3: `(out_up, out_down, out_phi_f)` if False else
+               `(out_up, out_down, out_phi_f, out_phi_t)`
+          - 4: `(out_up, out_down)` if False else
+               `(out_up, out_down, out_phi_t)`
 
     Structures
     ----------
-    Assuming `aligned=True` and `out_3D=True` (where possible), then for
-    `average, average_fr`, the following are available:
-        1. `True, True`: 4D, `(n1_fr, n2, n1, time)`
-        2. `True, True`: 4D, `(n2, n1_fr, n1, time)`
-        3. `True, True`: 3D, `(n2 * n1_fr, n1, time)`
-        4. `True, False`: 2D, `(n2 * n1_fr * n1, time)`
-        5. `False, True`: list of variable length 1D tensors
-        6. `False, False`: list of variable length 1D tensors
-        # TODO
-        7. `(2*n2, n1_fr//2,     n1, time)`, `(n2, 1, n1, time)`
-        8. `(2*n2, n1_fr//2 + 1, n1, time)`
+    Assuming `aligned=True`, then for `average, average_fr`, the following form
+    valid convolution structures:
+      1.  `True, True*`: 4D, `(n1_fr, n2, n1, time)`
+      2.* `True, True*`: 4D, `(n2, n1_fr, n1, time)`
+      3.  `True, True*`: 4D, `(n2, n1_fr//2,     n1, time)`*2, `(n2, 1, n1, time)`
+      4.* `True, True*`: 4D, `(n2, n1_fr//2 + 1, n1, time)`*2, `(n2, 1, n1, time)`
+      5.  `True, True*`: 3D, `(n2 * n1_fr, n1, time)`
+      6.  `True, False`: 2D, `(n2 * n1_fr * n1, time)`
+      7.  `False, True`: list of variable length 1D tensors
+      8.  `False, False`: list of variable length 1D tensors
     where
-        - n1: frequency [Hz], first-order temporal variation
-        - n2: frequency [Hz], second-order temporal variation
-          (frequency of amplitude modulation)
-        - n1_fr: quefrency [cycles/octave], first-order frequential variation
-          (frequency of frequency modulation bands, roughly. More precisely,
-           correlates with frequential bands (independent components/modes) of
-           varying widths, decay factors, and recurrences, per temporal slice)
-        - time: time [sec]
-        - For convolutions, first dim is assumed to be channels (unless doing
-          4D convs with 1 or 2).
+      - n1: frequency [Hz], first-order temporal variation
+      - n2: frequency [Hz], second-order temporal variation
+        (frequency of amplitude modulation)
+      - n1_fr: quefrency [cycles/octave], first-order frequential variation
+        (frequency of frequency modulation bands, roughly. More precisely,
+         correlates with frequential bands (independent components/modes) of
+         varying widths, decay factors, and recurrences, per temporal slice)
+      - time: time [sec]
+      - For convolutions, first dim is assumed to be channels (unless doing
+        4D convs with 1-4).
+      - `True*` indicates a "soft requirement"; as long as `aligned=True`,
+        `False` can be fully compensated with padding.
+        Since 5 isn't implemented and its scattering output strictly requires
+        `True`, it can be obtained from `False` by reshaping one of 1-4.
+      - `num.*` indicates the structure isn't strictly valid for convolving
+        over non-first dimensions. See below.
 
     The interpretations for convolution (and equivalently, spatial coherence)
     are as follows:
         1. The true JTFS structure. `(n2, n1, time)` are ordinal and thus
-           valid dimensions for 3D convolution. `n1_fr` is semi-ordinal:
-           ordinal within up, and down, and separate for dc. In discrete time,
-           it's arguably "sufficiently ordinal" to convolve over, but this
-           isn't proven/tested.
+           valid dimensions for 3D convolution (if all `phi` pairs are excluded,
+           which isn't default behavior; see "Ordinality").
         2. It's a dim-permuted 1, but last three dimensions are no longer ordinal
            and don't necessarily form a valid convolution pair.
-        3. `n2` and `n1_fr` are flattened into one dimension. The resulting
+           This is the preferred structure for conceptualizing or debugging as
+           it's how the computation graph unfolds (and so does information
+           density, as `N_fr` varies along `n2`).
+        3. It's 2, but split into ordinal pairs - `out_up, out_down, out_phi`
+           suited for convolving over last three dims. These still include
+           `phi_t * psi_f` pairs, so for strict ordinality the first slice
+           should drop (e.g. `out_up[1:]`).
+        4. It's 3, but only `out_up, out_down`, and each includes `psi_t * phi_f`.
+           If this "soft ordinality" is acceptable then `phi_t * psi_f` pairs
+           should be kept.
+        5. `n2` and `n1_fr` are flattened into one dimension. The resulting
            3D structure is suitable for 2D convolutions along `(n1, time)`.
-        4. `n2`, `n1_fr`, and `n1` are flattened into one dimension. The resulting
+        6. `n2`, `n1_fr`, and `n1` are flattened into one dimension. The resulting
            2D structure is suitable for 1D convolutions along `time`.
-        5. `time` is variable; structue not suitable for convolution.
-        6. `time` and `n1` is variable; structure not suitable for convolution.
+        7. `time` is variable; structue not suitable for convolution.
+        8. `time` and `n1` is variable; structure not suitable for convolution.
 
     Structures not suited for convolutions may be suited for other transforms,
     e.g. Dense or Graph Neural Networks.
+
+    Ordinality
+    ----------
+    Coefficients are "ordinal" if their generating wavelets are spaced linearly
+    in log space. The lowpass filter is equivalently an infinite scale wavelet,
+    thus it breaks ordinality. Opposite spins require stepping over the lowpass
+    and are hence disqualified.
+
+    Above is strictly true in continuous time. In a discrete setting, however,
+    the largest possible non-dc scale is far from infinite. A 2D lowpass wavelet
+    is somewhat interpretable as a subsequent scaling and rotation of the largest
+    scale bandpass, as the bandpass itself is such a scaling and rotation of its
+    preceding bandpass.
+
+    Nonetheless, a lowpass is an averaging rather than modulation extracting
+    filter: its physical units differ, and it has zero FDTS sensitivity - and
+    this is a stronger objection for convolution. Further, when convolving over
+    modulus of wavelet transform (as frequential scattering does), the dc bin
+    is most often dominant, and by a lot - thus without proper renormalization
+    it will drown out the bandpass coefficients in concatenation.
+
+    The safest configuration for convolution thus excludes all lowpass pairs:
+    `phi_t * phi_f`, `phi_t * psi_f`, and `psi_t * phi_f`; these can be convolved
+    over separately.
 
     Parameter effects
     -----------------
     `average` and `average_fr` are described in "Structures". Additionally:
 
       - aligned:
-        - True: enables the true JTFS structure (every structure in 1-6
-          is as described).
+        - True: enables the true JTFS structure (every structure in 1-6 is
+          as described).
         - False: yields variable stride along `n1`, disqualifying it from
           3D convs along `(n2, n1, time)`. However, assuming semi-ordinality
           is acceptable, then each `n2` slice in `(n2, n1_fr, n1, time)`, i.e.
-          `(n1_fr, n1, time)`, has the same stride, and forms valid conv pair.
-          Other structures in 1-6 require similar accounting.
+          `(n1_fr, n1, time)`, has the same stride, and forms valid conv pair
+          (so use 3 or 4). Other structures require similar accounting.
+          Rules out structure 1 for 3D/4D convs.
       - sampling_psi_fr:
         - 'resample': enables the true JTFS structure.
         - 'exclude': enables the true JTFS structure (it's simply a subset of
-          'resample'). However, this requires (large amounts of) zero-padding
-          to fill the missing convolutions and enable 4D concatenation,
-          which isn't currently implemented.
-          Rules out structures 1 and 2.
+          'resample'). However, this involves large amounts of zero-padding to
+          fill the missing convolutions and enable 4D concatenation.
         - 'recalibrate': breaks the true JTFS structure. `n1_fr` frequencies
           and widths now vary with `n2`, which isn't spatially coherent in 4D.
-          It also renders `aligned=True` a pseudo-alignment. Like with
-          `aligned=False`, alignment and coherence is preserved on per-`n2` basis,
-          retaining the true structure in a piecewise manner.
-          Rules out structure 1.
+          It also renders `aligned=True` a pseudo-alignment.
+          Like with `aligned=False`, alignment and coherence is preserved on
+          per-`n2` basis, retaining the true structure in a piecewise manner.
+          Rules out structure 1 for 3D/4D convs.
+      - average:
+        - It's possible to support `False` the same way `average_fr=False` is
+          supported, but this isn't implemented.
+
+    Notes
+    -----
+    Coefficients will be sorted in order of increasing center frequency -
+    along `n2`, and `n1_fr` for spin down (whihc makes it so that both spins are
+    increasing away from `psi_t * phi_f`). The overall packing is structured
+    same as in `kymatio.visuals.filterbank_jtfs()`.
     """
     # determine available valid structures
     def drop(*nums):
@@ -150,36 +226,15 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
             if n in structures_available:
                 structures_available.pop(structures_available.index(n))
 
-    structures_available = [1, 2, 3, 4, 5, 6, 7, 8]
-    # average, average_fr
-    if not average:
-        drop(1, 2, 3, 4, 7, 8)
-    if not average_fr:
-        drop(1, 2, 3)
-    if not average and not average_fr:
-        drop(5)
-    # aligned
-    # if not aligned:  # TODO
-    #     drop(1)
-    # out_3D  # TODO
-    # if not out_3D:
-    #     drop(1, 2)
-    # sampling_psi_fr
-    # if sampling_psi_fr == 'exclude':  # TODO
-    #     drop(1, 2)
-    # elif sampling_psi_fr == 'recalibrate':
-    #     drop(1)
+    structures_available = [1, 2, 3, 4]
 
     # validate `structure` / set default
     if structure is None:
         structure = structures_available[0]
     elif structure not in structures_available:
         raise ValueError(
-            ("specified `structure={}` isn't valid given configuration:\n"
-             "average={}\naverage_fr={}\naligned={}\nsampling_psi_fr={}.\n"
-             "Available are: {}").format(
-                structure, average, average_fr, aligned, sampling_psi_fr,
-                ','.join(map(str, structures_available))))
+            "invalud `structure={}`; Available are: {}".format(
+                structure, ','.join(map(str, structures_available))))
 
     # unpack coeffs for further processing
     Scx_unpacked = {}
@@ -254,48 +309,127 @@ def pack_coeffs_jtfs(Scx, meta, average, average_fr, aligned, out_3D,
     # current indexing: `(n2, n1_fr, n1, time)`
     # reverse every `psi_t` ordering into low-to-high frequency
     combined = packed['psi_t * psi_f_up'][::-1]
-    coeffs = packed['psi_t * phi_f'][::-1]
-    for n2 in range(len(coeffs)):
-        for n1_fr in range(len(coeffs[n2])):
-            combined[n2].append(coeffs[n2][n1_fr])
 
+    # pack these for later
     # revert `psi_t` ordering
     combined_down = packed['psi_t * psi_f_down'][::-1]
-    assert len(combined_down) == len(combined)
-    for n2 in range(len(combined)):
-        # and `psi_f` ordering
-        combined[n2].extend(combined_down[n2][::-1])
-
+    # pack phi_t
     c_phi_t = deepcopy(packed['phi_t * psi_f'])
     c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
     c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
+    # pack phi_f
+    c_phi_f = packed['psi_t * phi_f'][::-1]
 
-    combined.insert(0, c_phi_t[0])
+    if not separate_lowpass or structure == 4:
+        # structure 4 joins `psi_t * phi_f` with `psi_t * psi_f`
+        for n2 in range(len(c_phi_f)):
+            for n1_fr in range(len(c_phi_f[n2])):
+                combined[n2].append(c_phi_f[n2][n1_fr])
+
+    if not separate_lowpass:
+        assert len(combined_down) == len(combined)
+        for n2 in range(len(combined)):
+            # and `psi_f` ordering
+            combined[n2].extend(combined_down[n2][::-1])
+        combined.insert(0, c_phi_t[0])
+
+    else:
+        # pack `phi`s
+        if structure != 4:
+            combined_phi_f = c_phi_f
+        combined_phi_t = c_phi_t
+
+        assert len(combined_down) == len(combined)
+        for n2 in range(len(combined)):
+            # and `psi_f` ordering
+            combined[n2].extend(combined_down[n2][::-1])
 
     # finalize ###############################################################
     # TODO backends
+    # TODO batched
     # this will pad along `n1`
-    out = tensor_padded(combined, pad_value=0 if not debug else -2)
+    pad_value = 0 if not debug else -2
+    out = tensor_padded(combined, pad_value=pad_value)
     assert out.ndim == 4, out.ndim
     s = out.shape
 
-    if structure == 1:
-        out = out.transpose(1, 0, 2, 3)
-    elif structure == 7:
-        out_phi = out[:, s[1]//2][:, None]
-        # exclude phi_f
-        out = np.array([o1 for n2_idx in range(len(out))
-                        for o1 in [[o0 for n1_fr_idx, o0 in enumerate(out[n2_idx])
-                                    if n1_fr_idx != s[1] // 2]]])
+    out_phi_t, out_phi_f = None, None
+    if separate_lowpass:
+        # ensure phis pad to same number of n1s
+        ref_shape = (None, None, s[2], None)
+        kw = dict(pad_value=pad_value, ref_shape=ref_shape)
+        out_phi_t = tensor_padded(combined_phi_t, **kw)
+        if structure != 4:
+            out_phi_f = tensor_padded(combined_phi_f, **kw)
+
+    if structure in (1, 2):
+        if structure == 1:
+            out = out.transpose(1, 0, 2, 3)
+            if separate_lowpass:
+                out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
+                out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
+        out = (out if not separate_lowpass else
+               (out, out_phi_f, out_phi_t))
+
+    elif structure == 3:
+        if not separate_lowpass:
+            out_phi_f = out[:, s[1]//2][:, None]
+            # exclude phi_f
+            out = np.array([o1 for n2_idx in range(len(out))
+                            for o1 in
+                            [[o0 for n1_fr_idx, o0 in enumerate(out[n2_idx])
+                              if n1_fr_idx != s[1] // 2]]])
+
         out_up   = out[:, :s[1]//2]
         out_down = out[:, s[1]//2:]
-        out = (out_up, out_down, out_phi)
-    elif structure == 8:
+        out = ((out_up, out_down, out_phi_f) if not separate_lowpass else
+               (out_up, out_down, out_phi_f, out_phi_t))
+
+    elif structure == 4:
         out_up   = out[:, :s[1]//2 + 1]
         out_down = out[:, s[1]//2:]
-        assert out_up.shape == out_down.shape, (out_up.shape, out_down.shape)
-        out = (out_up, out_down)
+        if not separate_lowpass:
+            out = (out_up, out_down)
+        else:
+            # assert same number of `n1`s
+            s0, s1 = out_phi_t.shape[-2], out_up.shape[-2]
+            assert s0 == s1, "{}, {}".format(out_phi_t.shape, out_up.shape)
+            out = (out_up, out_down, out_phi_t)
 
+    # sanity checks ##########################################################
+    phis = dict(out_phi_t=out_phi_t, out_phi_f=out_phi_f)
+    ref = out[0] if isinstance(out, tuple) else out
+    for name, op in phis.items():
+        if op is not None:
+            # number of n1s must match #######################################
+            assert op.shape[-2] == ref.shape[-2], (name, op.shape, ref.shape)
+
+            # due to transpose
+            fr_dim = -3 if structure != 1 else -4
+            if 'phi_f' in name:
+                assert op.shape[fr_dim] == 1
+                continue
+
+            # compute `ref_fr_len` ###########################################
+            if structure in (1, 2):
+                ref_fr_len = ref.shape[fr_dim]
+            elif structure == 3:
+                # due to separate spins having half of total `n1_fr`s
+                ref_fr_len = ref.shape[fr_dim] * 2
+            elif structure == 4:
+                # above + having `psi_t * phi_f`
+                ref_fr_len = (ref.shape[fr_dim] - 1) * 2
+            # due to `phi_t * phi_f` being present only in `out_phi_t`
+            ref_fr_len = (ref_fr_len if not separate_lowpass else
+                          ref_fr_len + 1)
+
+            # assert #########################################################
+            assert op.shape[fr_dim] == ref_fr_len, (
+                "{} != {} | {} | {}, {}".format(op.shape[fr_dim], ref_fr_len,
+                                                name, op.shape, ref.shape))
+
+    if structure in (3, 4):
+        assert out_up.shape == out_down.shape, (out_up.shape, out_down.shape)
     return out
 
 
@@ -705,7 +839,7 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
           - C: Whether decay is smooth (else will incur inflection points)
           A and B may fail to hold for lowest xi due to Morlet's corrective
           term; this is proper behavior.
-          See https://www.desmos.com/calculator/3ycdx1n9j6
+          See https://www.desmos.com/calculator/ivd7t3mjn8
 
     Parameters
     ----------
@@ -876,7 +1010,6 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
                         "bin indices (0 to {}{}):\n"
                         ).format(th_lp_sum_over, input_kind, diff_over_max,
                                  N//2, s)]
-            # report += ["{}\n\n".format(np.round(w[excess_over][::stride], 3))]
             report += ["{}\n\n".format(w[excess_over][::stride])]
             did_header = True
             if with_phi:
@@ -1272,12 +1405,16 @@ def _infer_backend(x, get_name=False):
             (backend, module))
 
 
-def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None):
+def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None):
     """Make tensor from variable-length `seq` (e.g. nested list) padded with
     `fill_value`.
 
     `init_fn` e.g. `lambda shape: torch.zeros(shape)`.
     `cast_fn` e.g. `lambda x: torch.tensor(x)`.
+
+    Will pad per `ref_shape` instead of what's determined from `seq`, if provided,
+    and if not None and >= existing along selected dims (e.g. `(None, 3)` will
+    pad dim0 per `seq` and dim1 to 3, unless `seq`'s dim1 would pad to 4).
 
     Code taken from: https://stackoverflow.com/a/27890978/10133797
     """
@@ -1308,6 +1445,13 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None):
     if cast_fn is None:
         cast_fn = lambda x: x
 
-    arr = init_fn(find_shape(seq))
+    shape = list(find_shape(seq))
+    if ref_shape is not None:
+        for i, s in enumerate(ref_shape):
+            if s is not None and s >= shape[i]:
+                shape[i] = s
+    shape = tuple(shape)
+
+    arr = init_fn(shape)
     fill_tensor(arr, seq, fill_value=pad_value)
     return arr
