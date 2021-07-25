@@ -405,7 +405,7 @@ def compute_xi_max(Q):
     xi_max : float
         largest frequency of the wavelet frame.
     """
-    xi_max = max(1. / (1. + math.pow(2., 3. / Q)), 0.35)
+    xi_max = max(1. / (1. + math.pow(2., 1. / Q)), 0.4)
     return xi_max
 
 
