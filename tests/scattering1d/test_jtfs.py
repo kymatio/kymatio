@@ -1044,7 +1044,7 @@ def test_meta():
           if out_3D and not (average_fr and average):
               continue  # invalid option
           for aligned in (True, False):
-            for sampling_psi_fr in ('resample', 'recalibrate'):
+            for sampling_psi_fr in ('resample', 'exclude', 'recalibrate'):
               for sampling_phi_fr in ('resample', 'recalibrate'):
                   test_params = dict(
                       out_3D=out_3D, average_fr=average_fr, average=average,

@@ -936,9 +936,14 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, trim_tm, commons,
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, (spin, psi1_f) in enumerate(zip(spins, psi1_fs)):
         for n1_fr in range(len(psi1_f)):
-            if (sc_freq.sampling_psi_fr == 'exclude' and
+            if sc_freq.sampling_psi_fr == 'exclude':
+                # 'exclude' is scale-oriented but to be safe also check
+                # if padded length is available
+                scale_diff = (sc_freq.shape_fr_scale_max -
+                              sc_freq.shape_fr_scale[n2])
+                if (scale_diff not in psi1_f[n1_fr] or
                     subsample_equiv_due_to_pad not in psi1_f[n1_fr]):
-                break
+                    continue
 
             # compute subsampling
             j1_fr = psi1_f[n1_fr]['j'][subsample_equiv_due_to_pad]

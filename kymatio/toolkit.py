@@ -219,6 +219,8 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
     along `n2`, and `n1_fr` for spin down (whihc makes it so that both spins are
     increasing away from `psi_t * phi_f`). The overall packing is structured
     same as in `kymatio.visuals.filterbank_jtfs()`.
+
+    Method assumes `out_exclude=None`.
     """
     # determine available valid structures
     def drop(*nums):
@@ -257,8 +259,6 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
     ns = meta['n']
     n_n1_frs_max = 0
     for pair in pairs:
-        if pair not in ns:
-            continue
         packed[pair] = []
         nsp = ns[pair].astype(int).reshape(-1, 3)
 

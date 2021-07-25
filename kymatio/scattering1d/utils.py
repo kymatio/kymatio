@@ -567,13 +567,23 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         xi1_fr, sigma1_fr, j1_fr, is_cqt1_fr = p
         return xi1_fr, sigma1_fr, j1_fr, is_cqt1_fr
 
+    def _exclude_excess_scale(n2, n1_fr):
+        if sc_freq.sampling_psi_fr != 'exclude' or n1_fr == -1:
+            return False
+
+        pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
+                  sc_freq.J_pad_fr[n2])
+        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+        scale_diff = (sc_freq.shape_fr_scale_max -
+                      sc_freq.shape_fr_scale[n2])
+        j0s = [k for k in sc_freq.psi1_f_fr_up[n1_fr] if isinstance(k, int)]
+        if scale_diff not in j0s or subsample_equiv_due_to_pad not in j0s:
+            return True
+        return False
+
     def _fill_n1_info(pair, n2, n1_fr, spin):
-        if sc_freq.sampling_psi_fr == 'exclude' and n1_fr != -1:
-            pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
-                      sc_freq.J_pad_fr[n2])
-            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
-            if subsample_equiv_due_to_pad not in sc_freq.psi1_f_fr_up[n1_fr]:
-                return
+        if _exclude_excess_scale(n2, n1_fr):
+            return
 
         # track S1 from padding to `_joint_lowpass()`
         (shape_fr_padded, total_conv_stride_over_U1_realized, n1_fr_subsample,
@@ -766,7 +776,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     if out_3D:
       # reorder for 3D
-      for field in array_fields:#meta:
+      for field in array_fields:
         if field in ('s', 'order'):
             meta_len = 1
         elif field == 'stride':
@@ -774,24 +784,42 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             meta_len = 3
         for pair in meta[field]:
+          n_slices = None
+
           if pair in ('S0', 'S1'):
               # simply expand dim for consistency, no 3D structure
               meta[field][pair] = meta[field][pair].reshape(-1, 1, meta_len)
               continue
+
           elif 'up' in pair or 'down' in pair:
-              number_of_n2 = sum(j2 != 0 for j2 in j2s)
-              number_of_n1_fr = len(j1s_fr)
+              if sampling_psi_fr != 'exclude':
+                  number_of_n2 = sum(j2 != 0 for j2 in j2s)
+                  number_of_n1_fr = len(j1s_fr)
+              else:
+                  n_slices = 0
+                  for n2, j2 in enumerate(j2s):
+                      if j2 == 0:
+                          continue
+                      for n1_fr, j1_fr in enumerate(j1s_fr):
+                          if _exclude_excess_scale(n2, n1_fr):
+                              continue
+                          n_slices += 1
+
           elif pair == 'psi_t * phi_f':
               number_of_n2 = sum(j2 != 0 for j2 in j2s)
               number_of_n1_fr = 1
+
           elif pair == 'phi_t * psi_f':
               number_of_n2 = 1
               number_of_n1_fr = len(j1s_fr)
+
           elif pair == 'phi_t * phi_f':
               number_of_n2 = 1
               number_of_n1_fr = 1
-          n_coeffs = number_of_n2 * number_of_n1_fr  # TODO exclude?
-          meta[field][pair] = meta[field][pair].reshape(n_coeffs, -1, meta_len)
+
+          if n_slices is None:
+              n_slices = number_of_n2 * number_of_n1_fr
+          meta[field][pair] = meta[field][pair].reshape(n_slices, -1, meta_len)
 
     if out_exclude is not None:
         # drop excluded pairs
