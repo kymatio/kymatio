@@ -1,3 +1,4 @@
+import math
 from ...frontend.keras_frontend import ScatteringKeras
 from ...scattering1d.frontend.base_frontend import ScatteringBase1D
 
@@ -7,10 +8,10 @@ from tensorflow.python.framework import tensor_shape
 
 
 class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
-    def __init__(self, J, Q=1, max_order=2, oversampling=0):
+    def __init__(self, J, Q=1, max_order=2, oversampling=0, r_psi=math.sqrt(.5)):
         ScatteringKeras.__init__(self)
         ScatteringBase1D.__init__(self, J, None, Q, max_order, True,
-                oversampling, True, 'array', None)
+                oversampling, True, 'array', r_psi, None)
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])

@@ -11,7 +11,8 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, vectorize=True, out_type='array', r_psi=math.sqrt(.5),
+            backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -21,6 +22,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
+        self.r_psi = r_psi
         self.backend = backend
 
     def build(self):
@@ -32,7 +34,6 @@ class ScatteringBase1D(ScatteringBase):
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
-        self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
         self.P_max = 5
@@ -183,6 +184,10 @@ class ScatteringBase1D(ScatteringBase):
             Tensor or collected into a dictionary. Deprecated in favor of
             `out_type`. For more details, see the documentation for
             `scattering`.
+        r_psi : float, optional
+            Should be >0 and <1. Controls the redundancy of the filters
+            (the larger r_psi, the larger the overlap between adjacent wavelets).
+            Defaults to sqrt(0.5).
         out_type : str
             Specifices the output format of the transform, which is currently
             one of `'array'` or `'list`'. If `'array'`, the output is a large
