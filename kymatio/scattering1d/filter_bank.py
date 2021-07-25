@@ -566,6 +566,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         Each value for k is an array (or tensor) of size 2**(J_support - k)
         containing the Fourier transform of the filter after subsampling by
         2**k
+    * 'width': temporal width
 
     Parameters
     ----------
@@ -716,13 +717,23 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         psi1_f[n1]['xi'] = xi1[n1]
         psi1_f[n1]['sigma'] = sigma1[n1]
         psi1_f[n1]['j'] = j1
+        psi1_f[n1]['width'] = {0: 2*compute_temporal_width(
+            psi1_f[n1][0], sigma0=sigma0,
+            criterion_amplitude=criterion_amplitude)}
     for (n2, j2) in enumerate(j2s):
         psi2_f[n2]['xi'] = xi2[n2]
         psi2_f[n2]['sigma'] = sigma2[n2]
         psi2_f[n2]['j'] = j2
+        for k in psi2_f[n2]:
+            if isinstance(k, int):
+                psi2_f[n2]['width'][k] = 2*compute_temporal_width(
+                    psi2_f[n2][k], sigma0=sigma0,
+                    criterion_amplitude=criterion_amplitude)
     phi_f['xi'] = 0.
     phi_f['sigma'] = sigma_low
     phi_f['j'] = 0
+    phi_f['width'] = 2*compute_temporal_width(
+        phi_f[0], sigma0=sigma0, criterion_amplitude=criterion_amplitude)
 
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
@@ -731,3 +742,212 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi
+
+
+def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
+                           sigma0=.1, criterion_amplitude=1e-3):
+    """Measures "width" in terms of amount of invariance imposed via convolution.
+    See below for detailed description.
+
+    Parameters
+    ----------
+    p_f: np.ndarray
+        Frequency-domain filter of length >= N. "Length" must be along dim0,
+        i.e. `(freqs, ...)`.
+
+    N: int / None
+        Unpadded output length. (In scattering we convolve at e.g. x4 input's
+        length, then unpad to match input's length).
+        Defaults to `len(p_f) // 2`.
+
+    pts_per_scale: int
+        Used only in `fast=False`: number of Gaussians generated per dyadic
+        scale. Greater improves approximation accuracy but is slower.
+
+    sigma0, criterion_amplitude: float, float
+        See `help(kymatio.scattering1d.filter_bank.gauss_1d)`. Parameters
+        defining the Gaussian lowpass used as reference for computing `width`.
+        That is, `width` is defined *in terms of* this Gaussian.
+
+    Returns
+    -------
+    width: int
+        The estimated width of `p_f`.
+
+    Motivation
+    ----------
+    The measure is, a relative L2 distance (Euclidean distance relative to
+    input norms) between inner products of `p_f` with an input, at different
+    time shifts (i.e. `L2(A, B); A = sum(p(t) * x(t)), B = sum(p(t) * x(t - T))`).
+      - The time shift is made to be "maximal", i.e. half of unpadded output
+        length (`N/2`), which provides the most sensitive measure to "width".
+      - The input is a Dirac delta, thus we're really measuring distances between
+        impulse responses of `p_f`, or of `p_f` with itself. This provides a
+        measure that's close to that of input being WGN, many-trials averaged.
+
+    This yields `l2_reference`. It's then compared against `l2_Ts`, which is
+    a list of measures obtained the same way except replacing `p_f` with a fully
+    decayed (undistorted) Gaussian lowpass - and the `l2_T` which most closely
+    matches `l2_reference` is taken to be the `width`.
+
+    The interpretation is, "width" of `p_f` is the width of the (properly decayed)
+    Gaussian lowpass that imposes the same amount of invariance that `p_f` does.
+
+    Algorithm
+    ---------
+    The actual algorithm is different, since L2 is a problematic measure with
+    unpadding; there's ambiguity: `T=1` can be measured as "closer" to `T=64`
+    than `T=63`). Namely, we take inner product (similarity) of `p_f` with
+    Gaussians at varied `T`, and the largest such product is the `width`.
+    The result is very close to that described under "Motivation", but without
+    the ambiguity that requires correction steps.
+
+    Fast algorithm
+    --------------
+    Approximates `fast=False`. If `p_f` is fully decayed, the result is exactly
+    same as `fast=False`. If `p_f` is very wide (nearly global average), the
+    result is also same as `fast=False`. The disagreement is in the intermediate
+    zone, but is not significant.
+
+    We compute `ratio = p_t.max() / p_t.min()`, and compare against a fully
+    decayed reference. For the intermediate zone, a quadratic interpolation
+    is used to approximate `fast=False`.
+
+    Assumption
+    ----------
+    `abs(p_t)`, where `p_t = ifft(p_f)`, is assumed to be Gaussian-like.
+    An ideal measure is devoid of such an assumption, but is difficult to devise
+    in finite sample settings.
+
+    Note
+    ----
+    `width` saturates at `N` past a certain point in "incomplete decay" regime.
+    The intution is, in incomplete decay, the measure of width is ambiguous:
+    for one, we lack compact support. For other, the case `width == N` is a
+    global averaging (simple mean, dc, etc), which is really `width = inf`.
+
+    If we let the algorithm run with unrestricted `T_max`, we'll see `width`
+    estimates blow up as `T -> N` - but we only seek to quantify invariance
+    up to `N`. Also, Gaussians of widths `T = N - const` and `T = N` have
+    very close L2 measures up to a generous `const`; see `test_global_averaging()`
+    in `tests/scattering1d/test_jtfs.py` for `T = N - 1` (and try e.g. `N - 64`).
+    """
+    if len(p_f) == 1:  # edge case
+        return 1
+
+    # obtain temporal filter
+    p_f = p_f.squeeze()
+    p_t = np.abs(ifft(p_f))
+
+    # relevant params
+    Np = len(p_f)
+    if N is None:
+        N = Np // 2
+    ca = dict(criterion_amplitude=criterion_amplitude)
+
+    # compute "complete decay" factor
+    if sigma0 == .1 and criterion_amplitude == 1e-3:
+        # precomputed
+        complete_decay_factor = 16
+        fast_approx_amp_ratio = 0.8208687174155399
+    else:
+        T = Np
+        phi_f_fn = lambda Np_phi: gauss_1d(Np_phi, sigma0 / T)
+        Np_min = compute_minimum_required_length(phi_f_fn, Np, **ca)
+        complete_decay_factor = 2 ** math.ceil(math.log2(Np_min / Np))
+        phi_t = phi_f_fn(Np_min, sigma0 / T)
+        fast_approx_amp_ratio = phi_t[T] / phi_t[0]
+
+    if fast:
+        ratio = (p_t / p_t[0])[:len(p_t)//2]  # assume ~symmetry about halflength
+        rmin = ratio.min()
+        if rmin > fast_approx_amp_ratio:
+            # equivalent of `not complete_decay`
+            th_global_avg = .96
+            # never sufficiently decays
+            if rmin > th_global_avg:
+                return N
+            # quadratic interpolation
+            # y0 = A + B*x0^2
+            # y1 = A + B*x1^2
+            # B = (y0 - y1) / (x0^2 - x1^2)
+            # A = y0 - B*x0^2
+            y0 = .5 * Np
+            y1 = N
+            x0 = fast_approx_amp_ratio
+            x1 = th_global_avg
+            B = (y0 - y1) / (x0**2 - x1**2)
+            A = y0 - B*x0**2
+            T_est = A + B*rmin**2
+            # do not exceed `N`
+            width = min(T_est, N)
+        else:
+            width = np.argmin(np.abs(ratio - fast_approx_amp_ratio))
+        return width
+
+    # if complete decay, search within length's scale
+    support = 2 * compute_temporal_support(p_f, **ca)
+    complete_decay = bool(support != Np)
+    too_short = bool(N == 2 or Np == 2)
+    if too_short:
+        return (1 if complete_decay else 2)
+    elif not complete_decay:
+        # cannot exceed by definition
+        T_max = N
+        # if it were less, we'd have `complete_decay`
+        T_min = 2 ** math.ceil(math.log2(Np / complete_decay_factor))
+    else:  # complete decay
+        # if it were more, we'd have `not complete_decay`
+        # the `+ 1` is to be safe in edge cases
+        T_max = 2 ** math.ceil(math.log2(Np / complete_decay_factor) + 1)
+        # follows from relation of `complete_decay_factor` to `width`
+        # `width \propto support`, `support = complete_decay_factor * stuff`
+        # (asm. full decay); so approx `support ~= complete_decay_factor * width`
+        T_min = 2 ** math.floor(math.log2(support / complete_decay_factor))
+    T_min = max(min(T_min, T_max // 2), 1)  # ensure max > min and T_min >= 1
+    T_max = max(T_max, 2)  # ensure T_max >= 2
+    T_min_orig, T_max_orig = T_min, T_max
+
+    n_scales = math.log2(T_max) - math.log2(T_min)
+    search_pts = int(n_scales * pts_per_scale)
+
+    # search T ###############################################################
+    def search_T(T_min, T_max, search_pts, log):
+        Ts = (np.linspace(T_min, T_max, search_pts) if not log else
+              np.logspace(np.log10(T_min), np.log10(T_max), search_pts))
+        Ts = np.unique(np.round(Ts).astype(int))
+
+        Ts_done = []
+        corrs = []
+        for T_test in Ts:
+            N_phi = max(int(T_test * complete_decay_factor), Np)
+            phi_f = gauss_1d(N_phi, sigma=sigma0 / T_test)
+            phi_t = ifft(phi_f).real
+
+            trim = min(min(len(p_t), len(phi_t))//2, N)
+            p0, p1 = p_t[:trim], phi_t[:trim]
+            p0 /= np.linalg.norm(p0)  # /= sqrt(sum(x**2))
+            p1 /= np.linalg.norm(p1)
+            corrs.append((p0 * p1).sum())
+            Ts_done.append(T_test)
+
+        T_est = int(round(Ts_done[np.argmax(corrs)]))
+        T_stride = int(Ts[1] - Ts[0])
+        return T_est, T_stride
+
+    # first search in log space
+    T_est, _ = search_T(T_min, T_max, search_pts, log=True)
+    # refine search, now in linear space
+    T_min = max(2**math.floor(math.log2(max(T_est - 1, 1))), T_min_orig)
+    # +1 to ensure T_min != T_max
+    T_max = min(2**math.ceil(math.log2(T_est + 1)), T_max_orig)
+    # only one scale now
+    search_pts = pts_per_scale
+    T_est, T_stride = search_T(T_min, T_max, search_pts, log=False)
+    # only within one zoom
+    diff = pts_per_scale // 2
+    T_min, T_max = max(T_est - diff, 1), max(T_est + diff - 1, 3)
+    T_est, _ = search_T(T_min, T_max, search_pts, log=False)
+
+    width = T_est
+    return width
