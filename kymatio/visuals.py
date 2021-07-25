@@ -215,7 +215,8 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         # plot LP sum ########################################################
         plot_kw_lp = {}
         if 'title' not in user_plot_kw_names:
-            plot_kw['title'] = "Littlewood-Paley sum"
+            plot_kw['title'] = ("Littlewood-Paley sum" +
+                                " (no phi)" * int(not lp_phi))
         if 'ylims' not in user_plot_kw_names:
             plot_kw_lp['ylims'] = (0, None)
         if lp_sum and not (zoom == -1 and up):
