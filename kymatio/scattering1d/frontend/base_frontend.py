@@ -4,7 +4,7 @@ import numbers
 
 import numpy as np
 
-from ..filter_bank import scattering_filter_factory
+from ..filter_bank import scattering_filter_factory, energy_norm_filterbank_tm
 from ..utils import (compute_border_indices, compute_padding, compute_minimum_support_to_pad,
 compute_meta_scattering, precompute_size_scattering)
 
@@ -75,6 +75,10 @@ class ScatteringBase1D(ScatteringBase):
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
+
+        # energy norm
+        energy_norm_filterbank_tm(self.psi1_f, self.psi2_f, self.phi_f,
+                                  self.J, self.log2_T)
 
     def meta(self):
         """Get meta information on the transform
