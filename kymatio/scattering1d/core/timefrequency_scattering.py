@@ -44,7 +44,7 @@ def timefrequency_scattering(
 
     total_downsample_fr
         Total amount of subsampling, conv and equivalent, relative to
-        `J_pad_fr_max_init`. Controls fr unpadding.
+        `J_pad_fr_max_init`. Conceptual quantity.
 
     Subsampling, padding
     --------------------
@@ -93,8 +93,6 @@ def timefrequency_scattering(
         Imposes:
             - `freq`  to be same for all `n2` (can differ due to padding
               or convolutional stride)
-            - `n1_fr` to be same for all `n2` -> `sampling_psi_fr != 'exclude'`
-              # TODO ^ no; this is for out_4D
 
     log2_F:
         Larger -> smaller `freq`
@@ -690,7 +688,7 @@ def timefrequency_scattering(
                 # Average directly
                 S_1_avg = B.mean(U_1_m, axis=-1)
 
-        if 'S1' not in out_exclude:  # TODO docs
+        if 'S1' not in out_exclude:
             if average_global:
                 S_1_tm = S_1_avg
                 total_conv_stride_tm = log2_T
@@ -1141,11 +1139,7 @@ def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
     zero_row = B.zeros_like(coeff_list[0])
     padded_len = 2**pad_fr
     # first zero pad, then reflect remainder (including zeros as appropriate)
-    n_zeros = min(#padded_len // 2,                # never need more than this
-                  # TODO ^ with variable length wavelets this becomes relevant
-                  # again; currently it's dropped since further steps are
-                  # required to account for `max_pad_factor_fr`
-                  shape_fr_max - n_coeffs_input,  # nor this
+    n_zeros = min(shape_fr_max - n_coeffs_input,  # never need more than this
                   padded_len - n_coeffs_input)    # cannot exceed `padded_len`
     zero_rows = [zero_row] * n_zeros
 
@@ -1161,7 +1155,7 @@ def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
         c = coeff_list_new[idx]
         c = c if reflect else B.conj(c)
         right_rows.append(c)
-        if idx in (-1, -len(coeff_list_new)):  # TODO bounds correctly excluded?
+        if idx in (-1, -len(coeff_list_new)):
             reflect = not reflect
         idx += 1 if reflect else -1
 

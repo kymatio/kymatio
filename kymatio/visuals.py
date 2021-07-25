@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
 import numpy as np
-from scipy.fft import ifft
+from scipy.fft import ifft, ifftshift
 from copy import deepcopy
 from .scattering1d.filter_bank import compute_temporal_support
 from .toolkit import coeff_energy, coeff_distance, energy
@@ -125,25 +125,38 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
 
 
 def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
-                       lp_phi=True, plot_kw=None):
+                       lp_phi=True, center_dc=None, plot_kw=None):
     """
-    # Arguments:
-        scattering: kymatio.scattering1d.TimeFrequencyScattering1D
-            Scattering object.
-        zoom: int
-            Will zoom plots by this many octaves.
-            If -1, will show full frequency axis (including negatives),
-            and both spins.
-        j0: int
-            `subsample_equiv_due_to_pad`
-        filterbank : False
-            Whether to plot the filterbank.
-        lp_sum: False
-            Whether to plot Littlewood-Paley sum of the filterbank.
-        plot_kw: None / dict
-            Will pass to `plot(**plot_kw)`.
+    Parameters
+    ----------
+    scattering: kymatio.scattering1d.TimeFrequencyScattering1D
+        Scattering object.
 
-    # Example:
+    zoom: int
+        Will zoom plots by this many octaves.
+        If -1, will show full frequency axis (including negatives),
+        and both spins.
+
+    j0: int
+        `subsample_equiv_due_to_pad`
+
+    filterbank : bool (default True)
+        Whether to plot the filterbank.
+
+    lp_sum: bool (default False)
+        Whether to plot Littlewood-Paley sum of the filterbank.
+
+    center_dc: bool / None
+        If True, will `ifftshift` to center the dc bin.
+        Defaults to `True` if `zoom == -1`.
+
+    plot_kw: None / dict
+        Will pass to `plot(**plot_kw)`.
+
+    Example
+    -------
+    ::
+
         scattering = Scattering1D(shape=2048, J=8, Q=8)
         filterbank_scattering(scattering)
     """
@@ -151,10 +164,13 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         # determine plot parameters ##########################################
         # vertical lines (octave bounds)
         Nmax = len(ps[0][j0])
+        j_dists = np.array([Nmax//2**j for j in range(1, jtfs.J_fr + 1)])
         if up:
-            vlines = [Nmax - Nmax//2**j for j in range(1, jtfs.J_fr + 1)]
+            vlines = (Nmax//2 + j_dists if center_dc else
+                      Nmax - j_dists)
         else:
-            vlines = [Nmax//2**j for j in range(1, jtfs.J_fr + 1)]
+            vlines = (Nmax//2 - j_dists if center_dc else
+                      j_dists)
         # x-axis zoom
         if zoom == -1:
             xlims = (-.02 * Nmax, 1.02 * Nmax)
@@ -178,12 +194,22 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
         # plot filterbank ####################################################
         if filterbank:
+            # bandpasses
             for p in ps:
                 if j0 not in p:  # sampling_psi_fr == 'exclude'
                     continue
                 j = p['j'][j0]
-                plot(p[j0], color=colors[j], linestyle=linestyles[j])
-            plot(p0[j0][0], color='k', **plot_kw, show=show,
+                pplot = p[j0].squeeze()
+                if center_dc:
+                    pplot = ifftshift(pplot)
+                    pplot[1:] = pplot[1:][::-1]
+                plot(pplot, color=colors[j], linestyle=linestyles[j])
+            # lowpass
+            p0plot = p0[j0][0].squeeze()
+            if center_dc:
+                p0plot = ifftshift(p0plot)
+                p0plot[1:] = p0plot[1:][::-1]
+            plot(p0plot, color='k', **plot_kw, show=show,
                  vlines=(vlines, dict(color='k', linewidth=1)))
 
         # plot LP sum ########################################################
@@ -193,7 +219,8 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         if 'ylims' not in user_plot_kw_names:
             plot_kw_lp['ylims'] = (0, None)
         if lp_sum and not (zoom == -1 and up):
-            plot(lp, **plot_kw, **plot_kw_lp, show=show,
+            lpplot = ifftshift(lp) if center_dc else lp
+            plot(lpplot, **plot_kw, **plot_kw_lp, show=show,
                  hlines=(1, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
 
@@ -204,6 +231,9 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
     else:
         plot_kw = {}
     user_plot_kw_names = list(plot_kw)
+    # handle `center_dc`
+    if center_dc is None:
+        center_dc = bool(zoom == -1)
 
     # define colors & linestyles
     colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "

@@ -465,7 +465,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     -------------------------
     Computation replicates logic in `timefrequency_scattering()`. Meta values
     depend on:
-        - out_3D (True only possible with average_fr=True)
+        - out_3D (True only possible with `average and average_fr`)
         - average
         - average_global
         - average_fr
@@ -473,7 +473,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         - oversampling
         - oversampling_fr
         - max_padding_fr
-        - aligned (False meaningful (and tested) only with out_3D=True)
+        - aligned
         - sampling_psi_fr
         - sampling_phi_fr
     and some of their interactions.
