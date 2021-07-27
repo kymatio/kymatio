@@ -867,8 +867,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     * 'sigma': frequential width
     * 'j': subsampling factor from 0 to `J_fr` (or potentially less if
       `sampling_psi_fr != 'resample'`).
-    * 'width': temporal width
-    * 'support': temporal support
+    * 'width': temporal width (scale; interval of imposed invariance)
+    * 'support': temporal support (duration of decay)
 
     Parameters
     ----------
@@ -924,6 +924,12 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                   widths are different; depending how loose our alias tolerance
                   (`alpha`), they're exactly the same.
 
+    sampling_phi_fr : str['resample', 'recalibrate']
+        See `help(TimeFrequencyScattering1D)`. Used for a sanity check.
+
+    pad_mode_fr : str
+        See `help(TimeFrequencyScattering1D)`. Used for a sanity check.
+
     sigma_max_to_min_max_ratio : float
         Largest permitted `max(sigma) / min(sigma)`.
         See `help(TimeFrequencyScattering1D)`.
@@ -937,12 +943,14 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         List of dicts containing the band-pass filters of frequential scattering
         with "up" spin at all possible downsamplings. Each element corresponds to
         a dictionary for a single filter, see above for an exact description.
-        Downsampling factors are indexed by integers, where `2**index` is the
-        amount of downsampling, and the `'j'` key holds the value of maximum
-        subsampling which can be performed on each filter without aliasing.
+        The `'j'` key holds the value of maximum subsampling which can be
+        performed on each filter without aliasing.
 
+        These filters are not subsampled, as they do not receive subsampled
+        inputs (but their *outputs*, i.e. convolutions, can be subsampled).
         The kind of downsampling done is controlled by `sampling_psi_fr`
-        (but it is *never* subsampling).
+        (but it is *never* subsampling). Downsampling is indexed by `j`
+        (rather, `subsample_equiv_due_to_pad`).
 
         Example (`J_fr = 2`, `n1_fr = 8`, lists hold subsampling factors):
             - 'resample':
@@ -1208,8 +1216,8 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
     * 'sigma': frequential width
     * 'j': subsampling factor from 0 to `log2_F` (or potentially less if
       `sampling_phi_fr = 'recalibrate'`).
-    * 'width': temporal width
-    * 'support': temporal support
+    * 'width': temporal width (scale; interval of imposed invariance)
+    * 'support': temporal support (duration of decay)
 
     Parameters
     ----------
@@ -1261,9 +1269,11 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
                 3: [2, 1, 0]
             - 'recalibrate':
                 0: [2, 1, 0]
-                1: [1, 1, 0]
-                2: [0, 0, 0]
-                3: [0, 0, 0]
+                1: [1, 0]
+                2: [0]
+                3: not allowed
+        ('recalibrate' looks like 'exclude' for psi because it is one and the same
+         filter, so it makes no sense to have e.g. `[0, 0]` (they're identical)).
     """
     # compute the spectral parameters of the filters
     sigma_low = sigma0 / F

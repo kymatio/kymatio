@@ -381,43 +381,36 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     ----------
     J_pad : int
         2**J_pad == amount of temporal padding.
-    J : int
-        The maximum log-scale of the scattering transform.
-        In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1 / tuple[int]
-        The number of first-order wavelets per octave. Defaults to `1`.
-        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
-        second-order wavelets per octave (which defaults to `1`).
-            - Q1: For audio signals, a value of `>= 12` is recommended in
-              order to separate partials.
-            - Q2: Recommended `2` or `1` for most applications.
-    J_fr, Q_fr: int, int
-        `J` and `Q` for frequential scattering.
-    T : int
-        Temporal support of temporal low-pass filter, controlling amount of
-        imposed time-shift invariance and maximum subsampling
-    F : int
-        Temporal support of frequential low-pass filter, controlling amount of
-        imposed frequency transposition invariance and subsampling
+
+    J, Q, J_fr, T, F: int, int, int, int, int
+        See `help(kymatio.scattering1d.TimeFrequencyScattering1D)`.
+        Control physical meta of bandpass and lowpass filters (xi, sigma, etc).
+
     out_3D : bool
         - True: will reshape meta fields to match output structure:
           `(n_coeffs, n_freqs, meta_len)`.
         - False: pack flattened: `(n_coeffs * n_freqs, meta_len)`.
+
     out_type : str
          - `'dict:list'` or `'dict:array'`: meta is packed
            into respective pairs (e.g. `meta['n']['psi_t * phi_f'][1]`)
          - `'list'` or `'array'`: meta is flattened (e.g. `meta['n'][15]`).
+
     out_exclude : list/tuple[str]
         Names of coefficient pairs to exclude from meta.
+
     sampling_filters_fr : tuple[str]
         See `help(TimeFrequencyScattering1D)`. Affects `xi`, `sigma`, and `j`.
+
     average : bool
-        Only affects `S0`'s meta.
         Affects `S0`'s meta, and temporal stride meta.
+
     average_global : bool
         Affects `S0`'s meta, and temporal stride meta.
+
     oversampling : int
         Affects temporal stride meta.
+
     sc_freq : `scattering1d.frontend.base_frontend._FrequencyScatteringBase`
         Frequential scattering object, storing pertinent attributes and filters.
 
