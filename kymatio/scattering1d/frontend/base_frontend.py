@@ -885,7 +885,7 @@ class TimeFrequencyScatteringBase1D():
 
         Note: `sampling_phi_fr = 'exclude'` will re-set to `'resample'`, as
         `'exclude'` isn't a valid option (there must exist a lowpass for every
-        input length). # TODO re-set to `'recalibrate'` instead?
+        input length).
 
     max_pad_factor_fr : int / None (default) / list[int], optional
         `max_pad_factor` for frequential axis in frequential scattering.
@@ -893,11 +893,7 @@ class TimeFrequencyScatteringBase1D():
             - None: unrestricted; will pad as much as needed.
             - list[int]: controls max padding for each `shape_fr_scale`
               separately, in reverse order (max to min).
-                - Variable values that yield padding that's greater for lesser
-                  `shape_fr_scale` will terminate some filter construction
-                  prematurely and yield incorrect or undefined behavior;
-                  an Exception is raised.
-                  In general, increments shouldn't  exceed +1 (e.g. `[2, 4]`).
+                - Values must non-increasing (e.g. not `[2, 0, 1, ...]`)
                 - If the list is insufficiently long (less than number of scales),
                   will extend list with the last provided value
                   (e.g. `[1, 2] -> [1, 2, 2, 2]`).
@@ -1368,15 +1364,15 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.average_fr_global = bool(self.F == 2**self.shape_fr_scale_max)
 
         # restrict `J_pad_fr_max` (and `J_pad_fr_max_init`) if specified by user
-        err = ValueError("`max_pad_factor_fr` must be int>0, list/tuple[int>0], "
-                         "or None (got %s)" % str(self.max_pad_factor_fr))
+        err = ValueError("`max_pad_factor_fr` must be int>0, non-increasing "
+                         "list/tuple[int>0], or None " +
+                         "(got %s)" % str(self.max_pad_factor_fr))
         if isinstance(self.max_pad_factor_fr, int):
             self.max_pad_factor_fr = [self.max_pad_factor_fr
                                       ] * len(self.shape_fr_realized)
 
         elif isinstance(self.max_pad_factor_fr, (list, tuple)):
-            if any((not isinstance(p, int) or p < 0)
-                   for p in self.max_pad_factor_fr):
+            if any(np.diff(self.max_pad_factor_fr) > 0):
                 raise err
             while len(self.max_pad_factor_fr) < len(self.shape_fr_realized):
                 # repeat last value

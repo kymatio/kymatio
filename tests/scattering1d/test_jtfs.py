@@ -232,7 +232,7 @@ def test_up_vs_down():
 
     E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
     E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 68
+    th = 60
     assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
 
     if metric_verbose:
@@ -307,7 +307,7 @@ def test_max_pad_factor_fr():
 
     for aligned in (True, False)[1:]:
         for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
-          for max_pad_factor_fr in (0, 1, [1, 2, 0, 1]):
+          for max_pad_factor_fr in (0, 1, [2, 1, 0]):
             F = 128 if sampling_filters_fr == 'recalibrate' else 16
             test_params = dict(aligned=aligned,
                                sampling_filters_fr=sampling_filters_fr,
@@ -460,11 +460,6 @@ def test_lp_sum():
         for max_pad_factor in (None, 1):
           for max_pad_factor_fr in (None, 1):
             for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
-              # if max_pad_factor != 1 or max_pad_factor_fr != 1:
-              #     continue
-              # if Q != 8 or sampling_filters_fr != 'recalibrate':
-              #     continue
-              # print("DONE")
               test_params = dict(Q=Q, r_psi=r_psi, max_pad_factor=max_pad_factor,
                                  max_pad_factor_fr=max_pad_factor_fr,
                                  sampling_filters_fr=sampling_filters_fr,
@@ -805,7 +800,7 @@ def test_backends():
 
         E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        th = 35
+        th = 32
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 

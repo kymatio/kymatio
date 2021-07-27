@@ -469,7 +469,7 @@ def compute_xi_max(Q):
     xi_max : float
         largest frequency of the wavelet frame.
     """
-    xi_max = max(1. / (1. + math.pow(2., 3. / Q)), 0.35)
+    xi_max = max(1. / (1. + math.pow(2., 1. / Q)), 0.4)
     return xi_max
 
 
@@ -1070,6 +1070,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 j0_max = j0_prev
                 break
 
+            # validate `subsample_equiv_relative_to_max_pad_init` ############
+            # needed for variable list `max_pad_factor_fr` ###################
             # j0 no longer strictly tied to shape_fr for logics that check it
             # (that raise errors); account for this
             j0_at_limit = bool(scale_diff >= max_subsample_equiv_before_phi_fr)
