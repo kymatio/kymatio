@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
+import os, glob
 import numpy as np
 from scipy.fft import ifft, ifftshift
 from copy import deepcopy
+from PIL import Image
 from .scattering1d.filter_bank import compute_temporal_support
 from .toolkit import coeff_energy, coeff_distance, energy
 
@@ -11,10 +13,6 @@ try:
 except ImportError:
     import warnings
     warnings.warn("`kymatio.visuals` requires `matplotlib` installed.")
-
-
-__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
-           'energy_profile_jtfs']
 
 
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
@@ -530,12 +528,14 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
-        meta_idx[0] += len(sup)
+        meta_idx[0] += (1 if out_3D else
+                        len(sup))
 
     def _viz_simple(coef, pair, meta, norm):
         imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
                title=_title(meta, meta_idx, pair, '0'))
-        meta_idx[0] += len(coef)
+        meta_idx[0] += (1 if out_3D else
+                        len(coef))
 
     out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
     out_list = isinstance(Scx['S0'], list)
@@ -575,6 +575,147 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
         else:
             for i, coef in enumerate(Scx[pair][sample_idx]):
                 _viz_simple(coef, pair, meta, norms[1 + j])
+
+
+def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
+                cmap='turbo', cmap_norm=.5, axes_labels=('n2', 'n1_fr', 'n1'),
+                overwrite=True, save_images=False, gif_kw=None,
+                width=1000, height=800, surface_count=30, opacity=.2):
+    """Generate and save GIF of 3D JTFS slices.
+
+    Parameters
+    ----------
+    packed : tensor, 4D
+        Output of `kymatio.toolkit.pack_coeffs_jtfs`.
+
+    savedir : str
+        Path of directory to save GIF/images to. Defaults to current
+        working directory.
+
+    base_name : str
+        Will save gif with this name, and images with same name enumerated.
+
+    images_ext : str
+        Generates images with this format. '.png' (default) is lossless but takes
+        more space, '.jpg' is compressed.
+
+    cmap : str
+        Colormap to use.
+
+    cmap_norm : float
+        Colormap norm to use, as fraction of maximum value of `packed`
+        (i.e. `norm=(0, cmap_norm * packed.max())`).
+
+    axes_labels : tuple[str]
+        Names of last three dimensions of `packed`. E.g. `structure==2`
+        will output `(n2, n1_fr, n1, t)`.
+
+    overwrite : bool (default True)
+        Whether to overwrite gifs/images, if they already exist with same
+        save path.
+
+    save_images : bool (default False)
+        Images are always first stored then made into a GIF. If `False`
+        (default), the images are deleted after the GIF is made.
+
+    gif_kw : dict / None
+        Passed as kwargs to `kymatio.visuals.make_gif`.
+
+    width : int
+        2D width of each image (GIF frame).
+
+    height : int
+        2D height of each image (GIF frame).
+
+    surface_count : int
+        Greater improves 3D detail of each frame, but takes longer to render.
+
+    opacity : float
+        Lesser makes 3D surfaces more transparent, exposing more detail.
+    """
+    try:
+        import plotly.graph_objs as go
+    except ImportError as e:
+        print("\n`plotly.graph_objs` is needed for `gif_jtfs_3D`.")
+        raise e
+
+    # handle labels
+    supported = ('t', 'n2', 'n1_fr', 'n1')
+    for label in axes_labels:
+        if label not in supported:
+            raise ValueError(("unsupported `axes_labels` element: {} -- must "
+                              "be one of: {}").format(
+                                  label, ', '.join(supported)))
+    frame_label = [label for label in supported if label not in axes_labels][0]
+
+    # 3D meshgrid
+    a, b, c = packed.shape[1:]
+    if 'n1_fr' in axes_labels:
+        # distinguish + and - spin
+        idx = axes_labels.index('n1_fr')
+        if idx == 0:
+            X, Y, Z = np.mgrid[-.5:.5:a*1j, 0:1:b*1j, 0:1:c*1j]
+        elif idx == 1:
+            X, Y, Z = np.mgrid[0:1:a*1j, -.5:.5:b*1j, 0:1:c*1j]
+        else:
+            X, Y, Z = np.mgrid[0:1:a*1j, 0:1:b*1j, -.5:.5:c*1j]
+    else:
+        X, Y, Z = np.mgrid[0:1:a*1j, 0:1:b*1j, 0:1:c*1j]
+
+    # camera focus, colormap norm
+    eye = np.array([.3, .1, 2.5]) / 1.25
+    eye = np.array([2.5, .3, 2]) / 1.6
+    mx = cmap_norm * packed.max()
+
+    # gif configs
+    volume_kw = dict(
+        x=X.flatten(),
+        y=Y.flatten(),
+        z=Z.flatten(),
+        opacity=opacity,
+        surface_count=surface_count,
+        colorscale=cmap,
+        showscale=False,
+        cmin=0,
+        cmax=mx,
+    )
+    layout_kw = dict(
+        width=width,
+        height=height,
+        scene=dict(
+            xaxis_title=axes_labels[0],
+            yaxis_title=axes_labels[1],
+            zaxis_title=axes_labels[2],
+        ),
+        scene_camera = dict(
+            up=dict(x=0, y=1, z=0),
+            center=dict(x=0, y=0, z=0),
+            eye=dict(x=eye[0], y=eye[1], z=eye[2]),
+        ),
+    )
+
+    # generate gif frames ####################################################
+    img_paths = []
+    for k, vol4 in enumerate(packed):
+        fig = go.Figure(go.Volume(value=vol4.flatten(), **volume_kw))
+        fig.update_layout(
+            **layout_kw,
+            title={'text': f"{frame_label}={k}",
+                   'x':.5, 'y':.09,
+                   'xanchor': 'center', 'yanchor': 'top'}
+        )
+
+        savepath = os.path.join(savedir, f'{base_name}{k}.{images_ext}')
+        if os.path.isfile(savepath) and overwrite:
+            os.unlink(savepath)
+        fig.write_image(savepath)
+        img_paths.append(savepath)
+
+    # make gif ###############################################################
+    if gif_kw is None:
+        gif_kw = {}
+    savepath = os.path.join(savedir, f'{base_name}.gif')
+    make_gif(savedir, savepath, ext=images_ext, overwrite=overwrite, **gif_kw)
 
 
 def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
@@ -895,8 +1036,11 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
         vhlines(vlines, kind='v')
     if hlines:
         vhlines(hlines, kind='h')
-    if not ticks:
+
+    ticks = ticks if isinstance(ticks, (list, tuple)) else (ticks, ticks)
+    if not ticks[0]:
         ax.set_xticks([])
+    if not ticks[1]:
         ax.set_yticks([])
     if xticks is not None or yticks is not None:
         _ticks(xticks, yticks)
@@ -1041,3 +1185,24 @@ def _colorize_complex(z):
     c = np.array(c)
     c = c.swapaxes(0,2)
     return c
+
+
+def make_gif(loaddir, savepath, start_end_pause=None, duration=250, ext='.png',
+             overwrite=True):
+    paths = list(glob.glob(f"{loaddir}/*{ext}"))
+    paths = sorted(paths, key=lambda p: int(p.split("t=")[1].rstrip(ext)))
+    frames = [Image.open(p) for p in paths]
+
+    if start_end_pause is not None:
+        if not isinstance(start_end_pause, (tuple, list)):
+            start_end_pause = (start_end_pause, start_end_pause)
+        for repeat_start in range(start_end_pause[0]):
+            frames.insert(0, frames[0])
+        for repeat_end in range(start_end_pause[1]):
+            frames.append(frames[-1])
+
+    if os.path.isfile(savepath) and overwrite:
+        os.unlink(savepath)
+    frame_one = frames[0]
+    frame_one.save(savepath, format="GIF", append_images=frames, save_all=True,
+                   duration=duration, loop=0)

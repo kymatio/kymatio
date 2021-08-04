@@ -3,6 +3,7 @@ import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
+                             coeff_energy_ratios,
                              l2, rel_ae, validate_filterbank_tm,
                              validate_filterbank_fr, pack_coeffs_jtfs,
                              tensor_padded)
@@ -217,27 +218,38 @@ def test_freq_tp_invar():
 
 def test_up_vs_down():
     """Test that echirp yields significant disparity in up vs down coeffs."""
-    # TODO 'zero' & 'zero' pads attain 98.9
-    # TODO include both in testing (zero & reflect)?
     N = 2048
-    x = echirp(N)
-
-    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, F=8, Q_fr=2,
-                                     average_fr=True, out_type='dict:array',
-                                     pad_mode='reflect',
-                                     pad_mode_fr='conj-reflect-zero',
-                                     frontend=default_backend)
-    Scx = jtfs(x)
-    jmeta = jtfs.meta()
-
-    E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
-    E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 60
-    assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
+    x = echirp(N, fmin=64)
 
     if metric_verbose:
-        print(("\nFDTS directional sensitivity:\n"
-               "E_down/E_up = {:.1f}\n").format(E_down / E_up))
+        print("\nFDTS directional sensitivity; E_down / E_up:")
+
+    r_th = (35, 105)
+    l2_th = (50, 110)
+    for i, pad_mode in enumerate(['reflect', 'zero']):
+        pad_mode_fr = 'conj-reflect-zero' if pad_mode == 'reflect' else 'zero'
+        jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
+                                         average_fr=True, out_type='dict:array',
+                                         pad_mode=pad_mode,
+                                         pad_mode_fr=pad_mode_fr,
+                                         frontend=default_backend)
+        Scx = jtfs(x)
+        jmeta = jtfs.meta()
+
+        r = coeff_energy_ratios(Scx, jmeta,
+                                pairs=('psi_t * psi_f_down', 'psi_t * psi_f_up'))
+        r_m = r.mean()
+
+        E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
+        E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
+        r_l2 = E_down / E_up
+
+        if metric_verbose:
+            print(("Global:     {0:<5.1f} -- '{1}' pad\n"
+                   "Slice mean: {2:<5.1f} -- '{1}' pad").format(
+                       r_l2, pad_mode, r_m))
+        assert r_l2 > l2_th[i], "{} < {} | '{}'".format(r_l2, l2_th[i], pad_mode)
+        assert r_m  > r_th[i],  "{} < {} | '{}'".format(r_m,  r_th[i],  pad_mode)
 
 
 def test_sampling_psi_fr_exclude():

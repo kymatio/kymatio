@@ -228,9 +228,8 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
             if n in structures_available:
                 structures_available.pop(structures_available.index(n))
 
-    structures_available = [1, 2, 3, 4]
-
     # validate `structure` / set default
+    structures_available = [1, 2, 3, 4]
     if structure is None:
         structure = structures_available[0]
     elif structure not in structures_available:
@@ -238,7 +237,10 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
             "invalud `structure={}`; Available are: {}".format(
                 structure, ','.join(map(str, structures_available))))
 
+    # TODO right-pad *and* left-pad since some n1 are always omitted
+
     # unpack coeffs for further processing
+    # TODO sample_idx
     Scx_unpacked = {}
     list_coeffs = isinstance(list(Scx.values())[0], list)
     Scx = drop_batch_dim_jtfs(Scx)
@@ -299,8 +301,11 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
             continue
         for n2_idx in range(len(packed[pair])):
             ref = tensor_padded(packed[pair][n2_idx][0], pad_value)
-            # n2 will be same, everything else variable
-            ref[..., 1:] = ref[..., 1:] * 0 + pad_value
+            if debug:
+                # n2 will be same, everything else variable
+                ref[..., 1:] = ref[..., 1:] * 0 + pad_value
+            else:
+                ref *= 0
             while len(packed[pair][n2_idx]) < n_n1_frs_max:
                 assert sampling_psi_fr == 'exclude'  # should not occur otherwise
                 packed[pair][n2_idx].append(ref)
@@ -311,7 +316,7 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
     combined = packed['psi_t * psi_f_up'][::-1]
 
     # pack these for later
-    # revert `psi_t` ordering
+    # reverse `psi_t` ordering
     combined_down = packed['psi_t * psi_f_down'][::-1]
     # pack phi_t
     c_phi_t = deepcopy(packed['phi_t * psi_f'])
@@ -329,7 +334,7 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
     if not separate_lowpass:
         assert len(combined_down) == len(combined)
         for n2 in range(len(combined)):
-            # and `psi_f` ordering
+            # reverse `psi_f` ordering for `psi_f_down`
             combined[n2].extend(combined_down[n2][::-1])
         combined.insert(0, c_phi_t[0])
 
@@ -346,7 +351,6 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
 
     # finalize ###############################################################
     # TODO backends
-    # TODO batched
     # this will pad along `n1`
     pad_value = 0 if not debug else -2
     out = tensor_padded(combined, pad_value=pad_value)
@@ -582,6 +586,53 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
 
     # return tuple consistency; we don't do "slices" here
     return reldist_flat, reldist_slices
+
+
+def coeff_energy_ratios(Scx, meta, down_to_up=True,
+                        max_to_eps_ratio=10000):
+    """Compute ratios of coefficient slice energies, spin down vs up.
+    Statisticallyrobust alternative measure to ratio of total energies.
+
+    Parameters
+    ----------
+    Scx : dict[list] / dict[tensor]
+        `jtfs(x)`.
+
+    meta : dict[dict[np.ndarray]]
+        `jtfs.meta()`.
+
+    down_to_up : bool (default True)
+        Whether to take `E_down / E_up` (True) or `E_up / E_down` (False).
+        Note, the actual similarities are opposite, as "down" means convolution
+        with down, which is cross-correlation with up.
+
+    max_to_eps_ratio : int
+        `eps = max(E_pair0, E_pair1) / max_to_eps_ratio`. Epsilon term
+        to use in ratio: `E_pair0 / (E_pair1 + eps)`.
+
+    Returns
+    -------
+    Ratios of coefficient energies.
+    """
+    # handle args
+    assert isinstance(Scx, dict), ("`Scx` must be dict (got %s); " % type(Scx)
+                                   + "set `out_type='dict:array'` or 'dict:list'")
+
+    # compute ratios
+    l2s = {}
+    pairs = ('psi_t * psi_f_down', 'psi_t * psi_f_up')
+    if not down_to_up:
+        pairs = pairs[::-1]
+    for pair in pairs:
+        _, E_slc0 = coeff_energy(Scx, meta, pair=pair, aggregate=False, kind='l2')
+        l2s[pair] = np.asarray(E_slc0)
+
+    a, b = l2s.values()
+    mx = np.vstack([a, b]).max(axis=0) / max_to_eps_ratio
+    eps = np.clip(mx, mx.max() / (max_to_eps_ratio * 1000), None)
+    r = a / (b + eps)
+
+    return r
 
 
 def _get_pair_factor(pair, correction):
@@ -1405,7 +1456,8 @@ def _infer_backend(x, get_name=False):
             (backend, module))
 
 
-def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None):
+def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
+                  pad_left=0):
     """Make tensor from variable-length `seq` (e.g. nested list) padded with
     `fill_value`.
 
@@ -1430,12 +1482,17 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None):
     def fill_tensor(arr, seq, fill_value=0):
         if arr.ndim == 1:
             try:
-                len_ = len(seq)
+                len_ = len(seq) - pad_left
             except TypeError:
                 len_ = 0
 
-            arr[:len_] = cast_fn(seq)
-            arr[len_:] = fill_value
+            assert pad_left <= len(arr), (pad_left, len(arr))
+            if len_ != 0:
+                arr[pad_left:] = fill_value
+                arr[pad_left:pad_left + len_] = cast_fn(seq)
+                arr[pad_left + len_:] = fill_value
+            else:
+                arr[:] = fill_value
         else:
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)
