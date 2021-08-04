@@ -349,11 +349,22 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
             # and `psi_f` ordering
             combined[n2].extend(combined_down[n2][::-1])
 
+    # reverse ordering of `n1`
+    _combined = []
+    for n2 in range(len(combined)):
+        _combined.append([])
+        for n1_fr in range(len(combined[n2])):
+            _combined[n2].append([])
+            n_n1s = len(combined[n2][n1_fr])
+            for n1 in range(n_n1s):
+                _combined[n2][n1_fr].append(combined[n2][n1_fr][n_n1s - n1 - 1])
+    combined = _combined
+
     # finalize ###############################################################
     # TODO backends
     # this will pad along `n1`
     pad_value = 0 if not debug else -2
-    out = tensor_padded(combined, pad_value=pad_value)
+    out = tensor_padded(combined, pad_value=pad_value, right_pad=False)
     assert out.ndim == 4, out.ndim
     s = out.shape
 
@@ -1457,7 +1468,7 @@ def _infer_backend(x, get_name=False):
 
 
 def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
-                  pad_left=0):
+                  right_pad=True):
     """Make tensor from variable-length `seq` (e.g. nested list) padded with
     `fill_value`.
 
@@ -1482,17 +1493,16 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     def fill_tensor(arr, seq, fill_value=0):
         if arr.ndim == 1:
             try:
-                len_ = len(seq) - pad_left
+                len_ = len(seq)
             except TypeError:
                 len_ = 0
 
-            assert pad_left <= len(arr), (pad_left, len(arr))
-            if len_ != 0:
-                arr[pad_left:] = fill_value
-                arr[pad_left:pad_left + len_] = cast_fn(seq)
-                arr[pad_left + len_:] = fill_value
+            if right_pad:
+                arr[:len_] = cast_fn(seq)
+                arr[len_:] = fill_value
             else:
-                arr[:] = fill_value
+                arr[-len_:] = cast_fn(seq)
+                arr[:-len_] = fill_value
         else:
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)

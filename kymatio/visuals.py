@@ -582,9 +582,9 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 
 
 def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
-                cmap='turbo', cmap_norm=.5, axes_labels=('n2', 'n1_fr', 'n1'),
+                cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
                 overwrite=True, save_images=False, gif_kw=None,
-                width=1000, height=800, surface_count=30, opacity=.2,
+                width=800, height=800, surface_count=30, opacity=.2,
                 verbose=True):
     """Generate and save GIF of 3D JTFS slices.
 
@@ -666,7 +666,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
         raise e
 
     # handle labels
-    supported = ('t', 'n2', 'n1_fr', 'n1')
+    supported = ('t', 'xi2', 'xi1_fr', 'xi1')
     for label in axes_labels:
         if label not in supported:
             raise ValueError(("unsupported `axes_labels` element: {} -- must "
@@ -676,9 +676,9 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
 
     # 3D meshgrid
     a, b, c = packed.shape[1:]
-    if 'n1_fr' in axes_labels:
+    if 'xi1_fr' in axes_labels:
         # distinguish + and - spin
-        idx = axes_labels.index('n1_fr')
+        idx = axes_labels.index('xi1_fr')
         if idx == 0:
             X, Y, Z = np.mgrid[-.5:.5:a*1j, 0:1:b*1j, 0:1:c*1j]
             packed = packed[:, ::-1]  # align with meshgrid
@@ -709,6 +709,13 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
         cmax=mx,
     )
     layout_kw = dict(
+        margin_pad=0,
+        margin_l=0,
+        margin_r=0,
+        margin_t=0,
+        title_pad_t=0,
+        title_pad_b=0,
+        margin_autoexpand=False,
         width=width,
         height=height,
         scene=dict(
@@ -734,7 +741,8 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                    'xanchor': 'center', 'yanchor': 'top'}
         )
 
-        savepath = os.path.join(savedir, f'{base_name}{k}{images_ext}')
+        savepath = os.path.join(os.path.abspath(savedir),
+                                f'{base_name}{k}{images_ext}')
         if os.path.isfile(savepath) and overwrite:
             os.unlink(savepath)
         fig.write_image(savepath)
@@ -748,7 +756,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
     savepath = os.path.join(savedir, f'{base_name}.gif')
     try:
         make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
-                 overwrite=overwrite, **gif_kw)
+                 delimiter=base_name, overwrite=overwrite, **gif_kw)
     finally:
         if not save_images:
             # delete iamges
@@ -1227,9 +1235,9 @@ def _colorize_complex(z):
 
 
 def make_gif(loaddir, savepath, start_end_pause=3, duration=250, ext='.png',
-             overwrite=True):
+             delimiter='', overwrite=True):
     loaddir = os.path.abspath(loaddir)
-    paths = list(glob.glob(f"{loaddir}/*{ext}"))
+    paths = list(glob.glob(f"{loaddir}/{delimiter}*{ext}"))
     paths = sorted(paths, key=lambda p: int(
         ''.join(s for s in p.split(os.sep)[-1] if s.isdigit())))
     frames = [Image.open(p) for p in paths]
