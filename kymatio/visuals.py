@@ -466,41 +466,45 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
              skip_unspinned=False, sample_idx=0):
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
-    # Arguments:
-        Scx: dict[list] / dict[np.ndarray]
-            `jtfs(x)`.
+    Parameters
+    ----------
+    Scx: dict[list] / dict[np.ndarray]
+        `jtfs(x)`.
 
-        meta: dict[dict[np.ndarray]]
-            `jtfs.meta()`.
+    meta: dict[dict[np.ndarray]]
+        `jtfs.meta()`.
 
-        norms: None / tuple
-            Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
-            3) `phi_t * psi_f` pairs, respectively.
-            Tuple of three (upper limits only, lower assumed 0).
-            If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
-            coeffs except `phi_t * phi_f`.
+    norms: None / tuple
+        Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
+        3) `phi_t * psi_f` pairs, respectively.
+        Tuple of three (upper limits only, lower assumed 0).
+        If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
+        coeffs except `phi_t * phi_f`.
 
-        inf_token: int / np.nan
-            Placeholder used in `meta` to denote infinity.
+    inf_token: int / np.nan
+        Placeholder used in `meta` to denote infinity.
 
-        skip_spins: bool (default False)
-            Whether to skip `psi_t * psi_f` pairs.
+    skip_spins: bool (default False)
+        Whether to skip `psi_t * psi_f` pairs.
 
-        skip_unspinned: bool (default False)
-            Whether to skip `phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`
-            pairs.
+    skip_unspinned: bool (default False)
+        Whether to skip `phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`
+        pairs.
 
-        sample_idx : int (default 0)
-            Index of sample in batched input to visualize.
+    sample_idx : int (default 0)
+        Index of sample in batched input to visualize.
 
-    # Example:
-        T, J, Q = 2049, 7, 16
-        x = np.cos(np.pi * 350 ** np.linspace(0, 1, T))
+    Example
+    -------
+    ::
 
-        scattering = TimeFrequencyScattering1D(J, T, Q, J_fr=4, Q_fr=2,
-                                               out_type='list', average=True)
-        Scx = scattering(x)
-        meta = scattering.meta()
+        N, J, Q = 2049, 7, 16
+        x = toolkit.echirp(N)
+
+        jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, Q_fr=2,
+                                         out_type='dict:list')
+        Scx = jtfs(x)
+        meta = jtfs.meta()
 
         gif_jtfs(Scx, meta)
     """
@@ -580,7 +584,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('n2', 'n1_fr', 'n1'),
                 overwrite=True, save_images=False, gif_kw=None,
-                width=1000, height=800, surface_count=30, opacity=.2):
+                width=1000, height=800, surface_count=30, opacity=.2,
+                verbose=True):
     """Generate and save GIF of 3D JTFS slices.
 
     Parameters
@@ -632,6 +637,27 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
 
     opacity : float
         Lesser makes 3D surfaces more transparent, exposing more detail.
+
+    verbose : bool (default True)
+        Whether to print GIF generation progress.
+
+    Example
+    -------
+    ::
+
+        N, J, Q = 2049, 7, 16
+        x = toolkit.echirp(N)
+
+        jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, Q_fr=2,
+                                         out_type='dict:list')
+        Scx = jtfs(x)
+        meta = jtfs.meta()
+
+        packed = toolkit.pack_coeffs_jtfs(Scx, meta, structure=2,
+                                          separate_lowpass=True)
+        packed_spinned = packed[0]
+        packed_spinned = packed_spinned.transpose(-1, 0, 1, 2)  # time first
+        gif_jtfs_3D(packed_spinned, savedir='')
     """
     try:
         import plotly.graph_objs as go
@@ -655,10 +681,13 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
         idx = axes_labels.index('n1_fr')
         if idx == 0:
             X, Y, Z = np.mgrid[-.5:.5:a*1j, 0:1:b*1j, 0:1:c*1j]
+            packed = packed[:, ::-1]  # align with meshgrid
         elif idx == 1:
             X, Y, Z = np.mgrid[0:1:a*1j, -.5:.5:b*1j, 0:1:c*1j]
+            packed = packed[:, :, ::-1]
         else:
             X, Y, Z = np.mgrid[0:1:a*1j, 0:1:b*1j, -.5:.5:c*1j]
+            packed = packed[:, :, :, ::-1]
     else:
         X, Y, Z = np.mgrid[0:1:a*1j, 0:1:b*1j, 0:1:c*1j]
 
@@ -705,17 +734,27 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                    'xanchor': 'center', 'yanchor': 'top'}
         )
 
-        savepath = os.path.join(savedir, f'{base_name}{k}.{images_ext}')
+        savepath = os.path.join(savedir, f'{base_name}{k}{images_ext}')
         if os.path.isfile(savepath) and overwrite:
             os.unlink(savepath)
         fig.write_image(savepath)
         img_paths.append(savepath)
+        if verbose:
+            print("{}/{} frames done".format(k + 1, len(packed)), flush=True)
 
     # make gif ###############################################################
     if gif_kw is None:
         gif_kw = {}
     savepath = os.path.join(savedir, f'{base_name}.gif')
-    make_gif(savedir, savepath, ext=images_ext, overwrite=overwrite, **gif_kw)
+    try:
+        make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
+                 overwrite=overwrite, **gif_kw)
+    finally:
+        if not save_images:
+            # delete iamges
+            for path in img_paths:
+                if os.path.isfile(path):
+                    os.unlink(path)
 
 
 def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
@@ -1187,10 +1226,12 @@ def _colorize_complex(z):
     return c
 
 
-def make_gif(loaddir, savepath, start_end_pause=None, duration=250, ext='.png',
+def make_gif(loaddir, savepath, start_end_pause=3, duration=250, ext='.png',
              overwrite=True):
+    loaddir = os.path.abspath(loaddir)
     paths = list(glob.glob(f"{loaddir}/*{ext}"))
-    paths = sorted(paths, key=lambda p: int(p.split("t=")[1].rstrip(ext)))
+    paths = sorted(paths, key=lambda p: int(
+        ''.join(s for s in p.split(os.sep)[-1] if s.isdigit())))
     frames = [Image.open(p) for p in paths]
 
     if start_end_pause is not None:

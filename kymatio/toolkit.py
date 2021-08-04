@@ -7,18 +7,18 @@ from itertools import zip_longest
 from copy import deepcopy
 
 
-def drop_batch_dim_jtfs(Scx):
-    """Drop dim 0 of every JTFS coefficient (if it's `1`).
+def drop_batch_dim_jtfs(Scx, sample_idx=0):
+    """Index into dim0 with `sample_idx` for every JTFS coefficient, and
+    drop that dimension.
 
     Doesn't modify input:
         - dict/list: new list/dict (with copied meta if applicable)
         - array: new object but shared storage with original array (so original
-          variable reference points to unsqueezed array).
+          variable reference points to unindexed array).
     """
     def get_meta(s):
         return {k: v for k, v in s.items() if not hasattr(v, 'ndim')}
 
-    backend = _infer_backend(Scx)
     if isinstance(Scx, dict):
         out = {}  # don't modify source dict
         for pair in Scx:
@@ -27,30 +27,29 @@ def drop_batch_dim_jtfs(Scx):
                 for i, s in enumerate(Scx[pair]):
                     if isinstance(s, dict):  # TODO undo
                         out[pair].append(get_meta(s))
-                        out[pair][i]['coef'] = backend.squeeze(s['coef'], 0)
+                        out[pair][i]['coef'] = s['coef'][sample_idx]
                     else:
-                        out[pair].append(backend.squeeze(s, 0))
+                        out[pair].append(s[sample_idx])
             else:
-                out[pair] = backend.squeeze(Scx[pair], 0)
+                out[pair] = Scx[pair][sample_idx]
     elif isinstance(Scx, list):
         out = []  # don't modify source list
         for s in Scx:
             o = get_meta(s)
-            o['coef'] = backend.squeeze(s['coef'], 0)
+            o['coef'] = s['coef'][sample_idx]
             out.append(o)
     elif isinstance(Scx, tuple):  # out_type=='array' && out_3D==True
-        Scx = (backend.squeeze(Scx[0], 0),
-               backend.squeeze(Scx[1], 0))
+        Scx = (Scx[0][sample_idx], Scx[1][sample_idx])
     elif hasattr(Scx, 'ndim'):
-        Scx = backend.squeeze(Scx, 0)
+        Scx = Scx[sample_idx]
     else:
         raise ValueError(("unrecognized input type: {}; must be as returned by "
                           "`jtfs(x)`.").format(type(Scx)))
     return out
 
 
-def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
-                     sampling_psi_fr=None, out_exclude=None, debug=False):
+def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
+                     separate_lowpass=False, sampling_psi_fr=None, debug=False):
     """Packs JTFS coefficients into one of valid 4D structures.
 
     Parameters
@@ -60,10 +59,6 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
 
     meta : dict
         JTFS meta.
-
-    out_3D : bool
-        Used for unpacking coefficients.
-        Must match what was passed to `TimeFrequencyScattering1D`.
 
     sampling_psi_fr : str / None
         Used for sanity check for padding along `n1_fr`.
@@ -78,13 +73,14 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
           - 5 to 8 aren't implemented since they're what's already returned
             as output.
 
+    sample_idx : int
+        sample_idx : int (default 0)
+            Index of sample in batched input to pack.
+
     separate_lowpass : bool (default False)
         If True, will pack spinned (`psi_t * psi_f_up`, `psi_t * psi_f_down`)
         and lowpass (`phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`) pairs
         separately. Recommended for convolutions (see Structures & Ordinality).
-
-    out_exclude : None / tuple[str]
-        If not None, will account via meta for non-dict `Scx`.
 
     debug : bool (defualt False)
         If True, coefficient values will be replaced by meta `n` values for
@@ -237,22 +233,22 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
             "invalud `structure={}`; Available are: {}".format(
                 structure, ','.join(map(str, structures_available))))
 
-    # TODO right-pad *and* left-pad since some n1 are always omitted
-
     # unpack coeffs for further processing
-    # TODO sample_idx
     Scx_unpacked = {}
     list_coeffs = isinstance(list(Scx.values())[0], list)
-    Scx = drop_batch_dim_jtfs(Scx)
+    Scx = drop_batch_dim_jtfs(Scx, sample_idx)
     for pair in Scx:
         Scx_unpacked[pair] = []
         for coef in Scx[pair]:
             if list_coeffs and (isinstance(coef, dict) and 'coef' in coef):
                 coef = coef['coef']
-            if out_3D:
+            if coef.ndim == 2:
                 Scx_unpacked[pair].extend(coef)
-            else:
+            elif coef.ndim == 1:
                 Scx_unpacked[pair].append(coef)
+            else:
+                raise ValueError("expected `coef.ndim` of 1 or 2, got "
+                                 "shape = %s" % str(coef.shape))
 
     # pack into dictionary indexed by `n1_fr`, `n2` ##########################
     packed = {}
@@ -287,7 +283,11 @@ def pack_coeffs_jtfs(Scx, meta, out_3D, structure=1, separate_lowpass=False,
                     n1s_done += len(coef)
                 else:
                     while idx < len(nsp) and n1s_done < n_n1s_in_n1_fr:
-                        coef = Scx_unpacked[pair][idx]
+                        try:
+                            coef = Scx_unpacked[pair][idx]
+                        except Exception as e:
+                            print(pair, idx)
+                            raise e
                         if debug:
                             print(coef.shape)
                         packed[pair][-1][-1].append(coef)
