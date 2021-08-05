@@ -583,9 +583,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 
 def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
-                overwrite=True, save_images=False, gif_kw=None,
-                width=800, height=800, surface_count=30, opacity=.2,
-                verbose=True):
+                overwrite=True, save_images=False, width=800, height=800,
+                surface_count=30, opacity=.2, verbose=True, gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
 
     Parameters
@@ -675,24 +674,22 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
     frame_label = [label for label in supported if label not in axes_labels][0]
 
     # 3D meshgrid
+    def slc(i, g):
+        label = axes_labels[i]
+        start = {'xi1': 0,  'xi2': 0,  't': 0, 'xi1_fr': -.5}[label]
+        end   = {'xi1': .5, 'xi2': .5, 't': 1, 'xi1_fr':  .5}[label]
+        return slice(start, end, g*1j)
+
     a, b, c = packed.shape[1:]
+    X, Y, Z = np.mgrid[slc(0, a), slc(1, b), slc(2, c)]
     if 'xi1_fr' in axes_labels:
         # distinguish + and - spin
         idx = axes_labels.index('xi1_fr')
-        if idx == 0:
-            X, Y, Z = np.mgrid[-.5:.5:a*1j, 0:1:b*1j, 0:1:c*1j]
-            packed = packed[:, ::-1]  # align with meshgrid
-        elif idx == 1:
-            X, Y, Z = np.mgrid[0:1:a*1j, -.5:.5:b*1j, 0:1:c*1j]
-            packed = packed[:, :, ::-1]
-        else:
-            X, Y, Z = np.mgrid[0:1:a*1j, 0:1:b*1j, -.5:.5:c*1j]
-            packed = packed[:, :, :, ::-1]
-    else:
-        X, Y, Z = np.mgrid[0:1:a*1j, 0:1:b*1j, 0:1:c*1j]
+        # flip idx-th dim to align with meshgrid
+        _slc = (slice(None),) * (1 + idx) + (slice(None, None, -1),)
+        packed = packed[_slc]
 
     # camera focus, colormap norm
-    eye = np.array([.3, .1, 2.5]) / 1.25
     eye = np.array([2.5, .3, 2]) / 1.6
     mx = cmap_norm * packed.max()
 
@@ -716,6 +713,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
         title_pad_t=0,
         title_pad_b=0,
         margin_autoexpand=False,
+        scene_aspectmode='cube',
         width=width,
         height=height,
         scene=dict(
@@ -1234,14 +1232,62 @@ def _colorize_complex(z):
     return c
 
 
-def make_gif(loaddir, savepath, start_end_pause=3, duration=250, ext='.png',
-             delimiter='', overwrite=True):
+def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
+             delimiter='', overwrite=True, HD=None):
+    """Makes gif out of images in `loaddir` directory with `ext` extension,
+    and saves to `savepath`.
+
+    Parameters
+    ----------
+    loaddir : str
+        Path to directory from which to fetch images to use as GIF frames.
+
+    savepath : path
+        Save path, must end with '.gif'.
+
+    duration : int
+        Interval between each GIF frame, in milliseconds.
+
+    start_end_pause : int / tuple[int]
+        Number of times to repeat the start and end frames, which multiplies
+        their `duration`; if tuple, first element is for start, second for end.
+
+    ext : str
+        Images filename extension.
+
+    delimiter : str
+        Substring common to all iamge filenames, e.g. 'img' for 'img0.png',
+        'img1.png', ... .
+
+    overwrite : bool (default True)
+        If True and file at `savepath` exists, will overwrite it.
+
+    HD : bool / None
+        If True, will preserve image quality in GIFs and use `imageio`.
+        Defaults to True if `imageio` is installed, else falls back on
+        `PIL.Image`.
+    """
+    # handle `HD`
+    if HD or HD is None:
+        try:
+            import imageio
+            HD = True
+        except ImportError as e:
+            if HD:
+                print("`HD=True` requires `imageio` installed")
+                raise e
+            else:
+                HD = False
+
+    # fetch frames
     loaddir = os.path.abspath(loaddir)
     paths = list(glob.glob(f"{loaddir}/{delimiter}*{ext}"))
     paths = sorted(paths, key=lambda p: int(
         ''.join(s for s in p.split(os.sep)[-1] if s.isdigit())))
-    frames = [Image.open(p) for p in paths]
+    frames = [(imageio.imread(p) if HD else Image.open(p))
+              for p in paths]
 
+    # handle frame duplication to increase their duration
     if start_end_pause is not None:
         if not isinstance(start_end_pause, (tuple, list)):
             start_end_pause = (start_end_pause, start_end_pause)
@@ -1251,7 +1297,12 @@ def make_gif(loaddir, savepath, start_end_pause=3, duration=250, ext='.png',
             frames.append(frames[-1])
 
     if os.path.isfile(savepath) and overwrite:
+        # delete if exists
         os.unlink(savepath)
-    frame_one = frames[0]
-    frame_one.save(savepath, format="GIF", append_images=frames, save_all=True,
-                   duration=duration, loop=0)
+    # save
+    if HD:
+        imageio.mimsave(savepath, frames, fps=1000/duration)
+    else:
+        frame_one = frames[0]
+        frame_one.save(savepath, format="GIF", append_images=frames,
+                       save_all=True, duration=duration, loop=0)
