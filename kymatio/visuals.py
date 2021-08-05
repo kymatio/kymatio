@@ -584,7 +584,8 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
                 overwrite=True, save_images=False, width=800, height=800,
-                surface_count=30, opacity=.2, verbose=True, gif_kw=None):
+                surface_count=30, opacity=.2, zoom=1.61, verbose=True,
+                gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
 
     Parameters
@@ -636,6 +637,9 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
 
     opacity : float
         Lesser makes 3D surfaces more transparent, exposing more detail.
+
+    zoom : float
+        Zoom factor on each 3D frame.
 
     verbose : bool (default True)
         Whether to print GIF generation progress.
@@ -690,7 +694,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
         packed = packed[_slc]
 
     # camera focus, colormap norm
-    eye = np.array([2.5, .3, 2]) / 1.6
+    eye = np.array([2.5, .3, 2]) / zoom
     mx = cmap_norm * packed.max()
 
     # gif configs
@@ -730,6 +734,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
 
     # generate gif frames ####################################################
     img_paths = []
+    savedir = os.path.abspath(savedir)
     for k, vol4 in enumerate(packed):
         fig = go.Figure(go.Volume(value=vol4.flatten(), **volume_kw))
         fig.update_layout(
@@ -739,8 +744,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                    'xanchor': 'center', 'yanchor': 'top'}
         )
 
-        savepath = os.path.join(os.path.abspath(savedir),
-                                f'{base_name}{k}{images_ext}')
+        savepath = os.path.join(savedir, f'{base_name}{k}{images_ext}')
         if os.path.isfile(savepath) and overwrite:
             os.unlink(savepath)
         fig.write_image(savepath)
