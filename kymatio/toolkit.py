@@ -349,16 +349,30 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
             # and `psi_f` ordering
             combined[n2].extend(combined_down[n2][::-1])
 
-    # reverse ordering of `n1`
-    _combined = []
-    for n2 in range(len(combined)):
-        _combined.append([])
-        for n1_fr in range(len(combined[n2])):
-            _combined[n2].append([])
-            n_n1s = len(combined[n2][n1_fr])
-            for n1 in range(n_n1s):
-                _combined[n2][n1_fr].append(combined[n2][n1_fr][n_n1s - n1 - 1])
-    combined = _combined
+    # reverse ordering of `n1` ###############################################
+    if separate_lowpass:
+        if structure != 4:
+            cbs = [combined, combined_phi_t, combined_phi_f]
+        else:
+            cbs = [combined, combined_phi_t]
+    else:
+        cbs = [combined]
+
+    cbs_new = []
+    for i, cb in enumerate(cbs):
+        cbs_new.append([])
+        for n2 in range(len(cb)):
+            cbs_new[i].append([])
+            for n1_fr in range(len(cb[n2])):
+                cbs_new[i][n2].append(cb[n2][n1_fr][::-1])
+
+    if separate_lowpass:
+        if structure != 4:
+            combined, combined_phi_t, combined_phi_f = cbs_new
+        else:
+            combined, combined_phi_t = cbs_new
+    else:
+        combined = cbs_new[0]
 
     # finalize ###############################################################
     # TODO backends
@@ -663,7 +677,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     # infer out_3D
     out_3D = bool(meta['stride'][pair].ndim == 3)
     if out_3D:
-        assert coeffs.ndim == 3, coeffs.ndim
+        assert coeffs.ndim == 3, coeffs.shape
     # completely flatten into (*, time)
     if out_list:
         coeffs_flat = []
@@ -1497,12 +1511,15 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
             except TypeError:
                 len_ = 0
 
-            if right_pad:
-                arr[:len_] = cast_fn(seq)
-                arr[len_:] = fill_value
+            if len_ == 0:
+                arr[:] = fill_value
             else:
-                arr[-len_:] = cast_fn(seq)
-                arr[:-len_] = fill_value
+                if right_pad:
+                    arr[:len_] = cast_fn(seq)
+                    arr[len_:] = fill_value
+                else:
+                    arr[-len_:] = cast_fn(seq)
+                    arr[:-len_] = fill_value
         else:
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)

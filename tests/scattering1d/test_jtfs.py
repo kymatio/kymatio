@@ -236,8 +236,7 @@ def test_up_vs_down():
         Scx = jtfs(x)
         jmeta = jtfs.meta()
 
-        r = coeff_energy_ratios(Scx, jmeta,
-                                pairs=('psi_t * psi_f_down', 'psi_t * psi_f_up'))
+        r = coeff_energy_ratios(Scx, jmeta)
         r_m = r.mean()
 
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
@@ -639,7 +638,7 @@ def test_pack_coeffs_jtfs():
                         "{}, {}{}").format(n_pad, n1s, info)
                 # remove padded
                 n1s = np.array([n1 for n1 in n1s if n1 != -2])
-                assert np.all(n1s == sorted(n1s)), (
+                assert np.all(n1s == sorted(n1s, reverse=True)), (
                     "{}, {}, {}{}").format(n2_idx, n1_fr_idx, n1s, info)
 
     def validate_spin(out_s, info, up=True):
@@ -763,7 +762,7 @@ def test_pack_coeffs_jtfs():
         for separate_lowpass in (False, True):
             for structure in (1, 2, 3, 4):
                 kw = {k: v for k, v in test_params.items()
-                      if k in ('sampling_psi_fr', 'out_3D')}
+                      if k in ('sampling_psi_fr',)}
                 info = "\nstructure={}\nseparate_lowpass={}\n{}".format(
                     structure, separate_lowpass,
                     "\n".join(f'{k}={v}' for k, v in test_params.items()))
@@ -805,13 +804,8 @@ def test_backends():
         Scx = jtfs(x)
         jmeta = jtfs.meta()
 
-        # pick one sample
-        out = {}
-        for pair, coef in Scx.items():
-            out[pair] = coef[0]
-
-        E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
-        E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
+        E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
+        E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
         th = 32
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
@@ -882,7 +876,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, .95, 35
+    th, th_recon, th_end_ratio = 1e-5, .92, 40
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
