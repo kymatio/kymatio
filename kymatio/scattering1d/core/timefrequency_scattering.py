@@ -44,7 +44,7 @@ def timefrequency_scattering(
 
     total_downsample_fr
         Total amount of subsampling, conv and equivalent, relative to
-        `J_pad_fr_max_init`. Controls fr unpadding.
+        `J_pad_fr_max_init`. Conceptual quantity.
 
     Subsampling, padding
     --------------------
@@ -93,8 +93,6 @@ def timefrequency_scattering(
         Imposes:
             - `freq`  to be same for all `n2` (can differ due to padding
               or convolutional stride)
-            - `n1_fr` to be same for all `n2` -> `sampling_psi_fr != 'exclude'`
-              # TODO ^ no; this is for out_4D
 
     log2_F:
         Larger -> smaller `freq`
@@ -690,7 +688,7 @@ def timefrequency_scattering(
                 # Average directly
                 S_1_avg = B.mean(U_1_m, axis=-1)
 
-        if 'S1' not in out_exclude:  # TODO docs
+        if 'S1' not in out_exclude:
             if average_global:
                 S_1_tm = S_1_avg
                 total_conv_stride_tm = log2_T
@@ -797,13 +795,7 @@ def timefrequency_scattering(
             if j2 == 0:
                 continue
 
-            # preallocate output slice
-            if aligned and out_3D:
-                pad_fr = sc_freq.J_pad_fr_max
-            else:
-                pad_fr = sc_freq.J_pad_fr[n2]
             Y_2_list = []
-
             # Wavelet transform over time
             for n1 in range(len(psi1)):
                 # Retrieve first-order coefficient in the list
@@ -829,6 +821,11 @@ def timefrequency_scattering(
                 Y_2_c, trim_tm = _maybe_unpad_time(Y_2_c, k1_plus_k2, commons2)
                 Y_2_list.append(Y_2_c)
 
+            # frequential pad
+            if aligned and out_3D:
+                pad_fr = sc_freq.J_pad_fr_max
+            else:
+                pad_fr = sc_freq.J_pad_fr[n2]
             Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             if pad_mode == 'reflect' and average:
@@ -937,9 +934,14 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, trim_tm, commons,
     # Transform over frequency + low-pass, for both spins (if `spin_down`)
     for s1_fr, (spin, psi1_f) in enumerate(zip(spins, psi1_fs)):
         for n1_fr in range(len(psi1_f)):
-            if (sc_freq.sampling_psi_fr == 'exclude' and
+            if sc_freq.sampling_psi_fr == 'exclude':
+                # 'exclude' is scale-oriented but to be safe also check
+                # if padded length is available
+                scale_diff = (sc_freq.shape_fr_scale_max -
+                              sc_freq.shape_fr_scale[n2])
+                if (scale_diff not in psi1_f[n1_fr] or
                     subsample_equiv_due_to_pad not in psi1_f[n1_fr]):
-                break
+                    continue
 
             # compute subsampling
             j1_fr = psi1_f[n1_fr]['j'][subsample_equiv_due_to_pad]
@@ -1137,11 +1139,7 @@ def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
     zero_row = B.zeros_like(coeff_list[0])
     padded_len = 2**pad_fr
     # first zero pad, then reflect remainder (including zeros as appropriate)
-    n_zeros = min(#padded_len // 2,                # never need more than this
-                  # TODO ^ with variable length wavelets this becomes relevant
-                  # again; currently it's dropped since further steps are
-                  # required to account for `max_pad_factor_fr`
-                  shape_fr_max - n_coeffs_input,  # nor this
+    n_zeros = min(shape_fr_max - n_coeffs_input,  # never need more than this
                   padded_len - n_coeffs_input)    # cannot exceed `padded_len`
     zero_rows = [zero_row] * n_zeros
 
@@ -1157,7 +1155,7 @@ def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
         c = coeff_list_new[idx]
         c = c if reflect else B.conj(c)
         right_rows.append(c)
-        if idx in (-1, -len(coeff_list_new)):  # TODO bounds correctly excluded?
+        if idx in (-1, -len(coeff_list_new)):
             reflect = not reflect
         idx += 1 if reflect else -1
 

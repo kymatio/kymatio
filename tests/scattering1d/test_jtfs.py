@@ -3,8 +3,10 @@ import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
+                             coeff_energy_ratios,
                              l2, rel_ae, validate_filterbank_tm,
-                             validate_filterbank_fr)
+                             validate_filterbank_fr, pack_coeffs_jtfs,
+                             tensor_padded)
 from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
@@ -17,6 +19,9 @@ run_without_pytest = 1
 output_test_print_mode = 1
 # set True to print assertion values of certain tests
 metric_verbose = 1
+
+# used to load saved coefficient outputs
+test_data_dir = Path(__file__).parent
 
 
 def test_alignment():
@@ -213,27 +218,37 @@ def test_freq_tp_invar():
 
 def test_up_vs_down():
     """Test that echirp yields significant disparity in up vs down coeffs."""
-    # TODO 'zero' & 'zero' pads attain 98.9
-    # TODO include both in testing (zero & reflect)?
     N = 2048
-    x = echirp(N)
-
-    jtfs = TimeFrequencyScattering1D(shape=N, J=7, Q=8, J_fr=4, F=8, Q_fr=2,
-                                     average_fr=True, out_type='dict:array',
-                                     pad_mode='reflect',
-                                     pad_mode_fr='conj-reflect-zero',
-                                     frontend=default_backend)
-    Scx = jtfs(x)
-    jmeta = jtfs.meta()
-
-    E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
-    E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
-    th = 68
-    assert E_down / E_up > th, "{} < {}".format(E_down / E_up, th)
+    x = echirp(N, fmin=64)
 
     if metric_verbose:
-        print(("\nFDTS directional sensitivity:\n"
-               "E_down/E_up = {:.1f}\n").format(E_down / E_up))
+        print("\nFDTS directional sensitivity; E_down / E_up:")
+
+    r_th = (35, 105)
+    l2_th = (50, 110)
+    for i, pad_mode in enumerate(['reflect', 'zero']):
+        pad_mode_fr = 'conj-reflect-zero' if pad_mode == 'reflect' else 'zero'
+        jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
+                                         average_fr=True, out_type='dict:array',
+                                         pad_mode=pad_mode,
+                                         pad_mode_fr=pad_mode_fr,
+                                         frontend=default_backend)
+        Scx = jtfs(x)
+        jmeta = jtfs.meta()
+
+        r = coeff_energy_ratios(Scx, jmeta)
+        r_m = r.mean()
+
+        E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
+        E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
+        r_l2 = E_down / E_up
+
+        if metric_verbose:
+            print(("Global:     {0:<5.1f} -- '{1}' pad\n"
+                   "Slice mean: {2:<5.1f} -- '{1}' pad").format(
+                       r_l2, pad_mode, r_m))
+        assert r_l2 > l2_th[i], "{} < {} | '{}'".format(r_l2, l2_th[i], pad_mode)
+        assert r_m  > r_th[i],  "{} < {} | '{}'".format(r_m,  r_th[i],  pad_mode)
 
 
 def test_sampling_psi_fr_exclude():
@@ -303,7 +318,7 @@ def test_max_pad_factor_fr():
 
     for aligned in (True, False)[1:]:
         for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
-          for max_pad_factor_fr in (0, 1, [1, 2, 0, 1]):
+          for max_pad_factor_fr in (0, 1, [2, 1, 0]):
             F = 128 if sampling_filters_fr == 'recalibrate' else 16
             test_params = dict(aligned=aligned,
                                sampling_filters_fr=sampling_filters_fr,
@@ -456,11 +471,6 @@ def test_lp_sum():
         for max_pad_factor in (None, 1):
           for max_pad_factor_fr in (None, 1):
             for sampling_filters_fr in ('resample', 'exclude', 'recalibrate'):
-              # if max_pad_factor != 1 or max_pad_factor_fr != 1:
-              #     continue
-              # if Q != 8 or sampling_filters_fr != 'recalibrate':
-              #     continue
-              # print("DONE")
               test_params = dict(Q=Q, r_psi=r_psi, max_pad_factor=max_pad_factor,
                                  max_pad_factor_fr=max_pad_factor_fr,
                                  sampling_filters_fr=sampling_filters_fr,
@@ -512,7 +522,7 @@ def test_compute_temporal_width():
     filter_len = 2**J_pad
     pts_per_scale = 6
     # don't allow underestimating by more than this
-    th_undershoot = -5
+    th_undershoot = -1
     # consider `T` above this as close to global averaging
     T_global_avg_earliest = int(.6 * filter_len // 2)
     T_global_avg_latest = int(.8 * filter_len // 2)
@@ -559,6 +569,210 @@ def test_compute_temporal_width():
                     T_est, T, th_undershoot, test_params_str)
 
 
+def test_tensor_padded():
+    """Test `tensor_padded` works as intended."""
+    ls = [[[1, 2, 3, 4],
+           [1, 2, 3],],
+          [[1, 2, 3],
+           [1, 2],
+           [1],],
+         ]
+    target = np.array([[[1, 2, 3, 4],
+                        [1, 2, 3, 0],
+                        [0, 0, 0, 0]],
+                       [[1, 2, 3, 0],
+                        [1, 2, 0, 0],
+                        [1, 0, 0, 0]]])
+    out = tensor_padded(ls)
+    assert np.all(target == out), out
+
+    # with `pad_value`
+    target[target == 0] = -2
+    out = tensor_padded(ls, pad_value=-2)
+    assert np.all(target == out), out
+
+
+def test_pack_coeffs_jtfs():
+    """Test coefficients are packed as expected."""
+    def out_stored_into_pairs(out_stored, out_stored_keys):
+        paired_flat = {}
+        for i, k in enumerate(out_stored_keys):
+            pair = k.split(':')[0]
+            if pair not in paired_flat:
+                paired_flat[pair] = []
+            paired_flat[pair].append(out_stored[i])
+        return paired_flat
+
+    def validate_n2s(o, info, spin):
+        info = info + "\nspin={}".format(spin)
+        # ensure 4-dim
+        assert o.ndim == 4, "{}{}".format(o.shape, info)
+
+        # pack here directly via arrays, see if they match
+        n2s = o[:, :, 0, 0]
+
+        # if phi_t is present, ensure it's the first
+        if -1 in n2s:
+            n_n2s = np.sum(n2s == -1)
+            assert np.sum(n2s[0] == -1) == n_n2s, "{}{}".format(n2s, info)
+
+        # should never require to pad along `n2`
+        assert -2 not in n2s, "{}{}".format(n2s, info)
+
+        # exclude phis
+        n2s = n2s[n2s != -1]
+
+        # ensure high-to-low n2 (low-to-high freq)
+        assert np.all(n2s == sorted(n2s, reverse=True)), "{}{}".format(n2s, info)
+
+    def validate_n1s(o, info, spin):
+        info = info + "\nspin={}".format(spin)
+        # ensure n1s ordered low to high (high-to-low freq) for every n2, n1_fr
+        for n2_idx in range(len(o)):
+            for n1_fr_idx in range(len(o[n2_idx])):
+                n1s = o[n2_idx, n1_fr_idx, :, 2]
+                if -2 in n1s:
+                    # assert right-padded
+                    n_pad = sum(n1s == -2)
+                    assert np.all(n1s[-n_pad:] == -2), (
+                        "{}, {}{}").format(n_pad, n1s, info)
+                # remove padded
+                n1s = np.array([n1 for n1 in n1s if n1 != -2])
+                assert np.all(n1s == sorted(n1s, reverse=True)), (
+                    "{}, {}, {}{}").format(n2_idx, n1_fr_idx, n1s, info)
+
+    def validate_spin(out_s, info, up=True):
+        info = info + "\nspin={}".format("up" if up else "down")
+        # check every n1_fr
+        for n2_idx in range(len(out_s)):
+            n1_frs = out_s[n2_idx, :, 0, 1]
+
+            # if phi_f is present, ensure it's centered (and len(n1_frs) is odd)
+            if -1 in n1_frs:
+                if up:
+                    assert n1_frs[-1] == -1, n1_frs
+                else:
+                    assert n1_frs[0] == -1, n1_frs
+                # exclude phi_f
+                n1_frs = np.array([n1_fr for n1_fr in n1_frs if n1_fr != -1])
+
+            # ensure only psi_f pairs present
+            assert -1 not in n1_frs, n1_frs
+
+            # check padding
+            if -2 in n1_frs:
+                n_pad = sum(n1_frs == -2)
+                if up:
+                    # ensure right-padded
+                    assert np.all(n1_frs[-n_pad:] == -2), (n_pad, n1_frs)
+                else:
+                    # ensure left-padded
+                    assert np.all(n1_frs[:n_pad]  == -2), (n_pad, n1_frs)
+                # exclude pad values
+                n1_frs = np.array([n1_fr for n1_fr in n1_frs if n1_fr != -2])
+
+            errmsg = "{}{}".format(n1_frs, info)
+            if up:
+                assert np.all(n1_frs == sorted(n1_frs)), errmsg
+            else:
+                assert np.all(n1_frs == sorted(n1_frs, reverse=True)), errmsg
+
+    def validate_packing(out, separate_lowpass, structure, info):
+        # unpack into `out_up, out_down, out_phi`
+        out_phi_f, out_phi_t = None, None
+        if structure in (1, 2):
+            if separate_lowpass:
+                out, out_phi_f, out_phi_t = out
+
+            if structure == 1:
+                out = out.transpose(1, 0, 2, 3)
+                if separate_lowpass:
+                    out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
+                    out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
+
+            s = out.shape
+            out_up   = (out[:, :s[1]//2 + 1] if not separate_lowpass else
+                        out[:, :s[1]//2])
+            out_down = out[:, s[1]//2:]
+
+        elif structure == 3:
+            if not separate_lowpass:
+                out_up, out_down, out_phi_f = out
+            else:
+                out_up, out_down, out_phi_f, out_phi_t = out
+
+        elif structure == 4:
+            if not separate_lowpass:
+                out_up, out_down = out
+            else:
+                out_up, out_down, out_phi_t = out
+
+        # ensure sliced properly
+        assert out_up.shape == out_down.shape, (
+            "{} != {}{}").format(out_up.shape, out_down.shape, info)
+
+        # do validation ######################################################
+        # n1s and n2s
+        outs = (out_up, out_down, out_phi_f, out_phi_t)
+        for spin, o in zip([1, -1, 0, 0], outs):
+            if o is not None:
+                validate_n2s(o, info, spin)
+                validate_n1s(o, info, spin)
+
+        # n1_frs
+        validate_spin(out_up,   info, up=True)
+        validate_spin(out_down, info, up=False)
+
+        # `phi_f`
+        if out_phi_f is not None:
+            out_phi_f_n1_fr = out_phi_f[:, :, :, 1]
+            # exclude pad
+            out_phi_f_n1_fr[out_phi_f_n1_fr == -2] = -1
+            assert np.all(out_phi_f_n1_fr == -1), (out_phi_f_n1_fr, info)
+
+        # `phi_t`
+        if out_phi_t is not None:
+            out_phi_t_n2 = out_phi_t[:, :, :, 0]
+            # exclude pad
+            out_phi_t_n2[out_phi_t_n2 == -2] = -1
+            assert np.all(out_phi_t_n2 == -1), (out_phi_t_n2, info)
+
+    # end of helper methods ##################################################
+    # test
+    tests_params = {
+        1: dict(average=True, average_fr=True,  aligned=True,  out_3D=True),
+        0: dict(average=True, average_fr=True,  aligned=False, out_3D=False),
+        4: dict(average=True, average_fr=False, aligned=True,  out_3D=False),
+    }
+
+    for test_num, test_params in tests_params.items():
+        _, out_stored, out_stored_keys, params, _, meta = load_data(test_num)
+
+        # ensure match
+        for k in test_params:
+            if k != 'average':
+                assert test_params[k] == params[k]
+        test_params['sampling_psi_fr'] = ('resample' if test_num != 0 else
+                                          'exclude')
+
+        # flatten rather than re-pack into original shape since it's flattened
+        # in `pack_coeffs_jtfs` anyway
+        paired_flat = out_stored_into_pairs(out_stored, out_stored_keys)
+
+        for separate_lowpass in (False, True):
+            for structure in (1, 2, 3, 4):
+                kw = {k: v for k, v in test_params.items()
+                      if k in ('sampling_psi_fr',)}
+                info = "\nstructure={}\nseparate_lowpass={}\n{}".format(
+                    structure, separate_lowpass,
+                    "\n".join(f'{k}={v}' for k, v in test_params.items()))
+
+                out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
+                                       separate_lowpass=separate_lowpass,
+                                       **kw, debug=True)
+                validate_packing(out, separate_lowpass, structure, info)
+
+
 def test_no_second_order_filters():
     """Reproduce edge case: configuration yields no second-order wavelets
     so can't do JTFS.
@@ -590,14 +804,9 @@ def test_backends():
         Scx = jtfs(x)
         jmeta = jtfs.meta()
 
-        # pick one sample
-        out = {}
-        for pair, coef in Scx.items():
-            out[pair] = coef[0]
-
-        E_up   = coeff_energy(out, jmeta, pair='psi_t * psi_f_up')
-        E_down = coeff_energy(out, jmeta, pair='psi_t * psi_f_down')
-        th = 35
+        E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
+        E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
+        th = 32
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
 
 
@@ -667,7 +876,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, .95, 35
+    th, th_recon, th_end_ratio = 1e-5, .92, 40
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
@@ -836,7 +1045,7 @@ def test_meta():
           if out_3D and not (average_fr and average):
               continue  # invalid option
           for aligned in (True, False):
-            for sampling_psi_fr in ('resample', 'recalibrate'):
+            for sampling_psi_fr in ('resample', 'exclude', 'recalibrate'):
               for sampling_phi_fr in ('resample', 'recalibrate'):
                   test_params = dict(
                       out_3D=out_3D, average_fr=average_fr, average=average,
@@ -866,9 +1075,9 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-
+    # TODO 'exclude'
           (aligned, average_fr, out_3D,   F)
-        0. True     True        False     32
+        0. False    True        False     32
         1. True     True        True      4
         2. False    True        True      16
         3. True     True        False     'global'
@@ -882,50 +1091,14 @@ def test_output():
 
     For complete info see `data['code']` (`_load_data()`).
     """
-    def _load_data(test_num, test_data_dir):
-        """Also see data['code']."""
-        def is_coef(k):
-            return ':' in k and k.split(':')[-1].isdigit()
-        def not_param(k):
-            return k in ('code', 'x') or is_coef(k)
-
-        data = np.load(Path(test_data_dir, f'test_jtfs_{test_num}.npz'))
-        x = data['x']
-        out_stored = [data[k] for k in data.files if is_coef(k)]
-        out_stored_keys = [k for k in data.files if is_coef(k)]
-
-        params = {}
-        for k in data.files:
-            if not_param(k):
-                continue
-
-            if k in ('average', 'average_fr', 'aligned'):
-                params[k] = bool(data[k])
-            elif k == 'sampling_filters_fr':
-                params[k] = (bool(data[k]) if len(data[k]) == 1 else
-                             tuple(data[k]))
-            elif k == 'F':
-                params[k] = (str(data[k]) if str(data[k]) == 'global' else
-                             int(data[k]))
-            elif k in ('out_type', 'pad_mode', 'pad_mode_fr'):
-                params[k] = str(data[k])
-            else:
-                params[k] = int(data[k])
-
-        params_str = "Test #%s:\n" % test_num
-        for k, v in params.items():
-            params_str += "{}={}\n".format(k, str(v))
-        return x, out_stored, out_stored_keys, params, params_str
-
-    test_data_dir = Path(__file__).parent
     num_tests = sum((p.name.startswith('test_jtfs_') and p.suffix == '.npz')
                     for p in Path(test_data_dir).iterdir())
 
     for test_num in range(num_tests):
         if 0:#test_num != 0:
             continue
-        (x, out_stored, out_stored_keys, params, params_str
-         ) = _load_data(test_num, test_data_dir)
+        (x, out_stored, out_stored_keys, params, params_str, _
+         ) = load_data(test_num)
 
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         jmeta = jtfs.meta()
@@ -1002,6 +1175,64 @@ def test_output():
                                                               max_max_info))
 
 ### helper methods ###########################################################
+def load_data(test_num):
+    """Also see data['code']."""
+    def is_meta(k):
+        return k.startswith('meta:')
+    def is_coef(k):
+        return (':' in k and k.split(':')[-1].isdigit()) and not is_meta(k)
+    def not_param(k):
+        return k in ('code', 'x') or is_coef(k) or is_meta(k)
+
+    data = np.load(Path(test_data_dir, f'test_jtfs_{test_num}.npz'))
+    x = data['x']
+    out_stored = [data[k] for k in data.files if is_coef(k)]
+    out_stored_keys = [k for k in data.files if is_coef(k)]
+
+    params = {}
+    for k in data.files:
+        if not_param(k):
+            continue
+
+        if k in ('average', 'average_fr', 'aligned'):
+            params[k] = bool(data[k])
+        elif k == 'sampling_filters_fr':
+            params[k] = (bool(data[k]) if len(data[k]) == 1 else
+                         tuple(data[k]))
+        elif k == 'F':
+            params[k] = (str(data[k]) if str(data[k]) == 'global' else
+                         int(data[k]))
+        elif k in ('out_type', 'pad_mode', 'pad_mode_fr'):
+            params[k] = str(data[k])
+        else:
+            params[k] = int(data[k])
+
+    meta = packed_meta_into_arr(data)
+
+    params_str = "Test #%s:\n" % test_num
+    for k, v in params.items():
+        params_str += "{}={}\n".format(k, str(v))
+    return x, out_stored, out_stored_keys, params, params_str, meta
+
+
+def packed_meta_into_arr(data):
+    meta_arr = {}
+    for k in data.files:
+        if not k.startswith('meta:'):
+            continue
+        _, field, pair, i = k.split(':')
+        if field not in meta_arr:
+            meta_arr[field] = {}
+        if pair not in meta_arr[field]:
+            meta_arr[field][pair] = []
+        meta_arr[field][pair].append(data[k])
+
+    for field in meta_arr:
+        for pair in meta_arr[field]:
+            meta_arr[field][pair] = np.array(meta_arr[field][pair])
+    return meta_arr
+
+
 def energy(x):
     if isinstance(x, np.ndarray):
         return np.sum(np.abs(x)**2)
@@ -1011,6 +1242,7 @@ def energy(x):
     elif 'tensorflow' in str(type(x)):
         import tensorflow as tf
         return tf.reduce_sum(tf.abs(x)**2)
+
 
 def concat_joint(Scx):
     Scx = drop_batch_dim_jtfs(Scx)
@@ -1046,6 +1278,8 @@ if __name__ == '__main__':
         test_global_averaging()
         test_lp_sum()
         test_compute_temporal_width()
+        test_tensor_padded()
+        test_pack_coeffs_jtfs()
         test_backends()
         test_differentiability_torch()
         test_reconstruction_torch()

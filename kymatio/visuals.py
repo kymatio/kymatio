@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
+import os, glob
 import numpy as np
-from scipy.fft import ifft
+from scipy.fft import ifft, ifftshift
 from copy import deepcopy
+from PIL import Image
 from .scattering1d.filter_bank import compute_temporal_support
 from .toolkit import coeff_energy, coeff_distance, energy
 
@@ -11,10 +13,6 @@ try:
 except ImportError:
     import warnings
     warnings.warn("`kymatio.visuals` requires `matplotlib` installed.")
-
-
-__all__ = ['gif_jtfs', 'filterbank_scattering', 'filterbank_jtfs',
-           'energy_profile_jtfs']
 
 
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
@@ -125,25 +123,38 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
 
 
 def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
-                       lp_phi=True, plot_kw=None):
+                       lp_phi=True, center_dc=None, plot_kw=None):
     """
-    # Arguments:
-        scattering: kymatio.scattering1d.TimeFrequencyScattering1D
-            Scattering object.
-        zoom: int
-            Will zoom plots by this many octaves.
-            If -1, will show full frequency axis (including negatives),
-            and both spins.
-        j0: int
-            `subsample_equiv_due_to_pad`
-        filterbank : False
-            Whether to plot the filterbank.
-        lp_sum: False
-            Whether to plot Littlewood-Paley sum of the filterbank.
-        plot_kw: None / dict
-            Will pass to `plot(**plot_kw)`.
+    Parameters
+    ----------
+    scattering: kymatio.scattering1d.TimeFrequencyScattering1D
+        Scattering object.
 
-    # Example:
+    zoom: int
+        Will zoom plots by this many octaves.
+        If -1, will show full frequency axis (including negatives),
+        and both spins.
+
+    j0: int
+        `subsample_equiv_due_to_pad`
+
+    filterbank : bool (default True)
+        Whether to plot the filterbank.
+
+    lp_sum: bool (default False)
+        Whether to plot Littlewood-Paley sum of the filterbank.
+
+    center_dc: bool / None
+        If True, will `ifftshift` to center the dc bin.
+        Defaults to `True` if `zoom == -1`.
+
+    plot_kw: None / dict
+        Will pass to `plot(**plot_kw)`.
+
+    Example
+    -------
+    ::
+
         scattering = Scattering1D(shape=2048, J=8, Q=8)
         filterbank_scattering(scattering)
     """
@@ -151,10 +162,13 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         # determine plot parameters ##########################################
         # vertical lines (octave bounds)
         Nmax = len(ps[0][j0])
+        j_dists = np.array([Nmax//2**j for j in range(1, jtfs.J_fr + 1)])
         if up:
-            vlines = [Nmax - Nmax//2**j for j in range(1, jtfs.J_fr + 1)]
+            vlines = (Nmax//2 + j_dists if center_dc else
+                      Nmax - j_dists)
         else:
-            vlines = [Nmax//2**j for j in range(1, jtfs.J_fr + 1)]
+            vlines = (Nmax//2 - j_dists if center_dc else
+                      j_dists)
         # x-axis zoom
         if zoom == -1:
             xlims = (-.02 * Nmax, 1.02 * Nmax)
@@ -178,22 +192,34 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
         # plot filterbank ####################################################
         if filterbank:
+            # bandpasses
             for p in ps:
                 if j0 not in p:  # sampling_psi_fr == 'exclude'
                     continue
                 j = p['j'][j0]
-                plot(p[j0], color=colors[j], linestyle=linestyles[j])
-            plot(p0[j0][0], color='k', **plot_kw, show=show,
+                pplot = p[j0].squeeze()
+                if center_dc:
+                    pplot = ifftshift(pplot)
+                    pplot[1:] = pplot[1:][::-1]
+                plot(pplot, color=colors[j], linestyle=linestyles[j])
+            # lowpass
+            p0plot = p0[j0][0].squeeze()
+            if center_dc:
+                p0plot = ifftshift(p0plot)
+                p0plot[1:] = p0plot[1:][::-1]
+            plot(p0plot, color='k', **plot_kw, show=show,
                  vlines=(vlines, dict(color='k', linewidth=1)))
 
         # plot LP sum ########################################################
         plot_kw_lp = {}
         if 'title' not in user_plot_kw_names:
-            plot_kw['title'] = "Littlewood-Paley sum"
+            plot_kw['title'] = ("Littlewood-Paley sum" +
+                                " (no phi)" * int(not lp_phi))
         if 'ylims' not in user_plot_kw_names:
             plot_kw_lp['ylims'] = (0, None)
         if lp_sum and not (zoom == -1 and up):
-            plot(lp, **plot_kw, **plot_kw_lp, show=show,
+            lpplot = ifftshift(lp) if center_dc else lp
+            plot(lpplot, **plot_kw, **plot_kw_lp, show=show,
                  hlines=(1, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
 
@@ -204,6 +230,9 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
     else:
         plot_kw = {}
     user_plot_kw_names = list(plot_kw)
+    # handle `center_dc`
+    if center_dc is None:
+        center_dc = bool(zoom == -1)
 
     # define colors & linestyles
     colors = [f"tab:{c}" for c in ("blue orange green red purple brown pink "
@@ -437,41 +466,45 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
              skip_unspinned=False, sample_idx=0):
     """Slice heatmaps of Joint Time-Frequency Scattering.
 
-    # Arguments:
-        Scx: dict[list] / dict[np.ndarray]
-            `jtfs(x)`.
+    Parameters
+    ----------
+    Scx: dict[list] / dict[np.ndarray]
+        `jtfs(x)`.
 
-        meta: dict[dict[np.ndarray]]
-            `jtfs.meta()`.
+    meta: dict[dict[np.ndarray]]
+        `jtfs.meta()`.
 
-        norms: None / tuple
-            Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
-            3) `phi_t * psi_f` pairs, respectively.
-            Tuple of three (upper limits only, lower assumed 0).
-            If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
-            coeffs except `phi_t * phi_f`.
+    norms: None / tuple
+        Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
+        3) `phi_t * psi_f` pairs, respectively.
+        Tuple of three (upper limits only, lower assumed 0).
+        If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
+        coeffs except `phi_t * phi_f`.
 
-        inf_token: int / np.nan
-            Placeholder used in `meta` to denote infinity.
+    inf_token: int / np.nan
+        Placeholder used in `meta` to denote infinity.
 
-        skip_spins: bool (default False)
-            Whether to skip `psi_t * psi_f` pairs.
+    skip_spins: bool (default False)
+        Whether to skip `psi_t * psi_f` pairs.
 
-        skip_unspinned: bool (default False)
-            Whether to skip `phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`
-            pairs.
+    skip_unspinned: bool (default False)
+        Whether to skip `phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`
+        pairs.
 
-        sample_idx : int (default 0)
-            Index of sample in batched input to visualize.
+    sample_idx : int (default 0)
+        Index of sample in batched input to visualize.
 
-    # Example:
-        T, J, Q = 2049, 7, 16
-        x = np.cos(np.pi * 350 ** np.linspace(0, 1, T))
+    Example
+    -------
+    ::
 
-        scattering = TimeFrequencyScattering1D(J, T, Q, J_fr=4, Q_fr=2,
-                                               out_type='list', average=True)
-        Scx = scattering(x)
-        meta = scattering.meta()
+        N, J, Q = 2049, 7, 16
+        x = toolkit.echirp(N)
+
+        jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, Q_fr=2,
+                                         out_type='dict:list')
+        Scx = jtfs(x)
+        meta = jtfs.meta()
 
         gif_jtfs(Scx, meta)
     """
@@ -499,12 +532,14 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
         plt.subplots_adjust(wspace=0.01)
         plt.show()
 
-        meta_idx[0] += len(sup)
+        meta_idx[0] += (1 if out_3D else
+                        len(sup))
 
     def _viz_simple(coef, pair, meta, norm):
         imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
                title=_title(meta, meta_idx, pair, '0'))
-        meta_idx[0] += len(coef)
+        meta_idx[0] += (1 if out_3D else
+                        len(coef))
 
     out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
     out_list = isinstance(Scx['S0'], list)
@@ -544,6 +579,192 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
         else:
             for i, coef in enumerate(Scx[pair][sample_idx]):
                 _viz_simple(coef, pair, meta, norms[1 + j])
+
+
+def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
+                cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
+                overwrite=True, save_images=False, width=800, height=800,
+                surface_count=30, opacity=.2, zoom=1.61, verbose=True,
+                gif_kw=None):
+    """Generate and save GIF of 3D JTFS slices.
+
+    Parameters
+    ----------
+    packed : tensor, 4D
+        Output of `kymatio.toolkit.pack_coeffs_jtfs`.
+
+    savedir : str
+        Path of directory to save GIF/images to. Defaults to current
+        working directory.
+
+    base_name : str
+        Will save gif with this name, and images with same name enumerated.
+
+    images_ext : str
+        Generates images with this format. '.png' (default) is lossless but takes
+        more space, '.jpg' is compressed.
+
+    cmap : str
+        Colormap to use.
+
+    cmap_norm : float
+        Colormap norm to use, as fraction of maximum value of `packed`
+        (i.e. `norm=(0, cmap_norm * packed.max())`).
+
+    axes_labels : tuple[str]
+        Names of last three dimensions of `packed`. E.g. `structure==2`
+        will output `(n2, n1_fr, n1, t)`.
+
+    overwrite : bool (default True)
+        Whether to overwrite gifs/images, if they already exist with same
+        save path.
+
+    save_images : bool (default False)
+        Images are always first stored then made into a GIF. If `False`
+        (default), the images are deleted after the GIF is made.
+
+    gif_kw : dict / None
+        Passed as kwargs to `kymatio.visuals.make_gif`.
+
+    width : int
+        2D width of each image (GIF frame).
+
+    height : int
+        2D height of each image (GIF frame).
+
+    surface_count : int
+        Greater improves 3D detail of each frame, but takes longer to render.
+
+    opacity : float
+        Lesser makes 3D surfaces more transparent, exposing more detail.
+
+    zoom : float
+        Zoom factor on each 3D frame.
+
+    verbose : bool (default True)
+        Whether to print GIF generation progress.
+
+    Example
+    -------
+    ::
+
+        N, J, Q = 2049, 7, 16
+        x = toolkit.echirp(N)
+
+        jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, Q_fr=2,
+                                         out_type='dict:list')
+        Scx = jtfs(x)
+        meta = jtfs.meta()
+
+        packed = toolkit.pack_coeffs_jtfs(Scx, meta, structure=2,
+                                          separate_lowpass=True)
+        packed_spinned = packed[0]
+        packed_spinned = packed_spinned.transpose(-1, 0, 1, 2)  # time first
+        gif_jtfs_3D(packed_spinned, savedir='')
+    """
+    try:
+        import plotly.graph_objs as go
+    except ImportError as e:
+        print("\n`plotly.graph_objs` is needed for `gif_jtfs_3D`.")
+        raise e
+
+    # handle labels
+    supported = ('t', 'xi2', 'xi1_fr', 'xi1')
+    for label in axes_labels:
+        if label not in supported:
+            raise ValueError(("unsupported `axes_labels` element: {} -- must "
+                              "be one of: {}").format(
+                                  label, ', '.join(supported)))
+    frame_label = [label for label in supported if label not in axes_labels][0]
+
+    # 3D meshgrid
+    def slc(i, g):
+        label = axes_labels[i]
+        start = {'xi1': 0,  'xi2': 0,  't': 0, 'xi1_fr': -.5}[label]
+        end   = {'xi1': .5, 'xi2': .5, 't': 1, 'xi1_fr':  .5}[label]
+        return slice(start, end, g*1j)
+
+    a, b, c = packed.shape[1:]
+    X, Y, Z = np.mgrid[slc(0, a), slc(1, b), slc(2, c)]
+    if 'xi1_fr' in axes_labels:
+        # distinguish + and - spin
+        idx = axes_labels.index('xi1_fr')
+        # flip idx-th dim to align with meshgrid
+        _slc = (slice(None),) * (1 + idx) + (slice(None, None, -1),)
+        packed = packed[_slc]
+
+    # camera focus, colormap norm
+    eye = np.array([2.5, .3, 2]) / zoom
+    mx = cmap_norm * packed.max()
+
+    # gif configs
+    volume_kw = dict(
+        x=X.flatten(),
+        y=Y.flatten(),
+        z=Z.flatten(),
+        opacity=opacity,
+        surface_count=surface_count,
+        colorscale=cmap,
+        showscale=False,
+        cmin=0,
+        cmax=mx,
+    )
+    layout_kw = dict(
+        margin_pad=0,
+        margin_l=0,
+        margin_r=0,
+        margin_t=0,
+        title_pad_t=0,
+        title_pad_b=0,
+        margin_autoexpand=False,
+        scene_aspectmode='cube',
+        width=width,
+        height=height,
+        scene=dict(
+            xaxis_title=axes_labels[0],
+            yaxis_title=axes_labels[1],
+            zaxis_title=axes_labels[2],
+        ),
+        scene_camera = dict(
+            up=dict(x=0, y=1, z=0),
+            center=dict(x=0, y=0, z=0),
+            eye=dict(x=eye[0], y=eye[1], z=eye[2]),
+        ),
+    )
+
+    # generate gif frames ####################################################
+    img_paths = []
+    savedir = os.path.abspath(savedir)
+    for k, vol4 in enumerate(packed):
+        fig = go.Figure(go.Volume(value=vol4.flatten(), **volume_kw))
+        fig.update_layout(
+            **layout_kw,
+            title={'text': f"{frame_label}={k}",
+                   'x':.5, 'y':.09,
+                   'xanchor': 'center', 'yanchor': 'top'}
+        )
+
+        savepath = os.path.join(savedir, f'{base_name}{k}{images_ext}')
+        if os.path.isfile(savepath) and overwrite:
+            os.unlink(savepath)
+        fig.write_image(savepath)
+        img_paths.append(savepath)
+        if verbose:
+            print("{}/{} frames done".format(k + 1, len(packed)), flush=True)
+
+    # make gif ###############################################################
+    if gif_kw is None:
+        gif_kw = {}
+    savepath = os.path.join(savedir, f'{base_name}.gif')
+    try:
+        make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
+                 delimiter=base_name, overwrite=overwrite, **gif_kw)
+    finally:
+        if not save_images:
+            # delete images
+            for path in img_paths:
+                if os.path.isfile(path):
+                    os.unlink(path)
 
 
 def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
@@ -864,8 +1085,11 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
         vhlines(vlines, kind='v')
     if hlines:
         vhlines(hlines, kind='h')
-    if not ticks:
+
+    ticks = ticks if isinstance(ticks, (list, tuple)) else (ticks, ticks)
+    if not ticks[0]:
         ax.set_xticks([])
+    if not ticks[1]:
         ax.set_yticks([])
     if xticks is not None or yticks is not None:
         _ticks(xticks, yticks)
@@ -1010,3 +1234,79 @@ def _colorize_complex(z):
     c = np.array(c)
     c = c.swapaxes(0,2)
     return c
+
+
+def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
+             delimiter='', overwrite=True, HD=None):
+    """Makes gif out of images in `loaddir` directory with `ext` extension,
+    and saves to `savepath`.
+
+    Parameters
+    ----------
+    loaddir : str
+        Path to directory from which to fetch images to use as GIF frames.
+
+    savepath : path
+        Save path, must end with '.gif'.
+
+    duration : int
+        Interval between each GIF frame, in milliseconds.
+
+    start_end_pause : int / tuple[int]
+        Number of times to repeat the start and end frames, which multiplies
+        their `duration`; if tuple, first element is for start, second for end.
+
+    ext : str
+        Images filename extension.
+
+    delimiter : str
+        Substring common to all iamge filenames, e.g. 'img' for 'img0.png',
+        'img1.png', ... .
+
+    overwrite : bool (default True)
+        If True and file at `savepath` exists, will overwrite it.
+
+    HD : bool / None
+        If True, will preserve image quality in GIFs and use `imageio`.
+        Defaults to True if `imageio` is installed, else falls back on
+        `PIL.Image`.
+    """
+    # handle `HD`
+    if HD or HD is None:
+        try:
+            import imageio
+            HD = True
+        except ImportError as e:
+            if HD:
+                print("`HD=True` requires `imageio` installed")
+                raise e
+            else:
+                HD = False
+
+    # fetch frames
+    loaddir = os.path.abspath(loaddir)
+    paths = list(glob.glob(f"{loaddir}/{delimiter}*{ext}"))
+    paths = sorted(paths, key=lambda p: int(
+        ''.join(s for s in p.split(os.sep)[-1] if s.isdigit())))
+    frames = [(imageio.imread(p) if HD else Image.open(p))
+              for p in paths]
+
+    # handle frame duplication to increase their duration
+    if start_end_pause is not None:
+        if not isinstance(start_end_pause, (tuple, list)):
+            start_end_pause = (start_end_pause, start_end_pause)
+        for repeat_start in range(start_end_pause[0]):
+            frames.insert(0, frames[0])
+        for repeat_end in range(start_end_pause[1]):
+            frames.append(frames[-1])
+
+    if os.path.isfile(savepath) and overwrite:
+        # delete if exists
+        os.unlink(savepath)
+    # save
+    if HD:
+        imageio.mimsave(savepath, frames, fps=1000/duration)
+    else:
+        frame_one = frames[0]
+        frame_one.save(savepath, format="GIF", append_images=frames,
+                       save_all=True, duration=duration, loop=0)

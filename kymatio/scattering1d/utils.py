@@ -381,43 +381,36 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     ----------
     J_pad : int
         2**J_pad == amount of temporal padding.
-    J : int
-        The maximum log-scale of the scattering transform.
-        In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1 / tuple[int]
-        The number of first-order wavelets per octave. Defaults to `1`.
-        If tuple, sets `Q = (Q1, Q2)`, where `Q2` is the number of
-        second-order wavelets per octave (which defaults to `1`).
-            - Q1: For audio signals, a value of `>= 12` is recommended in
-              order to separate partials.
-            - Q2: Recommended `2` or `1` for most applications.
-    J_fr, Q_fr: int, int
-        `J` and `Q` for frequential scattering.
-    T : int
-        Temporal support of temporal low-pass filter, controlling amount of
-        imposed time-shift invariance and maximum subsampling
-    F : int
-        Temporal support of frequential low-pass filter, controlling amount of
-        imposed frequency transposition invariance and subsampling
+
+    J, Q, J_fr, T, F: int, int, int, int, int
+        See `help(kymatio.scattering1d.TimeFrequencyScattering1D)`.
+        Control physical meta of bandpass and lowpass filters (xi, sigma, etc).
+
     out_3D : bool
         - True: will reshape meta fields to match output structure:
           `(n_coeffs, n_freqs, meta_len)`.
         - False: pack flattened: `(n_coeffs * n_freqs, meta_len)`.
+
     out_type : str
          - `'dict:list'` or `'dict:array'`: meta is packed
            into respective pairs (e.g. `meta['n']['psi_t * phi_f'][1]`)
          - `'list'` or `'array'`: meta is flattened (e.g. `meta['n'][15]`).
+
     out_exclude : list/tuple[str]
         Names of coefficient pairs to exclude from meta.
+
     sampling_filters_fr : tuple[str]
         See `help(TimeFrequencyScattering1D)`. Affects `xi`, `sigma`, and `j`.
+
     average : bool
-        Only affects `S0`'s meta.
         Affects `S0`'s meta, and temporal stride meta.
+
     average_global : bool
         Affects `S0`'s meta, and temporal stride meta.
+
     oversampling : int
         Affects temporal stride meta.
+
     sc_freq : `scattering1d.frontend.base_frontend._FrequencyScatteringBase`
         Frequential scattering object, storing pertinent attributes and filters.
 
@@ -465,7 +458,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     -------------------------
     Computation replicates logic in `timefrequency_scattering()`. Meta values
     depend on:
-        - out_3D (True only possible with average_fr=True)
+        - out_3D (True only possible with `average and average_fr`)
         - average
         - average_global
         - average_fr
@@ -473,7 +466,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         - oversampling
         - oversampling_fr
         - max_padding_fr
-        - aligned (False meaningful (and tested) only with out_3D=True)
+        - aligned
         - sampling_psi_fr
         - sampling_phi_fr
     and some of their interactions.
@@ -567,13 +560,23 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         xi1_fr, sigma1_fr, j1_fr, is_cqt1_fr = p
         return xi1_fr, sigma1_fr, j1_fr, is_cqt1_fr
 
+    def _exclude_excess_scale(n2, n1_fr):
+        if sc_freq.sampling_psi_fr != 'exclude' or n1_fr == -1:
+            return False
+
+        pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
+                  sc_freq.J_pad_fr[n2])
+        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+        scale_diff = (sc_freq.shape_fr_scale_max -
+                      sc_freq.shape_fr_scale[n2])
+        j0s = [k for k in sc_freq.psi1_f_fr_up[n1_fr] if isinstance(k, int)]
+        if scale_diff not in j0s or subsample_equiv_due_to_pad not in j0s:
+            return True
+        return False
+
     def _fill_n1_info(pair, n2, n1_fr, spin):
-        if sc_freq.sampling_psi_fr == 'exclude' and n1_fr != -1:
-            pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
-                      sc_freq.J_pad_fr[n2])
-            subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
-            if subsample_equiv_due_to_pad not in sc_freq.psi1_f_fr_up[n1_fr]:
-                return
+        if _exclude_excess_scale(n2, n1_fr):
+            return
 
         # track S1 from padding to `_joint_lowpass()`
         (shape_fr_padded, total_conv_stride_over_U1_realized, n1_fr_subsample,
@@ -759,14 +762,14 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             for n1_fr, j1_fr in enumerate(j1s_fr):
                 _fill_n1_info(pair, n2, n1_fr, spin=spin)
 
-    array_fields = ['order', 'xi', 'sigma', 'j', 'n', 's', 'stride']
+    array_fields = ['order', 'xi', 'sigma', 'j', 'is_cqt', 'n', 's', 'stride']
     for field in array_fields:
         for pair, v in meta[field].items():
             meta[field][pair] = np.array(v)
 
     if out_3D:
       # reorder for 3D
-      for field in array_fields:#meta:
+      for field in array_fields:
         if field in ('s', 'order'):
             meta_len = 1
         elif field == 'stride':
@@ -774,24 +777,42 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             meta_len = 3
         for pair in meta[field]:
+          n_slices = None
+
           if pair in ('S0', 'S1'):
               # simply expand dim for consistency, no 3D structure
               meta[field][pair] = meta[field][pair].reshape(-1, 1, meta_len)
               continue
+
           elif 'up' in pair or 'down' in pair:
-              number_of_n2 = sum(j2 != 0 for j2 in j2s)
-              number_of_n1_fr = len(j1s_fr)
+              if sampling_psi_fr != 'exclude':
+                  number_of_n2 = sum(j2 != 0 for j2 in j2s)
+                  number_of_n1_fr = len(j1s_fr)
+              else:
+                  n_slices = 0
+                  for n2, j2 in enumerate(j2s):
+                      if j2 == 0:
+                          continue
+                      for n1_fr, j1_fr in enumerate(j1s_fr):
+                          if _exclude_excess_scale(n2, n1_fr):
+                              continue
+                          n_slices += 1
+
           elif pair == 'psi_t * phi_f':
               number_of_n2 = sum(j2 != 0 for j2 in j2s)
               number_of_n1_fr = 1
+
           elif pair == 'phi_t * psi_f':
               number_of_n2 = 1
               number_of_n1_fr = len(j1s_fr)
+
           elif pair == 'phi_t * phi_f':
               number_of_n2 = 1
               number_of_n1_fr = 1
-          n_coeffs = number_of_n2 * number_of_n1_fr
-          meta[field][pair] = meta[field][pair].reshape(n_coeffs, -1, meta_len)
+
+          if n_slices is None:
+              n_slices = number_of_n2 * number_of_n1_fr
+          meta[field][pair] = meta[field][pair].reshape(n_slices, -1, meta_len)
 
     if out_exclude is not None:
         # drop excluded pairs
