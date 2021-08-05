@@ -761,7 +761,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
                  delimiter=base_name, overwrite=overwrite, **gif_kw)
     finally:
         if not save_images:
-            # delete iamges
+            # delete images
             for path in img_paths:
                 if os.path.isfile(path):
                     os.unlink(path)
