@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """Convenience visual methods."""
-import os, glob
+import os
 import numpy as np
 from scipy.fft import ifft, ifftshift
 from copy import deepcopy
 from PIL import Image
 from .scattering1d.filter_bank import compute_temporal_support
-from .toolkit import coeff_energy, coeff_distance, energy
+from .toolkit import coeff_energy, coeff_distance, energy, drop_batch_dim_jtfs
 
 try:
     import matplotlib.pyplot as plt
@@ -124,7 +124,8 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
 
 def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
                        lp_phi=True, center_dc=None, plot_kw=None):
-    """
+    """Visualize JTFS frequential filterbank.
+
     Parameters
     ----------
     scattering: kymatio.scattering1d.TimeFrequencyScattering1D
@@ -277,27 +278,38 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
 def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
                     labels=True, suptitle_y=1.015):
-    """
-    # Arguments:
-        jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
-            JTFS instance.
-        part: str['real', 'imag', 'complex']
-            Whether to plot real or imaginary part (black-white-red colormap),
-            or complex (special coloring).
-        zoomed: bool (default False)
-            Whether to plot all filters with maximum subsampling
-            (loses relative orientations but shows fine detail).
-        w, h: float, float
-            Adjust width and height.
-        borders: bool (default False)
-            Whether to show plot borders between wavelets.
-        labels: bool (default True)
-            Whether to label joint slices with `mu, l, spin` information.
-        suptitle_y: float / None
-            Position of plot title (None for no title).
-            Default is optimized for `w=h=1`.
+    """Visualize JTFS joint 2D filterbank in time domai.
 
-    # Examples:
+    Parameters
+    ----------
+    jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
+        JTFS instance.
+
+    part: str['real', 'imag', 'complex']
+        Whether to plot real or imaginary part (black-white-red colormap),
+        or complex (special coloring).
+
+    zoomed: bool (default False)
+        Whether to plot all filters with maximum subsampling
+        (loses relative orientations but shows fine detail).
+
+    w, h: float, float
+        Adjust width and height.
+
+    borders: bool (default False)
+        Whether to show plot borders between wavelets.
+
+    labels: bool (default True)
+        Whether to label joint slices with `mu, l, spin` information.
+
+    suptitle_y: float / None
+        Position of plot title (None for no title).
+        Default is optimized for `w=h=1`.
+
+    Example
+    -------
+    ::
+
         T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
         jtfs = TimeFrequencyScattering1D(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
                                          out_type='array', average_fr=1)
@@ -313,10 +325,10 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
         _f_idx = len(jtfs.psi1_f_fr_up) - f_idx - 1
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.phi_f_fr[0]
+            p_t, p_f = jtfs.phi_f[0], jtfs.sc_freq.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f, jtfs.sc_freq.psi1_f_fr_up[_f_idx]
+            p_t, p_f = jtfs.phi_f[0], jtfs.sc_freq.psi1_f_fr_up[_f_idx]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", _f_idx, 0)
         elif f_idx == -1:
             p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr[0]
@@ -462,9 +474,11 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
     plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
 
 
-def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
-             skip_unspinned=False, sample_idx=0):
-    """Slice heatmaps of Joint Time-Frequency Scattering.
+def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
+             overwrite=False, save_images=None, show=None, cmap='jet', norms=None,
+             skip_spins=False, skip_unspinned=False, sample_idx=0, inf_token=-1,
+             verbose=False, gif_kw=None):
+    """Slice heatmaps of JTFS outputs.
 
     Parameters
     ----------
@@ -474,15 +488,36 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
     meta: dict[dict[np.ndarray]]
         `jtfs.meta()`.
 
+    savedir : str
+        Path of directory to save GIF/images to. Defaults to current
+        working directory.
+
+    base_name : str
+        Will save gif with this name, and images with same name enumerated.
+
+    images_ext : str
+        Generates images with this format. '.png' (default) is lossless but takes
+        more space, '.jpg' is compressed.
+
+    overwrite : bool (default False)
+        If True and file at `savepath` exists, will overwrite it.
+
+    save_images : bool (default False)
+        Whether to save images. Images are always saved if `savepath` is not None,
+        but deleted after if `save_images=False`.
+        If `True` and `savepath` is None, will save images to current working
+        directory (but not gif).
+
+    show : None / bool
+        Whether to display images to console. If `savepath` is None, defaults
+        to True.
+
     norms: None / tuple
         Plot color norms for 1) `psi_t * psi_f`, 2) `psi_t * phi_f`, and
         3) `phi_t * psi_f` pairs, respectively.
         Tuple of three (upper limits only, lower assumed 0).
         If None, will norm to `.5 * max(coeffs)`, where coeffs = all joint
         coeffs except `phi_t * phi_f`.
-
-    inf_token: int / np.nan
-        Placeholder used in `meta` to denote infinity.
 
     skip_spins: bool (default False)
         Whether to skip `psi_t * psi_f` pairs.
@@ -493,6 +528,15 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 
     sample_idx : int (default 0)
         Index of sample in batched input to visualize.
+
+    inf_token: int / np.nan
+        Placeholder used in `meta` to denote infinity.
+
+    verbose : bool (default False)
+        Whether to print to console the location of save file upon success.
+
+    gif_kw : dict / None
+        Passed as kwargs to `kymatio.visuals.make_gif`.
 
     Example
     -------
@@ -508,44 +552,93 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
 
         gif_jtfs(Scx, meta)
     """
-    def _title(meta, meta_idx, pair, spin):
-        txt = r"$|\Psi_{%s, %s, %s} \star X|$"
-        values = meta['n'][pair][meta_idx[0]]
-        values = values if values.ndim == 1 else values[0]
+    def _title(meta_idx, pair, spin):
+        txt = r"$|\Psi_{%s, %s, %s} \star \mathrm{U1}|$"
+        values = ns[pair][meta_idx[0]]
+        assert values.ndim == 1, values
         mu, l, _ = [int(n) if (float(n).is_integer() and n >= 0) else '-\infty'
                     for n in values]
         return (txt % (mu, l, spin), {'fontsize': 20})
 
-    def _viz_spins(Scx, meta, i, norm):
+    def _n_n1s(pair):
+        n2, n1_fr, _ = ns[pair][meta_idx[0]]
+        return np.sum(np.all(ns[pair][:, :2] == np.array([n2, n1_fr]), axis=1))
+
+    def _get_coef(i, pair, meta_idx):
+        n_n1s = _n_n1s(pair)
+        start, end = meta_idx[0], meta_idx[0] + n_n1s
+        if out_list:
+            coef = Scx[pair][i]['coef']
+        elif out_3D:
+            coef = Scx[pair][i]
+        else:
+            coef = Scx[pair][start:end]
+        assert len(coef) == n_n1s
+        return coef
+
+    def _save_image():
+        path = os.path.join(savedir, f'{base_name}{img_idx[0]}{images_ext}')
+        if os.path.isfile(path) and overwrite:
+            os.unlink(path)
+        if not os.path.isfile(path):
+            plt.savefig(path, bbox_inches='tight')
+        img_paths.append(path)
+        img_idx[0] += 1
+
+    def _viz_spins(Scx, i, norm):
         kup = 'psi_t * psi_f_up'
         kdn = 'psi_t * psi_f_down'
-        if out_list:
-            sup, sdn = (Scx[kup][i]['coef'][sample_idx],
-                        Scx[kdn][i]['coef'][sample_idx])
-        else:
-            sup, sdn = Scx[kup][sample_idx][i], Scx[kdn][sample_idx][i]
-        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+        sup = _get_coef(i, kup, meta_idx)
+        sdn = _get_coef(i, kdn, meta_idx)
+
+        _, axes = plt.subplots(1, 2, figsize=(14, 7))
         kw = dict(abs=1, ticks=0, show=0, norm=norm)
 
-        imshow(sup, ax=axes[0], **kw, title=_title(meta, meta_idx, kup, '+1'))
-        imshow(sdn, ax=axes[1], **kw, title=_title(meta, meta_idx, kdn, '-1'))
+        imshow(sup, ax=axes[0], **kw, title=_title(meta_idx, kup, '+1'))
+        imshow(sdn, ax=axes[1], **kw, title=_title(meta_idx, kdn, '-1'))
         plt.subplots_adjust(wspace=0.01)
-        plt.show()
+        if save_images or do_gif:
+            _save_image()
+        if show:
+            plt.show()
+        plt.close()
 
-        meta_idx[0] += (1 if out_3D else
-                        len(sup))
+        meta_idx[0] += len(sup)
 
-    def _viz_simple(coef, pair, meta, norm):
-        imshow(coef, abs=1, ticks=0, show=1, norm=norm, w=.8, h=.5,
-               title=_title(meta, meta_idx, pair, '0'))
-        meta_idx[0] += (1 if out_3D else
-                        len(coef))
+    def _viz_simple(Scx, pair, i, norm):
+        coef = _get_coef(i, pair, meta_idx)
 
+        _kw = dict(abs=1, ticks=0, show=0, norm=norm, w=14/12, h=7/12,
+                   title=_title(meta_idx, pair, '0'))
+        if do_gif:
+            # make spacing consistent with up & down
+            _, axes = plt.subplots(1, 2, figsize=(14, 7))
+            imshow(coef, ax=axes[0], **_kw)
+            plt.subplots_adjust(wspace=0.01)
+            axes[1].set_frame_on(False)
+            axes[1].set_xticks([])
+            axes[1].set_yticks([])
+        else:
+            # optimize spacing for single image
+            imshow(coef, **_kw)
+        if save_images or do_gif:
+            _save_image()
+        if show:
+            plt.show()
+        plt.close()
+
+        meta_idx[0] += len(coef)
+
+    # handle args
+    savedir, images_ext, save_images, show, do_gif = _handle_gif_args(
+        savedir, base_name, images_ext, save_images, show)
+
+    # set params
     out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
     out_list = isinstance(Scx['S0'], list)
-    if not (out_3D or out_list):
-        raise NotImplementedError("`out_type` must be 'dict:array' with "
-                                  "`out_3D=True`, or 'dict:list'.")
+    ns = {pair: meta['n'][pair].reshape(-1, 3) for pair in meta['n']}
+
+    Scx = drop_batch_dim_jtfs(Scx, sample_idx)
 
     if isinstance(norms, (list, tuple)):
         norms = [(0, n) for n in norms]
@@ -558,34 +651,49 @@ def gif_jtfs(Scx, meta, norms=None, inf_token=-1, skip_spins=False,
                      if pair not in ('S0', 'S1', 'phi_t * phi_f')])
         norms = [(0, .5 * mx)] * 5
 
+    # spinned pairs ##########################################################
+    img_paths = []
+    img_idx = [0]
     meta_idx = [0]
     if not skip_spins:
-        if out_list:
-            for i in range(len(Scx['psi_t * psi_f_up'])):
-                _viz_spins(Scx, meta, i, norms[0])
-        else:
-            for i in range(len(Scx['psi_t * psi_f_up'][sample_idx])):
-                _viz_spins(Scx, meta, i, norms[0])
+        i = 0
+        while True:
+            _viz_spins(Scx, i, norms[0])
+            i += 1
+            if meta_idx[0] > len(ns['psi_t * psi_f_up']) - 1:
+                break
 
-    if skip_unspinned:
-        return
-    pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
-    for j, pair in enumerate(pairs):
-        meta_idx = [0]
-        if out_list:
-            for i, c in enumerate(Scx[pair]):
-                coef = c['coef'][sample_idx]
-                _viz_simple(coef, pair, meta, norms[1 + j])
-        else:
-            for i, coef in enumerate(Scx[pair][sample_idx]):
-                _viz_simple(coef, pair, meta, norms[1 + j])
+    # unspinned pairs ########################################################
+    if not skip_unspinned:
+        pairs = ('psi_t * phi_f', 'phi_t * psi_f', 'phi_t * phi_f')
+        for j, pair in enumerate(pairs):
+            meta_idx = [0]
+            i = 0
+            while True:
+                _viz_simple(Scx, pair, i, norms[1 + j])
+                i += 1
+                if meta_idx[0] > len(ns[pair]) - 1:
+                    break
+
+    # make gif & cleanup #####################################################
+    if do_gif:
+        if gif_kw is None:
+            gif_kw = {}
+        savepath = os.path.join(savedir, base_name + '.gif')
+        make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
+                 overwrite=overwrite, delimiter=base_name, verbose=verbose,
+                 **gif_kw)
+    if not save_images:
+        for path in img_paths:
+            if os.path.isfile(path):
+                os.unlink(path)
 
 
-def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
+def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
-                overwrite=True, save_images=False, width=800, height=800,
-                surface_count=30, opacity=.2, zoom=1.61, verbose=True,
-                gif_kw=None):
+                overwrite=False, save_images=False,
+                width=800, height=800, surface_count=30, opacity=.2, zoom=1.61,
+                verbose=True, gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
 
     Parameters
@@ -593,16 +701,8 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
     packed : tensor, 4D
         Output of `kymatio.toolkit.pack_coeffs_jtfs`.
 
-    savedir : str
-        Path of directory to save GIF/images to. Defaults to current
-        working directory.
-
-    base_name : str
-        Will save gif with this name, and images with same name enumerated.
-
-    images_ext : str
-        Generates images with this format. '.png' (default) is lossless but takes
-        more space, '.jpg' is compressed.
+    savedir, base_name, images_ext, overwrite :
+        See `help(kymatio.visuals.gif_jtfs)`.
 
     cmap : str
         Colormap to use.
@@ -614,17 +714,6 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
     axes_labels : tuple[str]
         Names of last three dimensions of `packed`. E.g. `structure==2`
         will output `(n2, n1_fr, n1, t)`.
-
-    overwrite : bool (default True)
-        Whether to overwrite gifs/images, if they already exist with same
-        save path.
-
-    save_images : bool (default False)
-        Images are always first stored then made into a GIF. If `False`
-        (default), the images are deleted after the GIF is made.
-
-    gif_kw : dict / None
-        Passed as kwargs to `kymatio.visuals.make_gif`.
 
     width : int
         2D width of each image (GIF frame).
@@ -643,6 +732,9 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
 
     verbose : bool (default True)
         Whether to print GIF generation progress.
+
+    gif_kw : dict / None
+        Passed as kwargs to `kymatio.visuals.make_gif`.
 
     Example
     -------
@@ -667,6 +759,10 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
     except ImportError as e:
         print("\n`plotly.graph_objs` is needed for `gif_jtfs_3D`.")
         raise e
+
+    # handle args
+    savedir, images_ext, save_images, *_ = _handle_gif_args(
+        savedir, base_name, images_ext, save_images, show=False)
 
     # handle labels
     supported = ('t', 'xi2', 'xi1_fr', 'xi1')
@@ -734,7 +830,6 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
 
     # generate gif frames ####################################################
     img_paths = []
-    savedir = os.path.abspath(savedir)
     for k, vol4 in enumerate(packed):
         fig = go.Figure(go.Volume(value=vol4.flatten(), **volume_kw))
         fig.update_layout(
@@ -753,12 +848,13 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs', images_ext='.png',
             print("{}/{} frames done".format(k + 1, len(packed)), flush=True)
 
     # make gif ###############################################################
-    if gif_kw is None:
-        gif_kw = {}
-    savepath = os.path.join(savedir, f'{base_name}.gif')
     try:
+        if gif_kw is None:
+            gif_kw = {}
+        savepath = os.path.join(savedir, f'{base_name}.gif')
         make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
-                 delimiter=base_name, overwrite=overwrite, **gif_kw)
+                 delimiter=base_name, overwrite=overwrite, verbose=verbose,
+                 **gif_kw)
     finally:
         if not save_images:
             # delete images
@@ -952,38 +1048,87 @@ def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
     return ratios, stats
 
 
-def _get_compute_pairs(pairs, meta):
-    # enforce pair order
-    if pairs is None:
-        pairs_all = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
-                     'psi_t * phi_f', 'psi_t * psi_f_up', 'psi_t * psi_f_down')
+def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
+             delimiter='', overwrite=False, HD=None, verbose=False):
+    """Makes gif out of images in `loaddir` directory with `ext` extension,
+    and saves to `savepath`.
+
+    Parameters
+    ----------
+    loaddir : str
+        Path to directory from which to fetch images to use as GIF frames.
+
+    savepath : path
+        Save path, must end with '.gif'.
+
+    duration : int
+        Interval between each GIF frame, in milliseconds.
+
+    start_end_pause : int / tuple[int]
+        Number of times to repeat the start and end frames, which multiplies
+        their `duration`; if tuple, first element is for start, second for end.
+
+    ext : str
+        Images filename extension.
+
+    delimiter : str
+        Substring common to all iamge filenames, e.g. 'img' for 'img0.png',
+        'img1.png', ... .
+
+    overwrite : bool (default False)
+        If True and file at `savepath` exists, will overwrite it.
+
+    HD : bool / None
+        If True, will preserve image quality in GIFs and use `imageio`.
+        Defaults to True if `imageio` is installed, else falls back on
+        `PIL.Image`.
+
+    verbose : bool (default False)
+        Whether to print to console the location of save file upon success.
+    """
+    # handle `HD`
+    if HD or HD is None:
+        try:
+            import imageio
+            HD = True
+        except ImportError as e:
+            if HD:
+                print("`HD=True` requires `imageio` installed")
+                raise e
+            else:
+                HD = False
+
+    # fetch frames
+    loaddir = os.path.abspath(loaddir)
+    names = [n for n in os.listdir(loaddir)
+             if (n.startswith(delimiter) and n.endswith(ext))]
+    names = sorted(names, key=lambda p: int(
+        ''.join(s for s in p.split(os.sep)[-1] if s.isdigit())))
+    paths = [os.path.join(loaddir, n) for n in names]
+    frames = [(imageio.imread(p) if HD else Image.open(p))
+              for p in paths]
+
+    # handle frame duplication to increase their duration
+    if start_end_pause is not None:
+        if not isinstance(start_end_pause, (tuple, list)):
+            start_end_pause = (start_end_pause, start_end_pause)
+        for repeat_start in range(start_end_pause[0]):
+            frames.insert(0, frames[0])
+        for repeat_end in range(start_end_pause[1]):
+            frames.append(frames[-1])
+
+    if os.path.isfile(savepath) and overwrite:
+        # delete if exists
+        os.unlink(savepath)
+    # save
+    if HD:
+        imageio.mimsave(savepath, frames, fps=1000/duration)
     else:
-        pairs_all = pairs if not isinstance(pairs, str) else [pairs]
-    compute_pairs = []
-    for pair in pairs_all:
-        if pair in meta['n']:
-            compute_pairs.append(pair)
-    return compute_pairs
-
-
-def _make_titles_jtfs(compute_pairs, target):
-    """For energies and distances."""
-    # make `titles`
-    titles = []
-    pair_aliases = {'psi_t * phi_f': '* phi_f', 'phi_t * psi_f': 'phi_t *',
-                    'psi_t * psi_f_up': 'up', 'psi_t * psi_f_down': 'down'}
-    title = "%s | " % target
-    for pair in compute_pairs:
-        if pair in pair_aliases:
-            title += "{}, ".format(pair_aliases[pair])
-        else:
-            title += "{}, ".format(pair)
-    title = title.rstrip(', ')
-    titles.append(title)
-
-    title = "cumsum(%s)" % target
-    titles.append(title)
-    return titles
+        frame_one = frames[0]
+        frame_one.save(savepath, format="GIF", append_images=frames,
+                       save_all=True, duration=duration, loop=0)
+    if verbose:
+        print("Saved gif to", savepath)
 
 
 #### Visuals primitives ## messy code ########################################
@@ -1165,7 +1310,7 @@ def vhlines(lines, kind='v'):
     for line in lines:
         lfn(line, **lkw)
 
-
+#### misc / utils ############################################################
 def _ticks(xticks, yticks):
     def fmt(ticks):
         return ("%.d" if all(float(h).is_integer() for h in ticks) else
@@ -1236,77 +1381,56 @@ def _colorize_complex(z):
     return c
 
 
-def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
-             delimiter='', overwrite=True, HD=None):
-    """Makes gif out of images in `loaddir` directory with `ext` extension,
-    and saves to `savepath`.
-
-    Parameters
-    ----------
-    loaddir : str
-        Path to directory from which to fetch images to use as GIF frames.
-
-    savepath : path
-        Save path, must end with '.gif'.
-
-    duration : int
-        Interval between each GIF frame, in milliseconds.
-
-    start_end_pause : int / tuple[int]
-        Number of times to repeat the start and end frames, which multiplies
-        their `duration`; if tuple, first element is for start, second for end.
-
-    ext : str
-        Images filename extension.
-
-    delimiter : str
-        Substring common to all iamge filenames, e.g. 'img' for 'img0.png',
-        'img1.png', ... .
-
-    overwrite : bool (default True)
-        If True and file at `savepath` exists, will overwrite it.
-
-    HD : bool / None
-        If True, will preserve image quality in GIFs and use `imageio`.
-        Defaults to True if `imageio` is installed, else falls back on
-        `PIL.Image`.
-    """
-    # handle `HD`
-    if HD or HD is None:
-        try:
-            import imageio
-            HD = True
-        except ImportError as e:
-            if HD:
-                print("`HD=True` requires `imageio` installed")
-                raise e
-            else:
-                HD = False
-
-    # fetch frames
-    loaddir = os.path.abspath(loaddir)
-    paths = list(glob.glob(f"{loaddir}/{delimiter}*{ext}"))
-    paths = sorted(paths, key=lambda p: int(
-        ''.join(s for s in p.split(os.sep)[-1] if s.isdigit())))
-    frames = [(imageio.imread(p) if HD else Image.open(p))
-              for p in paths]
-
-    # handle frame duplication to increase their duration
-    if start_end_pause is not None:
-        if not isinstance(start_end_pause, (tuple, list)):
-            start_end_pause = (start_end_pause, start_end_pause)
-        for repeat_start in range(start_end_pause[0]):
-            frames.insert(0, frames[0])
-        for repeat_end in range(start_end_pause[1]):
-            frames.append(frames[-1])
-
-    if os.path.isfile(savepath) and overwrite:
-        # delete if exists
-        os.unlink(savepath)
-    # save
-    if HD:
-        imageio.mimsave(savepath, frames, fps=1000/duration)
+def _get_compute_pairs(pairs, meta):
+    # enforce pair order
+    if pairs is None:
+        pairs_all = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f',
+                     'psi_t * phi_f', 'psi_t * psi_f_up', 'psi_t * psi_f_down')
     else:
-        frame_one = frames[0]
-        frame_one.save(savepath, format="GIF", append_images=frames,
-                       save_all=True, duration=duration, loop=0)
+        pairs_all = pairs if not isinstance(pairs, str) else [pairs]
+    compute_pairs = []
+    for pair in pairs_all:
+        if pair in meta['n']:
+            compute_pairs.append(pair)
+    return compute_pairs
+
+
+def _make_titles_jtfs(compute_pairs, target):
+    """For energies and distances."""
+    # make `titles`
+    titles = []
+    pair_aliases = {'psi_t * phi_f': '* phi_f', 'phi_t * psi_f': 'phi_t *',
+                    'psi_t * psi_f_up': 'up', 'psi_t * psi_f_down': 'down'}
+    title = "%s | " % target
+    for pair in compute_pairs:
+        if pair in pair_aliases:
+            title += "{}, ".format(pair_aliases[pair])
+        else:
+            title += "{}, ".format(pair)
+    title = title.rstrip(', ')
+    titles.append(title)
+
+    title = "cumsum(%s)" % target
+    titles.append(title)
+    return titles
+
+
+def _handle_gif_args(savedir, base_name, images_ext, save_images, show):
+    do_gif = bool(savedir is not None)
+    if save_images is None:
+        if savedir is None:
+            save_images = bool(not show)
+        else:
+            save_images = False
+    if show is None:
+        show = bool(not save_images and not do_gif)
+
+    if savedir is None and save_images:
+        savedir = ''
+    if savedir is not None:
+        savedir = os.path.abspath(savedir)
+
+    if not images_ext.startswith('.'):
+        images_ext = '.' + images_ext
+
+    return savedir, images_ext, save_images, show, do_gif

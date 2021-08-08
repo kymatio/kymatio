@@ -1,3 +1,4 @@
+"""Joint Time-Frequency Scattering related tests."""
 import pytest
 import numpy as np
 from pathlib import Path

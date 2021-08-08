@@ -736,7 +736,7 @@ class TimeFrequencyScatteringBase1D():
     """
 
     _doc_params = \
-    """
+    r"""
     Parameters
     ----------
     J, shape, T, average, oversampling, pad_mode :
@@ -818,15 +818,13 @@ class TimeFrequencyScatteringBase1D():
         because different `shape_fr` correspond to *trimming* of same underlying
         input (first order coeffs) rather than *subsampling*.
 
-        The `aligned=False` and `out_3D=False` combination is not tested,
-        nor is any use known for it.
-
         Note: `sampling_psi_fr = 'recalibrate'` breaks global alignment, but
         preserves it on per-`subsample_equiv_due_to_pad` basis, i.e. per-`n2`.
 
         **Illustration**:
 
         `x` == zero, `0, 4, ...` == indices of actual (nonpadded) data
+        ::
 
             data -> padded
             16   -> 128
@@ -1280,12 +1278,16 @@ class TimeFrequencyScatteringBase1D():
     relative to small `J_fr`.
 
     Illustrating, consider `shape_fr, width(psi_fr_widest) -> J_pad_fr`:
+    ::
+
         33, 16 -> 64   # J_fr == 2 below max
         33, 32 -> 128  # J_fr == 1 below max
         33, 64 -> 128  # J_fr == max
         63, 64 -> 128  # J_fr == max
 
-    Non-uniqueness example, w/ # `(J_pad_fr, shape_fr_scale)`
+    Non-uniqueness example, w/ # `(J_pad_fr, shape_fr_scale)`:
+    ::
+
         33, 4 -> 64  # `(6, 6)`
         31, 2 -> 64  # `(5, 6)`
         17, 2 -> 32  # `(5, 5)`
