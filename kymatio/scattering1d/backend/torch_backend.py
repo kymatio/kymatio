@@ -138,8 +138,8 @@ class TorchBackend1D(TorchBackend):
     @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
                          trim_tm):
-        return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
-                                         pad_left, pad_right, trim_tm)
+        agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
+                                  pad_left, pad_right, trim_tm)
 
 
 backend = TorchBackend1D

@@ -703,8 +703,9 @@ def timefrequency_scattering(
                 total_conv_stride_tm = k1
 
             # energy correction due to inexact unpad length
-            _energy_correction(S_1_tm, B, param_tm=(N, ind_start_tm, ind_end_tm,
-                                                    total_conv_stride_tm))
+            S_1_tm = _energy_correction(S_1_tm, B,
+                                        param_tm=(N, ind_start_tm, ind_end_tm,
+                                                  total_conv_stride_tm))
             out_S_1_tm.append({'coef': S_1_tm, 'j': (j1,), 'n': (n1,), 's': (),
                                'stride': (total_conv_stride_tm,)})
         if include_phi_t:
@@ -765,9 +766,10 @@ def timefrequency_scattering(
                                               lowpass_subsample_fr)
 
         # energy correction due to inexact unpad indices
-        _energy_correction(S_1, B, param_fr=(sc_freq.shape_fr_max,
-                                             ind_start_fr, ind_end_fr,
-                                             total_conv_stride_over_U1_realized))
+        S_1 = _energy_correction(S_1, B,
+                                 param_fr=(sc_freq.shape_fr_max,
+                                           ind_start_fr, ind_end_fr,
+                                           total_conv_stride_over_U1_realized))
 
         sc_freq.__total_conv_stride_over_U1_phi = (
             total_conv_stride_over_U1_realized)
@@ -876,6 +878,7 @@ def timefrequency_scattering(
     out['psi_t * psi_f_up']   = out_S_2['psi_t * psi_f'][0]
     out['psi_t * psi_f_down'] = out_S_2['psi_t * psi_f'][1]
 
+    # delete excluded
     for pair in out_exclude:
         del out[pair]
 
@@ -922,7 +925,8 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, trim_tm, commons,
      ) = commons
 
     psi1_fs, spins = [], []
-    if 'psi_t * psi_f_up' not in out_exclude:
+    if ('psi_t * psi_f_up' not in out_exclude or
+            'psi_t * phi_f' not in out_exclude):
         psi1_fs.append(sc_freq.psi1_f_fr_up)
         spins.append(1 if spin_down else 0)
     if spin_down and 'psi_t * psi_f_down' not in out_exclude:

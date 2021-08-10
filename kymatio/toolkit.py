@@ -16,6 +16,24 @@ def drop_batch_dim_jtfs(Scx, sample_idx=0):
         - array: new object but shared storage with original array (so original
           variable reference points to unindexed array).
     """
+    fn = lambda x: x[sample_idx]
+    return _iterate_apply(Scx, fn)
+
+
+def jtfs_to_numpy(Scx):
+    """Convert PyTorch/TensorFlow tensors to numpy arrays, with meta copied,
+    and without affecting original data structures.
+    """
+    def fn(x):
+        if hasattr(x, 'to') and 'cpu' not in x.device.type:
+            x = x.cpu()
+        if hasattr(x, 'numpy'):
+            x = x.numpy()
+        return x
+    return _iterate_apply(Scx, fn)
+
+
+def _iterate_apply(Scx, fn):
     def get_meta(s):
         return {k: v for k, v in s.items() if not hasattr(v, 'ndim')}
 
@@ -25,28 +43,24 @@ def drop_batch_dim_jtfs(Scx, sample_idx=0):
             out[pair] = []
             if isinstance(Scx[pair], list):
                 for i, s in enumerate(Scx[pair]):
-                    if isinstance(s, dict):  # TODO undo
-                        out[pair].append(get_meta(s))
-                        out[pair][i]['coef'] = s['coef'][sample_idx]
-                    else:
-                        out[pair].append(s[sample_idx])
+                    out[pair].append(get_meta(s))
+                    out[pair][i]['coef'] = fn(s['coef'])
             else:
-                out[pair] = Scx[pair][sample_idx]
+                out[pair] = fn(Scx[pair])
     elif isinstance(Scx, list):
         out = []  # don't modify source list
         for s in Scx:
             o = get_meta(s)
-            o['coef'] = s['coef'][sample_idx]
+            o['coef'] = fn(s['coef'])
             out.append(o)
     elif isinstance(Scx, tuple):  # out_type=='array' && out_3D==True
-        Scx = (Scx[0][sample_idx], Scx[1][sample_idx])
+        Scx = (fn(Scx[0]), fn(Scx[1]))
     elif hasattr(Scx, 'ndim'):
-        Scx = Scx[sample_idx]
+        Scx = fn(Scx)
     else:
         raise ValueError(("unrecognized input type: {}; must be as returned by "
                           "`jtfs(x)`.").format(type(Scx)))
     return out
-
 
 def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
                      separate_lowpass=False, sampling_psi_fr=None, debug=False):
@@ -391,12 +405,14 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
         if structure != 4:
             out_phi_f = tensor_padded(combined_phi_f, **kw)
 
+    B = get_unified_backend(_infer_backend(out, get_name=True)[1])
     if structure in (1, 2):
         if structure == 1:
-            out = out.transpose(1, 0, 2, 3)
+            out = B.transpose(out, (1, 0, 2, 3))
             if separate_lowpass:
-                out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
-                out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
+                # TODO list transpose
+                out_phi_f = B.transpose(out_phi_f, (1, 0, 2, 3))
+                out_phi_t = B.transpose(out_phi_t, (1, 0, 2, 3))
         out = (out if not separate_lowpass else
                (out, out_phi_f, out_phi_t))
 
@@ -493,7 +509,9 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
             - filterbank: since input is assumed real, we convolve only over
               positive frequencies, getting half the energy
 
-        Current JTFS implementation accounts for both so default is `False`.
+        Current JTFS implementation accounts for both so default is `False`
+        (in fact `True` isn't implemented with any configuration due to
+        forced LP sum renormalization - though it's possible to implement).
 
         Filterbank energy correction is as follows:
 
@@ -549,7 +567,7 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
         raise ValueError("`pair` must be string, list/tuple of strings, or None "
                          "(got %s)" % pair)
 
-    # compute compensation factor # TODO better comment
+    # compute compensation factor (see `correction` docs)
     factor = _get_pair_factor(pair, correction)
     fn = lambda c: energy(c, kind=kind)
     norm_fn = lambda total_joint_stride: (2**total_joint_stride
@@ -568,9 +586,43 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
 
 def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
                    kind='l2'):
+    """Computes L2 or L1 relative distance between `Scx0` and `Scx1`.
+
+    Parameters
+    ----------
+    Scx0, Scx1: dict[list] / dict[np.ndarray]
+        `jtfs(x)`.
+
+    meta0, meta1: dict[dict[np.ndarray]]
+        `jtfs.meta()`. If `meta1` is None, will set equal to `meta0`.
+        Note that scattering objects responsible for `Scx0` and `Scx1` cannot
+        differ in any way that alters coefficient shapes.
+
+    pair: str / list/tuple[str] / None
+        Name(s) of coefficient pairs whose distances to compute.
+        If None, will compute for all.
+
+    kind: str['l1', 'l2']
+        Kind of distance to compute. L1==`sum(abs(x))`,
+        L2==`sqrt(sum(abs(x)**2))`. L1 is not implemented for `correction=False`.
+
+    correction: bool (default False)
+        See `help(coeff_energy)`.
+
+    Returns
+    -------
+    reldist_flat : list[float]
+        Relative distances between individual frequency rows, i.e. per-`n1`.
+
+    reldist_slices : list[float]
+        Relative distances between joint slices, i.e. per-`(n2, n1_fr)`.
+    """
+    if not correction and kind == 'l1':
+        raise NotImplementedError
+
     if meta1 is None:
         meta1 = meta0
-    # compute compensation factor # TODO better comment
+    # compute compensation factor (see `correction` docs)
     factor = _get_pair_factor(pair, correction)
     fn = lambda c: c
 
@@ -613,8 +665,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
     return reldist_flat, reldist_slices
 
 
-def coeff_energy_ratios(Scx, meta, down_to_up=True,
-                        max_to_eps_ratio=10000):
+def coeff_energy_ratios(Scx, meta, down_to_up=True, max_to_eps_ratio=10000):
     """Compute ratios of coefficient slice energies, spin down vs up.
     Statisticallyrobust alternative measure to ratio of total energies.
 
@@ -675,9 +726,14 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     out_list = bool(isinstance(coeffs, list))
 
     # infer out_3D
-    out_3D = bool(meta['stride'][pair].ndim == 3)
-    if out_3D:
-        assert coeffs.ndim == 3, coeffs.shape
+    if out_list:
+        out_3D = bool(coeffs[0]['coef'].ndim == 3)
+    else:
+        out_3D = bool(coeffs.ndim == 3)
+
+    # fetch backend
+    B = get_unified_backend(_infer_backend(coeffs, get_name=True)[1])
+
     # completely flatten into (*, time)
     if out_list:
         coeffs_flat = []
@@ -686,7 +742,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
             coeffs_flat.extend(c)
     else:
         if out_3D:
-            coeffs = coeffs.reshape(-1, coeffs.shape[-1])
+            coeffs = B.reshape(coeffs, (-1, coeffs.shape[-1]))
         coeffs_flat = coeffs
 
     # prepare for iterating
@@ -974,7 +1030,6 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     def title(txt):
         return ("\n== {} " + "=" * (80 - len(txt)) + "\n").format(txt)
     # for later
-    # w_pos = np.linspace(0, .5, N//2 + 1, endpoint=True)  # TODO
     w_pos = np.linspace(0, N//2, N//2 + 1, endpoint=True).astype(int)
     w_neg = - w_pos[1:-1][::-1]
     w = np.hstack([w_pos, w_neg])
@@ -1387,8 +1442,16 @@ def energy(x, kind='l2'):
             backend.sum(backend.abs(x)**2))
 
 
-def _l2(x):  # TODO backend # TODO use `energy` instead?
-    return np.sqrt(np.sum(np.abs(x)**2))
+def _l2(x):
+    """`sqrt(sum(abs(x)**2))`."""
+    backend, backend_name = _infer_backend(x, get_name=True)
+    if backend_name == 'numpy':
+        l2 = np.linalg.norm(x)
+    elif backend_name == 'torch':
+        l2 = backend.norm(x)
+    elif backend_name == 'tensorflow':
+        l2 = backend.norm(x, ord='euclidean')
+    return l2
 
 def l2(x0, x1, adj=False):
     """Coeff distance measure; Eq 2.24 in
@@ -1399,7 +1462,15 @@ def l2(x0, x1, adj=False):
 
 
 def _l1(x):
-    return np.sum(np.abs(x))
+    """`sum(abs(x))`."""
+    backend, backend_name = _infer_backend(x, get_name=True)
+    if backend_name == 'numpy':
+        l1 = np.sum(np.abs(x))
+    elif backend_name == 'torch':
+        l1 = backend.norm(x, p=1)
+    elif backend_name == 'tensorflow':
+        l1 = backend.norm(x, ord=1)
+    return l1
 
 def l1(x0, x1, adj=False):
     ref = _l1(x0) if not adj else (_l1(x0) + _l1(x1)) / 2
@@ -1466,7 +1537,9 @@ def _infer_backend(x, get_name=False):
                 x = list(x.values())[0]
         else:
             x = x[0]
-    module = type(x).__module__
+
+    module = type(x).__module__.split('.')[0]
+
     if module == 'numpy':
         backend = np
     elif module == 'torch':
@@ -1475,10 +1548,24 @@ def _infer_backend(x, get_name=False):
     elif module == 'tensorflow':
         import tensorflow
         backend = tensorflow
+    elif isinstance(x, (int, float)):
+        # list of lists, fallback to numpy
+        module = 'numpy'
+        backend = np
     else:
         raise ValueError("could not infer backend from %s" % type(x))
     return (backend if not get_name else
             (backend, module))
+
+
+def get_unified_backend(backend_name):
+    if backend_name == 'numpy':
+        from .backend.numpy_backend import NumpyBackend as B
+    elif backend_name == 'torch':
+        from .backend.torch_backend import TorchBackend as B
+    elif backend_name == 'tensorflow':
+        from .backend.tensorflow_backend import TensorFlowBackend as B
+    return B
 
 
 def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
@@ -1504,6 +1591,34 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
         return (len_,) + tuple(max(sizes) for sizes in
                                zip_longest(*shapes, fillvalue=1))
 
+    def _fill(arr, seq, len_, fill_value):
+        s = cast_fn(seq)
+        if backend_name == 'tensorflow':
+            l = len(arr)
+            if len_ == 0:
+                idxs0 = [[i] for i in range(l)]
+                idxs1 = None # TODO
+            if right_pad:
+                idxs0 = [[i] for i in range(len_)]
+                idxs1 = [[i] for i in range(len_, l)]
+                backend.tensor_scatter_nd_update(
+                    arr, [[i] for i in range(len_)], s)
+            else:
+                idxs0 = [[i] for i in range(l - len_, l)]
+                idxs1 = [[i] for i in range(l - len_)]
+            backend.tensor_scatter_nd_update(arr, idxs0, s)
+            if idxs1 is not None and len(idxs1) != 0:
+                backend.tensor_scatter_nd_update(arr, idxs1, s)
+        else:
+            if len_ == 0:
+                arr[:] = fill_value
+            elif right_pad:
+                arr[:len_] = s
+                arr[len_:] = fill_value
+            else:
+                arr[-len_:] = s
+                arr[:-len_] = fill_value
+
     def fill_tensor(arr, seq, fill_value=0):
         if arr.ndim == 1:
             try:
@@ -1511,24 +1626,33 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
             except TypeError:
                 len_ = 0
 
-            if len_ == 0:
-                arr[:] = fill_value
-            else:
-                if right_pad:
-                    arr[:len_] = cast_fn(seq)
-                    arr[len_:] = fill_value
-                else:
-                    arr[-len_:] = cast_fn(seq)
-                    arr[:-len_] = fill_value
+            _fill(arr, seq, len_, fill_value)
         else:
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)
 
-    if init_fn is None:
-        init_fn = lambda s: np.empty(s)
-    if cast_fn is None:
-        cast_fn = lambda x: x
+    # infer `init_fn` and `cast_fn` from `seq`, if not provided ##############
+    backend, backend_name = _infer_backend(seq, get_name=True)
 
+    if init_fn is None:
+        if backend_name == 'numpy':
+            init_fn = lambda s: np.empty(s)
+        elif backend_name == 'torch':
+            init_fn = lambda s: backend.zeros(s)
+        elif backend_name == 'tensorflow':
+            init_fn = lambda s: backend.zeros(s)
+
+    if cast_fn is None:
+        if backend_name == 'numpy':
+            cast_fn = lambda x: x
+        elif backend_name == 'torch':
+            cast_fn = lambda x: (backend.tensor(x)
+                                 if not isinstance(x, backend.Tensor) else x)
+        elif backend_name == 'tensorflow':
+            cast_fn = lambda x: backend.convert_to_tensor(x)
+
+    ##########################################################################
+    # infer shape
     shape = list(find_shape(seq))
     if ref_shape is not None:
         for i, s in enumerate(ref_shape):
@@ -1536,6 +1660,7 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                 shape[i] = s
     shape = tuple(shape)
 
+    # fill
     arr = init_fn(shape)
     fill_tensor(arr, seq, fill_value=pad_value)
     return arr

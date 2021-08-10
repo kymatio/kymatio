@@ -101,6 +101,10 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         else:
             size_scattering = 0
 
+        # convert to tensor if it isn't already
+        if type(x).__module__.split('.')[0] == 'numpy':
+            x = torch.from_numpy(x).to(device=self.psi1_f[0][0].device.type)
+
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.log2_T, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
@@ -232,6 +236,10 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         x = x.reshape((-1, 1) + signal_shape)
 
         self.load_filters()
+
+        # convert to tensor if it isn't already
+        if type(x).__module__.split('.')[0] == 'numpy':
+            x = torch.from_numpy(x).to(device=self.psi1_f[0][0].device.type)
 
         S = timefrequency_scattering(
             x,

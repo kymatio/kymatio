@@ -1,5 +1,5 @@
 import math
-from ...toolkit import _infer_backend
+from ...toolkit import _infer_backend, get_unified_backend
 
 
 def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
@@ -111,7 +111,7 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
     """
     import numpy as np
 
-    is_numpy = bool('numpy' in backend.__module__.lower())
+    backend_name = type(x).__module__.lower().split('.')[0]
 
     # compute boundary indices from simulated reflected ramp at original length
     r = np.arange(N)
@@ -139,7 +139,9 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
     # do not conjugate the right bound
     assert ind_end - 1 not in idxs, (ind_end - 1, idxs)
 
-    if is_numpy or getattr(x, 'requires_grad', False):
+    B = get_unified_backend(backend_name)
+    if (backend_name in ('numpy', 'tensorflow') or
+            (backend_name == 'torch' and getattr(x, 'requires_grad', False))):
         ic = [0, *(np.where(np.diff(idxs) > 1)[0] + 1)]
         ic.append(None)
         ic = np.array(ic)
@@ -150,11 +152,15 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
             end = idxs[e - 1] + 1 if e is not None else None
             slices_contiguous.append(slice(start, end))
 
-        inplace = is_numpy or not getattr(x, 'requires_grad', False)
+        inplace = bool(backend_name == 'numpy' or
+                       (backend_name == 'torch' and
+                        not getattr(x, 'requires_grad', False)))
         for slc in slices_contiguous:
-            backend.conj(x[..., slc], inplace=inplace)
+            B.assign_slice(x, B.conj(x[..., slc], inplace=inplace),
+                           index_axis_with_array(slc, axis=-1, ndim=x.ndim))
     else:  # TODO any faster solution?
-        x[..., idxs] = backend.conj(x[..., idxs])
+        B.assign_slice(x, B.conj(x[..., idxs]),
+                       index_axis_with_array(idxs, axis=-1, ndim=x.ndim))
 
 
 def unpad_dyadic(x, N, orig_padded_len, target_padded_len, k=0):
@@ -182,6 +188,14 @@ def index_axis(i0, i1, axis, ndim, step=1):
         slc = (slice(None),) * (ndim + axis) + (slice(i0, i1, step),)
     else:
         slc = (slice(None),) * axis + (slice(i0, i1, step),)
+    return slc
+
+
+def index_axis_with_array(idxs, axis, ndim):
+    if axis < 0:
+        slc = (slice(None),) * (ndim + axis) + (idxs,)
+    else:
+        slc = (slice(None),) * axis + (idxs,)
     return slc
 
 

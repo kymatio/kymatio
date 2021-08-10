@@ -3,8 +3,8 @@ import pytest
 import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
-from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
-                             coeff_energy_ratios,
+from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
+                             fdts, echirp, coeff_energy_ratios,
                              l2, rel_ae, validate_filterbank_tm,
                              validate_filterbank_fr, pack_coeffs_jtfs,
                              tensor_padded)
@@ -12,7 +12,7 @@ from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
-# backend to use for most tests
+# backend to use for all tests (except `test_backends`)
 default_backend = 'numpy'
 # set True to execute all test functions without pytest
 run_without_pytest = 1
@@ -59,6 +59,7 @@ def test_alignment():
 
           Scx = jtfs(x)
           Scx = drop_batch_dim_jtfs(Scx)
+          Scx = jtfs_to_numpy(Scx)
 
           # assert peaks share an index #################################
           def max_row_idx(c):
@@ -461,6 +462,10 @@ def test_lp_sum():
             ).format(peak_target, lp_min, th, first_peak, last_peak,
                      s, test_params_str)
 
+    if default_backend != 'numpy':
+        # filters don't change
+        return
+
     N = 1024
     J = int(np.log2(N))
     common_params = dict(shape=N, J=J, Q_fr=3, frontend=default_backend)
@@ -601,7 +606,7 @@ def test_pack_coeffs_jtfs():
             pair = k.split(':')[0]
             if pair not in paired_flat:
                 paired_flat[pair] = []
-            paired_flat[pair].append(out_stored[i])
+            paired_flat[pair].append({'coef': out_stored[i]})
         return paired_flat
 
     def validate_n2s(o, info, spin):
@@ -804,6 +809,10 @@ def test_backends():
                                          out_3D=True, frontend=backend_name)
         Scx = jtfs(x)
         jmeta = jtfs.meta()
+        # test that this works
+        for structure in (1, 2, 3, 4):
+            _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
+                                 separate_lowpass=True)
 
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
@@ -1028,6 +1037,10 @@ def test_meta():
                 assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
                                     out_3D, test_params_str, test_params, jtfs)
 
+    if default_backend != 'numpy':
+        # meta doesn't change
+        return
+
     N = 512
     x = np.random.randn(N)
 
@@ -1104,6 +1117,7 @@ def test_output():
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         jmeta = jtfs.meta()
         out = jtfs(x)
+        out = jtfs_to_numpy(out)
 
         # assert equal total number of coefficients
         if params['out_type'] == 'dict:list':

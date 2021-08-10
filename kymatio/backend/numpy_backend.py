@@ -106,3 +106,15 @@ class NumpyBackend:
         elif not inplace:
             return (cls._np.conj(x) if cls._is_complex(x) else
                     x)
+
+    @classmethod
+    def reshape(cls, x, shape):
+        return x.reshape(*shape)
+
+    @classmethod
+    def transpose(cls, x, axes):
+        return x.transpose(*axes)
+
+    @classmethod
+    def assign_slice(cls, x, x_slc, slc):
+        x[slc] = x_slc

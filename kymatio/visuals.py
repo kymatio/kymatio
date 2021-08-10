@@ -4,7 +4,6 @@ import os
 import numpy as np
 from scipy.fft import ifft, ifftshift
 from copy import deepcopy
-from PIL import Image
 from .scattering1d.filter_bank import compute_temporal_support
 from .toolkit import coeff_energy, coeff_distance, energy, drop_batch_dim_jtfs
 
@@ -1096,6 +1095,11 @@ def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
                 print("`HD=True` requires `imageio` installed")
                 raise e
             else:
+                try:
+                    from PIL import Image
+                except ImportError as e:
+                    print("`make_gif` requires `imageio` or `PIL` installed.")
+                    raise e
                 HD = False
 
     # fetch frames

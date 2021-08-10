@@ -142,8 +142,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
     @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
                          trim_tm):
-        return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
-                                         pad_left, pad_right, trim_tm)
+        agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,
+                                  pad_left, pad_right, trim_tm)
 
     @classmethod
     def _maybe_transpose_for_fft(cls, x, axis):
