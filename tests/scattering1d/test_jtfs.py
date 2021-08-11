@@ -131,7 +131,8 @@ def test_jtfs_vs_ts():
     kw = dict(J=J, shape=N, max_pad_factor=1, frontend=default_backend)
     ts = Scattering1D(Q=Q[0], pad_mode="zero", out_type='array', **kw)
     jtfs = TimeFrequencyScattering1D(Q=Q, Q_fr=2, J_fr=4, average_fr=True,
-                                     out_3D=True, out_type='dict:array', **kw)
+                                     out_3D=True, out_type='dict:array', **kw,
+                                     sampling_filters_fr=('resample', 'resample'))
 
     # scatter
     ts_x  = ts(x)
@@ -859,6 +860,7 @@ def test_reconstruction_torch():
     N = 512
     n_iters = 20
     jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
+                                     sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
 
@@ -886,7 +888,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, .92, 40
+    th, th_recon, th_end_ratio = 1e-5, .92, 60
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
@@ -1281,24 +1283,24 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        test_alignment()
-        test_shapes()
+        # test_alignment()
+        # test_shapes()
         test_jtfs_vs_ts()
-        test_freq_tp_invar()
-        test_up_vs_down()
-        test_sampling_psi_fr_exclude()
-        test_no_second_order_filters()
-        test_max_pad_factor_fr()
-        test_out_exclude()
-        test_global_averaging()
-        test_lp_sum()
-        test_compute_temporal_width()
-        test_tensor_padded()
-        test_pack_coeffs_jtfs()
-        test_backends()
-        test_differentiability_torch()
-        test_reconstruction_torch()
-        test_meta()
-        test_output()
+        # test_freq_tp_invar()
+        # test_up_vs_down()
+        # test_sampling_psi_fr_exclude()
+        # test_no_second_order_filters()
+        # test_max_pad_factor_fr()
+        # test_out_exclude()
+        # test_global_averaging()
+        # test_lp_sum()
+        # test_compute_temporal_width()
+        # test_tensor_padded()
+        # test_pack_coeffs_jtfs()
+        # test_backends()
+        # test_differentiability_torch()
+        # test_reconstruction_torch()
+        # test_meta()
+        # test_output()
     else:
         pytest.main([__file__, "-s"])

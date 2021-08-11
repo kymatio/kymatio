@@ -445,13 +445,16 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase1D():
-    def __init__(self, J_fr=None, Q_fr=2, F=None, average_fr=False,
-                 oversampling_fr=0, aligned=True, sampling_filters_fr='resample',
+    def __init__(self, J_fr=None, Q_fr=2, F=None, implementation=None,
+                 average_fr=False, aligned=True,
+                 sampling_filters_fr=('exclude', 'resample'),
                  max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 out_3D=False, out_type='array', out_exclude=None):
+                 oversampling_fr=0, out_3D=False, out_type='array',
+                 out_exclude=None):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
+        self.implementation = implementation
         self.average_fr = average_fr
         self.oversampling_fr = oversampling_fr
         self.aligned = aligned
@@ -476,7 +479,43 @@ class TimeFrequencyScatteringBase1D():
         if self._no_second_order_filters:
             raise ValueError("configuration yields no second-order filters; "
                              "try increasing `J`")
+        # TODO class_name scattering1d?
 
+        # # handle `implementation`
+        # if (self.implementation is not None and
+        #         self.implementation not in range(5)):
+        #     raise ValueError("`implementation` must be None or an integer 1-4.")
+
+        # self._implementation_args = {
+        #     1: dict(average_fr=False, aligned=True,  out_3D=False,
+        #             sampling_filters_fr=('exclude', 'resample')),
+        #     2: dict(average_fr=True,  aligned=True,  out_3D=True,
+        #             sampling_filters_fr=('exclude', 'resample')),
+        #     3: dict(average_fr=True,  aligned=True,  out_3D=True,
+        #             sampling_filters_fr=('exclude', 'resample')),
+        #     4: dict(average_fr=True,  aligned=False, out_3D=True,
+        #             sampling_filters_fr=('exclude', 'recalibrate')),
+        #     5: dict(average_fr=True,  aligned=False, out_3D=True,
+        #             sampling_filters_fr=('recalibrate', 'recalibrate')),
+        # }
+        # def is_equal(a, b):
+        #     return (a == b if not isinstance(a, (tuple, list)) else
+        #             all(_a == _b for _a, _b in zip(a, b)))
+        # defaults = self._implementation_args[1]
+        # for name in defaults:
+        #     user_value = getattr(self, name)
+        #     if self.implementation is None:
+        #         if user_value is None:
+        #             setattr(self, name, defaults[name])
+        #     else:
+        #         implem_value = self._implementation_args[self.implementation
+        #                                                  ][name]
+        #         if not is_equal(user_value, implem_value):
+        #             warnings.warn(("`{}` will be overriden by `implementation`'s "
+        #                            "preset").format(name))
+        #         setattr(self, name, implem_value)
+
+        # handle `out_exclude`
         if self.out_exclude is not None:
             if isinstance(self.out_exclude, str):
                 self.out_exclude = [self.out_exclude]
@@ -490,16 +529,18 @@ class TimeFrequencyScatteringBase1D():
                                       "must be one of: {}").format(
                                           name, ', '.join(supported)))
 
-        self._shape_fr = self.get_shape_fr()
-        max_order_fr = 1
-        # number of psi1 filters
-        self._n_psi1_f = len(self.psi1_f)
-
+        # handle `F`
         if self.F is None:
             # default to one octave (Q wavelets per octave, J octaves,
             # approx Q*J total frequency rows, so averaging scale is `Q/total`)
             # F is processed further in `_FrequencyScatteringBase`
             self.F = self.Q[0]
+
+        # basic params + frequential scattering object
+        self._shape_fr = self.get_shape_fr()
+        # number of psi1 filters
+        self._n_psi1_f = len(self.psi1_f)
+        max_order_fr = 1
 
         self.sc_freq = _FrequencyScatteringBase(
             self._shape_fr, self.J_fr, self.Q_fr, self.F, max_order_fr,
@@ -781,16 +822,57 @@ class TimeFrequencyScatteringBase1D():
           - Used even with `average_fr=False` (see its docs); this is likewise
             true of `T` for `phi_t * phi_f` and `phi_t * psi_f` pairs.
 
+    implementation : int / None
+        Preset configuration to use. Overrides the following parameters:
+
+            - `average_fr, aligned, out_3D, sampling_filters_fr`
+
+        Defaults to `None`, and any `None` argument above will default to
+        that of `implementation=1`.
+        See `help(kymatio.toolkit.pack_coeffs_jtfs)` for further information.
+
+        **Implementations:**
+
+            1: Standard for 1D convs. `(n1_fr * n2 * n1, t)`.
+              - average_fr = False
+              - aligned = True
+              - out_3D = False
+              - sampling_psi_fr = 'exclude'
+              - sampling_phi_fr = 'resample'
+
+            2: Standard for 2D convs. `(n1_fr * n2, n1, t)`.
+              - average_fr = True
+              - aligned = True
+              - out_3D = True
+              - sampling_psi_fr = 'exclude'
+              - sampling_phi_fr = 'resample'
+
+            3: Standard for 3D/4D convs. `(n1_fr, n2, n1, t)`. [2] but
+              - structure = 1
+
+            4: Efficient for 2D convs. [2] but
+              - aligned = False
+              - sampling_phi_fr = 'recalibrate'
+
+            5: Efficient for 3D convs. [3] but
+              - aligned = False
+              - sampling_psi_fr = 'recalibrate'
+              - sampling_phi_fr = 'recalibrate'
+
+        `'exclude'` in `sampling_psi_fr` can be replaced with `'resample'`,
+        which yields significantly more coefficients and is slower, but
+        the coefficients are mostly "synthetic zeros" and uninformative.
+
+        `structure` refers to packing output coefficients via
+        `pack_coeffs_jtfs(..., structure)`. This zero-pads and reshapes
+        coefficients, but does not affect their values or computation in any way.
+        (Thus, 3==2 except for shape).
+
     average_fr : bool (default False)
         Whether to average (lowpass) along frequency axis.
 
         If `False`, `phi_t * phi_f` and `psi_t * phi_f` pairs are still computed,
         but `psi_t * phi_f` aren't frequentially averaged the *second* time.
-
-    oversampling_fr : int (default 0), optional
-        How much to oversample along frequency axis (with respect to `2**J_fr`).
-        Also see `oversampling` in `Scattering1D`.
-        Has no effect if `average_fr_global=True`.
 
     aligned : bool (default True)
         If True, rows of joint slices index to same frequency for all slices.
@@ -891,62 +973,7 @@ class TimeFrequencyScatteringBase1D():
         `'exclude'` isn't a valid option (there must exist a lowpass for every
         input length).
 
-    out_type : str, optional
-        Affects output structure (but not how coefficients are computed).
-        See `help(TimeFrequencyScattering1D.scattering)` for further info.
-
-            - 'list': coeffs are packed in a list of dictionaries, each dict
-              storing meta info, and output tensor keyed by `'coef.`.
-            - 'array': concatenated along slices (`out_3D=True`) or mixed
-              slice-frequency dimension (`out_3D=False`). Both require
-              `average=True` (and `out_3D=True` additionally `average_fr=True`).
-            - 'dict:list' || 'dict:array': same as 'array' and 'list', except
-              coefficients will not be concatenated across pairs - e.g. tensors
-              from `'S1'` will be kept separate from those from `'phi_t * psi_f'`.
-            - See `out_3D` for all behavior controlled by `out_3D`, and `aligned`
-              for its behavior and interactions with `out_3D`.
-
-    out_3D : bool (default False)
-        `True` (requires `average_fr=True`) adjusts frequential scattering
-        to enable concatenation along joint slices dimension, as opposed to
-        flattening (mixing slices and frequencies):
-
-            - `False` will unpad freq by exact amounts for each joint slice,
-              whereas `True` will unpad by minimum amount common to all
-              slices at a given subsampling factor to enable concatenation.
-              See `sc_freq_compute_padding_fr()`.
-            - See `aligned` for its interactions with `out_3D`
-
-        Both `True` and `False` can still be concatenated into the 'true' JTFS
-        4D structure; see `help(kymatio.toolkit.pack_coeffs_jtfs)` for a complete
-        description on coefficient structuring.
-
-        The difference is in how values are computed, esp. near boundaries.
-        From an information/classification standpoint,
-
-          - `True` is more information-rich. The 1D equivalent case is unpadding
-            by 3, instead of by 6 and then zero-padding by 3: same final length,
-            but former fills gaps with partial convolutions where latter fills
-            with zeros.
-          - `False` is the "latter" case.
-
-    out_exclude : list/tuple[str] / None
-        Will exclude coefficients with these names from computation and output
-        (except for `S1`, which always computes but still excludes from output).
-        All names:
-
-            - 'S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
-              'psi_t * psi_f_up', 'psi_t * psi_f_down'
-
-    pad_mode_fr : str
-        Name of frequential padding mode to use, one of: 'zero', 'reflect',
-        'conj-reflect-zero' (default).
-
-        If using `pad_mode = 'reflect'` and `average_fr = True`, the only
-        recommended mode is 'conj-reflect-zero', as it ensures opposite spins
-        (FDTS
-
-    max_pad_factor_fr : int / None (default) / list[int], optional
+      max_pad_factor_fr : int / None (default) / list[int], optional
         `max_pad_factor` for frequential axis in frequential scattering.
 
             - None: unrestricted; will pad as much as needed.
@@ -972,6 +999,66 @@ class TimeFrequencyScatteringBase1D():
             - With `sampling_psi_fr = 'resample'`, will not allow `J_pad_fr`
               that yields a pure sinusoid wavelet (raises `ValueError` in
               `filter_bank.get_normalizing_factor`).
+
+    pad_mode_fr : str
+        Name of frequential padding mode to use, one of: 'zero',
+        'conj-reflect-zero' (default).
+
+        If using `pad_mode = 'reflect'` and `average = True`, reflected portions
+        will be automatically conjugated before frequential scattering to avoid
+        spin cancellation. For same reason there isn't `pad_mode_fr = 'reflect'`.
+
+    oversampling_fr : int (default 0), optional
+        How much to oversample along frequency axis (with respect to `2**J_fr`).
+        Also see `oversampling` in `Scattering1D`.
+        Has no effect if `average_fr_global=True`.
+
+    out_3D : bool (default False)
+        `True` (requires `average_fr=True`) adjusts frequential scattering
+        to enable concatenation along joint slices dimension, as opposed to
+        flattening (mixing slices and frequencies):
+
+            - `False` will unpad freq by exact amounts for each joint slice,
+              whereas `True` will unpad by minimum amount common to all
+              slices at a given subsampling factor to enable concatenation.
+              See `sc_freq_compute_padding_fr()`.
+            - See `aligned` for its interactions with `out_3D`
+
+        Both `True` and `False` can still be concatenated into the 'true' JTFS
+        4D structure; see `help(kymatio.toolkit.pack_coeffs_jtfs)` for a complete
+        description on coefficient structuring.
+
+        The difference is in how values are computed, esp. near boundaries.
+        From an information/classification standpoint,
+
+          - `True` is more information-rich. The 1D equivalent case is unpadding
+            by 3, instead of by 6 and then zero-padding by 3: same final length,
+            but former fills gaps with partial convolutions where latter fills
+            with zeros.
+          - `False` is the "latter" case.
+
+    out_type : str, optional
+        Affects output structure (but not how coefficients are computed).
+        See `help(TimeFrequencyScattering1D.scattering)` for further info.
+
+            - 'list': coeffs are packed in a list of dictionaries, each dict
+              storing meta info, and output tensor keyed by `'coef.`.
+            - 'array': concatenated along slices (`out_3D=True`) or mixed
+              slice-frequency dimension (`out_3D=False`). Both require
+              `average=True` (and `out_3D=True` additionally `average_fr=True`).
+            - 'dict:list' || 'dict:array': same as 'array' and 'list', except
+              coefficients will not be concatenated across pairs - e.g. tensors
+              from `'S1'` will be kept separate from those from `'phi_t * psi_f'`.
+            - See `out_3D` for all behavior controlled by `out_3D`, and `aligned`
+              for its behavior and interactions with `out_3D`.
+
+    out_exclude : list/tuple[str] / None
+        Will exclude coefficients with these names from computation and output
+        (except for `S1`, which always computes but still excludes from output).
+        All names:
+
+            - 'S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+              'psi_t * psi_f_up', 'psi_t * psi_f_down'
     """
 
     _doc_attrs = \

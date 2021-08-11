@@ -118,15 +118,19 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
     ----------
     Assuming `aligned=True`, then for `average, average_fr`, the following form
     valid convolution structures:
-      1.  `True, True*`: 4D, `(n1_fr, n2, n1, time)`
-      2.* `True, True*`: 4D, `(n2, n1_fr, n1, time)`
-      3.  `True, True*`: 4D, `(n2, n1_fr//2,     n1, time)`*2, `(n2, 1, n1, time)`
-      4.* `True, True*`: 4D, `(n2, n1_fr//2 + 1, n1, time)`*2, `(n2, 1, n1, time)`
-      5.  `True, True*`: 3D, `(n2 * n1_fr, n1, time)`
-      6.  `True, False`: 2D, `(n2 * n1_fr * n1, time)`
-      7.  `False, True`: list of variable length 1D tensors
-      8.  `False, False`: list of variable length 1D tensors
+
+      1. `True, True*`:  3D/4D*, `(n1_fr, n2, n1, time)`
+      2. `True, True*`:  2D/4D*, `(n2, n1_fr, n1, time)`
+      3. `True, True*`:  4D,     `(n2, n1_fr//2,     n1, time)`*2,
+                                 `(n2, 1, n1, time)`
+      4. `True, True*`:  2D/4D*, `(n2, n1_fr//2 + 1, n1, time)`*2
+      5. `True, True*`:  2D/3D*, `(n2 * n1_fr, n1, time)`
+      6. `True, False`:  1D/2D*, `(n2 * n1_fr * n1, time)`
+      7. `False, True`:  list of variable length 1D tensors
+      8. `False, False`: list of variable length 1D tensors
+
     where
+
       - n1: frequency [Hz], first-order temporal variation
       - n2: frequency [Hz], second-order temporal variation
         (frequency of amplitude modulation)
@@ -135,17 +139,27 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
          correlates with frequential bands (independent components/modes) of
          varying widths, decay factors, and recurrences, per temporal slice)
       - time: time [sec]
+      - The actual units are dimensionless, "Hz" and "sec" are an example.
+        To convert, multiply by sampling rate `fs`.
       - For convolutions, first dim is assumed to be channels (unless doing
-        4D convs with 1-4).
+        4D convs).
       - `True*` indicates a "soft requirement"; as long as `aligned=True`,
         `False` can be fully compensated with padding.
-        Since 5 isn't implemented and its scattering output strictly requires
-        `True`, it can be obtained from `False` by reshaping one of 1-4.
-      - `num.*` indicates the structure isn't strictly valid for convolving
-        over non-first dimensions. See below.
+        Since 5 isn't implemented with `False`, it can be obtained from `False`
+        by reshaping one of 1-4.
+      - `2D/4D*` means 3D/4D convolutions aren't strictly valid for convolving
+        over trailing (last) dimensions (see below), but 1D/2D are.
+        `3D` means 1D, 2D, 3D are all valid.
+      - Structure 3 is 3D/4D-valid only if one deems valid the disjoint
+        representation with separate convs over spinned and lowpassed
+        (thus convs over lowpassed-only coeffs are deemed valid) - or if one
+        opts to exclude the lowpassed pairs.
+      - Structure 4 is 3D/4D-valid only if one deems valid convolving over both
+        lowpassed and spinned coefficients.
 
     The interpretations for convolution (and equivalently, spatial coherence)
     are as follows:
+
         1. The true JTFS structure. `(n2, n1, time)` are ordinal and thus
            valid dimensions for 3D convolution (if all `phi` pairs are excluded,
            which isn't default behavior; see "Ordinality").
