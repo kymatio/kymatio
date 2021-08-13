@@ -129,12 +129,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
-    def transpose(cls, x):
-        """Permute time and frequency dimension for time-frequency scattering"""
-        D = x.ndim
-        return tf.transpose(x, (*list(range(D - 2)), D - 1, D - 2))
-
-    @classmethod
     def mean(cls, x, axis=-1):
         """Take mean along specified axis, without collapsing the axis."""
         return tf.reduce_mean(x, axis=axis, keepdims=True)
@@ -148,7 +142,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
     @classmethod
     def _maybe_transpose_for_fft(cls, x, axis):
         if axis == -2:
-            x = cls.transpose(x)
+            D = x.ndim
+            x = tf.transpose(x, (*list(range(D - 2)), D - 1, D - 2))
         elif axis != -1:
             raise NotImplementedError("`axis` must be -1 or -2")
         return x

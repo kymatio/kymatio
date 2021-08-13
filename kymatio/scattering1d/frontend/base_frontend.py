@@ -983,6 +983,7 @@ class TimeFrequencyScatteringBase1D():
                 - If the list is insufficiently long (less than number of scales),
                   will extend list with the last provided value
                   (e.g. `[1, 2] -> [1, 2, 2, 2]`).
+                - Indexed by `scale_diff == shape_fr_scale_max - shape_fr_scale`
             - int: will convert to list[int] of same value.
 
         Specified values aren't guaranteed to be realized. They override some
@@ -1455,6 +1456,9 @@ class _FrequencyScatteringBase(ScatteringBase):
         # smallest scale is also smallest possible maximum padding
         # (cannot be overridden by `max_pad_factor_fr`)
         self.shape_fr_scale_min = min(s for s in self.shape_fr_scale if s != -1)
+        # store number of unique scales
+        self.n_scales_fr = len(np.unique([s for s in self.shape_fr_scale
+                                          if s != -1]))
 
         # ensure 2**J_fr <= nextpow2(shape_fr_max)
         if self.J_fr is None:
@@ -1483,12 +1487,12 @@ class _FrequencyScatteringBase(ScatteringBase):
                          "(got %s)" % str(self.max_pad_factor_fr))
         if isinstance(self.max_pad_factor_fr, int):
             self.max_pad_factor_fr = [self.max_pad_factor_fr
-                                      ] * len(self.shape_fr_realized)
+                                      ] * self.n_scales_fr
 
         elif isinstance(self.max_pad_factor_fr, (list, tuple)):
             if any(np.diff(self.max_pad_factor_fr) > 0):
                 raise err
-            while len(self.max_pad_factor_fr) < len(self.shape_fr_realized):
+            while len(self.max_pad_factor_fr) < self.n_scales_fr:
                 # repeat last value
                 self.max_pad_factor_fr.append(self.max_pad_factor_fr[-1])
             # must guarantee that `J_pad_fr > J_pad_fr_max_init` cannot occur
@@ -1542,7 +1546,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # to guarantee pad uniqueness across scales; see `compute_padding_fr` docs
         (self.J_pad_fr_max_init, self.min_to_pad_fr_max, self._pad_fr_phi,
          self._pad_fr_psi) = self._compute_J_pad(2**self.shape_fr_scale_max,
-                                                 n2_reverse=0, Q=(self.Q_fr, 0))
+                                                 Q=(self.Q_fr, 0))
 
     def create_phi_filters(self):
         """See `filter_bank.phi_fr_factory`."""
@@ -1593,16 +1597,16 @@ class _FrequencyScatteringBase(ScatteringBase):
             for n2, (J_pad_fr, shape_fr
                      ) in enumerate(zip(self.J_pad_fr, self.shape_fr)):
                 if J_pad_fr != -1:
-                    shape_fr_scale = math.ceil(math.log2(shape_fr))
-                    n2_reverse = len(self.shape_fr) - n2 - 1
                     if self.unrestricted_pad_fr:
                         J_pad_fr = max(J_pad_fr, self.J_pad_fr_min_limit)
                     else:
                         # `min` not needed in current implem as it's already
                         # realized in `compute_J_pad()` but keep to be sure
+                        shape_fr_scale = math.ceil(math.log2(shape_fr))
+                        scale_diff = self.shape_fr_scale_max - shape_fr_scale
                         J_pad_fr = max(min(J_pad_fr,
                                            shape_fr_scale +
-                                           self.max_pad_factor_fr[n2_reverse]),
+                                           self.max_pad_factor_fr[scale_diff]),
                                        self.J_pad_fr_min_limit)
 
                     self.J_pad_fr[n2] = J_pad_fr
@@ -1657,7 +1661,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         # (since we don't yet know max `j0`)
         for n2_reverse, shape_fr in enumerate(self.shape_fr[::-1]):
             if shape_fr != 0:
-                J_pad = self.compute_J_pad(shape_fr, n2_reverse)
+                J_pad = self.compute_J_pad(shape_fr)
 
                 # compute the padding quantities
                 j0, pad_left, pad_right, ind_start, ind_end = (
@@ -1706,8 +1710,8 @@ class _FrequencyScatteringBase(ScatteringBase):
         # `phi_t * psi_f` and `phi_t * phi_f` pairs will incur boundary effects.
         # Implem doesn't account for this as the effect is rare and most often
         # not great, while greatly complicating implem logic
-        self._J_pad_fr_fo = self.compute_J_pad(
-            self.shape_fr_max_all, n2_reverse=0, recompute=True, Q=(0, 0))
+        self._J_pad_fr_fo = self.compute_J_pad(self.shape_fr_max_all,
+                                               recompute=True, Q=(0, 0))
 
     def _compute_padding_params(self, J_pad, shape_fr):
         pad_left = 0
@@ -1722,15 +1726,16 @@ class _FrequencyScatteringBase(ScatteringBase):
             ind_end.append(math.ceil(ind_end[-1] / 2))
         return j0, pad_left, pad_right, ind_start, ind_end
 
-    def compute_J_pad(self, shape_fr, n2_reverse, recompute=False, Q=(0, 0)):
+    def compute_J_pad(self, shape_fr, recompute=False, Q=(0, 0)):
         """Docs in `TimeFrequencyScatteringBase1D`."""
         # for later
         shape_fr_scale = int(np.ceil(np.log2(shape_fr)))
-        factor = 2**(self.shape_fr_scale_max - shape_fr_scale)
+        scale_diff = self.shape_fr_scale_max - shape_fr_scale
+        factor = 2**scale_diff
         shape_fr_max_at_scale = 2**shape_fr_scale
 
         if recompute:
-            J_pad, *_ = self._compute_J_pad(shape_fr_max_at_scale, n2_reverse, Q)
+            J_pad, *_ = self._compute_J_pad(shape_fr_max_at_scale, Q)
         elif (self.sampling_phi_fr == 'resample' or
               self.sampling_psi_fr == 'resample'):
             if self.sampling_phi_fr == 'resample':
@@ -1751,12 +1756,12 @@ class _FrequencyScatteringBase(ScatteringBase):
         # don't let J_pad exceed user-set max
         if not self.unrestricted_pad_fr:
             J_pad = min(J_pad,
-                        shape_fr_scale + self.max_pad_factor_fr[n2_reverse])
+                        shape_fr_scale + self.max_pad_factor_fr[scale_diff])
         # don't let J_pad drop below minimum
         J_pad = max(J_pad, self.J_pad_fr_min_limit_due_to_phi)
         return J_pad
 
-    def _compute_J_pad(self, shape_fr, n2_reverse, Q):
+    def _compute_J_pad(self, shape_fr, Q):
         min_to_pad, pad_phi, pad_psi1, _ = compute_minimum_support_to_pad(
             shape_fr, self.J_fr, Q, self.F, pad_mode=self.pad_mode_fr,
             **self.get_params('r_psi', 'sigma0', 'alpha', 'P_max', 'eps',
@@ -1768,8 +1773,9 @@ class _FrequencyScatteringBase(ScatteringBase):
 
         if not self.unrestricted_pad_fr:
             shape_fr_scale = math.ceil(math.log2(shape_fr))
+            scale_diff = self.shape_fr_scale_max - shape_fr_scale
             J_pad = min(J_pad,
-                        shape_fr_scale + self.max_pad_factor_fr[n2_reverse])
+                        shape_fr_scale + self.max_pad_factor_fr[scale_diff])
         return J_pad, min_to_pad, pad_phi, pad_psi1
 
     def get_params(self, *args):

@@ -1059,7 +1059,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                             shape_fr[::-1]):
             #### Validate `j0` & compute scale params ########################
             # ensure we compute at valid `j0`
-            if j0 <= 0:
+            if j0 < 0:
                 continue
             # `j0_max` restricts the *least* we can pad by for any `shape_fr`,
             # while `max_pad_factor_fr` restricts the *most*.
@@ -1089,7 +1089,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
             if j0 not in j0_to_scale_diff:
                 j0_to_scale_diff[j0] = scale_diff
             # ensure every `scale_diff` maps to one `j0`
-            elif list(j0_to_scale_diff.values()).count(scale_diff) > 1:
+            if list(j0_to_scale_diff.values()).count(scale_diff) > 1:
                 raise Exception(("same `scale_diff` yielded multiple `J_pad_fr`"
                                  "\n{}").format(j0_to_scale_diff))
             # ensure every `j0` maps to one `scale_diff`, conditionally
@@ -1127,7 +1127,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
             #### Compute wavelet #############################################
             # fetch wavelet params, sample wavelet, compute its spatial width
-            xi, sigma, j, _ = get_params(n1_fr, scale_diff)
+            xi, sigma, *_ = get_params(n1_fr, scale_diff)
             try:
                 psi = morlet_1d(N // 2**j0, xi, sigma, normalize=normalize,
                                 P_max=P_max, eps=eps)[:, None]

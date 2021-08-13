@@ -102,10 +102,13 @@ class NumpyBackend:
     @classmethod
     def conj(cls, x, inplace=False):
         if inplace and cls._is_complex(x):
-            cls._np.conj(x, out=x)
+            out = cls._np.conj(x, out=x)
         elif not inplace:
-            return (cls._np.conj(x) if cls._is_complex(x) else
-                    x)
+            out = (cls._np.conj(x) if cls._is_complex(x) else
+                   x)
+        else:
+            out = x
+        return out
 
     @classmethod
     def reshape(cls, x, shape):
@@ -114,6 +117,12 @@ class NumpyBackend:
     @classmethod
     def transpose(cls, x, axes):
         return x.transpose(*axes)
+
+    @classmethod
+    def flip(cls, x, axis):
+        if not isinstance(axis, (list, tuple)):
+            axis = (axis,)
+        return cls._np.flip(x, axis)
 
     @classmethod
     def assign_slice(cls, x, x_slc, slc):

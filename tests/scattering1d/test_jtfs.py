@@ -186,6 +186,8 @@ def test_freq_tp_invar():
                                          # pad_mode='zero', pad_mode_fr='zero',
                                          pad_mode='reflect',
                                          pad_mode_fr='conj-reflect-zero',
+                                         sampling_filters_fr=(
+                                             'resample', 'resample'),
                                          frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
@@ -234,6 +236,8 @@ def test_up_vs_down():
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
                                          average_fr=True, out_type='dict:array',
                                          pad_mode=pad_mode,
+                                         sampling_filters_fr=(
+                                             'resample', 'resample'),
                                          pad_mode_fr=pad_mode_fr,
                                          frontend=default_backend)
         Scx = jtfs(x)
@@ -392,7 +396,8 @@ def test_global_averaging():
     params = dict(shape=N, J=9, Q=4, J_fr=5, Q_fr=2, average=True,
                   average_fr=True, out_type='dict:array', pad_mode='reflect',
                   pad_mode_fr='conj-reflect-zero', max_pad_factor=None,
-                  max_pad_factor_fr=None, frontend=default_backend)
+                  max_pad_factor_fr=None, frontend=default_backend,
+                  sampling_filters_fr=('resample', 'resample'))
     x = echirp(N)
     x += np.random.randn(N)
 
@@ -813,7 +818,8 @@ def test_backends():
         # test that this works
         for structure in (1, 2, 3, 4):
             _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
-                                 separate_lowpass=True)
+                                 separate_lowpass=True,
+                                 sampling_psi_fr=jtfs.sampling_psi_fr)
 
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
@@ -1023,6 +1029,7 @@ def test_meta():
             print("Failed at:\n%s" % test_params_str)
             raise e
 
+
         # ensure no output shape was completely reduced
         for pair in Scx:
             for i, c in enumerate(Scx[pair]):
@@ -1038,6 +1045,12 @@ def test_meta():
             for i in range(len(Scx[pair])):
                 assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
                                     out_3D, test_params_str, test_params, jtfs)
+
+        # save compute and test this method for thoroughness
+        for structure in (1, 2, 3, 4):
+            _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
+                                 separate_lowpass=True,
+                                 sampling_psi_fr=jtfs.sampling_psi_fr)
 
     if default_backend != 'numpy':
         # meta doesn't change
@@ -1283,24 +1296,24 @@ def assert_pad_difference(jtfs, test_params_str):
 
 if __name__ == '__main__':
     if run_without_pytest:
-        # test_alignment()
-        # test_shapes()
+        test_alignment()
+        test_shapes()
         test_jtfs_vs_ts()
-        # test_freq_tp_invar()
-        # test_up_vs_down()
-        # test_sampling_psi_fr_exclude()
-        # test_no_second_order_filters()
-        # test_max_pad_factor_fr()
-        # test_out_exclude()
-        # test_global_averaging()
-        # test_lp_sum()
-        # test_compute_temporal_width()
-        # test_tensor_padded()
-        # test_pack_coeffs_jtfs()
-        # test_backends()
-        # test_differentiability_torch()
-        # test_reconstruction_torch()
-        # test_meta()
-        # test_output()
+        test_freq_tp_invar()
+        test_up_vs_down()
+        test_sampling_psi_fr_exclude()
+        test_no_second_order_filters()
+        test_max_pad_factor_fr()
+        test_out_exclude()
+        test_global_averaging()
+        test_lp_sum()
+        test_compute_temporal_width()
+        test_tensor_padded()
+        test_pack_coeffs_jtfs()
+        test_backends()
+        test_differentiability_torch()
+        test_reconstruction_torch()
+        test_meta()
+        test_output()
     else:
         pytest.main([__file__, "-s"])

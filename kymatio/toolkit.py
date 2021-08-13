@@ -336,7 +336,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
                 ref *= 0
             while len(packed[pair][n2_idx]) < n_n1_frs_max:
                 assert sampling_psi_fr == 'exclude'  # should not occur otherwise
-                packed[pair][n2_idx].append(ref)
+                packed[pair][n2_idx].append(list(ref))
 
     # pack into list ready to convert to 4D tensor ###########################
     # current indexing: `(n2, n1_fr, n1, time)`
@@ -378,6 +378,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
             combined[n2].extend(combined_down[n2][::-1])
 
     # reverse ordering of `n1` ###############################################
+    B = get_unified_backend(_infer_backend(Scx_unpacked, get_name=True)[1])
     if separate_lowpass:
         if structure != 4:
             cbs = [combined, combined_phi_t, combined_phi_f]
@@ -419,7 +420,6 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
         if structure != 4:
             out_phi_f = tensor_padded(combined_phi_f, **kw)
 
-    B = get_unified_backend(_infer_backend(out, get_name=True)[1])
     if structure in (1, 2):
         if structure == 1:
             out = B.transpose(out, (1, 0, 2, 3))

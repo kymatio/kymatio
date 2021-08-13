@@ -941,10 +941,10 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, trim_tm, commons,
             if sc_freq.sampling_psi_fr == 'exclude':
                 # 'exclude' is scale-oriented but to be safe also check
                 # if padded length is available
-                scale_diff = (sc_freq.shape_fr_scale_max -
-                              sc_freq.shape_fr_scale[n2])
-                if (scale_diff not in psi1_f[n1_fr] or
-                    subsample_equiv_due_to_pad not in psi1_f[n1_fr]):
+                if subsample_equiv_due_to_pad not in psi1_f[n1_fr]:
+                    continue
+                width = psi1_f[n1_fr]['width'][subsample_equiv_due_to_pad]
+                if width > sc_freq.shape_fr[n2]:
                     continue
 
             # compute subsampling

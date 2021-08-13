@@ -122,7 +122,7 @@ class TorchBackend:
 
     @classmethod
     def conj(cls, x, inplace=False):
-        if inplace:
+        if inplace:  # TODO
             raise Exception("Torch autograd doesn't support `out=`")
         return (torch.conj(x) if cls._is_complex(x) else
                 x)
@@ -134,6 +134,12 @@ class TorchBackend:
     @classmethod
     def transpose(cls, x, axes):
         return x.permute(*axes)
+
+    @classmethod
+    def flip(cls, x, axis):
+        if not isinstance(axis, (list, tuple)):
+            axis = (axis,)
+        return torch.flip(x, axis)
 
     @classmethod
     def assign_slice(cls, x, x_slc, slc):
