@@ -119,11 +119,5 @@ class NumpyBackend:
         return x.transpose(*axes)
 
     @classmethod
-    def flip(cls, x, axis):
-        if not isinstance(axis, (list, tuple)):
-            axis = (axis,)
-        return cls._np.flip(x, axis)
-
-    @classmethod
     def assign_slice(cls, x, x_slc, slc):
         x[slc] = x_slc

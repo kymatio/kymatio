@@ -44,12 +44,6 @@ class TensorFlowBackend(NumpyBackend):
         return tf.transpose(x, axes)
 
     @classmethod
-    def flip(cls, x, axis):
-        if not isinstance(axis, (list, tuple)):
-            axis = (axis,)
-        return tf.reverse(x, axis)
-
-    @classmethod
     def assign_slice(cls, x, x_slc, slc):
         slc_name = type(slc).__name__
         if slc_name == 'list':
