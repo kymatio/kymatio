@@ -122,10 +122,14 @@ class TorchBackend:
 
     @classmethod
     def conj(cls, x, inplace=False):
-        if inplace:  # TODO
+        if inplace and getattr(x, 'requires_grad', False):
             raise Exception("Torch autograd doesn't support `out=`")
-        return (torch.conj(x) if cls._is_complex(x) else
-                x)
+        if inplace:
+            out = torch.conj(x, out=x)
+        else:
+            out = (torch.conj(x) if cls._is_complex(x) else
+                   x)
+        return out
 
     @classmethod
     def reshape(cls, x, shape):

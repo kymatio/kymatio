@@ -424,7 +424,7 @@ def test_global_averaging():
     if metric_verbose:
         print("\nGlobal averaging reldiffs:")
 
-    th = .1
+    th = .15
     for pair in T0F0:
         ref = T0F0[pair]
         reldiff01 = abs(T0F1[pair] - ref) / ref
@@ -862,15 +862,16 @@ def test_reconstruction_torch():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     J = 6
-    Q = 6
-    N = 512
-    n_iters = 20
-    jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
+    Q = 8
+    N = 1024
+    n_iters = 30
+    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4,
+                                     frontend='torch', out_type='array',
                                      sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
 
-    y = torch.from_numpy(echirp(N).astype('float32')).to(device)
+    y = torch.from_numpy(echirp(N, fmin=1).astype('float32')).to(device)
     Sy = jtfs(y)
     div = Sy.max()
     Sy /= div
@@ -879,7 +880,7 @@ def test_reconstruction_torch():
     x = torch.randn(N, device=device)
     x /= torch.max(torch.abs(x))
     x.requires_grad = True
-    optimizer = torch.optim.SGD([x], lr=50000, momentum=.8, nesterov=True)
+    optimizer = torch.optim.SGD([x], lr=140000, momentum=.9, nesterov=True)
     loss_fn = torch.nn.MSELoss()
 
     losses, losses_recon = [], []
@@ -894,7 +895,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, .92, 60
+    th, th_recon, th_end_ratio = 1e-5, 1.05, 60
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)

@@ -1505,7 +1505,7 @@ def rel_ae(x0, x1, eps=None, ref_both=True):
 
 
 #### test signals ###########################################################
-def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
+def echirp(N, fmin=1, fmax=None, tmin=0, tmax=1):
     """https://overlordgolddragon.github.io/test-signals/ (bottom)"""
     fmax = fmax or N // 2
     t = np.linspace(tmin, tmax, N)
