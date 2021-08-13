@@ -567,10 +567,12 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
                   sc_freq.J_pad_fr[n2])
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
-        scale_diff = (sc_freq.shape_fr_scale_max -
-                      sc_freq.shape_fr_scale[n2])
         j0s = [k for k in sc_freq.psi1_f_fr_up[n1_fr] if isinstance(k, int)]
-        if scale_diff not in j0s or subsample_equiv_due_to_pad not in j0s:
+        if subsample_equiv_due_to_pad not in j0s:
+            return True
+
+        width = sc_freq.psi1_f_fr_up[n1_fr]['width'][subsample_equiv_due_to_pad]
+        if width > sc_freq.shape_fr[n2]:
             return True
         return False
 
@@ -784,27 +786,32 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
               meta[field][pair] = meta[field][pair].reshape(-1, 1, meta_len)
               continue
 
-          elif 'up' in pair or 'down' in pair:
+          elif 'psi_f' in pair:
+              is_phi_t = pair.startswith('phi_t')
               if sampling_psi_fr != 'exclude':
-                  number_of_n2 = sum(j2 != 0 for j2 in j2s)
+                  number_of_n2 = (1 if is_phi_t else
+                                  sum(j2 != 0 for j2 in j2s))
                   number_of_n1_fr = len(j1s_fr)
               else:
                   n_slices = 0
-                  for n2, j2 in enumerate(j2s):
-                      if j2 == 0:
-                          continue
+                  if is_phi_t:
+                      n2 = -1
                       for n1_fr, j1_fr in enumerate(j1s_fr):
                           if _exclude_excess_scale(n2, n1_fr):
                               continue
                           n_slices += 1
+                  else:
+                      for n2, j2 in enumerate(j2s):
+                          if j2 == 0:
+                              continue
+                          for n1_fr, j1_fr in enumerate(j1s_fr):
+                              if _exclude_excess_scale(n2, n1_fr):
+                                  continue
+                              n_slices += 1
 
           elif pair == 'psi_t * phi_f':
               number_of_n2 = sum(j2 != 0 for j2 in j2s)
               number_of_n1_fr = 1
-
-          elif pair == 'phi_t * psi_f':
-              number_of_n2 = 1
-              number_of_n1_fr = len(j1s_fr)
 
           elif pair == 'phi_t * phi_f':
               number_of_n2 = 1

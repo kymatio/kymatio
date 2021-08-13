@@ -131,7 +131,8 @@ def test_jtfs_vs_ts():
     kw = dict(J=J, shape=N, max_pad_factor=1, frontend=default_backend)
     ts = Scattering1D(Q=Q[0], pad_mode="zero", out_type='array', **kw)
     jtfs = TimeFrequencyScattering1D(Q=Q, Q_fr=2, J_fr=4, average_fr=True,
-                                     out_3D=True, out_type='dict:array', **kw)
+                                     out_3D=True, out_type='dict:array', **kw,
+                                     sampling_filters_fr=('resample', 'resample'))
 
     # scatter
     ts_x  = ts(x)
@@ -185,6 +186,8 @@ def test_freq_tp_invar():
                                          # pad_mode='zero', pad_mode_fr='zero',
                                          pad_mode='reflect',
                                          pad_mode_fr='conj-reflect-zero',
+                                         sampling_filters_fr=(
+                                             'resample', 'resample'),
                                          frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
@@ -233,6 +236,8 @@ def test_up_vs_down():
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
                                          average_fr=True, out_type='dict:array',
                                          pad_mode=pad_mode,
+                                         sampling_filters_fr=(
+                                             'resample', 'resample'),
                                          pad_mode_fr=pad_mode_fr,
                                          frontend=default_backend)
         Scx = jtfs(x)
@@ -391,7 +396,8 @@ def test_global_averaging():
     params = dict(shape=N, J=9, Q=4, J_fr=5, Q_fr=2, average=True,
                   average_fr=True, out_type='dict:array', pad_mode='reflect',
                   pad_mode_fr='conj-reflect-zero', max_pad_factor=None,
-                  max_pad_factor_fr=None, frontend=default_backend)
+                  max_pad_factor_fr=None, frontend=default_backend,
+                  sampling_filters_fr=('resample', 'resample'))
     x = echirp(N)
     x += np.random.randn(N)
 
@@ -812,7 +818,8 @@ def test_backends():
         # test that this works
         for structure in (1, 2, 3, 4):
             _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
-                                 separate_lowpass=True)
+                                 separate_lowpass=True,
+                                 sampling_psi_fr=jtfs.sampling_psi_fr)
 
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
@@ -859,6 +866,7 @@ def test_reconstruction_torch():
     N = 512
     n_iters = 20
     jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
+                                     sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
 
@@ -886,7 +894,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, .92, 40
+    th, th_recon, th_end_ratio = 1e-5, .92, 60
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
@@ -1021,6 +1029,7 @@ def test_meta():
             print("Failed at:\n%s" % test_params_str)
             raise e
 
+
         # ensure no output shape was completely reduced
         for pair in Scx:
             for i, c in enumerate(Scx[pair]):
@@ -1036,6 +1045,12 @@ def test_meta():
             for i in range(len(Scx[pair])):
                 assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
                                     out_3D, test_params_str, test_params, jtfs)
+
+        # save compute and test this method for thoroughness
+        for structure in (1, 2, 3, 4):
+            _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
+                                 separate_lowpass=True,
+                                 sampling_psi_fr=jtfs.sampling_psi_fr)
 
     if default_backend != 'numpy':
         # meta doesn't change
