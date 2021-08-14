@@ -3,6 +3,7 @@ from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
+from ...toolkit import pack_coeffs_jtfs
 from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
                             _check_runtime_args_jtfs)
 
@@ -125,6 +126,8 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
             out_3D=self.out_3D,
             out_exclude=self.out_exclude,
             pad_mode=self.pad_mode)
+        if self.out_structure is not None:
+            S = pack_coeffs_jtfs(S, self.meta(), self.out_structure)
         return S
 
     def sc_freq_compute_padding_fr(self):

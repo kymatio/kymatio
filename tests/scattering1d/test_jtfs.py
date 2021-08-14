@@ -689,7 +689,7 @@ def test_pack_coeffs_jtfs():
             else:
                 assert np.all(n1_frs == sorted(n1_frs, reverse=True)), errmsg
 
-    def validate_packing(out, separate_lowpass, structure, info):
+    def validate_packing(out, separate_lowpass, structure, t, info):
         # unpack into `out_up, out_down, out_phi`
         out_phi_f, out_phi_t = None, None
         if structure in (1, 2):
@@ -728,6 +728,7 @@ def test_pack_coeffs_jtfs():
         outs = (out_up, out_down, out_phi_f, out_phi_t)
         for spin, o in zip([1, -1, 0, 0], outs):
             if o is not None:
+                assert o.shape[-1] == t, (o.shape, t)
                 validate_n2s(o, info, spin)
                 validate_n1s(o, info, spin)
 
@@ -759,6 +760,7 @@ def test_pack_coeffs_jtfs():
 
     for test_num, test_params in tests_params.items():
         _, out_stored, out_stored_keys, params, _, meta = load_data(test_num)
+        t = out_stored[0].shape[-1]
 
         # ensure match
         for k in test_params:
@@ -782,7 +784,7 @@ def test_pack_coeffs_jtfs():
                 out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
                                        separate_lowpass=separate_lowpass,
                                        **kw, debug=True)
-                validate_packing(out, separate_lowpass, structure, info)
+                validate_packing(out, separate_lowpass, structure, t, info)
 
 
 def test_no_second_order_filters():
@@ -815,11 +817,25 @@ def test_backends():
                                          out_3D=True, frontend=backend_name)
         Scx = jtfs(x)
         jmeta = jtfs.meta()
-        # test that this works
+
+        # test batched packing for convenience ###############################
         for structure in (1, 2, 3, 4):
-            _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
-                                 separate_lowpass=True,
-                                 sampling_psi_fr=jtfs.sampling_psi_fr)
+            for separate_lowpass in (False, True):
+                kw = dict(meta=jmeta, structure=structure,
+                          separate_lowpass=separate_lowpass,
+                          sampling_psi_fr=jtfs.sampling_psi_fr)
+                outs  = pack_coeffs_jtfs(Scx, **kw)
+                outs0 = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
+                outs  = outs  if isinstance(outs,  tuple) else [outs]
+                outs0 = outs0 if isinstance(outs0, tuple) else [outs0]
+
+                for o, o0 in zip(outs, outs0):
+                    assert o.ndim == 5, o.shape
+                    assert len(o) == len(x), (len(o), len(x))
+                    assert o.shape[-1] == Scx['S0'].shape[-1], (
+                        o.shape, Scx['S0'].shape)
+                    assert o.shape[1:] == o0.shape, (o.shape, o0.shape)
+        ######################################################################
 
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
@@ -1048,10 +1064,12 @@ def test_meta():
                                     out_3D, test_params_str, test_params, jtfs)
 
         # save compute and test this method for thoroughness
-        for structure in (1, 2, 3, 4):
-            _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
-                                 separate_lowpass=True,
-                                 sampling_psi_fr=jtfs.sampling_psi_fr)
+        if average:
+            for structure in (1, 2, 3, 4):
+                for separate_lowpass in (False, True):
+                    _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
+                                         separate_lowpass=separate_lowpass,
+                                         sampling_psi_fr=jtfs.sampling_psi_fr)
 
     if default_backend != 'numpy':
         # meta doesn't change
