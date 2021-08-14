@@ -65,7 +65,7 @@ def _iterate_apply(Scx, fn):
 def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                      separate_lowpass=False, sampling_psi_fr=None, debug=False,
                      recursive=False):
-    """Packs JTFS coefficients into one of valid 4D structures.
+    """Packs efficiently JTFS coefficients into one of valid 4D structures.
 
     Parameters
     ----------
@@ -250,6 +250,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     Method assumes `out_exclude=None`.
     """
     def combined_to_tensor(combined_all, recursive):
+        # TODO backends
         def process_dims(o):
             if recursive:
                 assert o.ndim == 5, o.shape
@@ -258,75 +259,83 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                 o = o[None]
             return o
 
-        combined, combined_phi_t, combined_phi_f = combined_all
-        # TODO backends
-        # this will pad along `n1`
-        pad_value = 0 if not debug else -2
-        out = tensor_padded(combined, pad_value=pad_value, right_pad=False)
-        out = process_dims(out)
-        s = out.shape
+        def not_none(x):
+            return (x is not None if not recursive else
+                    all(_x is not None for _x in x))
 
-        out_phi_t, out_phi_f = None, None
-        if separate_lowpass:
-            # ensure phis pad to same number of n1s
-            ref_shape = ((None, None, s[-2], None) if not recursive else
-                         (None, None, None, s[-2], None))
-            kw = dict(pad_value=pad_value, ref_shape=ref_shape)
-            out_phi_t = tensor_padded(combined_phi_t, **kw)
-            out_phi_t = process_dims(out_phi_t)
-            if structure != 4:
-                out_phi_f = tensor_padded(combined_phi_f, **kw)
-                out_phi_f = process_dims(out_phi_f)
-
-        B = get_unified_backend(_infer_backend(combined, get_name=True)[1])
+        # fetch combined params
         if structure in (1, 2):
+            combined, combined_phi_t, combined_phi_f = combined_all
+        else:
+            (combined_up, combined_down, combined_phi_t, combined_phi_f
+             ) = combined_all
+
+        # compute pad params
+        cbs = [(cb[0] if recursive else cb) for cb in combined_all
+               if not_none(cb)]
+        n_n1s_max = max(len(cb[n2_idx][n1_fr_idx])
+                        for cb in cbs
+                        for n2_idx in range(len(cb))
+                        for n1_fr_idx in range(len(cb[n2_idx])))
+        pad_value = 0 if not debug else -2
+        kw = dict(pad_value=pad_value, right_pad=False)
+
+        # `phi`s #############################################################
+        out_phi_t, out_phi_f = None, None
+        # ensure `phi`s pad to same number of `n1`s as spinned
+        ref_shape = ((None, None, n_n1s_max, None) if not recursive else
+                     (None, None, None, n_n1s_max, None))
+        # this will pad along `n1`
+        if not_none(combined_phi_t):
+            out_phi_t = tensor_padded(combined_phi_t, ref_shape=ref_shape, **kw)
+            out_phi_t = process_dims(out_phi_t)
+        if not_none(combined_phi_f):
+            out_phi_f = tensor_padded(combined_phi_f, ref_shape=ref_shape, **kw)
+            out_phi_f = process_dims(out_phi_f)
+
+        # spinned ############################################################
+        B = get_unified_backend(_infer_backend(combined_all[0], get_name=True)[1])
+        if structure in (1, 2):
+            out = tensor_padded(combined, **kw)
+            out = process_dims(out)
+
             if structure == 1:
-                out = B.transpose(out, (0, 2, 1, 3, 4))
+                tp_shape = (0, 2, 1, 3, 4)
+                out = B.transpose(out, tp_shape)
                 if separate_lowpass:
-                    out_phi_f = B.transpose(out_phi_f, (0, 2, 1, 3, 4))
-                    out_phi_t = B.transpose(out_phi_t, (0, 2, 1, 3, 4))
+                    out_phi_t = B.transpose(out_phi_t, tp_shape)
+                    out_phi_f = B.transpose(out_phi_f, tp_shape)
+
             out = (out if not separate_lowpass else
                    (out, out_phi_f, out_phi_t))
 
-        elif structure == 3:
-            # TODO sort before packing into tensor
-            if not separate_lowpass:
-                out_phi_f = out[:, :, s[2]//2][:, :, None]
-                # exclude phi_f
-                out = tensor_padded([[o1 for n2_idx in range(len(out[s_idx]))
-                                      for o1 in
-                                      [[o0 for n1_fr_idx, o0
-                                        in enumerate(out[s_idx][n2_idx])
-                                        if n1_fr_idx != s[2]//2]]]
-                                     for s_idx in range(len(out))])
+        elif structure in (3, 4):
+            out_up   = tensor_padded(combined_up,   **kw)
+            out_down = tensor_padded(combined_down, **kw)
+            out_up   = process_dims(out_up)
+            out_down = process_dims(out_down)
 
-            out_up   = out[:, :, :s[2]//2]
-            out_down = out[:, :, s[2]//2:]
-            out = ((out_up, out_down, out_phi_f) if not separate_lowpass else
-                   (out_up, out_down, out_phi_f, out_phi_t))
-
-        elif structure == 4:
-            out_up   = out[:, :, :s[2]//2 + 1]
-            out_down = out[:, :, s[2]//2:]
-            if not separate_lowpass:
-                out = (out_up, out_down)
+            if structure == 3:
+                out = ((out_up, out_down, out_phi_f) if not separate_lowpass else
+                       (out_up, out_down, out_phi_f, out_phi_t))
             else:
-                # assert same number of `n1`s
-                s0, s1 = out_phi_t.shape[-2], out_up.shape[-2]
-                assert s0 == s1, "{}, {}".format(out_phi_t.shape, out_up.shape)
-                out = (out_up, out_down, out_phi_t)
+                if not separate_lowpass:
+                    out = (out_up, out_down)
+                else:
+                    out = (out_up, out_down, out_phi_t)
 
         # sanity checks ##########################################################
         phis = dict(out_phi_t=out_phi_t, out_phi_f=out_phi_f)
         ref = out[0] if isinstance(out, tuple) else out
         for name, op in phis.items():
             if op is not None:
+                errmsg = (name, op.shape, ref.shape)
                 # `t`s must match
-                assert op.shape[-1] == ref.shape[-1], (name, op.shape, ref.shape)
+                assert op.shape[-1] == ref.shape[-1], errmsg
                 # number of `n1`s must match
-                assert op.shape[-2] == ref.shape[-2], (name, op.shape, ref.shape)
+                assert op.shape[-2] == ref.shape[-2], errmsg
                 # number of samples must match
-                assert op.shape[0]  == ref.shape[0],  (name, op.shape, ref.shape)
+                assert op.shape[0]  == ref.shape[0],  errmsg
 
                 # due to transpose
                 fr_dim = -3 if structure != 1 else -4
@@ -373,15 +382,30 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
 
     # handle recursion, if applicable
     if n_samples > 1 and sample_idx is None:
-        combined_s, combined_phi_t_s, combined_phi_f_s = [], [], []
+        combined_phi_t_s, combined_phi_f_s = [], []
+        if structure in (1, 2):
+            combined_s = []
+        elif structure in (3, 4):
+            combined_up_s, combined_down_s = [], []
+
         for sample_idx in range(n_samples):
             combined_all = pack_coeffs_jtfs(Scx, meta, structure, sample_idx,
                                             separate_lowpass, sampling_psi_fr,
                                             debug, recursive=True)
-            combined_s.append(combined_all[0])
-            combined_phi_t_s.append(combined_all[1])
-            combined_phi_f_s.append(combined_all[2])
-        combined_all_s = (combined_s, combined_phi_t_s, combined_phi_f_s)
+
+            combined_phi_t_s.append(combined_all[-2])
+            combined_phi_f_s.append(combined_all[-1])
+            if structure in (1, 2):
+                combined_s.append(combined_all[0])
+            elif structure in (3, 4):
+                combined_up_s.append(combined_all[0])
+                combined_down_s.append(combined_all[1])
+
+        phis = (combined_phi_t_s, combined_phi_f_s)
+        if structure in (1, 2):
+            combined_all_s = (combined_s, *phis)
+        elif structure in (3, 4):
+            combined_all_s = (combined_up_s, combined_down_s, *phis)
         out = combined_to_tensor(combined_all_s, recursive=True)
         return out
 
@@ -497,6 +521,10 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     # pack these for later
     # reverse `psi_t` ordering
     combined_down = packed['psi_t * psi_f_down'][::-1]
+    # reverse `psi_f` ordering
+    for n2 in range(len(combined_down)):
+        combined_down[n2] = combined_down[n2][::-1]
+
     # pack phi_t
     c_phi_t = deepcopy(packed['phi_t * psi_f'])
     c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
@@ -504,59 +532,84 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     # pack phi_f
     c_phi_f = packed['psi_t * phi_f'][::-1]
 
-    if not separate_lowpass or structure == 4:
-        # TODO `(not separate_lowpass and structure != 3)` ?
+    # append `phi_f` if appropriate
+    if (not separate_lowpass or structure == 4) and structure != 3:
         # structure 4 joins `psi_t * phi_f` with `psi_t * psi_f`
-        for n2 in range(len(c_phi_f)):
-            for n1_fr in range(len(c_phi_f[n2])):
-                combined[n2].append(c_phi_f[n2][n1_fr])
+        for n2_idx in range(len(c_phi_f)):
+            for n1_fr_idx in range(len(c_phi_f[n2_idx])):
+                c = c_phi_f[n2_idx][n1_fr_idx]
+                combined[n2_idx].append(c)
+                # not needed in 3, will duplicate in 1 and 2
+                if structure == 4:
+                    combined_down[n2_idx].insert(0, c)
 
+        l0, l1 = len(combined[0]), len(combined_down[0])
+        assert (l0 == l1 if structure == 4 else l0 == l1 + 1), (l0, l1)
+    else:
+        l0, l1 = len(combined[0]), len(combined_down[0])
+        assert l0 == l1, (l0, l1)
+
+    # `None` means they aren't turned to tensors, so only set if need
+    # as separate tensors
     combined_phi_t, combined_phi_f = None, None
     if not separate_lowpass:
-        assert len(combined_down) == len(combined)
-        for n2 in range(len(combined)):
-            # reverse `psi_f` ordering for `psi_f_down`
-            combined[n2].extend(combined_down[n2][::-1])
-        combined.insert(0, c_phi_t[0])
-
+        if structure == 3:
+            combined_phi_f = c_phi_f
     else:
-        # pack `phi`s
         if structure != 4:
             combined_phi_f = c_phi_f
         combined_phi_t = c_phi_t
 
-        assert len(combined_down) == len(combined)
-        for n2 in range(len(combined)):
-            # and `psi_f` ordering
-            combined[n2].extend(combined_down[n2][::-1])
+    # pack spinned (+ `phi` maybe)
+    assert len(combined_down) == len(combined), (
+        len(combined_down), len(combined))
+    if structure in (1, 2):
+        for n2_idx in range(len(combined)):
+            combined[n2_idx].extend(combined_down[n2_idx])
+        if not separate_lowpass:
+            combined.insert(0, c_phi_t[0])
+        combined_up = None
+
+    else:
+        combined_up = combined
+        if not separate_lowpass and structure == 4:
+            _len = len(c_phi_t[0])
+            combined_up.insert(  0, c_phi_t[0][:_len//2 + 1])
+            combined_down.insert(0, c_phi_t[0][_len//2:])
 
     # reverse ordering of `n1` ###############################################
-    if separate_lowpass:
-        if structure != 4:
-            cbs = [combined, combined_phi_t, combined_phi_f]
-        else:
-            cbs = [combined, combined_phi_t]
+    if combined_up is not None:
+        cbs = [combined_up, combined_down]
     else:
         cbs = [combined]
+    if combined_phi_t is not None:
+        cbs.append(combined_phi_t)
+    if combined_phi_f is not None:
+        cbs.append(combined_phi_f)
 
     cbs_new = []
     for i, cb in enumerate(cbs):
         cbs_new.append([])
-        for n2 in range(len(cb)):
+        for n2_idx in range(len(cb)):
             cbs_new[i].append([])
-            for n1_fr in range(len(cb[n2])):
-                cbs_new[i][n2].append(cb[n2][n1_fr][::-1])
+            for n1_fr_idx in range(len(cb[n2_idx])):
+                cbs_new[i][n2_idx].append(cb[n2_idx][n1_fr_idx][::-1])
 
-    if separate_lowpass:
-        if structure != 4:
-            combined, combined_phi_t, combined_phi_f = cbs_new
-        else:
-            combined, combined_phi_t = cbs_new
+    if combined_up is not None:
+        combined_up   = cbs_new.pop(0)
+        combined_down = cbs_new.pop(0)
     else:
-        combined = cbs_new[0]
+        combined = cbs_new.pop(0)
+    if combined_phi_t is not None:
+        combined_phi_t = cbs_new.pop(0)
+    if combined_phi_f is not None:
+        combined_phi_f = cbs_new.pop(0)
+    assert len(cbs_new) == 0, len(cbs_new)
 
     # finalize ###############################################################
-    combined_all = (combined, combined_phi_t, combined_phi_f)
+    phis = (combined_phi_t, combined_phi_f)
+    combined_all = ((combined, *phis) if combined_up is None else
+                    (combined_up, combined_down, *phis))
     if recursive:
         return combined_all
     return combined_to_tensor(combined_all, recursive=False)
