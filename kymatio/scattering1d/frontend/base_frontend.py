@@ -481,39 +481,45 @@ class TimeFrequencyScatteringBase1D():
                              "try increasing `J`")
         # TODO class_name scattering1d?
 
-        # # handle `implementation`
-        # if (self.implementation is not None and
-        #         self.implementation not in range(5)):
-        #     raise ValueError("`implementation` must be None or an integer 1-4.")
+        # handle `implementation`
+        if (self.implementation is not None and
+                self.implementation not in range(1, 6)):
+            raise ValueError("`implementation` must be None or an integer 1-5 "
+                             "(got %s)" % str(self.implementation))
+        elif self.implementation in (3, 5) and 'dict' not in self.out_type:
+            raise ValueError("`implementation` 3 or 5 requires `out_type` "
+                             "'dict:array' or 'dict:list'.")
 
-        # self._implementation_args = {
-        #     1: dict(average_fr=False, aligned=True,  out_3D=False,
-        #             sampling_filters_fr=('exclude', 'resample')),
-        #     2: dict(average_fr=True,  aligned=True,  out_3D=True,
-        #             sampling_filters_fr=('exclude', 'resample')),
-        #     3: dict(average_fr=True,  aligned=True,  out_3D=True,
-        #             sampling_filters_fr=('exclude', 'resample')),
-        #     4: dict(average_fr=True,  aligned=False, out_3D=True,
-        #             sampling_filters_fr=('exclude', 'recalibrate')),
-        #     5: dict(average_fr=True,  aligned=False, out_3D=True,
-        #             sampling_filters_fr=('recalibrate', 'recalibrate')),
-        # }
-        # def is_equal(a, b):
-        #     return (a == b if not isinstance(a, (tuple, list)) else
-        #             all(_a == _b for _a, _b in zip(a, b)))
-        # defaults = self._implementation_args[1]
-        # for name in defaults:
-        #     user_value = getattr(self, name)
-        #     if self.implementation is None:
-        #         if user_value is None:
-        #             setattr(self, name, defaults[name])
-        #     else:
-        #         implem_value = self._implementation_args[self.implementation
-        #                                                  ][name]
-        #         if not is_equal(user_value, implem_value):
-        #             warnings.warn(("`{}` will be overriden by `implementation`'s "
-        #                            "preset").format(name))
-        #         setattr(self, name, implem_value)
+        self._implementation_args = {
+            1: dict(average_fr=False, aligned=True,  out_3D=False,
+                    sampling_filters_fr=('exclude', 'resample')),
+            2: dict(average_fr=True,  aligned=True,  out_3D=True,
+                    sampling_filters_fr=('exclude', 'resample')),
+            3: dict(average_fr=True,  aligned=True,  out_3D=True,
+                    sampling_filters_fr=('exclude', 'resample')),
+            4: dict(average_fr=True,  aligned=False, out_3D=True,
+                    sampling_filters_fr=('exclude', 'recalibrate')),
+            5: dict(average_fr=True,  aligned=False, out_3D=True,
+                    sampling_filters_fr=('recalibrate', 'recalibrate')),
+        }
+        def is_equal(a, b):
+            return (a == b if not isinstance(a, (tuple, list)) else
+                    all(_a == _b for _a, _b in zip(a, b)))
+        defaults = self._implementation_args[1]
+        for name in defaults:
+            user_value = getattr(self, name)
+            if self.implementation is None:
+                if user_value is None:
+                    setattr(self, name, defaults[name])
+            else:
+                implem_value = self._implementation_args[self.implementation
+                                                         ][name]
+                if not is_equal(user_value, implem_value):
+                    warnings.warn(("`{}` will be overriden by `implementation`'s "
+                                   "preset").format(name))
+                setattr(self, name, implem_value)
+        self.out_structure = (1 if self.implementation in (3, 5) else
+                              None)
 
         # handle `out_exclude`
         if self.out_exclude is not None:
@@ -848,7 +854,7 @@ class TimeFrequencyScatteringBase1D():
               - sampling_phi_fr = 'resample'
 
             3: Standard for 3D/4D convs. `(n1_fr, n2, n1, t)`. [2] but
-              - structure = 1
+              - out_structure = 1
 
             4: Efficient for 2D convs. [2] but
               - aligned = False
@@ -863,8 +869,8 @@ class TimeFrequencyScatteringBase1D():
         which yields significantly more coefficients and is slower, but
         the coefficients are mostly "synthetic zeros" and uninformative.
 
-        `structure` refers to packing output coefficients via
-        `pack_coeffs_jtfs(..., structure)`. This zero-pads and reshapes
+        `out_structure` refers to packing output coefficients via
+        `pack_coeffs_jtfs(..., out_structure)`. This zero-pads and reshapes
         coefficients, but does not affect their values or computation in any way.
         (Thus, 3==2 except for shape).
 
