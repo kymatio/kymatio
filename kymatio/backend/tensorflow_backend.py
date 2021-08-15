@@ -47,9 +47,14 @@ class TensorFlowBackend(NumpyBackend):
         """Implemented only for indexing into last axis."""
         slc_name = type(slc).__name__
         if slc_name == 'tuple':
-            # handle input from `conj_reflections`
-            slc = slc[-1]
+            axis = 0
+            while slc[axis].start is None and slc[axis].stop is None:
+                axis += 1
+            slc = slc[axis]
             slc_name = type(slc).__name__
+        else:
+            # default to last axis
+            axis = -1
 
         if slc_name == 'list':
             pass
@@ -64,7 +69,7 @@ class TensorFlowBackend(NumpyBackend):
 
         slc_tf = tf.ones(x_slc.shape)
         slc_tf = tf.where(slc_tf).numpy().reshape([*x_slc.shape, x_slc.ndim])
-        slc_tf[..., -1] = slc
+        slc_tf[..., axis] = slc
 
         x = tf.tensor_scatter_nd_update(x, slc_tf, x_slc)
         return x
