@@ -13,7 +13,7 @@ from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
-default_backend = 'numpy'
+default_backend = ('numpy', 'torch', 'tensorflow')[2]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
@@ -140,10 +140,12 @@ def test_jtfs_vs_ts():
 
     jtfs_x_all  = jtfs(x)
     jtfs_xs_all = jtfs(xs)
+    jtfs_x_all  = jtfs_to_numpy(jtfs_x_all)
+    jtfs_xs_all = jtfs_to_numpy(jtfs_xs_all)
     jtfs_x  = concat_joint(jtfs_x_all)
     jtfs_xs = concat_joint(jtfs_xs_all)  # compare against joint coeffs only
 
-    l2_ts = l2(ts_x, ts_xs)
+    l2_ts   = l2(ts_x, ts_xs)
     l2_jtfs = l2(jtfs_x, jtfs_xs)
 
     # max ratio limited by `N`; can do better with longer input
@@ -192,6 +194,8 @@ def test_freq_tp_invar():
         # scatter
         jtfs_x0_all = jtfs(x0)
         jtfs_x1_all = jtfs(x1)
+        jtfs_x0_all = jtfs_to_numpy(jtfs_x0_all)
+        jtfs_x1_all = jtfs_to_numpy(jtfs_x1_all)
 
         # compute & append distances
         _, pair_dist = coeff_distance_jtfs(jtfs_x0_all, jtfs_x1_all,
@@ -241,6 +245,7 @@ def test_up_vs_down():
                                          pad_mode_fr=pad_mode_fr,
                                          frontend=default_backend)
         Scx = jtfs(x)
+        Scx = jtfs_to_numpy(Scx)
         jmeta = jtfs.meta()
 
         r = coeff_energy_ratios(Scx, jmeta)
@@ -280,6 +285,8 @@ def test_sampling_psi_fr_exclude():
 
     Scx0 = jtfs0(x)
     Scx1 = jtfs1(x)
+    Scx0 = jtfs_to_numpy(Scx0)
+    Scx1 = jtfs_to_numpy(Scx1)
 
     # assert equality where `n` metas match
     # if `n` don't match, assert J_pad_fr is below maximum
@@ -413,7 +420,9 @@ def test_global_averaging():
             assert (jtfs.average_global if T == Ts[-1] else
                     not jtfs.average_global)
 
-            outs[ (T, F)] = jtfs(x)
+            out = jtfs(x)
+            out = jtfs_to_numpy(out)
+            outs[ (T, F)] = out
             metas[(T, F)] = jtfs.meta()
 
     T0F0 = coeff_energy(outs[(Ts[0], Fs[0])], metas[(Ts[0], Fs[0])])
@@ -816,6 +825,7 @@ def test_backends():
                                          average_fr=True, out_type='dict:array',
                                          out_3D=True, frontend=backend_name)
         Scx = jtfs(x)
+        Scx = jtfs_to_numpy(Scx)
         jmeta = jtfs.meta()
 
         # test batched packing for convenience ###############################
@@ -1176,14 +1186,13 @@ def test_output():
                 o = o if params['out_type'] == 'dict:array' else o['coef']
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
                 errmsg = ("out[{}][{}].shape != out_stored[{}].shape | n={}\n"
-                          "({} != {})\n"
-                          ).format(pair, i, o_stored_key, n,
-                                   o.shape, o_stored.shape)
+                          "({} != {})\n").format(pair, i, o_stored_key, n,
+                                                 o.shape, o_stored.shape)
                 if not already_printed_test_info:
                     errmsg += params_str
 
                 if output_test_print_mode and o.shape != o_stored.shape:
-                    print(errmsg)
+                    # print(errmsg)
                     already_printed_test_info = True
                     i_s += 1
                     continue
@@ -1191,7 +1200,7 @@ def test_output():
                     assert o.shape == o_stored.shape, errmsg
 
                 # store info for printing
-                adiff = rel_ae(o_stored, o, ref_both=False)
+                adiff = rel_ae(o_stored, o, ref_both=True)
                 mean_ae, max_ae = adiff.mean(), adiff.max()
                 if mean_ae > max(mean_aes):
                     max_mean_info = "out[%s][%s] | n=%s" % (pair, i, n)
@@ -1209,7 +1218,7 @@ def test_output():
                     errmsg += params_str
 
                 if output_test_print_mode and not np.allclose(o, o_stored):
-                    print(errmsg)
+                    # print(errmsg)
                     already_printed_test_info = True
                 else:
                     assert np.allclose(o, o_stored), errmsg

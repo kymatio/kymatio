@@ -44,7 +44,6 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
     pad_right_idx = (out.shape[axis] -
                      (pad_right if pad_right != 0 else None))
     out[index_axis(pad_left, pad_right_idx, axis, x.ndim)] = x
-    # out[pad_left:pad_right_idx] = x
 
     if pad_mode == 'zero':
         pass  # already done
@@ -156,11 +155,13 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
                        (backend_name == 'torch' and
                         not getattr(x, 'requires_grad', False)))
         for slc in slices_contiguous:
-            B.assign_slice(x, B.conj(x[..., slc], inplace=inplace),
-                           index_axis_with_array(slc, axis=-1, ndim=x.ndim))
+            x = B.assign_slice(x, B.conj(x[..., slc], inplace=inplace),
+                               index_axis_with_array(slc, axis=-1, ndim=x.ndim))
     else:  # TODO any faster solution?
-        B.assign_slice(x, B.conj(x[..., idxs]),
-                       index_axis_with_array(idxs, axis=-1, ndim=x.ndim))
+        x = B.assign_slice(x, B.conj(x[..., idxs]),
+                           index_axis_with_array(idxs, axis=-1, ndim=x.ndim))
+    # only because of tensorflow
+    return x
 
 
 def unpad_dyadic(x, N, orig_padded_len, target_padded_len, k=0):

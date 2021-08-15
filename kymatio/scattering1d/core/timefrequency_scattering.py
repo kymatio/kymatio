@@ -631,7 +631,7 @@ def timefrequency_scattering(
         else:
             S_0 = x
         if average:
-            S_0 *= B.sqrt(2**k0)  # subsampling energy correction
+            S_0 *= B.sqrt(2**k0, dtype=S_0.dtype)  # subsampling energy correction
         out_S_0.append({'coef': S_0,
                         'j': (log2_T,) if average else (),
                         'n': (-1,)     if average else (),
@@ -684,31 +684,44 @@ def timefrequency_scattering(
                 S_1_avg = B.irfft(S_1_hat)
                 # unpad since we're fully done with convolving over time
                 S_1_avg = unpad(S_1_avg, ind_start_tm, ind_end_tm)
+                total_conv_stride_tm_avg = k1_avg + k1_J
             else:
                 # Average directly
                 S_1_avg = B.mean(U_1_m, axis=-1)
+                total_conv_stride_tm_avg = log2_T
 
         if 'S1' not in out_exclude:
             if average_global:
                 S_1_tm = S_1_avg
-                total_conv_stride_tm = log2_T
             elif average:
                 # Unpad averaged
                 S_1_tm = S_1_avg
-                total_conv_stride_tm = k1_avg + k1_J
             else:
                 # Unpad unaveraged
                 ind_start_tm, ind_end_tm = ind_start[0][k1], ind_end[0][k1]
                 S_1_tm = unpad(U_1_m, ind_start_tm, ind_end_tm)
-                total_conv_stride_tm = k1
+            total_conv_stride_tm = (total_conv_stride_tm_avg if average else
+                                    k1)
 
-            # energy correction due to inexact unpad length
+            # energy correction due to stride & inexact unpad length
             S_1_tm = _energy_correction(S_1_tm, B,
                                         param_tm=(N, ind_start_tm, ind_end_tm,
                                                   total_conv_stride_tm))
             out_S_1_tm.append({'coef': S_1_tm, 'j': (j1,), 'n': (n1,), 's': (),
                                'stride': (total_conv_stride_tm,)})
+
+            # since tensorflow won't update it in `_energy_correction`
+            if average:
+                S_1_avg = S_1_tm
+
+        # append for further processing
         if include_phi_t:
+            # energy correction, if not done
+            S_1_avg_energy_corrected = bool(average and 'S1' not in out_exclude)
+            if not S_1_avg_energy_corrected:
+                S_1_avg = _energy_correction(
+                    S_1_avg, B, param_tm=(N, ind_start_tm, ind_end_tm,
+                                          total_conv_stride_tm_avg))
             S_1_tm_list.append(S_1_avg)
 
     # Frequential averaging over time averaged coefficients ##################
@@ -765,7 +778,8 @@ def timefrequency_scattering(
         total_conv_stride_over_U1_realized = (n1_fr_subsample +
                                               lowpass_subsample_fr)
 
-        # energy correction due to inexact unpad indices
+        # energy correction due to stride & inexact unpad indices
+        # time already done
         S_1 = _energy_correction(S_1, B,
                                  param_fr=(sc_freq.shape_fr_max,
                                            ind_start_fr, ind_end_fr,
@@ -831,9 +845,12 @@ def timefrequency_scattering(
             Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
             if pad_mode == 'reflect' and average:
-                B.conj_reflections(Y_2_arr, ind_start[trim_tm][k1_plus_k2],
-                                   ind_end[trim_tm][k1_plus_k2], k1_plus_k2,
-                                   N, pad_left, pad_right, trim_tm)
+                # since tensorflow makes copy
+                Y_2_arr = B.conj_reflections(Y_2_arr,
+                                             ind_start[trim_tm][k1_plus_k2],
+                                             ind_end[  trim_tm][k1_plus_k2],
+                                             k1_plus_k2, N, pad_left, pad_right,
+                                             trim_tm)
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
@@ -1090,7 +1107,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     else:
         S_2 = S_2_r
 
-    # energy correction due to inexact unpad indices
+    # energy correction due to stride & inexact unpad indices
     param_tm = (N, ind_start_tm, ind_end_tm, total_conv_stride_tm)
     param_fr = (sc_freq.shape_fr[n2], ind_start_fr,
                 ind_end_fr, total_conv_stride_over_U1_realized)
@@ -1253,7 +1270,7 @@ def _energy_correction(x, B, param_tm=None, param_fr=None, phi_t_psi_f=False):
         if not (unpad_len_exact.is_integer() and unpad_len == unpad_len_exact):
             energy_correction_tm *= B.sqrt(unpad_len_exact / unpad_len)
         # compensate for subsampling
-        energy_correction_tm *= B.sqrt(2**total_conv_stride_tm)
+        energy_correction_tm *= B.sqrt(2**total_conv_stride_tm, dtype=x.dtype)
 
     if param_fr is not None:
         (N_fr, ind_start_fr, ind_end_fr, total_conv_stride_over_U1_realized
@@ -1262,13 +1279,15 @@ def _energy_correction(x, B, param_tm=None, param_fr=None, phi_t_psi_f=False):
         unpad_len_exact = N_fr / 2**total_conv_stride_over_U1_realized
         unpad_len = ind_end_fr - ind_start_fr
         if not (unpad_len_exact.is_integer() and unpad_len == unpad_len_exact):
-            energy_correction_fr *= B.sqrt(unpad_len_exact / unpad_len)
+            energy_correction_fr *= B.sqrt(unpad_len_exact / unpad_len,
+                                           dtype=x.dtype)
         # compensate for subsampling
-        energy_correction_fr *= B.sqrt(2**total_conv_stride_over_U1_realized)
+        energy_correction_fr *= B.sqrt(2**total_conv_stride_over_U1_realized,
+                                       dtype=x.dtype)
 
         if phi_t_psi_f:
             # since we only did one spin
-            energy_correction_fr *= B.sqrt(2)
+            energy_correction_fr *= B.sqrt(2, dtype=x.dtype)
 
     if energy_correction_tm != 1 or energy_correction_fr != 1:
         x *= (energy_correction_tm * energy_correction_fr)

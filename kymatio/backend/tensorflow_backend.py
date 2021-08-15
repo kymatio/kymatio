@@ -20,12 +20,11 @@ class TensorFlowBackend(NumpyBackend):
         return norm
 
     @classmethod
-    def sqrt(cls, x):
+    def sqrt(cls, x, dtype=None):
         if isinstance(x, (int, float)):
-            if isinstance(x, int):
-                x = tf.constant(x, dtype='float32')
-            else:
-                x = tf.constant(x)
+            x = tf.constant(x, dtype=dtype)
+        elif dtype is not None:
+            x = tf.cast(x, dtype=dtype)
         return tf.math.sqrt(x)
 
     @classmethod
@@ -45,15 +44,27 @@ class TensorFlowBackend(NumpyBackend):
 
     @classmethod
     def assign_slice(cls, x, x_slc, slc):
+        """Implemented only for indexing into last axis."""
         slc_name = type(slc).__name__
+        if slc_name == 'tuple':
+            # handle input from `conj_reflections`
+            slc = slc[-1]
+            slc_name = type(slc).__name__
+
         if slc_name == 'list':
-            slc = [([i] if not isinstance(i, list) else i) for i in slc]
+            pass
         elif slc_name == 'range':
-            slc = [[i] for i in slc]
+            slc = list(slc)
         elif slc_name == 'slice':
-            slc = [[i] for i in range(slc.start, slc.stop)]
+            slc = list(range(slc.start or 0, slc.stop or x.shape[-1],
+                             slc.step or 1))
         else:
             raise TypeError("`slc` must be list, range, or slice "
                             "(got %s)" % slc_name)
 
-        tf.tensor_scatter_nd_update(x, slc, x_slc)
+        slc_tf = tf.ones(x_slc.shape)
+        slc_tf = tf.where(slc_tf).numpy().reshape([*x_slc.shape, x_slc.ndim])
+        slc_tf[..., -1] = slc
+
+        x = tf.tensor_scatter_nd_update(x, slc_tf, x_slc)
+        return x

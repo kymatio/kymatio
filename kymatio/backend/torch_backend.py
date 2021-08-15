@@ -115,9 +115,13 @@ class TorchBackend:
         return A * B
 
     @classmethod
-    def sqrt(cls, x):
+    def sqrt(cls, x, dtype=None):
         if isinstance(x, (float, int)):
-            x = torch.tensor(x)
+            x = torch.tensor(x, dtype=dtype)
+        elif dtype is not None:
+            if isinstance(dtype, str):
+                dtype = getattr(torch, dtype)
+            x = x.type(dtype)
         return torch.sqrt(x)
 
     @classmethod
@@ -142,3 +146,4 @@ class TorchBackend:
     @classmethod
     def assign_slice(cls, x, x_slc, slc):
         x[slc] = x_slc
+        return x

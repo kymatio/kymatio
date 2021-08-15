@@ -96,8 +96,8 @@ class NumpyBackend:
         return A * B
 
     @classmethod
-    def sqrt(cls, x):
-        return cls._np.sqrt(x)
+    def sqrt(cls, x, dtype=None):
+        return cls._np.sqrt(x, dtype=dtype)
 
     @classmethod
     def conj(cls, x, inplace=False):
@@ -121,3 +121,4 @@ class NumpyBackend:
     @classmethod
     def assign_slice(cls, x, x_slc, slc):
         x[slc] = x_slc
+        return x

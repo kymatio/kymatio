@@ -53,7 +53,8 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling,
                          size_scattering=size_scattering,
-                         out_type=self.out_type)
+                         out_type=self.out_type,
+                         pad_mode=self.pad_mode)
 
         if self.out_type == 'array':
             scattering_shape = tf.shape(S)[-2:]
@@ -78,11 +79,11 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
                  implementation=None, average=True, average_fr=False,
                  oversampling=0, oversampling_fr=None, aligned=True,
-                 sampling_filters_fr='resample', out_type="array", out_3D=False,
-                 out_exclude=None, pad_mode='reflect', max_pad_factor=2,
-                 max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 r_psi=math.sqrt(.5), backend='tensorflow',
-                 name='TimeFrequencyScattering1D'):
+                 sampling_filters_fr=('exclude', 'resample'), out_type="array",
+                 out_3D=False, out_exclude=None, pad_mode='reflect',
+                 max_pad_factor=2, max_pad_factor_fr=None,
+                 pad_mode_fr='conj-reflect-zero', r_psi=math.sqrt(.5),
+                 backend='tensorflow', name='TimeFrequencyScattering1D'):
         if oversampling_fr is None:
             oversampling_fr = oversampling
         # Second-order scattering object for the time variable

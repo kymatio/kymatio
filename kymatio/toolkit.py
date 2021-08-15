@@ -947,7 +947,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
         E_slices.pop()
 
     # ensure they sum to same
-    Es_sum = np.sum(np.sum(E_slices))
+    Es_sum = np.sum([np.sum(s) for s in E_slices])
     adiff = abs(np.sum(E_flat) - Es_sum)
     assert np.allclose(np.sum(E_flat), Es_sum), "MAE=%.3f" % adiff
 
