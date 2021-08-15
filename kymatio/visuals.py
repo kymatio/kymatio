@@ -862,8 +862,8 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                     os.unlink(path)
 
 
-def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
-                        plots=True, **plot_kw):
+def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
+                        **plot_kw):
     """Plot & print relevant energy information across coefficient pairs.
     Works for all `'dict' in out_type` and `out_exclude`.
     Also see `help(kymatio.toolkit.coeff_energy)`.
@@ -875,11 +875,6 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
 
     meta: dict[dict[np.ndarray]]
         `jtfs.meta()`.
-
-    flatten: bool (default False)  # TODO does nothing?
-        Whether to plot energy for every individual coefficient. This means
-        flattening joint coefficients, whose energies would otherwise aggregate
-        on per-`(n2, n1_fr)` basis.
 
     x : tensor, optional
         Original input to print `E_out / E_in`.
@@ -926,6 +921,7 @@ def energy_profile_jtfs(Scx, meta, flatten=False, x=None, pairs=None, kind='l2',
 
 def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
                         plots=True, **plot_kw):
+    # TODO doc
     if not all(isinstance(Scx, dict) for Scx in (Scx0, Scx1)):
         raise NotImplementedError("inputs must be dict. Set "
                                   "out_type='dict:array' or 'dict:list'.")
@@ -942,7 +938,6 @@ def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
 
     # compute, plot, print
     # TODO instead return as "pairs:flat", "pairs:slices"?
-    # TODO global distance?
     distances, pair_distances = _iterate_coeff_pairs(
         (Scx0, Scx1), (meta0, meta1), fn, pairs, plots=plots,
         titles=titles, **plot_kw)

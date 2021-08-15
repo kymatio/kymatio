@@ -479,7 +479,6 @@ class TimeFrequencyScatteringBase1D():
         if self._no_second_order_filters:
             raise ValueError("configuration yields no second-order filters; "
                              "try increasing `J`")
-        # TODO class_name scattering1d?
 
         # handle `implementation`
         if (self.implementation is not None and

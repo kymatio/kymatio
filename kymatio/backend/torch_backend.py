@@ -97,10 +97,6 @@ class TorchBackend:
             raise RuntimeError('The inputs are not compatible for '
                                'multiplication (%s and %s).' % (sa, sb))
 
-        # if A.dtype is not B.dtype:
-        # TODO does "last dim 2" allow faster multiplication? (real * complex)
-        #     raise TypeError('Input and filter must be of the same dtype.')
-
         if B.device.type == 'cuda':
             if A.device.type == 'cuda':
                 if A.device.index != B.device.index:

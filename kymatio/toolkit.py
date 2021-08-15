@@ -250,7 +250,6 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     Method assumes `out_exclude=None`.
     """
     def combined_to_tensor(combined_all, recursive):
-        # TODO backends
         def process_dims(o):
             if recursive:
                 assert o.ndim == 5, o.shape
@@ -1721,6 +1720,9 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     and if not None and >= existing along selected dims (e.g. `(None, 3)` will
     pad dim0 per `seq` and dim1 to 3, unless `seq`'s dim1 would pad to 4).
 
+    Not implemented for TensorFlow: will convert to numpy array then revert to
+    TF tensor.
+
     Code taken from: https://stackoverflow.com/a/27890978/10133797
     """
     def find_shape(seq):
@@ -1732,34 +1734,6 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
         return (len_,) + tuple(max(sizes) for sizes in
                                zip_longest(*shapes, fillvalue=1))
 
-    def _fill(arr, seq, len_, fill_value):
-        s = cast_fn(seq)
-        if backend_name == 'tensorflow':
-            l = len(arr)
-            if len_ == 0:
-                idxs0 = [[i] for i in range(l)]
-                idxs1 = None # TODO
-            if right_pad:
-                idxs0 = [[i] for i in range(len_)]
-                idxs1 = [[i] for i in range(len_, l)]
-                backend.tensor_scatter_nd_update(
-                    arr, [[i] for i in range(len_)], s)
-            else:
-                idxs0 = [[i] for i in range(l - len_, l)]
-                idxs1 = [[i] for i in range(l - len_)]
-            backend.tensor_scatter_nd_update(arr, idxs0, s)
-            if idxs1 is not None and len(idxs1) != 0:
-                backend.tensor_scatter_nd_update(arr, idxs1, s)
-        else:
-            if len_ == 0:
-                arr[:] = fill_value
-            elif right_pad:
-                arr[:len_] = s
-                arr[len_:] = fill_value
-            else:
-                arr[-len_:] = s
-                arr[:-len_] = fill_value
-
     def fill_tensor(arr, seq, fill_value=0):
         if arr.ndim == 1:
             try:
@@ -1767,30 +1741,40 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
             except TypeError:
                 len_ = 0
 
-            _fill(arr, seq, len_, fill_value)
+            if len_ == 0:
+                arr[:] = fill_value
+            elif right_pad:
+                arr[:len_] = cast_fn(seq)
+                arr[len_:] = fill_value
+            else:
+                arr[-len_:] = cast_fn(seq)
+                arr[:-len_] = fill_value
         else:
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)
 
     # infer `init_fn` and `cast_fn` from `seq`, if not provided ##############
     backend, backend_name = _infer_backend(seq, get_name=True)
+    is_tf = bool(backend_name == 'tensorflow')
+    if is_tf:
+        tf = backend
+        backend = np
+        backend_name = 'numpy'
 
     if init_fn is None:
         if backend_name == 'numpy':
             init_fn = lambda s: np.empty(s)
         elif backend_name == 'torch':
             init_fn = lambda s: backend.zeros(s)
-        elif backend_name == 'tensorflow':
-            init_fn = lambda s: backend.zeros(s)
 
     if cast_fn is None:
-        if backend_name == 'numpy':
+        if is_tf:
+            cast_fn = lambda x: x.numpy()
+        elif backend_name == 'numpy':
             cast_fn = lambda x: x
         elif backend_name == 'torch':
             cast_fn = lambda x: (backend.tensor(x)
                                  if not isinstance(x, backend.Tensor) else x)
-        elif backend_name == 'tensorflow':
-            cast_fn = lambda x: backend.convert_to_tensor(x)
 
     ##########################################################################
     # infer shape
@@ -1804,4 +1788,8 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     # fill
     arr = init_fn(shape)
     fill_tensor(arr, seq, fill_value=pad_value)
+
+    # revert if needed
+    if is_tf:
+        arr = tf.convert_to_tensor(arr)
     return arr

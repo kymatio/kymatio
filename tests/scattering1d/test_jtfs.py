@@ -149,11 +149,10 @@ def test_jtfs_vs_ts():
     l2_jtfs = l2(jtfs_x, jtfs_xs)
 
     # max ratio limited by `N`; can do better with longer input
-    # and by comparing only against up & down
+    # and by comparing only against up & down, and via per-coeff basis
     assert l2_jtfs / l2_ts > 25, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   ) % (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
-    # TODO also compare max per-coeff ratio
 
     if metric_verbose:
         print(("\nFDTS sensitivity:\n"
@@ -837,7 +836,6 @@ def test_backends():
                                          average_fr=True, out_type='dict:array',
                                          out_3D=True, frontend=backend_name)
         Scx = jtfs(x)
-        Scx = jtfs_to_numpy(Scx)
         jmeta = jtfs.meta()
 
         # test batched packing for convenience ###############################
@@ -846,19 +844,27 @@ def test_backends():
                 kw = dict(meta=jmeta, structure=structure,
                           separate_lowpass=separate_lowpass,
                           sampling_psi_fr=jtfs.sampling_psi_fr)
-                outs  = pack_coeffs_jtfs(Scx, **kw)
-                outs0 = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
-                outs  = outs  if isinstance(outs,  tuple) else [outs]
-                outs0 = outs0 if isinstance(outs0, tuple) else [outs0]
+                outs   = pack_coeffs_jtfs(Scx, **kw)
+                outs0  = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
+                outsn  = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw)
+                outs0n = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw, sample_idx=0)
+                outs   = outs  if isinstance(outs,  tuple) else [outs]
+                outs0  = outs0 if isinstance(outs0, tuple) else [outs0]
+                outsn  = outs  if isinstance(outs,  tuple) else [outs]
+                outs0n = outs0 if isinstance(outs0, tuple) else [outs0]
 
-                for o, o0 in zip(outs, outs0):
+                for o, o0, on, o0n in zip(outs, outs0, outsn, outs0n):
                     assert o.ndim == 5, o.shape
                     assert len(o) == len(x), (len(o), len(x))
                     assert o.shape[-1] == Scx['S0'].shape[-1], (
                         o.shape, Scx['S0'].shape)
                     assert o.shape[1:] == o0.shape, (o.shape, o0.shape)
+                    assert np.allclose(o.numpy(), on)
+                    assert np.allclose(o0.numpy(), o0n)
+
         ######################################################################
 
+        Scx = jtfs_to_numpy(Scx)
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
         th = 32
@@ -1146,15 +1152,15 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-    # TODO 'exclude'
-          (aligned, average_fr, out_3D,   F)
-        0. False    True        False     32
-        1. True     True        True      4
-        2. False    True        True      16
-        3. True     True        False     'global'
-        4. True     False       False     8
 
-        5. [2.] + `sampling_psi_fr = sampling_phi_fr = 'recalibrate'`
+          (aligned, average_fr, out_3D,   F,        sampling_filters_fr)
+        0. False    True        False     32        ('exclude', 'recalibrate')
+        1. True     True        True      4         ('resample', 'resample')
+        2. False    True        True      16        ('resample', 'resample')
+        3. True     True        False     'global'  ('resample', 'resample')
+        4. True     False       False     8         ('resample', 'resample')
+        5. False    True        True      16        ('recalibrate', 'recalibrate')
+
         6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
