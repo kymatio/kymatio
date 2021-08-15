@@ -1,9 +1,10 @@
+"""Joint Time-Frequency Scattering related tests."""
 import pytest
 import numpy as np
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
-from kymatio.toolkit import (drop_batch_dim_jtfs, coeff_energy, fdts, echirp,
-                             coeff_energy_ratios,
+from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
+                             fdts, echirp, coeff_energy_ratios,
                              l2, rel_ae, validate_filterbank_tm,
                              validate_filterbank_fr, pack_coeffs_jtfs,
                              tensor_padded)
@@ -11,8 +12,8 @@ from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
-# backend to use for most tests
-default_backend = 'numpy'
+# backend to use for all tests (except `test_backends`)
+default_backend = ('numpy', 'torch', 'tensorflow')[2]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
@@ -58,6 +59,7 @@ def test_alignment():
 
           Scx = jtfs(x)
           Scx = drop_batch_dim_jtfs(Scx)
+          Scx = jtfs_to_numpy(Scx)
 
           # assert peaks share an index #################################
           def max_row_idx(c):
@@ -129,7 +131,8 @@ def test_jtfs_vs_ts():
     kw = dict(J=J, shape=N, max_pad_factor=1, frontend=default_backend)
     ts = Scattering1D(Q=Q[0], pad_mode="zero", out_type='array', **kw)
     jtfs = TimeFrequencyScattering1D(Q=Q, Q_fr=2, J_fr=4, average_fr=True,
-                                     out_3D=True, out_type='dict:array', **kw)
+                                     out_3D=True, out_type='dict:array', **kw,
+                                     sampling_filters_fr=('resample', 'resample'))
 
     # scatter
     ts_x  = ts(x)
@@ -137,18 +140,19 @@ def test_jtfs_vs_ts():
 
     jtfs_x_all  = jtfs(x)
     jtfs_xs_all = jtfs(xs)
+    jtfs_x_all  = jtfs_to_numpy(jtfs_x_all)
+    jtfs_xs_all = jtfs_to_numpy(jtfs_xs_all)
     jtfs_x  = concat_joint(jtfs_x_all)
     jtfs_xs = concat_joint(jtfs_xs_all)  # compare against joint coeffs only
 
-    l2_ts = l2(ts_x, ts_xs)
+    l2_ts   = l2(ts_x, ts_xs)
     l2_jtfs = l2(jtfs_x, jtfs_xs)
 
     # max ratio limited by `N`; can do better with longer input
-    # and by comparing only against up & down
+    # and by comparing only against up & down, and via per-coeff basis
     assert l2_jtfs / l2_ts > 25, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   ) % (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
     assert l2_ts < .006, "TS: %s" % l2_ts
-    # TODO also compare max per-coeff ratio
 
     if metric_verbose:
         print(("\nFDTS sensitivity:\n"
@@ -183,10 +187,14 @@ def test_freq_tp_invar():
                                          # pad_mode='zero', pad_mode_fr='zero',
                                          pad_mode='reflect',
                                          pad_mode_fr='conj-reflect-zero',
+                                         sampling_filters_fr=(
+                                             'resample', 'resample'),
                                          frontend=default_backend)
         # scatter
         jtfs_x0_all = jtfs(x0)
         jtfs_x1_all = jtfs(x1)
+        jtfs_x0_all = jtfs_to_numpy(jtfs_x0_all)
+        jtfs_x1_all = jtfs_to_numpy(jtfs_x1_all)
 
         # compute & append distances
         _, pair_dist = coeff_distance_jtfs(jtfs_x0_all, jtfs_x1_all,
@@ -231,9 +239,12 @@ def test_up_vs_down():
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
                                          average_fr=True, out_type='dict:array',
                                          pad_mode=pad_mode,
+                                         sampling_filters_fr=(
+                                             'resample', 'resample'),
                                          pad_mode_fr=pad_mode_fr,
                                          frontend=default_backend)
         Scx = jtfs(x)
+        Scx = jtfs_to_numpy(Scx)
         jmeta = jtfs.meta()
 
         r = coeff_energy_ratios(Scx, jmeta)
@@ -273,6 +284,8 @@ def test_sampling_psi_fr_exclude():
 
     Scx0 = jtfs0(x)
     Scx1 = jtfs1(x)
+    Scx0 = jtfs_to_numpy(Scx0)
+    Scx1 = jtfs_to_numpy(Scx1)
 
     # assert equality where `n` metas match
     # if `n` don't match, assert J_pad_fr is below maximum
@@ -389,7 +402,8 @@ def test_global_averaging():
     params = dict(shape=N, J=9, Q=4, J_fr=5, Q_fr=2, average=True,
                   average_fr=True, out_type='dict:array', pad_mode='reflect',
                   pad_mode_fr='conj-reflect-zero', max_pad_factor=None,
-                  max_pad_factor_fr=None, frontend=default_backend)
+                  max_pad_factor_fr=None, frontend=default_backend,
+                  sampling_filters_fr=('resample', 'resample'))
     x = echirp(N)
     x += np.random.randn(N)
 
@@ -405,7 +419,9 @@ def test_global_averaging():
             assert (jtfs.average_global if T == Ts[-1] else
                     not jtfs.average_global)
 
-            outs[ (T, F)] = jtfs(x)
+            out = jtfs(x)
+            out = jtfs_to_numpy(out)
+            outs[ (T, F)] = out
             metas[(T, F)] = jtfs.meta()
 
     T0F0 = coeff_energy(outs[(Ts[0], Fs[0])], metas[(Ts[0], Fs[0])])
@@ -416,7 +432,7 @@ def test_global_averaging():
     if metric_verbose:
         print("\nGlobal averaging reldiffs:")
 
-    th = .1
+    th = .15
     for pair in T0F0:
         ref = T0F0[pair]
         reldiff01 = abs(T0F1[pair] - ref) / ref
@@ -459,6 +475,10 @@ def test_lp_sum():
             "{} - {} < {} | between peaks {} and {} | {}\n{}"
             ).format(peak_target, lp_min, th, first_peak, last_peak,
                      s, test_params_str)
+
+    if default_backend != 'numpy':
+        # filters don't change
+        return
 
     N = 1024
     J = int(np.log2(N))
@@ -600,7 +620,7 @@ def test_pack_coeffs_jtfs():
             pair = k.split(':')[0]
             if pair not in paired_flat:
                 paired_flat[pair] = []
-            paired_flat[pair].append(out_stored[i])
+            paired_flat[pair].append({'coef': out_stored[i]})
         return paired_flat
 
     def validate_n2s(o, info, spin):
@@ -677,7 +697,7 @@ def test_pack_coeffs_jtfs():
             else:
                 assert np.all(n1_frs == sorted(n1_frs, reverse=True)), errmsg
 
-    def validate_packing(out, separate_lowpass, structure, info):
+    def validate_packing(out, separate_lowpass, structure, t, info):
         # unpack into `out_up, out_down, out_phi`
         out_phi_f, out_phi_t = None, None
         if structure in (1, 2):
@@ -716,6 +736,7 @@ def test_pack_coeffs_jtfs():
         outs = (out_up, out_down, out_phi_f, out_phi_t)
         for spin, o in zip([1, -1, 0, 0], outs):
             if o is not None:
+                assert o.shape[-1] == t, (o.shape, t)
                 validate_n2s(o, info, spin)
                 validate_n1s(o, info, spin)
 
@@ -747,6 +768,7 @@ def test_pack_coeffs_jtfs():
 
     for test_num, test_params in tests_params.items():
         _, out_stored, out_stored_keys, params, _, meta = load_data(test_num)
+        t = out_stored[0].shape[-1]
 
         # ensure match
         for k in test_params:
@@ -770,7 +792,19 @@ def test_pack_coeffs_jtfs():
                 out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
                                        separate_lowpass=separate_lowpass,
                                        **kw, debug=True)
-                validate_packing(out, separate_lowpass, structure, info)
+                validate_packing(out, separate_lowpass, structure, t, info)
+
+
+def test_implementation():
+    """Test that every `implementation` kwarg works."""
+    N = 512
+    x = echirp(N)
+
+    for implementation in range(1, 6):
+        jtfs = TimeFrequencyScattering1D(shape=N, J=4, Q=2,
+                                         implementation=implementation,
+                                         frontend=default_backend)
+        _ = jtfs(x)
 
 
 def test_no_second_order_filters():
@@ -804,6 +838,33 @@ def test_backends():
         Scx = jtfs(x)
         jmeta = jtfs.meta()
 
+        # test batched packing for convenience ###############################
+        for structure in (1, 2, 3, 4):
+            for separate_lowpass in (False, True):
+                kw = dict(meta=jmeta, structure=structure,
+                          separate_lowpass=separate_lowpass,
+                          sampling_psi_fr=jtfs.sampling_psi_fr)
+                outs   = pack_coeffs_jtfs(Scx, **kw)
+                outs0  = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
+                outsn  = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw)
+                outs0n = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw, sample_idx=0)
+                outs   = outs  if isinstance(outs,  tuple) else [outs]
+                outs0  = outs0 if isinstance(outs0, tuple) else [outs0]
+                outsn  = outs  if isinstance(outs,  tuple) else [outs]
+                outs0n = outs0 if isinstance(outs0, tuple) else [outs0]
+
+                for o, o0, on, o0n in zip(outs, outs0, outsn, outs0n):
+                    assert o.ndim == 5, o.shape
+                    assert len(o) == len(x), (len(o), len(x))
+                    assert o.shape[-1] == Scx['S0'].shape[-1], (
+                        o.shape, Scx['S0'].shape)
+                    assert o.shape[1:] == o0.shape, (o.shape, o0.shape)
+                    assert np.allclose(o.numpy(), on)
+                    assert np.allclose(o0.numpy(), o0n)
+
+        ######################################################################
+
+        Scx = jtfs_to_numpy(Scx)
         E_up   = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_up')
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
         th = 32
@@ -845,14 +906,17 @@ def test_reconstruction_torch():
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     J = 6
-    Q = 6
-    N = 512
-    n_iters = 20
-    jtfs = TimeFrequencyScattering1D(J, N, Q, frontend='torch', out_type='array',
+    Q = 8
+    N = 1024
+    n_iters = 30
+    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, out_3D=True,
+                                     frontend='torch', out_type='array',
+                                     sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
+    jtfs.meta()
 
-    y = torch.from_numpy(echirp(N).astype('float32')).to(device)
+    y = torch.from_numpy(echirp(N, fmin=1).astype('float32')).to(device)
     Sy = jtfs(y)
     div = Sy.max()
     Sy /= div
@@ -861,7 +925,7 @@ def test_reconstruction_torch():
     x = torch.randn(N, device=device)
     x /= torch.max(torch.abs(x))
     x.requires_grad = True
-    optimizer = torch.optim.SGD([x], lr=50000, momentum=.8, nesterov=True)
+    optimizer = torch.optim.SGD([x], lr=140000, momentum=.9, nesterov=True)
     loss_fn = torch.nn.MSELoss()
 
     losses, losses_recon = [], []
@@ -876,7 +940,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, .92, 40
+    th, th_recon, th_end_ratio = 1e-5, 1.05, 60
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
@@ -1011,6 +1075,7 @@ def test_meta():
             print("Failed at:\n%s" % test_params_str)
             raise e
 
+
         # ensure no output shape was completely reduced
         for pair in Scx:
             for i, c in enumerate(Scx[pair]):
@@ -1026,6 +1091,18 @@ def test_meta():
             for i in range(len(Scx[pair])):
                 assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
                                     out_3D, test_params_str, test_params, jtfs)
+
+        # save compute and test this method for thoroughness
+        if average:
+            for structure in (1, 2, 3, 4):
+                for separate_lowpass in (False, True):
+                    _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
+                                         separate_lowpass=separate_lowpass,
+                                         sampling_psi_fr=jtfs.sampling_psi_fr)
+
+    if default_backend != 'numpy':
+        # meta doesn't change
+        return
 
     N = 512
     x = np.random.randn(N)
@@ -1075,15 +1152,15 @@ def test_meta():
 def test_output():
     """Applies JTFS on a stored signal to make sure its output agrees with
     a previously calculated version. Tests for:
-    # TODO 'exclude'
-          (aligned, average_fr, out_3D,   F)
-        0. False    True        False     32
-        1. True     True        True      4
-        2. False    True        True      16
-        3. True     True        False     'global'
-        4. True     False       False     8
 
-        5. [2.] + `sampling_psi_fr = sampling_phi_fr = 'recalibrate'`
+          (aligned, average_fr, out_3D,   F,        sampling_filters_fr)
+        0. False    True        False     32        ('exclude', 'recalibrate')
+        1. True     True        True      4         ('resample', 'resample')
+        2. False    True        True      16        ('resample', 'resample')
+        3. True     True        False     'global'  ('resample', 'resample')
+        4. True     False       False     8         ('resample', 'resample')
+        5. False    True        True      16        ('recalibrate', 'recalibrate')
+
         6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
@@ -1103,6 +1180,7 @@ def test_output():
         jtfs = TimeFrequencyScattering1D(**params, frontend=default_backend)
         jmeta = jtfs.meta()
         out = jtfs(x)
+        out = jtfs_to_numpy(out)
 
         # assert equal total number of coefficients
         if params['out_type'] == 'dict:list':
@@ -1127,14 +1205,13 @@ def test_output():
                 o = o if params['out_type'] == 'dict:array' else o['coef']
                 o_stored, o_stored_key = out_stored[i_s], out_stored_keys[i_s]
                 errmsg = ("out[{}][{}].shape != out_stored[{}].shape | n={}\n"
-                          "({} != {})\n"
-                          ).format(pair, i, o_stored_key, n,
-                                   o.shape, o_stored.shape)
+                          "({} != {})\n").format(pair, i, o_stored_key, n,
+                                                 o.shape, o_stored.shape)
                 if not already_printed_test_info:
                     errmsg += params_str
 
                 if output_test_print_mode and o.shape != o_stored.shape:
-                    print(errmsg)
+                    # print(errmsg)
                     already_printed_test_info = True
                     i_s += 1
                     continue
@@ -1142,7 +1219,7 @@ def test_output():
                     assert o.shape == o_stored.shape, errmsg
 
                 # store info for printing
-                adiff = rel_ae(o_stored, o, ref_both=False)
+                adiff = rel_ae(o_stored, o, ref_both=True)
                 mean_ae, max_ae = adiff.mean(), adiff.max()
                 if mean_ae > max(mean_aes):
                     max_mean_info = "out[%s][%s] | n=%s" % (pair, i, n)
@@ -1160,7 +1237,7 @@ def test_output():
                     errmsg += params_str
 
                 if output_test_print_mode and not np.allclose(o, o_stored):
-                    print(errmsg)
+                    # print(errmsg)
                     already_printed_test_info = True
                 else:
                     assert np.allclose(o, o_stored), errmsg
@@ -1280,6 +1357,7 @@ if __name__ == '__main__':
         test_compute_temporal_width()
         test_tensor_padded()
         test_pack_coeffs_jtfs()
+        test_implementation()
         test_backends()
         test_differentiability_torch()
         test_reconstruction_torch()

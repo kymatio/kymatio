@@ -1,6 +1,6 @@
-import torch.nn as nn
+import torch
 
-class ScatteringTorch(nn.Module):
+class ScatteringTorch(torch.nn.Module):
     def __init__(self):
         super(ScatteringTorch, self).__init__()
         self.frontend_name = 'torch'
@@ -16,6 +16,10 @@ class ScatteringTorch(nn.Module):
 
     def forward(self, x):
         """This method is an alias for `scattering`."""
+
+        # convert to tensor if it isn't already
+        if type(x).__module__.split('.')[0] == 'numpy':
+            x = torch.from_numpy(x).to(device=self.psi1_f[0][0].device.type)
 
         self.backend.input_checks(x)
 

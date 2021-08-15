@@ -97,10 +97,6 @@ class TorchBackend:
             raise RuntimeError('The inputs are not compatible for '
                                'multiplication (%s and %s).' % (sa, sb))
 
-        # if A.dtype is not B.dtype:
-        # TODO does "last dim 2" allow faster multiplication? (real * complex)
-        #     raise TypeError('Input and filter must be of the same dtype.')
-
         if B.device.type == 'cuda':
             if A.device.type == 'cuda':
                 if A.device.index != B.device.index:
@@ -115,14 +111,35 @@ class TorchBackend:
         return A * B
 
     @classmethod
-    def sqrt(cls, x):
+    def sqrt(cls, x, dtype=None):
         if isinstance(x, (float, int)):
-            x = torch.tensor(x)
+            x = torch.tensor(x, dtype=dtype)
+        elif dtype is not None:
+            if isinstance(dtype, str):
+                dtype = getattr(torch, dtype)
+            x = x.type(dtype)
         return torch.sqrt(x)
 
     @classmethod
     def conj(cls, x, inplace=False):
-        if inplace:
+        if inplace and getattr(x, 'requires_grad', False):
             raise Exception("Torch autograd doesn't support `out=`")
-        return (torch.conj(x) if cls._is_complex(x) else
-                x)
+        if inplace:
+            out = torch.conj(x, out=x)
+        else:
+            out = (torch.conj(x) if cls._is_complex(x) else
+                   x)
+        return out
+
+    @classmethod
+    def reshape(cls, x, shape):
+        return x.reshape(*shape)
+
+    @classmethod
+    def transpose(cls, x, axes):
+        return x.permute(*axes)
+
+    @classmethod
+    def assign_slice(cls, x, x_slc, slc):
+        x[slc] = x_slc
+        return x

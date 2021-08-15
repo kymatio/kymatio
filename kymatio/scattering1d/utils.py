@@ -567,10 +567,12 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
                   sc_freq.J_pad_fr[n2])
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
-        scale_diff = (sc_freq.shape_fr_scale_max -
-                      sc_freq.shape_fr_scale[n2])
         j0s = [k for k in sc_freq.psi1_f_fr_up[n1_fr] if isinstance(k, int)]
-        if scale_diff not in j0s or subsample_equiv_due_to_pad not in j0s:
+        if subsample_equiv_due_to_pad not in j0s:
+            return True
+
+        width = sc_freq.psi1_f_fr_up[n1_fr]['width'][subsample_equiv_due_to_pad]
+        if width > sc_freq.shape_fr[n2]:
             return True
         return False
 
@@ -762,7 +764,8 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             for n1_fr, j1_fr in enumerate(j1s_fr):
                 _fill_n1_info(pair, n2, n1_fr, spin=spin)
 
-    array_fields = ['order', 'xi', 'sigma', 'j', 'is_cqt', 'n', 's', 'stride']
+    array_fields = ['order', 'xi', 'sigma', 'j', 'is_cqt', 'n', 's', 'stride',
+                    'key']
     for field in array_fields:
         for pair, v in meta[field].items():
             meta[field][pair] = np.array(v)
@@ -784,27 +787,32 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
               meta[field][pair] = meta[field][pair].reshape(-1, 1, meta_len)
               continue
 
-          elif 'up' in pair or 'down' in pair:
+          elif 'psi_f' in pair:
+              is_phi_t = pair.startswith('phi_t')
               if sampling_psi_fr != 'exclude':
-                  number_of_n2 = sum(j2 != 0 for j2 in j2s)
+                  number_of_n2 = (1 if is_phi_t else
+                                  sum(j2 != 0 for j2 in j2s))
                   number_of_n1_fr = len(j1s_fr)
               else:
                   n_slices = 0
-                  for n2, j2 in enumerate(j2s):
-                      if j2 == 0:
-                          continue
+                  if is_phi_t:
+                      n2 = -1
                       for n1_fr, j1_fr in enumerate(j1s_fr):
                           if _exclude_excess_scale(n2, n1_fr):
                               continue
                           n_slices += 1
+                  else:
+                      for n2, j2 in enumerate(j2s):
+                          if j2 == 0:
+                              continue
+                          for n1_fr, j1_fr in enumerate(j1s_fr):
+                              if _exclude_excess_scale(n2, n1_fr):
+                                  continue
+                              n_slices += 1
 
           elif pair == 'psi_t * phi_f':
               number_of_n2 = sum(j2 != 0 for j2 in j2s)
               number_of_n1_fr = 1
-
-          elif pair == 'phi_t * psi_f':
-              number_of_n2 = 1
-              number_of_n1_fr = len(j1s_fr)
 
           elif pair == 'phi_t * phi_f':
               number_of_n2 = 1
@@ -838,8 +846,16 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     if not out_type.startswith('dict'):
         # join pairs
-        meta_flat = {f: np.concatenate([v for v in meta[f].values()], axis=0)
-                     for f in meta if f not in ('key',)}
-        meta_flat['key'] = meta['key']
+        if not out_3D:
+            meta_flat = {f: np.concatenate([v for v in meta[f].values()], axis=0)
+                         for f in meta}
+        else:
+            meta_flat0 = {f: np.concatenate(
+                [v for k, v in meta[f].items() if k in ('S0', 'S1')],
+                axis=0) for f in meta}
+            meta_flat1 = {f: np.concatenate(
+                [v for k, v in meta[f].items() if k not in ('S0', 'S1')],
+                axis=0) for f in meta}
+            meta_flat = (meta_flat0, meta_flat1)
         meta = meta_flat
     return meta

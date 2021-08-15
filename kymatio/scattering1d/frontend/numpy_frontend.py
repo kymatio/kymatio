@@ -3,6 +3,7 @@ from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
+from ...toolkit import pack_coeffs_jtfs
 from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
                             _check_runtime_args_jtfs)
 
@@ -73,10 +74,10 @@ ScatteringNumPy1D._document()
 class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
                                      ScatteringNumPy1D):
     def __init__(self, J, shape, Q, J_fr=None, Q_fr=2, T=None, F=None,
-                 average=True, average_fr=False, oversampling=0,
-                 oversampling_fr=None, aligned=True,
-                 sampling_filters_fr='resample', out_type="array", out_3D=False,
-                 out_exclude=None, pad_mode='reflect',
+                 implementation=None, average=True, average_fr=False,
+                 oversampling=0, oversampling_fr=None, aligned=True,
+                 sampling_filters_fr=('exclude', 'resample'), out_type="array",
+                 out_3D=False, out_exclude=None, pad_mode='reflect',
                  pad_mode_fr='conj-reflect-zero', max_pad_factor=2,
                  max_pad_factor_fr=None, r_psi=math.sqrt(.5), backend="numpy"):
         if oversampling_fr is None:
@@ -89,8 +90,8 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
             scattering_out_type, pad_mode, max_pad_factor, r_psi, backend)
 
         TimeFrequencyScatteringBase1D.__init__(
-            self, J_fr, Q_fr, F, average_fr, oversampling_fr, aligned,
-            sampling_filters_fr, max_pad_factor_fr, pad_mode_fr,
+            self, J_fr, Q_fr, F, implementation, average_fr, aligned,
+            sampling_filters_fr, max_pad_factor_fr, pad_mode_fr, oversampling_fr,
             out_3D, out_type, out_exclude)
         TimeFrequencyScatteringBase1D.build(self)
 
@@ -125,6 +126,10 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
             out_3D=self.out_3D,
             out_exclude=self.out_exclude,
             pad_mode=self.pad_mode)
+        if self.out_structure is not None:
+            S = pack_coeffs_jtfs(S, self.meta(), self.out_structure,
+                                 separate_lowpass=True,
+                                 sampling_psi_fr=self.sampling_psi_fr)
         return S
 
     def sc_freq_compute_padding_fr(self):

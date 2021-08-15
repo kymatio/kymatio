@@ -16,6 +16,24 @@ def drop_batch_dim_jtfs(Scx, sample_idx=0):
         - array: new object but shared storage with original array (so original
           variable reference points to unindexed array).
     """
+    fn = lambda x: x[sample_idx]
+    return _iterate_apply(Scx, fn)
+
+
+def jtfs_to_numpy(Scx):
+    """Convert PyTorch/TensorFlow tensors to numpy arrays, with meta copied,
+    and without affecting original data structures.
+    """
+    def fn(x):
+        if hasattr(x, 'to') and 'cpu' not in x.device.type:
+            x = x.cpu()
+        if hasattr(x, 'numpy'):
+            x = x.numpy()
+        return x
+    return _iterate_apply(Scx, fn)
+
+
+def _iterate_apply(Scx, fn):
     def get_meta(s):
         return {k: v for k, v in s.items() if not hasattr(v, 'ndim')}
 
@@ -25,37 +43,35 @@ def drop_batch_dim_jtfs(Scx, sample_idx=0):
             out[pair] = []
             if isinstance(Scx[pair], list):
                 for i, s in enumerate(Scx[pair]):
-                    if isinstance(s, dict):  # TODO undo
-                        out[pair].append(get_meta(s))
-                        out[pair][i]['coef'] = s['coef'][sample_idx]
-                    else:
-                        out[pair].append(s[sample_idx])
+                    out[pair].append(get_meta(s))
+                    out[pair][i]['coef'] = fn(s['coef'])
             else:
-                out[pair] = Scx[pair][sample_idx]
+                out[pair] = fn(Scx[pair])
     elif isinstance(Scx, list):
         out = []  # don't modify source list
         for s in Scx:
             o = get_meta(s)
-            o['coef'] = s['coef'][sample_idx]
+            o['coef'] = fn(s['coef'])
             out.append(o)
     elif isinstance(Scx, tuple):  # out_type=='array' && out_3D==True
-        Scx = (Scx[0][sample_idx], Scx[1][sample_idx])
+        Scx = (fn(Scx[0]), fn(Scx[1]))
     elif hasattr(Scx, 'ndim'):
-        Scx = Scx[sample_idx]
+        Scx = fn(Scx)
     else:
         raise ValueError(("unrecognized input type: {}; must be as returned by "
                           "`jtfs(x)`.").format(type(Scx)))
     return out
 
-
-def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
-                     separate_lowpass=False, sampling_psi_fr=None, debug=False):
-    """Packs JTFS coefficients into one of valid 4D structures.
+def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
+                     separate_lowpass=False, sampling_psi_fr=None, debug=False,
+                     recursive=False):
+    """Packs efficiently JTFS coefficients into one of valid 4D structures.
 
     Parameters
     ----------
     Scx : tensor/list/dict
-        JTFS output.
+        JTFS output. Must have `out_type` 'dict:array' or 'dict:list'
+        and `average=True`.
 
     meta : dict
         JTFS meta.
@@ -73,9 +89,10 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
           - 5 to 8 aren't implemented since they're what's already returned
             as output.
 
-    sample_idx : int
-        sample_idx : int (default 0)
-            Index of sample in batched input to pack.
+    sample_idx : int / None
+        Index of sample in batched input to pack. If None (default), will
+        pack all samples.
+        Returns 5D if `not None` *and* there's more than one sample.
 
     separate_lowpass : bool (default False)
         If True, will pack spinned (`psi_t * psi_f_up`, `psi_t * psi_f_down`)
@@ -104,15 +121,19 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
     ----------
     Assuming `aligned=True`, then for `average, average_fr`, the following form
     valid convolution structures:
-      1.  `True, True*`: 4D, `(n1_fr, n2, n1, time)`
-      2.* `True, True*`: 4D, `(n2, n1_fr, n1, time)`
-      3.  `True, True*`: 4D, `(n2, n1_fr//2,     n1, time)`*2, `(n2, 1, n1, time)`
-      4.* `True, True*`: 4D, `(n2, n1_fr//2 + 1, n1, time)`*2, `(n2, 1, n1, time)`
-      5.  `True, True*`: 3D, `(n2 * n1_fr, n1, time)`
-      6.  `True, False`: 2D, `(n2 * n1_fr * n1, time)`
-      7.  `False, True`: list of variable length 1D tensors
-      8.  `False, False`: list of variable length 1D tensors
+
+      1. `True, True*`:  3D/4D*, `(n1_fr, n2, n1, time)`
+      2. `True, True*`:  2D/4D*, `(n2, n1_fr, n1, time)`
+      3. `True, True*`:  4D,     `(n2, n1_fr//2,     n1, time)`*2,
+                                 `(n2, 1, n1, time)`
+      4. `True, True*`:  2D/4D*, `(n2, n1_fr//2 + 1, n1, time)`*2
+      5. `True, True*`:  2D/3D*, `(n2 * n1_fr, n1, time)`
+      6. `True, False`:  1D/2D*, `(n2 * n1_fr * n1, time)`
+      7. `False, True`:  list of variable length 1D tensors
+      8. `False, False`: list of variable length 1D tensors
+
     where
+
       - n1: frequency [Hz], first-order temporal variation
       - n2: frequency [Hz], second-order temporal variation
         (frequency of amplitude modulation)
@@ -121,17 +142,27 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
          correlates with frequential bands (independent components/modes) of
          varying widths, decay factors, and recurrences, per temporal slice)
       - time: time [sec]
+      - The actual units are dimensionless, "Hz" and "sec" are an example.
+        To convert, multiply by sampling rate `fs`.
       - For convolutions, first dim is assumed to be channels (unless doing
-        4D convs with 1-4).
+        4D convs).
       - `True*` indicates a "soft requirement"; as long as `aligned=True`,
         `False` can be fully compensated with padding.
-        Since 5 isn't implemented and its scattering output strictly requires
-        `True`, it can be obtained from `False` by reshaping one of 1-4.
-      - `num.*` indicates the structure isn't strictly valid for convolving
-        over non-first dimensions. See below.
+        Since 5 isn't implemented with `False`, it can be obtained from `False`
+        by reshaping one of 1-4.
+      - `2D/4D*` means 3D/4D convolutions aren't strictly valid for convolving
+        over trailing (last) dimensions (see below), but 1D/2D are.
+        `3D` means 1D, 2D, 3D are all valid.
+      - Structure 3 is 3D/4D-valid only if one deems valid the disjoint
+        representation with separate convs over spinned and lowpassed
+        (thus convs over lowpassed-only coeffs are deemed valid) - or if one
+        opts to exclude the lowpassed pairs.
+      - Structure 4 is 3D/4D-valid only if one deems valid convolving over both
+        lowpassed and spinned coefficients.
 
     The interpretations for convolution (and equivalently, spatial coherence)
     are as follows:
+
         1. The true JTFS structure. `(n2, n1, time)` are ordinal and thus
            valid dimensions for 3D convolution (if all `phi` pairs are excluded,
            which isn't default behavior; see "Ordinality").
@@ -218,11 +249,170 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
 
     Method assumes `out_exclude=None`.
     """
-    # determine available valid structures
-    def drop(*nums):
-        for n in nums:
-            if n in structures_available:
-                structures_available.pop(structures_available.index(n))
+    def combined_to_tensor(combined_all, recursive):
+        def process_dims(o):
+            if recursive:
+                assert o.ndim == 5, o.shape
+            else:
+                assert o.ndim == 4, o.shape
+                o = o[None]
+            return o
+
+        def not_none(x):
+            return (x is not None if not recursive else
+                    all(_x is not None for _x in x))
+
+        # fetch combined params
+        if structure in (1, 2):
+            combined, combined_phi_t, combined_phi_f = combined_all
+        else:
+            (combined_up, combined_down, combined_phi_t, combined_phi_f
+             ) = combined_all
+
+        # compute pad params
+        cbs = [(cb[0] if recursive else cb) for cb in combined_all
+               if not_none(cb)]
+        n_n1s_max = max(len(cb[n2_idx][n1_fr_idx])
+                        for cb in cbs
+                        for n2_idx in range(len(cb))
+                        for n1_fr_idx in range(len(cb[n2_idx])))
+        pad_value = 0 if not debug else -2
+        kw = dict(pad_value=pad_value, right_pad=False)
+
+        # `phi`s #############################################################
+        out_phi_t, out_phi_f = None, None
+        # ensure `phi`s pad to same number of `n1`s as spinned
+        ref_shape = ((None, None, n_n1s_max, None) if not recursive else
+                     (None, None, None, n_n1s_max, None))
+        # this will pad along `n1`
+        if not_none(combined_phi_t):
+            out_phi_t = tensor_padded(combined_phi_t, ref_shape=ref_shape, **kw)
+            out_phi_t = process_dims(out_phi_t)
+        if not_none(combined_phi_f):
+            out_phi_f = tensor_padded(combined_phi_f, ref_shape=ref_shape, **kw)
+            out_phi_f = process_dims(out_phi_f)
+
+        # spinned ############################################################
+        B = get_unified_backend(_infer_backend(combined_all[0], get_name=True)[1])
+        if structure in (1, 2):
+            out = tensor_padded(combined, **kw)
+            out = process_dims(out)
+
+            if structure == 1:
+                tp_shape = (0, 2, 1, 3, 4)
+                out = B.transpose(out, tp_shape)
+                if separate_lowpass:
+                    out_phi_t = B.transpose(out_phi_t, tp_shape)
+                    out_phi_f = B.transpose(out_phi_f, tp_shape)
+
+            out = (out if not separate_lowpass else
+                   (out, out_phi_f, out_phi_t))
+
+        elif structure in (3, 4):
+            out_up   = tensor_padded(combined_up,   **kw)
+            out_down = tensor_padded(combined_down, **kw)
+            out_up   = process_dims(out_up)
+            out_down = process_dims(out_down)
+
+            if structure == 3:
+                out = ((out_up, out_down, out_phi_f) if not separate_lowpass else
+                       (out_up, out_down, out_phi_f, out_phi_t))
+            else:
+                if not separate_lowpass:
+                    out = (out_up, out_down)
+                else:
+                    out = (out_up, out_down, out_phi_t)
+
+        # sanity checks ##########################################################
+        phis = dict(out_phi_t=out_phi_t, out_phi_f=out_phi_f)
+        ref = out[0] if isinstance(out, tuple) else out
+        for name, op in phis.items():
+            if op is not None:
+                errmsg = (name, op.shape, ref.shape)
+                # `t`s must match
+                assert op.shape[-1] == ref.shape[-1], errmsg
+                # number of `n1`s must match
+                assert op.shape[-2] == ref.shape[-2], errmsg
+                # number of samples must match
+                assert op.shape[0]  == ref.shape[0],  errmsg
+
+                # due to transpose
+                fr_dim = -3 if structure != 1 else -4
+                if 'phi_f' in name:
+                    assert op.shape[fr_dim] == 1, op.shape
+                    continue
+
+                # compute `ref_fr_len` #######################################
+                if structure in (1, 2):
+                    ref_fr_len = ref.shape[fr_dim]
+                elif structure == 3:
+                    # due to separate spins having half of total `n1_fr`s
+                    ref_fr_len = ref.shape[fr_dim] * 2
+                elif structure == 4:
+                    # above + having `psi_t * phi_f`
+                    ref_fr_len = (ref.shape[fr_dim] - 1) * 2
+                # due to `phi_t * phi_f` being present only in `out_phi_t`
+                ref_fr_len = (ref_fr_len if not separate_lowpass else
+                              ref_fr_len + 1)
+
+                # assert #####################################################
+                assert op.shape[fr_dim] == ref_fr_len, (
+                    "{} != {} | {} | {}, {}".format(op.shape[fr_dim], ref_fr_len,
+                                                    name, op.shape, ref.shape))
+        if structure in (3, 4):
+            assert out_up.shape == out_down.shape, (out_up.shape, out_down.shape)
+
+        if not recursive:
+            # drop batch dim
+            if isinstance(out, tuple):
+                out = tuple(o[0] for o in out)
+            else:
+                out = out[0]
+        return out
+
+    # pack full batch recursively ############################################
+    if not isinstance(Scx, dict):
+        raise ValueError("must use `out_type` 'dict:array' or 'dict:list' "
+                         "for `pack_coeffs_jtfs` (got `type(Scx) = %s`)" % (
+                             type(Scx)))
+    # infer batch size
+    ref_pair = list(Scx)[0]
+    if isinstance(Scx[ref_pair], list):
+        n_samples = Scx[ref_pair][0]['coef'].shape[0]
+    else:  # tensor
+        n_samples = Scx[ref_pair].shape[0]
+    n_samples = int(n_samples)
+
+    # handle recursion, if applicable
+    if n_samples > 1 and sample_idx is None:
+        combined_phi_t_s, combined_phi_f_s = [], []
+        if structure in (1, 2):
+            combined_s = []
+        elif structure in (3, 4):
+            combined_up_s, combined_down_s = [], []
+
+        for sample_idx in range(n_samples):
+            combined_all = pack_coeffs_jtfs(Scx, meta, structure, sample_idx,
+                                            separate_lowpass, sampling_psi_fr,
+                                            debug, recursive=True)
+
+            combined_phi_t_s.append(combined_all[-2])
+            combined_phi_f_s.append(combined_all[-1])
+            if structure in (1, 2):
+                combined_s.append(combined_all[0])
+            elif structure in (3, 4):
+                combined_up_s.append(combined_all[0])
+                combined_down_s.append(combined_all[1])
+
+        phis = (combined_phi_t_s, combined_phi_f_s)
+        if structure in (1, 2):
+            combined_all_s = (combined_s, *phis)
+        elif structure in (3, 4):
+            combined_all_s = (combined_up_s, combined_down_s, *phis)
+        out = combined_to_tensor(combined_all_s, recursive=True)
+        return out
+
+    ##########################################################################
 
     # validate `structure` / set default
     structures_available = [1, 2, 3, 4]
@@ -230,18 +420,26 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
         structure = structures_available[0]
     elif structure not in structures_available:
         raise ValueError(
-            "invalud `structure={}`; Available are: {}".format(
+            "invalid `structure={}`; Available are: {}".format(
                 structure, ','.join(map(str, structures_available))))
 
     # unpack coeffs for further processing
     Scx_unpacked = {}
     list_coeffs = isinstance(list(Scx.values())[0], list)
+    if sample_idx is None and not recursive and n_samples == 1:
+        sample_idx = 0
+
     Scx = drop_batch_dim_jtfs(Scx, sample_idx)
+    t_ref = None
     for pair in Scx:
         Scx_unpacked[pair] = []
         for coef in Scx[pair]:
             if list_coeffs and (isinstance(coef, dict) and 'coef' in coef):
                 coef = coef['coef']
+            if t_ref is None:
+                t_ref = coef.shape[-1]
+            assert coef.shape[-1] == t_ref, (coef.shape, t_ref)
+
             if coef.ndim == 2:
                 Scx_unpacked[pair].extend(coef)
             elif coef.ndim == 1:
@@ -263,24 +461,34 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
         idx = 0
         n2s_all = nsp[:, 0]
         n2s = np.unique(n2s_all)
+
         for n2 in n2s:
             packed[pair].append([])
             n1_frs_all = nsp[n2s_all == n2, 1]
             n1_frs = np.unique(n1_frs_all)
             n_n1s = len(n1_frs_all)
             n_n1_frs_max = max(n_n1_frs_max, len(n1_frs))
+
             for n1_fr in n1_frs:
                 packed[pair][-1].append([])
                 n1s_done = 0
                 n_n1s_in_n1_fr = n_n1s // len(n1_frs)
+
                 if debug:
                     # pack meta instead of coeffs
                     n1s = nsp[n2s_all == n2, 2][n1_frs_all == n1_fr]
-                    coef = np.array([[n2, n1_fr, n1, 0] for n1 in n1s])
+                    coef = [[n2, n1_fr, n1, 0] for n1 in n1s]
+                    # ensure coef.shape[-1] == t
+                    while Scx_unpacked[pair][0].shape[-1] > len(coef[0]):
+                        for i in range(len(coef)):
+                            coef[i].append(0)
+                    coef = np.array(coef)
+
                     packed[pair][-1][-1].extend(coef)
                     assert len(coef) == n_n1s_in_n1_fr
                     idx += len(coef)
                     n1s_done += len(coef)
+
                 else:
                     while idx < len(nsp) and n1s_done < n_n1s_in_n1_fr:
                         try:
@@ -288,8 +496,6 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
                         except Exception as e:
                             print(pair, idx)
                             raise e
-                        if debug:
-                            print(coef.shape)
                         packed[pair][-1][-1].append(coef)
                         idx += 1
                         n1s_done += 1
@@ -308,7 +514,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
                 ref *= 0
             while len(packed[pair][n2_idx]) < n_n1_frs_max:
                 assert sampling_psi_fr == 'exclude'  # should not occur otherwise
-                packed[pair][n2_idx].append(ref)
+                packed[pair][n2_idx].append(list(ref))
 
     # pack into list ready to convert to 4D tensor ###########################
     # current indexing: `(n2, n1_fr, n1, time)`
@@ -318,6 +524,10 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
     # pack these for later
     # reverse `psi_t` ordering
     combined_down = packed['psi_t * psi_f_down'][::-1]
+    # reverse `psi_f` ordering
+    for n2 in range(len(combined_down)):
+        combined_down[n2] = combined_down[n2][::-1]
+
     # pack phi_t
     c_phi_t = deepcopy(packed['phi_t * psi_f'])
     c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
@@ -325,141 +535,87 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=0,
     # pack phi_f
     c_phi_f = packed['psi_t * phi_f'][::-1]
 
-    if not separate_lowpass or structure == 4:
+    # append `phi_f` if appropriate
+    if (not separate_lowpass or structure == 4) and structure != 3:
         # structure 4 joins `psi_t * phi_f` with `psi_t * psi_f`
-        for n2 in range(len(c_phi_f)):
-            for n1_fr in range(len(c_phi_f[n2])):
-                combined[n2].append(c_phi_f[n2][n1_fr])
+        for n2_idx in range(len(c_phi_f)):
+            for n1_fr_idx in range(len(c_phi_f[n2_idx])):
+                c = c_phi_f[n2_idx][n1_fr_idx]
+                combined[n2_idx].append(c)
+                # not needed in 3, will duplicate in 1 and 2
+                if structure == 4:
+                    combined_down[n2_idx].insert(0, c)
 
-    if not separate_lowpass:
-        assert len(combined_down) == len(combined)
-        for n2 in range(len(combined)):
-            # reverse `psi_f` ordering for `psi_f_down`
-            combined[n2].extend(combined_down[n2][::-1])
-        combined.insert(0, c_phi_t[0])
-
+        l0, l1 = len(combined[0]), len(combined_down[0])
+        assert (l0 == l1 if structure == 4 else l0 == l1 + 1), (l0, l1)
     else:
-        # pack `phi`s
+        l0, l1 = len(combined[0]), len(combined_down[0])
+        assert l0 == l1, (l0, l1)
+
+    # `None` means they aren't turned to tensors, so only set if need
+    # as separate tensors
+    combined_phi_t, combined_phi_f = None, None
+    if not separate_lowpass:
+        if structure == 3:
+            combined_phi_f = c_phi_f
+    else:
         if structure != 4:
             combined_phi_f = c_phi_f
         combined_phi_t = c_phi_t
 
-        assert len(combined_down) == len(combined)
-        for n2 in range(len(combined)):
-            # and `psi_f` ordering
-            combined[n2].extend(combined_down[n2][::-1])
+    # pack spinned (+ `phi` maybe)
+    assert len(combined_down) == len(combined), (
+        len(combined_down), len(combined))
+    if structure in (1, 2):
+        for n2_idx in range(len(combined)):
+            combined[n2_idx].extend(combined_down[n2_idx])
+        if not separate_lowpass:
+            combined.insert(0, c_phi_t[0])
+        combined_up = None
+
+    else:
+        combined_up = combined
+        if not separate_lowpass and structure == 4:
+            _len = len(c_phi_t[0])
+            combined_up.insert(  0, c_phi_t[0][:_len//2 + 1])
+            combined_down.insert(0, c_phi_t[0][_len//2:])
 
     # reverse ordering of `n1` ###############################################
-    if separate_lowpass:
-        if structure != 4:
-            cbs = [combined, combined_phi_t, combined_phi_f]
-        else:
-            cbs = [combined, combined_phi_t]
+    if combined_up is not None:
+        cbs = [combined_up, combined_down]
     else:
         cbs = [combined]
+    if combined_phi_t is not None:
+        cbs.append(combined_phi_t)
+    if combined_phi_f is not None:
+        cbs.append(combined_phi_f)
 
     cbs_new = []
     for i, cb in enumerate(cbs):
         cbs_new.append([])
-        for n2 in range(len(cb)):
+        for n2_idx in range(len(cb)):
             cbs_new[i].append([])
-            for n1_fr in range(len(cb[n2])):
-                cbs_new[i][n2].append(cb[n2][n1_fr][::-1])
+            for n1_fr_idx in range(len(cb[n2_idx])):
+                cbs_new[i][n2_idx].append(cb[n2_idx][n1_fr_idx][::-1])
 
-    if separate_lowpass:
-        if structure != 4:
-            combined, combined_phi_t, combined_phi_f = cbs_new
-        else:
-            combined, combined_phi_t = cbs_new
+    if combined_up is not None:
+        combined_up   = cbs_new.pop(0)
+        combined_down = cbs_new.pop(0)
     else:
-        combined = cbs_new[0]
+        combined = cbs_new.pop(0)
+    if combined_phi_t is not None:
+        combined_phi_t = cbs_new.pop(0)
+    if combined_phi_f is not None:
+        combined_phi_f = cbs_new.pop(0)
+    assert len(cbs_new) == 0, len(cbs_new)
 
     # finalize ###############################################################
-    # TODO backends
-    # this will pad along `n1`
-    pad_value = 0 if not debug else -2
-    out = tensor_padded(combined, pad_value=pad_value, right_pad=False)
-    assert out.ndim == 4, out.ndim
-    s = out.shape
-
-    out_phi_t, out_phi_f = None, None
-    if separate_lowpass:
-        # ensure phis pad to same number of n1s
-        ref_shape = (None, None, s[2], None)
-        kw = dict(pad_value=pad_value, ref_shape=ref_shape)
-        out_phi_t = tensor_padded(combined_phi_t, **kw)
-        if structure != 4:
-            out_phi_f = tensor_padded(combined_phi_f, **kw)
-
-    if structure in (1, 2):
-        if structure == 1:
-            out = out.transpose(1, 0, 2, 3)
-            if separate_lowpass:
-                out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
-                out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
-        out = (out if not separate_lowpass else
-               (out, out_phi_f, out_phi_t))
-
-    elif structure == 3:
-        if not separate_lowpass:
-            out_phi_f = out[:, s[1]//2][:, None]
-            # exclude phi_f
-            out = np.array([o1 for n2_idx in range(len(out))
-                            for o1 in
-                            [[o0 for n1_fr_idx, o0 in enumerate(out[n2_idx])
-                              if n1_fr_idx != s[1] // 2]]])
-
-        out_up   = out[:, :s[1]//2]
-        out_down = out[:, s[1]//2:]
-        out = ((out_up, out_down, out_phi_f) if not separate_lowpass else
-               (out_up, out_down, out_phi_f, out_phi_t))
-
-    elif structure == 4:
-        out_up   = out[:, :s[1]//2 + 1]
-        out_down = out[:, s[1]//2:]
-        if not separate_lowpass:
-            out = (out_up, out_down)
-        else:
-            # assert same number of `n1`s
-            s0, s1 = out_phi_t.shape[-2], out_up.shape[-2]
-            assert s0 == s1, "{}, {}".format(out_phi_t.shape, out_up.shape)
-            out = (out_up, out_down, out_phi_t)
-
-    # sanity checks ##########################################################
-    phis = dict(out_phi_t=out_phi_t, out_phi_f=out_phi_f)
-    ref = out[0] if isinstance(out, tuple) else out
-    for name, op in phis.items():
-        if op is not None:
-            # number of n1s must match #######################################
-            assert op.shape[-2] == ref.shape[-2], (name, op.shape, ref.shape)
-
-            # due to transpose
-            fr_dim = -3 if structure != 1 else -4
-            if 'phi_f' in name:
-                assert op.shape[fr_dim] == 1
-                continue
-
-            # compute `ref_fr_len` ###########################################
-            if structure in (1, 2):
-                ref_fr_len = ref.shape[fr_dim]
-            elif structure == 3:
-                # due to separate spins having half of total `n1_fr`s
-                ref_fr_len = ref.shape[fr_dim] * 2
-            elif structure == 4:
-                # above + having `psi_t * phi_f`
-                ref_fr_len = (ref.shape[fr_dim] - 1) * 2
-            # due to `phi_t * phi_f` being present only in `out_phi_t`
-            ref_fr_len = (ref_fr_len if not separate_lowpass else
-                          ref_fr_len + 1)
-
-            # assert #########################################################
-            assert op.shape[fr_dim] == ref_fr_len, (
-                "{} != {} | {} | {}, {}".format(op.shape[fr_dim], ref_fr_len,
-                                                name, op.shape, ref.shape))
-
-    if structure in (3, 4):
-        assert out_up.shape == out_down.shape, (out_up.shape, out_down.shape)
-    return out
+    phis = (combined_phi_t, combined_phi_f)
+    combined_all = ((combined, *phis) if combined_up is None else
+                    (combined_up, combined_down, *phis))
+    if recursive:
+        return combined_all
+    return combined_to_tensor(combined_all, recursive=False)
 
 
 def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
@@ -493,7 +649,9 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
             - filterbank: since input is assumed real, we convolve only over
               positive frequencies, getting half the energy
 
-        Current JTFS implementation accounts for both so default is `False`.
+        Current JTFS implementation accounts for both so default is `False`
+        (in fact `True` isn't implemented with any configuration due to
+        forced LP sum renormalization - though it's possible to implement).
 
         Filterbank energy correction is as follows:
 
@@ -549,7 +707,7 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
         raise ValueError("`pair` must be string, list/tuple of strings, or None "
                          "(got %s)" % pair)
 
-    # compute compensation factor # TODO better comment
+    # compute compensation factor (see `correction` docs)
     factor = _get_pair_factor(pair, correction)
     fn = lambda c: energy(c, kind=kind)
     norm_fn = lambda total_joint_stride: (2**total_joint_stride
@@ -568,9 +726,43 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
 
 def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
                    kind='l2'):
+    """Computes L2 or L1 relative distance between `Scx0` and `Scx1`.
+
+    Parameters
+    ----------
+    Scx0, Scx1: dict[list] / dict[np.ndarray]
+        `jtfs(x)`.
+
+    meta0, meta1: dict[dict[np.ndarray]]
+        `jtfs.meta()`. If `meta1` is None, will set equal to `meta0`.
+        Note that scattering objects responsible for `Scx0` and `Scx1` cannot
+        differ in any way that alters coefficient shapes.
+
+    pair: str / list/tuple[str] / None
+        Name(s) of coefficient pairs whose distances to compute.
+        If None, will compute for all.
+
+    kind: str['l1', 'l2']
+        Kind of distance to compute. L1==`sum(abs(x))`,
+        L2==`sqrt(sum(abs(x)**2))`. L1 is not implemented for `correction=False`.
+
+    correction: bool (default False)
+        See `help(coeff_energy)`.
+
+    Returns
+    -------
+    reldist_flat : list[float]
+        Relative distances between individual frequency rows, i.e. per-`n1`.
+
+    reldist_slices : list[float]
+        Relative distances between joint slices, i.e. per-`(n2, n1_fr)`.
+    """
+    if not correction and kind == 'l1':
+        raise NotImplementedError
+
     if meta1 is None:
         meta1 = meta0
-    # compute compensation factor # TODO better comment
+    # compute compensation factor (see `correction` docs)
     factor = _get_pair_factor(pair, correction)
     fn = lambda c: c
 
@@ -613,8 +805,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
     return reldist_flat, reldist_slices
 
 
-def coeff_energy_ratios(Scx, meta, down_to_up=True,
-                        max_to_eps_ratio=10000):
+def coeff_energy_ratios(Scx, meta, down_to_up=True, max_to_eps_ratio=10000):
     """Compute ratios of coefficient slice energies, spin down vs up.
     Statisticallyrobust alternative measure to ratio of total energies.
 
@@ -675,9 +866,14 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     out_list = bool(isinstance(coeffs, list))
 
     # infer out_3D
-    out_3D = bool(meta['stride'][pair].ndim == 3)
-    if out_3D:
-        assert coeffs.ndim == 3, coeffs.shape
+    if out_list:
+        out_3D = bool(coeffs[0]['coef'].ndim == 3)
+    else:
+        out_3D = bool(coeffs.ndim == 3)
+
+    # fetch backend
+    B = get_unified_backend(_infer_backend(coeffs, get_name=True)[1])
+
     # completely flatten into (*, time)
     if out_list:
         coeffs_flat = []
@@ -686,7 +882,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
             coeffs_flat.extend(c)
     else:
         if out_3D:
-            coeffs = coeffs.reshape(-1, coeffs.shape[-1])
+            coeffs = B.reshape(coeffs, (-1, coeffs.shape[-1]))
         coeffs_flat = coeffs
 
     # prepare for iterating
@@ -754,7 +950,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
         E_slices.pop()
 
     # ensure they sum to same
-    Es_sum = np.sum(np.sum(E_slices))
+    Es_sum = np.sum([np.sum(s) for s in E_slices])
     adiff = abs(np.sum(E_flat) - Es_sum)
     assert np.allclose(np.sum(E_flat), Es_sum), "MAE=%.3f" % adiff
 
@@ -974,7 +1170,6 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
     def title(txt):
         return ("\n== {} " + "=" * (80 - len(txt)) + "\n").format(txt)
     # for later
-    # w_pos = np.linspace(0, .5, N//2 + 1, endpoint=True)  # TODO
     w_pos = np.linspace(0, N//2, N//2 + 1, endpoint=True).astype(int)
     w_neg = - w_pos[1:-1][::-1]
     w = np.hstack([w_pos, w_neg])
@@ -1387,8 +1582,16 @@ def energy(x, kind='l2'):
             backend.sum(backend.abs(x)**2))
 
 
-def _l2(x):  # TODO backend # TODO use `energy` instead?
-    return np.sqrt(np.sum(np.abs(x)**2))
+def _l2(x):
+    """`sqrt(sum(abs(x)**2))`."""
+    backend, backend_name = _infer_backend(x, get_name=True)
+    if backend_name == 'numpy':
+        l2 = np.linalg.norm(x)
+    elif backend_name == 'torch':
+        l2 = backend.norm(x)
+    elif backend_name == 'tensorflow':
+        l2 = backend.norm(x, ord='euclidean')
+    return l2
 
 def l2(x0, x1, adj=False):
     """Coeff distance measure; Eq 2.24 in
@@ -1399,7 +1602,15 @@ def l2(x0, x1, adj=False):
 
 
 def _l1(x):
-    return np.sum(np.abs(x))
+    """`sum(abs(x))`."""
+    backend, backend_name = _infer_backend(x, get_name=True)
+    if backend_name == 'numpy':
+        l1 = np.sum(np.abs(x))
+    elif backend_name == 'torch':
+        l1 = backend.norm(x, p=1)
+    elif backend_name == 'tensorflow':
+        l1 = backend.norm(x, ord=1)
+    return l1
 
 def l1(x0, x1, adj=False):
     ref = _l1(x0) if not adj else (_l1(x0) + _l1(x1)) / 2
@@ -1420,7 +1631,7 @@ def rel_ae(x0, x1, eps=None, ref_both=True):
 
 
 #### test signals ###########################################################
-def echirp(N, fmin=.1, fmax=None, tmin=0, tmax=1):
+def echirp(N, fmin=1, fmax=None, tmin=0, tmax=1):
     """https://overlordgolddragon.github.io/test-signals/ (bottom)"""
     fmax = fmax or N // 2
     t = np.linspace(tmin, tmax, N)
@@ -1466,7 +1677,9 @@ def _infer_backend(x, get_name=False):
                 x = list(x.values())[0]
         else:
             x = x[0]
-    module = type(x).__module__
+
+    module = type(x).__module__.split('.')[0]
+
     if module == 'numpy':
         backend = np
     elif module == 'torch':
@@ -1475,10 +1688,24 @@ def _infer_backend(x, get_name=False):
     elif module == 'tensorflow':
         import tensorflow
         backend = tensorflow
+    elif isinstance(x, (int, float)):
+        # list of lists, fallback to numpy
+        module = 'numpy'
+        backend = np
     else:
         raise ValueError("could not infer backend from %s" % type(x))
     return (backend if not get_name else
             (backend, module))
+
+
+def get_unified_backend(backend_name):
+    if backend_name == 'numpy':
+        from .backend.numpy_backend import NumpyBackend as B
+    elif backend_name == 'torch':
+        from .backend.torch_backend import TorchBackend as B
+    elif backend_name == 'tensorflow':
+        from .backend.tensorflow_backend import TensorFlowBackend as B
+    return B
 
 
 def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
@@ -1492,6 +1719,9 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     Will pad per `ref_shape` instead of what's determined from `seq`, if provided,
     and if not None and >= existing along selected dims (e.g. `(None, 3)` will
     pad dim0 per `seq` and dim1 to 3, unless `seq`'s dim1 would pad to 4).
+
+    Not implemented for TensorFlow: will convert to numpy array then revert to
+    TF tensor.
 
     Code taken from: https://stackoverflow.com/a/27890978/10133797
     """
@@ -1513,22 +1743,41 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
 
             if len_ == 0:
                 arr[:] = fill_value
+            elif right_pad:
+                arr[:len_] = cast_fn(seq)
+                arr[len_:] = fill_value
             else:
-                if right_pad:
-                    arr[:len_] = cast_fn(seq)
-                    arr[len_:] = fill_value
-                else:
-                    arr[-len_:] = cast_fn(seq)
-                    arr[:-len_] = fill_value
+                arr[-len_:] = cast_fn(seq)
+                arr[:-len_] = fill_value
         else:
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)
 
-    if init_fn is None:
-        init_fn = lambda s: np.empty(s)
-    if cast_fn is None:
-        cast_fn = lambda x: x
+    # infer `init_fn` and `cast_fn` from `seq`, if not provided ##############
+    backend, backend_name = _infer_backend(seq, get_name=True)
+    is_tf = bool(backend_name == 'tensorflow')
+    if is_tf:
+        tf = backend
+        backend = np
+        backend_name = 'numpy'
 
+    if init_fn is None:
+        if backend_name == 'numpy':
+            init_fn = lambda s: np.empty(s)
+        elif backend_name == 'torch':
+            init_fn = lambda s: backend.zeros(s)
+
+    if cast_fn is None:
+        if is_tf:
+            cast_fn = lambda x: x.numpy()
+        elif backend_name == 'numpy':
+            cast_fn = lambda x: x
+        elif backend_name == 'torch':
+            cast_fn = lambda x: (backend.tensor(x)
+                                 if not isinstance(x, backend.Tensor) else x)
+
+    ##########################################################################
+    # infer shape
     shape = list(find_shape(seq))
     if ref_shape is not None:
         for i, s in enumerate(ref_shape):
@@ -1536,6 +1785,11 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                 shape[i] = s
     shape = tuple(shape)
 
+    # fill
     arr = init_fn(shape)
     fill_tensor(arr, seq, fill_value=pad_value)
+
+    # revert if needed
+    if is_tf:
+        arr = tf.convert_to_tensor(arr)
     return arr

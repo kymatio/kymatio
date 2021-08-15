@@ -96,13 +96,29 @@ class NumpyBackend:
         return A * B
 
     @classmethod
-    def sqrt(cls, x):
-        return cls._np.sqrt(x)
+    def sqrt(cls, x, dtype=None):
+        return cls._np.sqrt(x, dtype=dtype)
 
     @classmethod
     def conj(cls, x, inplace=False):
         if inplace and cls._is_complex(x):
-            cls._np.conj(x, out=x)
+            out = cls._np.conj(x, out=x)
         elif not inplace:
-            return (cls._np.conj(x) if cls._is_complex(x) else
-                    x)
+            out = (cls._np.conj(x) if cls._is_complex(x) else
+                   x)
+        else:
+            out = x
+        return out
+
+    @classmethod
+    def reshape(cls, x, shape):
+        return x.reshape(*shape)
+
+    @classmethod
+    def transpose(cls, x, axes):
+        return x.transpose(*axes)
+
+    @classmethod
+    def assign_slice(cls, x, x_slc, slc):
+        x[slc] = x_slc
+        return x
