@@ -372,6 +372,10 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         return out
 
     # pack full batch recursively ############################################
+    if not isinstance(Scx, dict):
+        raise ValueError("must use `out_type` 'dict:array' or 'dict:list' "
+                         "for `pack_coeffs_jtfs` (got `type(Scx) = %s`)" % (
+                             type(Scx)))
     # infer batch size
     ref_pair = list(Scx)[0]
     if isinstance(Scx[ref_pair], list):

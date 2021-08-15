@@ -127,7 +127,9 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
             out_exclude=self.out_exclude,
             pad_mode=self.pad_mode)
         if self.out_structure is not None:
-            S = pack_coeffs_jtfs(S, self.meta(), self.out_structure)
+            S = pack_coeffs_jtfs(S, self.meta(), self.out_structure,
+                                 separate_lowpass=True,
+                                 sampling_psi_fr=self.sampling_psi_fr)
         return S
 
     def sc_freq_compute_padding_fr(self):

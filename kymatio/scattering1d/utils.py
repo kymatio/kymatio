@@ -764,7 +764,8 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             for n1_fr, j1_fr in enumerate(j1s_fr):
                 _fill_n1_info(pair, n2, n1_fr, spin=spin)
 
-    array_fields = ['order', 'xi', 'sigma', 'j', 'is_cqt', 'n', 's', 'stride']
+    array_fields = ['order', 'xi', 'sigma', 'j', 'is_cqt', 'n', 's', 'stride',
+                    'key']
     for field in array_fields:
         for pair, v in meta[field].items():
             meta[field][pair] = np.array(v)
@@ -845,8 +846,16 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     if not out_type.startswith('dict'):
         # join pairs
-        meta_flat = {f: np.concatenate([v for v in meta[f].values()], axis=0)
-                     for f in meta if f not in ('key',)}
-        meta_flat['key'] = meta['key']
+        if not out_3D:
+            meta_flat = {f: np.concatenate([v for v in meta[f].values()], axis=0)
+                         for f in meta}
+        else:
+            meta_flat0 = {f: np.concatenate(
+                [v for k, v in meta[f].items() if k in ('S0', 'S1')],
+                axis=0) for f in meta}
+            meta_flat1 = {f: np.concatenate(
+                [v for k, v in meta[f].items() if k not in ('S0', 'S1')],
+                axis=0) for f in meta}
+            meta_flat = (meta_flat0, meta_flat1)
         meta = meta_flat
     return meta

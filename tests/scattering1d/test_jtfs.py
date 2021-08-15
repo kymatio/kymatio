@@ -796,6 +796,18 @@ def test_pack_coeffs_jtfs():
                 validate_packing(out, separate_lowpass, structure, t, info)
 
 
+def test_implementation():
+    """Test that every `implementation` kwarg works."""
+    N = 512
+    x = echirp(N)
+
+    for implementation in range(1, 6):
+        jtfs = TimeFrequencyScattering1D(shape=N, J=4, Q=2,
+                                         implementation=implementation,
+                                         frontend=default_backend)
+        _ = jtfs(x)
+
+
 def test_no_second_order_filters():
     """Reproduce edge case: configuration yields no second-order wavelets
     so can't do JTFS.
@@ -891,11 +903,12 @@ def test_reconstruction_torch():
     Q = 8
     N = 1024
     n_iters = 30
-    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4,
+    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, out_3D=True,
                                      frontend='torch', out_type='array',
                                      sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
                                      ).to(device)
+    jtfs.meta()
 
     y = torch.from_numpy(echirp(N, fmin=1).astype('float32')).to(device)
     Sy = jtfs(y)
@@ -1338,6 +1351,7 @@ if __name__ == '__main__':
         test_compute_temporal_width()
         test_tensor_padded()
         test_pack_coeffs_jtfs()
+        test_implementation()
         test_backends()
         test_differentiability_torch()
         test_reconstruction_torch()
