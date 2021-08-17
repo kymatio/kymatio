@@ -6,8 +6,8 @@ def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_left=0, pad_right=0, ind_start=None, ind_end=None,
         oversampling=0, oversampling_fr=0, aligned=True, average=True,
-        average_global=None, out_type='array', out_3D=False, out_exclude=None,
-        pad_mode='zero'):
+        average_global=None, average_global_phi=None, out_type='array',
+        out_3D=False, out_exclude=None, pad_mode='zero'):
     """
     Main function implementing the Joint Time-Frequency Scattering transform.
 
@@ -598,8 +598,8 @@ def timefrequency_scattering(
         out_exclude = []
     N = x.shape[-1]
     commons = (B, sc_freq, out_exclude, aligned, oversampling_fr, average_fr,
-               out_3D, oversampling, average, average_global, unpad, log2_T, phi,
-               ind_start, ind_end, N)
+               out_3D, oversampling, average, average_global, average_global_phi,
+               unpad, log2_T, phi, ind_start, ind_end, N)
 
     out_S_0 = []
     out_S_1_tm = []
@@ -668,10 +668,10 @@ def timefrequency_scattering(
         k1_avg = max(sub1_adj_avg - oversampling, 0)
         if average or include_phi_t:
             k1_J = (max(log2_T - k1_avg - oversampling, 0)
-                    if not average_global else log2_T - k1_avg)
-            ind_start_tm = ind_start[0][k1_J + k1_avg]
-            ind_end_tm   = ind_end[  0][k1_J + k1_avg]
-            if not average_global:
+                    if not average_global_phi else log2_T - k1_avg)
+            ind_start_tm_avg = ind_start[0][k1_J + k1_avg]
+            ind_end_tm_avg   = ind_end[  0][k1_J + k1_avg]
+            if not average_global_phi:
                 if k1 != k1_avg:
                     # must recompute U_1_hat
                     U_1_hat_avg, _ = compute_U_1(k1_avg)
@@ -683,7 +683,7 @@ def timefrequency_scattering(
                 S_1_hat = B.subsample_fourier(S_1_c, 2**k1_J)
                 S_1_avg = B.irfft(S_1_hat)
                 # unpad since we're fully done with convolving over time
-                S_1_avg = unpad(S_1_avg, ind_start_tm, ind_end_tm)
+                S_1_avg = unpad(S_1_avg, ind_start_tm_avg, ind_end_tm_avg)
                 total_conv_stride_tm_avg = k1_avg + k1_J
             else:
                 # Average directly
@@ -691,6 +691,8 @@ def timefrequency_scattering(
                 total_conv_stride_tm_avg = log2_T
 
         if 'S1' not in out_exclude:
+            if average:
+                ind_start_tm, ind_end_tm = ind_start_tm_avg, ind_end_tm_avg
             if average_global:
                 S_1_tm = S_1_avg
             elif average:
@@ -720,7 +722,7 @@ def timefrequency_scattering(
             S_1_avg_energy_corrected = bool(average and 'S1' not in out_exclude)
             if not S_1_avg_energy_corrected:
                 S_1_avg = _energy_correction(
-                    S_1_avg, B, param_tm=(N, ind_start_tm, ind_end_tm,
+                    S_1_avg, B, param_tm=(N, ind_start_tm_avg, ind_end_tm_avg,
                                           total_conv_stride_tm_avg))
             S_1_tm_list.append(S_1_avg)
 
@@ -731,15 +733,16 @@ def timefrequency_scattering(
         pad_fr = sc_freq.J_pad_fr_max
         S_1_tm = _right_pad(S_1_tm_list, pad_fr, sc_freq, B)
 
-        if (('phi_t * phi_f' not in out_exclude and not sc_freq.average_fr_global)
-                or 'phi_t * psi_f' not in out_exclude):
+        if (('phi_t * phi_f' not in out_exclude and
+             not sc_freq.average_fr_global_phi) or
+                'phi_t * psi_f' not in out_exclude):
             # map frequency axis to Fourier domain
             S_1_tm_hat = B.rfft(S_1_tm, axis=-2)
 
     if 'phi_t * phi_f' not in out_exclude:
         n1_fr_subsample = 0  # no intermediate scattering
 
-        if sc_freq.average_fr_global:
+        if sc_freq.average_fr_global_phi:
             # take mean along frequency directly
             S_1 = B.mean(S_1_tm, axis=-2)
             lowpass_subsample_fr = sc_freq.log2_F
@@ -771,7 +774,7 @@ def timefrequency_scattering(
             ind_end_fr   = sc_freq.ind_end_fr[-1][  _stride]
 
         # Unpad frequency
-        if not sc_freq.average_fr_global:
+        if not sc_freq.average_fr_global_phi:
             S_1 = unpad(S_1_c, ind_start_fr, ind_end_fr, axis=-2)
 
         # set reference for later
@@ -790,7 +793,7 @@ def timefrequency_scattering(
         sc_freq.__total_conv_stride_over_U1 = (-1 if not average_fr else
                                                total_conv_stride_over_U1_realized)
         # append to out with meta
-        j1_fr = (sc_freq.log2_F if sc_freq.average_fr_global else
+        j1_fr = (sc_freq.log2_F if sc_freq.average_fr_global_phi else
                  sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad])
         stride = (total_conv_stride_over_U1_realized, log2_T)
         out_S_1['phi_t * phi_f'].append({
@@ -872,7 +875,8 @@ def timefrequency_scattering(
     if 'phi_t * psi_f' not in out_exclude:
         # take largest subsampling factor
         j2 = log2_T
-        k1_plus_k2 = max(log2_T - oversampling, 0)
+        k1_plus_k2 = (max(log2_T - oversampling, 0) if not average_global_phi else
+                      log2_T)
         pad_fr = sc_freq.J_pad_fr_max
         # n2_time = U_0.shape[-1] // 2**max(j2 - oversampling, 0)
 
@@ -1001,7 +1005,7 @@ def _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2, trim_tm,
 
     subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
-    if sc_freq.average_fr_global:
+    if sc_freq.average_fr_global_phi:
         Y_fr_c = B.mean(Y_2_arr, axis=-2)
         j1_fr = sc_freq.log2_F
         # `min` in case `pad_fr > shape_fr_scale_max`
@@ -1037,10 +1041,13 @@ def _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2, trim_tm,
 def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample,
                    k1_plus_k2, total_conv_stride_over_U1, trim_tm, commons):
     (B, sc_freq, _, aligned, oversampling_fr, average_fr, out_3D, oversampling,
-     average, average_global, unpad, log2_T, phi, ind_start, ind_end, N) = commons
+     average, average_global, average_global_phi, unpad, log2_T, phi,
+     ind_start, ind_end, N) = commons
 
     # compute subsampling logic ##############################################
-    if sc_freq.average_fr_global:
+    global_averaged_fr = (sc_freq.average_fr_global if n1_fr != -1 else
+                          sc_freq.average_fr_global_phi)
+    if global_averaged_fr:
         lowpass_subsample_fr = total_conv_stride_over_U1 - n1_fr_subsample
     elif average_fr:
         lowpass_subsample_fr = max(total_conv_stride_over_U1 - n1_fr_subsample -
@@ -1049,7 +1056,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         lowpass_subsample_fr = 0
 
     # do lowpassing ##########################################################
-    do_averaging_fr = average_fr and n1_fr != -1
+    do_averaging_fr = bool(average_fr and n1_fr != -1)
     if do_averaging_fr:
         if sc_freq.average_fr_global:
             S_2_fr = B.mean(U_2_m, axis=-2)
@@ -1065,7 +1072,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         S_2_fr = U_2_m
 
     total_conv_stride_over_U1_realized = n1_fr_subsample + lowpass_subsample_fr
-    # unpad frequency
+    # compute unpad params
     if out_3D:
         pad_ref = (sc_freq.J_pad_fr_min if aligned else
                    sc_freq.J_pad_fr_max)
@@ -1078,10 +1085,11 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         _stride = total_conv_stride_over_U1_realized
         ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
         ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
-    if not sc_freq.average_fr_global:
+    # unpad only if input isn't global averaged
+    if not global_averaged_fr:
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
-    do_averaging = average and n2 != -1
+    do_averaging = bool(average and n2 != -1)
     if do_averaging:
         if average_global:
             S_2_r = B.mean(S_2_fr, axis=-1)
@@ -1101,11 +1109,10 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     # compute for unpad / energy correction
     ind_start_tm = ind_start[trim_tm][total_conv_stride_tm]
     ind_end_tm   = ind_end[  trim_tm][total_conv_stride_tm]
+    # `not average` and `n2 == -1` already unpadded
     if do_averaging and not average_global:
-        # `not average` and `n2 == -1` already unpadded
-        S_2 = unpad(S_2_r, ind_start_tm, ind_end_tm)
-    else:
-        S_2 = S_2_r
+        S_2_r = unpad(S_2_r, ind_start_tm, ind_end_tm)
+    S_2 = S_2_r
 
     # energy correction due to stride & inexact unpad indices
     param_tm = (N, ind_start_tm, ind_end_tm, total_conv_stride_tm)
@@ -1116,7 +1123,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
            _energy_correction(S_2, B, param_fr=param_fr, phi_t_psi_f=True))
 
     # sanity checks (see "Subsampling, padding") #############################
-    if aligned and not sc_freq.average_fr_global:
+    if aligned and not global_averaged_fr:
         # `total_conv_stride_over_U1` renamed; comment for searchability
         if n1_fr != -1:
             if sc_freq.__total_conv_stride_over_U1 == -1:

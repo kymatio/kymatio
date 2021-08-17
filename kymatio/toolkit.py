@@ -40,8 +40,8 @@ def _iterate_apply(Scx, fn):
     if isinstance(Scx, dict):
         out = {}  # don't modify source dict
         for pair in Scx:
-            out[pair] = []
             if isinstance(Scx[pair], list):
+                out[pair] = []
                 for i, s in enumerate(Scx[pair]):
                     out[pair].append(get_meta(s))
                     out[pair][i]['coef'] = fn(s['coef'])
@@ -432,6 +432,8 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     Scx = drop_batch_dim_jtfs(Scx, sample_idx)
     t_ref = None
     for pair in Scx:
+        if pair in ('S0', 'S1'):
+            continue
         Scx_unpacked[pair] = []
         for coef in Scx[pair]:
             if list_coeffs and (isinstance(coef, dict) and 'coef' in coef):

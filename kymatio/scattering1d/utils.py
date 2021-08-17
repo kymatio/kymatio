@@ -370,7 +370,7 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
 
 def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                       out_exclude, sampling_filters_fr, average, average_global,
-                      oversampling, r_psi, sc_freq):
+                      average_global_phi, oversampling, r_psi, sc_freq):
     """Get metadata on the Joint Time-Frequency Scattering transform.
 
     This information specifies the content of each scattering coefficient,
@@ -407,6 +407,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     average_global : bool
         Affects `S0`'s meta, and temporal stride meta.
+
+    average_global_phi : bool
+        Affects joint temporal stride meta.
 
     oversampling : int
         Affects temporal stride meta.
@@ -461,8 +464,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         - out_3D (True only possible with `average and average_fr`)
         - average
         - average_global
+        - average_global_phi
         - average_fr
         - average_fr_global
+        - average_fr_global_phi
         - oversampling
         - oversampling_fr
         - max_padding_fr
@@ -486,7 +491,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             j1_fr = sc_freq.psi1_f_fr_up[n1_fr]['j'][subsample_equiv_due_to_pad]
         else:
             j1_fr = (sc_freq.phi_f_fr['j'][subsample_equiv_due_to_pad]
-                     if not sc_freq.average_fr_global else
+                     if not sc_freq.average_fr_global_phi else
                      min(pad_fr, sc_freq.log2_F))
 
         # `* phi_f` pairs always behave per `average_fr=True`
@@ -496,7 +501,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                                                 sc_freq, _average_fr)
         if n2 == -1 and n1_fr == -1:
             n1_fr_subsample = 0
-        elif n1_fr == -1 and sc_freq.average_fr_global:
+        elif n1_fr == -1 and sc_freq.average_fr_global_phi:
             n1_fr_subsample = total_conv_stride_over_U1
         else:
             if sc_freq.average_fr:
@@ -507,7 +512,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             n1_fr_subsample = max(sub_adj - sc_freq.oversampling_fr, 0)
 
         # _joint_lowpass() ####################################################
-        if sc_freq.average_fr_global:
+        global_averaged_fr = (sc_freq.average_fr_global if n1_fr != -1 else
+                              sc_freq.average_fr_global_phi)
+        if global_averaged_fr:
             lowpass_subsample_fr = total_conv_stride_over_U1 - n1_fr_subsample
         elif sc_freq.average_fr or (n2 == -1 and n1_fr == -1):
             lowpass_subsample_fr = max(total_conv_stride_over_U1 -
@@ -516,28 +523,27 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         else:
             lowpass_subsample_fr = 0
 
-        if not sc_freq.average_fr_global:
-            total_downsample_fr = n1_fr_subsample + lowpass_subsample_fr
-            if out_3D:
-                pad_ref = (sc_freq.J_pad_fr_min if aligned else
-                           sc_freq.J_pad_fr_max)
-                subsample_equiv_due_to_pad_ref = (sc_freq.J_pad_fr_max_init -
-                                                  pad_ref)
-                stride_ref = _get_stride(
-                    None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
-                ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
-                ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
-            else:
-                ind_start_fr = sc_freq.ind_start_fr[n2][total_downsample_fr]
-                ind_end_fr   = sc_freq.ind_end_fr[  n2][total_downsample_fr]
-        else:
-            ind_start_fr, ind_end_fr = -1, -1
-
         total_conv_stride_over_U1_realized = (n1_fr_subsample +
                                               lowpass_subsample_fr)
+        # unpad params, used only if `not global_averaged_fr`
+        # (except for energy correction, which isn't done here)
+        if out_3D:
+            pad_ref = (sc_freq.J_pad_fr_min if aligned else
+                       sc_freq.J_pad_fr_max)
+            subsample_equiv_due_to_pad_ref = (sc_freq.J_pad_fr_max_init -
+                                              pad_ref)
+            stride_ref = _get_stride(
+                None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
+            ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
+            ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
+        else:
+            _stride = total_conv_stride_over_U1_realized
+            ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
+            ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
+
         return (shape_fr_padded, total_conv_stride_over_U1_realized,
                 n1_fr_subsample, subsample_equiv_due_to_pad,
-                ind_start_fr, ind_end_fr)
+                ind_start_fr, ind_end_fr, global_averaged_fr)
 
     def _get_fr_params(n1_fr, subsample_equiv_due_to_pad):
         k = subsample_equiv_due_to_pad
@@ -549,7 +555,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 p = (xi1s_fr_new[k][n1_fr], sigma1s_fr_new[k][n1_fr],
                      j1s_fr_new[k][n1_fr], is_cqt1_frs_new[k][n1_fr])
         else:
-            if not sc_freq.average_fr_global:
+            if not sc_freq.average_fr_global_phi:
                 p = [m[k] for m in (xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi)
                      ] + [nan]
             else:
@@ -582,7 +588,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
         # track S1 from padding to `_joint_lowpass()`
         (shape_fr_padded, total_conv_stride_over_U1_realized, n1_fr_subsample,
-         subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr
+         subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr, global_averaged_fr
          ) = _get_compute_params(n2, n1_fr)
 
         # fetch xi, sigma for n2, n1_fr
@@ -595,7 +601,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             n1_fr, subsample_equiv_due_to_pad)
 
         # get temporal stride info
-        if average_global:
+        global_averaged = (average_global if n2 != -1 else
+                           average_global_phi)
+        if global_averaged:
             total_conv_stride_tm = log2_T
         else:
             k1_plus_k2 = max(min(j2, log2_T) - oversampling, 0)
@@ -613,7 +621,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         n2_key    = n2    if (n2    != -1) else 0
 
         # global average pooling, all S1 collapsed into single point
-        if sc_freq.average_fr_global:
+        if global_averaged_fr:
             meta['order' ][pair].append(2)
             meta['xi'    ][pair].append((xi2,     xi1_fr,     nan))
             meta['sigma' ][pair].append((sigma2,  sigma1_fr,  nan))
@@ -697,22 +705,22 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                   'key'):
         meta[field] = {name: [] for name in coef_names}
 
-    # Zeroth-order
+    # Zeroth-order ###########################################################
     if average_global:
         k0 = log2_T
     elif average:
         k0 = max(log2_T - oversampling, 0)
     meta['order' ]['S0'].append(0)
-    meta['xi'    ]['S0'].append((nan, nan, 0         if average else nan,))
-    meta['sigma' ]['S0'].append((nan, nan, sigma_low if average else nan,))
-    meta['j'     ]['S0'].append((nan, nan, log2_T    if average else nan,))
+    meta['xi'    ]['S0'].append((nan, nan, 0         if average else nan))
+    meta['sigma' ]['S0'].append((nan, nan, sigma_low if average else nan))
+    meta['j'     ]['S0'].append((nan, nan, log2_T    if average else nan))
     meta['is_cqt']['S0'].append((nan, nan, nan))
-    meta['n'     ]['S0'].append((nan, nan, inf       if average else nan,))
+    meta['n'     ]['S0'].append((nan, nan, inf       if average else nan))
     meta['s'     ]['S0'].append((nan,))
     meta['stride']['S0'].append((nan, k0 if average else nan))
     meta['key'   ]['S0'].append((0, 0, 0))
 
-    # First-order
+    # First-order ############################################################
     def stride_S1(j1):
         sub1_adj = min(j1, log2_T) if average else j1
         k1 = max(sub1_adj - oversampling, 0)
@@ -741,6 +749,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     S1_len = len(meta['n']['S1'])
     assert S1_len >= sc_freq.shape_fr_max
 
+    # Joint scattering #######################################################
     # `phi_t * phi_f` coeffs
     _fill_n1_info('phi_t * phi_f', n2=-1, n1_fr=-1, spin=0)
 

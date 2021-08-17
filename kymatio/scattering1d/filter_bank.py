@@ -854,7 +854,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                    shape_fr_scale_min, max_pad_factor_fr, unrestricted_pad_fr,
                    max_subsample_equiv_before_phi_fr,
                    subsample_equiv_relative_to_max_pad_init,
-                   average_fr_global,
+                   average_fr_global_phi,
                    sampling_psi_fr='resample', sampling_phi_fr='resample',
                    pad_mode_fr='reflect', sigma_max_to_min_max_ratio=1.2,
                    r_psi=math.sqrt(0.5), normalize='l1', criterion_amplitude=1e-3,
@@ -896,14 +896,14 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         are constructed fully correctly and devoid of boundary effects.
 
     max_subsample_equiv_before_phi_fr : int
-        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+        See `help(TimeFrequencyScattering1D)`. Used for waiving certain criterion
         checks if `shape_fr_scale` is too small.
 
     subsample_equiv_relative_to_max_pad_init : int
         See `help(TimeFrequencyScattering1D)`. Controls filter lengths.
 
-    average_fr_global : bool
-        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+    average_fr_global_phi : bool
+        See `help(TimeFrequencyScattering1D)`. Used for waiving certain criterion
         checks.
 
     sampling_psi_fr : str['resample', 'recalibrate', 'exclude']
@@ -1040,7 +1040,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     # for later
     same_pad_limit = (unrestricted_pad_fr or
                       all(p == max_pad_factor_fr[0] for p in max_pad_factor_fr))
-    pad_contractive_phi = (average_fr_global or sampling_phi_fr == 'recalibrate')
+    pad_contractive_phi = (average_fr_global_phi or
+                           sampling_phi_fr == 'recalibrate')
     cleanup = False  # for later
     # sample spin down and up wavelets
     for n1_fr in range(len(j1_frs)):

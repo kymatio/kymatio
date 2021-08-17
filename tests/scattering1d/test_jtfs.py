@@ -848,10 +848,10 @@ def test_backends():
                 outs0  = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
                 outsn  = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw)
                 outs0n = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw, sample_idx=0)
-                outs   = outs  if isinstance(outs,  tuple) else [outs]
-                outs0  = outs0 if isinstance(outs0, tuple) else [outs0]
-                outsn  = outs  if isinstance(outs,  tuple) else [outs]
-                outs0n = outs0 if isinstance(outs0, tuple) else [outs0]
+                outs   = outs   if isinstance(outs,  tuple) else [outs]
+                outs0  = outs0  if isinstance(outs0, tuple) else [outs0]
+                outsn  = outsn  if isinstance(outs,  tuple) else [outsn]
+                outs0n = outs0n if isinstance(outs0, tuple) else [outs0n]
 
                 for o, o0, on, o0n in zip(outs, outs0, outsn, outs0n):
                     assert o.ndim == 5, o.shape
@@ -909,7 +909,7 @@ def test_reconstruction_torch():
     Q = 8
     N = 1024
     n_iters = 30
-    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, out_3D=True,
+    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4,
                                      frontend='torch', out_type='array',
                                      sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
@@ -961,11 +961,15 @@ def test_meta():
         - aligned
         - sampling_psi_fr
         - sampling_phi_fr
-    a total of 56 tests. All possible ways of packing the same coefficients
+    and, partially
+        - average_global
+        - average_global_phi
+        - average_global_fr
+        - average_global_fr_phi
+    a total of 60 tests. All possible ways of packing the same coefficients
     (via `out_type`) aren't tested.
 
     Not tested:
-        - average_fr_global
         - oversampling_fr
         - max_padding_fr
 
@@ -1147,6 +1151,16 @@ def test_meta():
                   aligned=aligned,
                   sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
               run_test(params, test_params)
+
+    # minimal global averaging testing
+    N = 512
+    params = dict(shape=N, J=9, Q=9, J_fr=5, Q_fr=1, F=2**5, out_type=out_type)
+    for average_fr in (True, False):
+        for average in (True, False):
+            test_params = dict(average_fr=average_fr, average=average,
+                               sampling_filters_fr=('exclude', 'resample'),
+                               out_3D=False)
+            run_test(params, test_params)
 
 
 def test_output():

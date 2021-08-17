@@ -889,10 +889,17 @@ def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
         - L1: `sum(abs(x))`
         - L2: `sum(abs(x)**2)` -- actually L2^2
 
+    plots : bool (default True)
+        Whether to visualize the energies.
+
+    plot_kw : kwargs
+        Will pass to `kymatio.visuals.plot()`.
+
     Returns
     -------
     energies: list[float]
         List of coefficient energies.
+
     pair_energies: dict[str: float]
         Keys are pairs, values are sums of all pair's coefficient energies.
     """
@@ -921,7 +928,44 @@ def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
 
 def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
                         plots=True, **plot_kw):
-    # TODO doc
+    """Computes relative distance between JTFS coefficients.
+
+    Parameters
+    ----------
+    Scx0, Scx1: dict[list] / dict[np.ndarray]
+        `jtfs(x)`.
+
+    meta0: dict[dict[np.ndarray]]
+        `jtfs.meta()`.
+
+    meta1: dict[dict[np.ndarray]] / None
+        `jtfs.meta()` for `Scx1`. Configuration cannot differ in any way
+        that alters coefficient shapes.
+
+    pairs: None / list/tuple[str]
+        Computes distances for these pairs in provided order. None will compute
+        for all in default order:
+            ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+             'psi_t * psi_f_up', 'psi_t * psi_f_down')
+
+    kind : str['l1', 'l2']
+        - L1: `sum(abs(x))`
+        - L2: `sum(abs(x)**2)` -- actually L2^2
+
+    plots : bool (default True)
+        Whether to visualize the distances.
+
+    plot_kw : kwargs
+        Will pass to `kymatio.visuals.plot()`.
+
+    Returns
+    -------
+    distances : list[float]
+        List of coefficient distances.
+
+    pair_distances : dict[str: float]
+        Keys are pairs, values are sums of all pair's coefficient distances.
+    """
     if not all(isinstance(Scx, dict) for Scx in (Scx0, Scx1)):
         raise NotImplementedError("inputs must be dict. Set "
                                   "out_type='dict:array' or 'dict:list'.")
