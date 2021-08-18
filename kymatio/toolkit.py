@@ -242,13 +242,20 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
 
     Notes
     -----
-    Coefficients will be sorted in order of increasing center frequency -
-    along `n2`, and `n1_fr` for spin down (whihc makes it so that both spins are
-    increasing away from `psi_t * phi_f`). The overall packing is structured
-    same as in `kymatio.visuals.filterbank_jtfs()`.
+      - Coefficients will be sorted in order of increasing center frequency -
+        along `n2`, and `n1_fr` for spin down (which makes it so that both spins
+        are increasing away from `psi_t * phi_f`). The overall packing is
+        structured same as in `kymatio.visuals.filterbank_jtfs()`.
 
-    Method assumes `out_exclude=None`.
+      - Method assumes `out_exclude=None`.
+
+      - The built-in energy renormalization includes doubling the energy
+        of `phi_t * psi_f` pairs to compensate for computing only once (for
+        just one spin since it's identical to other spin), while here it's
+        also packed twice; to compensate, its energy is halved before packing.
     """
+    B = get_unified_backend(_infer_backend(Scx, get_name=True)[1])
+
     def combined_to_tensor(combined_all, recursive):
         def process_dims(o):
             if recursive:
@@ -293,7 +300,6 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             out_phi_f = process_dims(out_phi_f)
 
         # spinned ############################################################
-        B = get_unified_backend(_infer_backend(combined_all[0], get_name=True)[1])
         if structure in (1, 2):
             out = tensor_padded(combined, **kw)
             out = process_dims(out)
@@ -498,6 +504,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                         except Exception as e:
                             print(pair, idx)
                             raise e
+                        if pair == 'phi_t * psi_f':
+                            # see "Notes" in docs
+                            coef = coef / B.sqrt(2., dtype=coef.dtype)
                         packed[pair][-1][-1].append(coef)
                         idx += 1
                         n1s_done += 1

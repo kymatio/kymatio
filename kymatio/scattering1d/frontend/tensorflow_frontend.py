@@ -7,7 +7,7 @@ from ..core.timefrequency_scattering import timefrequency_scattering
 from ..utils import precompute_size_scattering
 from ...toolkit import pack_coeffs_jtfs
 from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
-                            _check_runtime_args_jtfs)
+                            _check_runtime_args_jtfs, _handle_args_jtfs)
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
@@ -85,19 +85,17 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
                  max_pad_factor=2, max_pad_factor_fr=None,
                  pad_mode_fr='conj-reflect-zero', r_psi=math.sqrt(.5),
                  backend='tensorflow', name='TimeFrequencyScattering1D'):
-        if oversampling_fr is None:
-            oversampling_fr = oversampling
-        # Second-order scattering object for the time variable
-        max_order_tm = 2
-        scattering_out_type = out_type.lstrip('dict:')
+        oversampling_fr, r_psi_tm, r_psi_fr, max_order_tm, scattering_out_type = (
+            _handle_args_jtfs(oversampling, oversampling_fr, r_psi, out_type))
+
         ScatteringTensorFlow1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            scattering_out_type, pad_mode, max_pad_factor, r_psi, backend)
+            scattering_out_type, pad_mode, max_pad_factor, r_psi_tm, backend)
 
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, implementation, average_fr, aligned,
-            sampling_filters_fr, max_pad_factor_fr, pad_mode_fr, oversampling_fr,
-            out_3D, out_type, out_exclude)
+            sampling_filters_fr, max_pad_factor_fr, pad_mode_fr, r_psi_fr,
+            oversampling_fr, out_3D, out_type, out_exclude)
         TimeFrequencyScatteringBase1D.build(self)
 
     def scattering(self, x):

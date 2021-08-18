@@ -670,7 +670,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         calibrate_scattering_filters(J, Q, T, xi_min=xi_min, r_psi=r_psi)
     sigma_low_fr, xi1s_fr, sigma1s_fr, j1s_fr, is_cqt1_frs, *_ = \
         calibrate_scattering_filters(J_fr, Q_fr, F, xi_min=xi_min_fr,
-                                     r_psi=sc_freq.r_psi)
+                                     r_psi=sc_freq.r_psi_fr)
 
     # compute modified meta if `resample_=False`
     sampling_psi_fr, sampling_phi_fr = sampling_filters_fr

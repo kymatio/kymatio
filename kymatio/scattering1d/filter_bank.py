@@ -597,10 +597,11 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    r_psi : float, optional
+    r_psi : float / tuple[float], optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5)
+        Defaults to sqrt(0.5).
+        Tuple sets separately for first- and second-order filters.
     sigma0 : float, optional
         frequential width of the low-pass filter at scale J=0
         (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
@@ -629,6 +630,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
         `xi1, sigma1, j1, is_cqt1` for second order filters.
     """
     Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
+    r_psi1, r_psi2 = r_psi if isinstance(r_psi, tuple) else (r_psi, r_psi)
     if Q1 < 1 or Q2 < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
 
@@ -637,9 +639,9 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     sigma_min = sigma0 / math.pow(2, J)
 
     xi1s, sigma1s, j1s, is_cqt1s = compute_params_filterbank(
-        sigma_min, Q1, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+        sigma_min, Q1, r_psi=r_psi1, alpha=alpha, xi_min=xi_min)
     xi2s, sigma2s, j2s, is_cqt2s = compute_params_filterbank(
-        sigma_min, Q2, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+        sigma_min, Q2, r_psi=r_psi2, alpha=alpha, xi_min=xi_min)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
@@ -857,8 +859,9 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                    average_fr_global_phi,
                    sampling_psi_fr='resample', sampling_phi_fr='resample',
                    pad_mode_fr='reflect', sigma_max_to_min_max_ratio=1.2,
-                   r_psi=math.sqrt(0.5), normalize='l1', criterion_amplitude=1e-3,
-                   sigma0=0.1, alpha=4., P_max=5, eps=1e-7):
+                   r_psi_fr=math.sqrt(0.5), normalize='l1',
+                   criterion_amplitude=1e-3, sigma0=0.1, alpha=4., P_max=5,
+                   eps=1e-7):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -934,7 +937,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         Largest permitted `max(sigma) / min(sigma)`.
         See `help(TimeFrequencyScattering1D)`.
 
-    r_psi, normalize, criterion_amplitude, sigma0, alpha, P_max, eps:
+    r_psi_fr, normalize, criterion_amplitude, sigma0, alpha, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
     Returns
@@ -980,8 +983,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
     (_, xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, *_
-     ) = calibrate_scattering_filters(J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0,
-                                      alpha=alpha, xi_min=xi_min)
+     ) = calibrate_scattering_filters(J_fr, Q_fr, T=T, r_psi=r_psi_fr,
+                                      sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []

@@ -8,12 +8,13 @@ from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
                              l2, rel_ae, validate_filterbank_tm,
                              validate_filterbank_fr, pack_coeffs_jtfs,
                              tensor_padded)
-from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
+from kymatio.visuals import (coeff_distance_jtfs, compare_distances_jtfs,
+                             energy_profile_jtfs)
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
-default_backend = ('numpy', 'torch', 'tensorflow')[2]
+default_backend = ('numpy', 'torch', 'tensorflow')[1]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
@@ -795,6 +796,91 @@ def test_pack_coeffs_jtfs():
                 validate_packing(out, separate_lowpass, structure, t, info)
 
 
+def test_energy_conservation():
+    """E_out ~= E_in.
+
+    Refer to:
+     - https://github.com/kymatio/kymatio/discussions/732#discussioncomment-864097
+     - https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855701
+     - https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855702
+    """
+    np.random.seed(0)
+    # 8.5 on dyadic scale to test time unpad correction
+    N = 360
+    x = np.random.randn(N)
+
+    # configure ~tight frame; configured also for speed, not optimized for I/O
+    # https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855703
+    # https://github.com/kymatio/kymatio/discussions/732#discussioncomment-968384
+    r_psi = (.9, .9, .9)
+    J = int(np.ceil(np.log2(N)) - 3)
+    J_fr = 3
+    F = 2**J_fr
+    T = 2**J
+    Q = (8, 3)
+    Q_fr = 4
+    params = dict(
+        shape=N, J=J, J_fr=J_fr, Q=Q, Q_fr=Q_fr, F=F, T=T,
+        r_psi=r_psi, average_fr=False, sampling_filters_fr='resample',
+        max_pad_factor=None, max_pad_factor_fr=None,
+        pad_mode='reflect', pad_mode_fr='conj-reflect-zero',
+        out_type='dict:list', frontend=default_backend
+    )
+    jtfs_a = TimeFrequencyScattering1D(**params, average=True)
+    jtfs_u = TimeFrequencyScattering1D(**params, average=False)
+    jmeta_a = jtfs_a.meta()
+    jmeta_u = jtfs_a.meta()
+
+    # scatter
+    Scx_a = jtfs_a(x)
+    Scx_u = jtfs_u(x)
+
+    # compute energies
+    pairs = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+             'psi_t * psi_f_up', 'psi_t * psi_f_down')
+    kw = dict(kind='l2', plots=False)
+    _, pair_energies_a = energy_profile_jtfs(Scx_a, jmeta_a, **kw, pairs=pairs)
+    _, pair_energies_u = energy_profile_jtfs(Scx_u, jmeta_u, **kw, pairs=pairs)
+
+    pe_a, pe_u = [{pair: np.sum(pe[pair]) for pair in pe}
+                  for pe in (pair_energies_a, pair_energies_u)]
+
+    # run assertions  # TODO N = 400
+    # compute energy relations ###############################################
+    E = {}
+    E['in'] = energy(x)
+    E['out'] = (np.sum([v for pair, v in pe_u.items()
+                        if pair not in ('S0', 'S1')]) +
+                pe_a['S0'])
+
+    E['S0'] = pe_a['S0']
+    E['S1'] = pe_a['S1']
+    E['U1'] = pe_u['S1']
+    # U2 + S2 = U1 - S1 --> U2 = (U1 - S1) - S2
+    E['U2'] = (E['U1'] - E['S1']) - pe_u['psi_t * phi_f']
+    E['S1_joint'] = (pe_u['phi_t * phi_f'] +
+                     pe_u['phi_t * psi_f'])
+    E['U2_joint'] = (pe_u['psi_t * psi_f_up'] +
+                     pe_u['psi_t * psi_f_down'])
+
+    r = {}
+    r['out / in'] = E['out'] / E['in']
+    r['(S0 + U1) / in'] = (E['S0'] + E['U1']) / E['in']
+    r['S1_joint / S1'] = E['S1_joint'] / E['S1']
+    r['U2_joint / U2'] = E['U2_joint'] / E['U2']
+
+    if metric_verbose:
+        print("\nEnergy conservation (w/ tight frame):")
+        for k, v in r.items():
+            print("{:.4f} -- {}".format(v, k))
+
+    # run assertions #########################################################
+    assert .9  < r['out / in']       < 1., r['out / in']
+    assert .95 < r['(S0 + U1) / in'] < 1., r['(S0 + U1) / in']
+    assert .95 < r['S1_joint / S1']  < 1., r['S1_joint / S1']
+    assert .83 < r['U2_joint / U2']  < 1., r['U2_joint / U2']
+
+
 def test_implementation():
     """Test that every `implementation` kwarg works."""
     N = 512
@@ -1371,6 +1457,7 @@ if __name__ == '__main__':
         test_compute_temporal_width()
         test_tensor_padded()
         test_pack_coeffs_jtfs()
+        test_energy_conservation()
         test_implementation()
         test_backends()
         test_differentiability_torch()

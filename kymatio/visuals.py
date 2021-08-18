@@ -890,7 +890,8 @@ def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
         - L2: `sum(abs(x)**2)` -- actually L2^2
 
     plots : bool (default True)
-        Whether to visualize the energies.
+        Whether to visualize the energies and print statistics
+        (will print E_out / E_in if `x` is passed regardless).
 
     plot_kw : kwargs
         Will pass to `kymatio.visuals.plot()`.
