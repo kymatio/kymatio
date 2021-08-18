@@ -5,7 +5,8 @@ import numpy as np
 from scipy.fft import ifft, ifftshift
 from copy import deepcopy
 from .scattering1d.filter_bank import compute_temporal_support
-from .toolkit import coeff_energy, coeff_distance, energy, drop_batch_dim_jtfs
+from .toolkit import (coeff_energy, coeff_distance, energy, drop_batch_dim_jtfs,
+                      _eps)
 
 try:
     import matplotlib.pyplot as plt
@@ -17,17 +18,36 @@ except ImportError:
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
                           lp_phi=True, first_order=True, second_order=False,
                           plot_kw=None):
-    """
-    # Arguments:
-        scattering: kymatio.scattering1d.Scattering1D
-            Scattering object.
-        zoom: int
-            Will zoom plots by this many octaves.
-            If -1, will show full frequency axis (including negatives).
-        second_order: bool (default False)
-            Whether to plot second-order wavelets.
+    """Visualize temporal filterbank.
 
-    # Example:
+    Parameters
+    ----------
+    scattering: kymatio.scattering1d.Scattering1D,
+                kymatio.scattering1d.TimeFrequencyScattering1D
+        Scattering object.
+
+    zoom: int
+        Will zoom plots by this many octaves.
+        If -1, will show full frequency axis (including negatives),
+        and both spins.
+
+    filterbank : bool (default True)
+        Whether to plot the filterbank.
+
+    lp_sum: bool (default False)
+        Whether to plot Littlewood-Paley sum of the filterbank.
+
+    lp_phi : bool (default True)
+        Whether to include the lowpass filter in LP-sum visual.
+        Has no effect if `lp_sum == False`.
+
+    plot_kw: None / dict
+        Will pass to `kymatio.visuals.plot(**plot_kw)`.
+
+    Example
+    -------
+    ::
+
         scattering = Scattering1D(shape=2048, J=8, Q=8)
         filterbank_scattering(scattering)
     """
@@ -127,36 +147,41 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
     Parameters
     ----------
-    scattering: kymatio.scattering1d.TimeFrequencyScattering1D
+    jtfs : kymatio.scattering1d.TimeFrequencyScattering1D
         Scattering object.
 
-    zoom: int
+    zoom : int
         Will zoom plots by this many octaves.
         If -1, will show full frequency axis (including negatives),
         and both spins.
 
     j0: int
-        `subsample_equiv_due_to_pad`
+        `subsample_equiv_due_to_pad`.
+        See `help(kymatio.scattering1d.TimeFrequencyScattering1D)`
 
     filterbank : bool (default True)
         Whether to plot the filterbank.
 
-    lp_sum: bool (default False)
+    lp_sum : bool (default False)
         Whether to plot Littlewood-Paley sum of the filterbank.
 
-    center_dc: bool / None
+    lp_phi : bool (default True)
+        Whether to include the lowpass filter in LP-sum visual.
+        Has no effect if `lp_sum == False`.
+
+    center_dc : bool / None
         If True, will `ifftshift` to center the dc bin.
         Defaults to `True` if `zoom == -1`.
 
-    plot_kw: None / dict
+    plot_kw : None / dict
         Will pass to `plot(**plot_kw)`.
 
     Example
     -------
     ::
 
-        scattering = Scattering1D(shape=2048, J=8, Q=8)
-        filterbank_scattering(scattering)
+        jtfs = TimeFrequencyScattering1D(shape=2048, J=8, Q=8)
+        filterbank_jtfs_1d(jtfs)
     """
     def _plot_filters(ps, p0, lp, title_base, up):
         # determine plot parameters ##########################################
@@ -277,31 +302,32 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
 def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
                     labels=True, suptitle_y=1.015):
-    """Visualize JTFS joint 2D filterbank in time domai.
+    """Visualize JTFS joint 2D filterbank in time domain.
+    # TODO rename to _2d?
 
     Parameters
     ----------
-    jtfs: kymatio.scattering1d.TimeFrequencyScattering1D
-        JTFS instance.
+    jtfs : kymatio.scattering1d.TimeFrequencyScattering1D
+        Scattering object.
 
-    part: str['real', 'imag', 'complex']
+    part : str['real', 'imag', 'complex']
         Whether to plot real or imaginary part (black-white-red colormap),
         or complex (special coloring).
 
-    zoomed: bool (default False)
+    zoomed : bool (default False)
         Whether to plot all filters with maximum subsampling
         (loses relative orientations but shows fine detail).
 
-    w, h: float, float
+    w, h : float, float
         Adjust width and height.
 
-    borders: bool (default False)
+    borders : bool (default False)
         Whether to show plot borders between wavelets.
 
-    labels: bool (default True)
+    labels : bool (default True)
         Whether to label joint slices with `mu, l, spin` information.
 
-    suptitle_y: float / None
+    suptitle_y : float / None
         Position of plot title (None for no title).
         Default is optimized for `w=h=1`.
 
@@ -309,9 +335,8 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
     -------
     ::
 
-        T, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
-        jtfs = TimeFrequencyScattering1D(J, T, Q, J_fr=J_fr, Q_fr=Q_fr,
-                                         out_type='array', average_fr=1)
+        N, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
+        jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=J_fr, Q_fr=Q_fr)
         filterbank_jtfs(jtfs)
     """
     def to_time(p):
@@ -478,6 +503,7 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
              skip_spins=False, skip_unspinned=False, sample_idx=0, inf_token=-1,
              verbose=False, gif_kw=None):
     """Slice heatmaps of JTFS outputs.
+    # TODO rename 2d?
 
     Parameters
     ----------
@@ -694,6 +720,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                 width=800, height=800, surface_count=30, opacity=.2, zoom=1.61,
                 verbose=True, gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
+    # TODO rename 3d?
 
     Parameters
     ----------
@@ -862,8 +889,8 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                     os.unlink(path)
 
 
-def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
-                        **plot_kw):
+def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', flatten=False,
+                        plots=True, **plot_kw):
     """Plot & print relevant energy information across coefficient pairs.
     Works for all `'dict' in out_type` and `out_exclude`.
     Also see `help(kymatio.toolkit.coeff_energy)`.
@@ -888,6 +915,10 @@ def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
     kind : str['l1', 'l2']
         - L1: `sum(abs(x))`
         - L2: `sum(abs(x)**2)` -- actually L2^2
+
+    flatten : bool (default False)
+        If True, will return quantities on per-`n1` (per frequency row) basis,
+        rather than per-`(n2, n1_fr)` (per joint slice).
 
     plots : bool (default True)
         Whether to visualize the energies and print statistics
@@ -918,7 +949,8 @@ def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
 
     # compute, plot, print
     energies, pair_energies = _iterate_coeff_pairs(
-        Scx, meta, fn, pairs, plots=plots, titles=titles, **plot_kw)
+        Scx, meta, fn, pairs, plots=plots, flatten=flatten,
+        titles=titles, **plot_kw)
 
     # E_out / E_in
     if x is not None:
@@ -928,7 +960,7 @@ def energy_profile_jtfs(Scx, meta, x=None, pairs=None, kind='l2', plots=True,
 
 
 def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
-                        plots=True, **plot_kw):
+                        flatten=False, plots=True, **plot_kw):
     """Computes relative distance between JTFS coefficients.
 
     Parameters
@@ -937,7 +969,7 @@ def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
         `jtfs(x)`.
 
     meta0: dict[dict[np.ndarray]]
-        `jtfs.meta()`.
+        `jtfs.meta()` for `Scx0`.
 
     meta1: dict[dict[np.ndarray]] / None
         `jtfs.meta()` for `Scx1`. Configuration cannot differ in any way
@@ -952,6 +984,10 @@ def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
     kind : str['l1', 'l2']
         - L1: `sum(abs(x))`
         - L2: `sum(abs(x)**2)` -- actually L2^2
+
+    flatten : bool (default False)
+        If True, will return quantities on per-`n1` (per frequency row) basis,
+        rather than per-`(n2, n1_fr)` (per joint slice).
 
     plots : bool (default True)
         Whether to visualize the distances.
@@ -982,7 +1018,6 @@ def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
     fn = lambda Scx, meta, pair: coeff_distance(*Scx, *meta, pair, kind=kind)
 
     # compute, plot, print
-    # TODO instead return as "pairs:flat", "pairs:slices"?
     distances, pair_distances = _iterate_coeff_pairs(
         (Scx0, Scx1), (meta0, meta1), fn, pairs, plots=plots,
         titles=titles, **plot_kw)
@@ -990,8 +1025,8 @@ def coeff_distance_jtfs(Scx0, Scx1, meta0, meta1=None, pairs=None, kind='l2',
     return distances, pair_distances
 
 
-def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, plots=True, titles=None,
-                         **plot_kw):
+def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, flatten=False, plots=True,
+                         titles=None, **plot_kw):
     # in case multiple meta passed
     meta0 = meta[0] if isinstance(meta, tuple) else meta
     # enforce pair order
@@ -1005,8 +1040,10 @@ def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, plots=True, titles=None,
         if pair not in meta0['n']:
             continue
         E_flat, E_slices = fn(Scx, meta, pair)
-        pair_energies[pair] = E_slices[::-1]
-        energies.extend(E_slices[::-1])
+        data = E_flat if flatten else E_slices
+        # flip to order freqs low-to-high
+        pair_energies[pair] = data[::-1]
+        energies.extend(data[::-1])
         # don't repeat 0
         idxs.append(len(energies) - 1 if len(energies) != 1 else 1)
 
@@ -1046,7 +1083,8 @@ def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, plots=True, titles=None,
         i = 0
         for pair in compute_pairs:
             E_pair = pair_energies_sum[pair]
-            e_perc = sig_figs(E_pair / e_total * 100, n_sig=3)
+            eps = _eps(e_total)
+            e_perc = sig_figs(E_pair / (e_total + eps) * 100, n_sig=3)
             print("{} ({}%) -- {}".format(
                 nums[i].ljust(longest_num), str(e_perc).rjust(4), pair))
             i += 1
@@ -1055,6 +1093,37 @@ def _iterate_coeff_pairs(Scx, meta, fn, pairs=None, plots=True, titles=None,
 
 def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
                            verbose=True, title=None):
+    """Compares distances as per-coefficient ratios, as a generally more viable
+    alternative to the global L2 measure.
+
+    Parameters
+    ----------
+    pair_distances : dict[tensor]
+        (second) Output of `kymatio.visuals.coeff_distance_jtfs`, or alike.
+        The numerator of the ratio.
+
+    pair_distances_ref : dict[tensor]
+        (second) Output of `kymatio.visuals.coeff_distance_jtfs`, or alike.
+        The denominator of the ratio.
+
+    plots : bool (default True)
+        Whether to plot the ratios.
+
+    verbose : bool (default True)
+        Whether to print a summary of ratio statistics.
+
+    title : str / None
+        Will append to pre-made title.
+
+    Returns
+    -------
+    ratios : dict[tensor]
+        Distance ratios, keyed by pairs.
+
+    stats : dict[tensor]
+        Mean, minimum, and maximum of ratios along pairs, respectively,
+        keyed by pairs.
+    """
     # don't modify external
     pd0, pd1 = deepcopy(pair_distances), deepcopy(pair_distances_ref)
 

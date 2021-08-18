@@ -438,7 +438,8 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     Scx = drop_batch_dim_jtfs(Scx, sample_idx)
     t_ref = None
     for pair in Scx:
-        if pair in ('S0', 'S1'):
+        is_joint = bool(pair not in ('S0', 'S1'))
+        if not is_joint:
             continue
         Scx_unpacked[pair] = []
         for coef in Scx[pair]:
@@ -758,7 +759,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
         L2==`sqrt(sum(abs(x)**2))`. L1 is not implemented for `correction=False`.
 
     correction: bool (default False)
-        See `help(coeff_energy)`.
+        See `help(kymatio.toolkit.coeff_energy)`.
 
     Returns
     -------
@@ -784,7 +785,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
                 2**total_joint_stride)
 
     c_flat0, c_slices0 = _iterate_coeffs(Scx0, meta0, pair, fn, norm_fn, factor)
-    c_flat1, c_slices1 = _iterate_coeffs(Scx1, meta0, pair, fn, norm_fn, factor)
+    c_flat1, c_slices1 = _iterate_coeffs(Scx1, meta1, pair, fn, norm_fn, factor)
 
     # make into array and assert shapes are as expected
     c_flat0, c_flat1 = np.asarray(c_flat0), np.asarray(c_flat1)
@@ -792,13 +793,16 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
     c_slices1 = [np.asarray(c) for c in c_slices1]
 
     assert c_flat0.ndim == c_flat1.ndim == 2, (c_flat0.shape, c_flat1.shape)
-    shapes = [np.array(c).shape for cs in (c_slices0, c_slices1) for c in cs]
-    # effectively 3D
-    assert all(len(s) == 2 for s in shapes), shapes
+    is_joint = bool(pair not in ('S0', 'S1'))
+    if is_joint:
+        shapes = [np.array(c).shape for cs in (c_slices0, c_slices1) for c in cs]
+        # effectively 3D
+        assert all(len(s) == 2 for s in shapes), shapes
 
     E = lambda x: _l2(x) if kind == 'l2' else _l1(x)
     ref0, ref1 = E(c_flat0), E(c_flat1)
-    ref = (ref0 + ref1) / 2
+    eps = _eps(ref0, ref1)
+    ref = (ref0 + ref1) / 2 + eps
 
     def D(x0, x1, axis):
         if isinstance(x0, list):
@@ -810,7 +814,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
 
     # do not collapse `freq` dimension
     reldist_flat   = D(c_flat0,   c_flat1,   axis=-1)
-    reldist_slices = D(c_slices0, c_slices1, axis=(-1, -2))
+    reldist_slices = D(c_slices0, c_slices1, axis=(-1, -2) if is_joint else -1)
 
     # return tuple consistency; we don't do "slices" here
     return reldist_flat, reldist_slices
@@ -933,8 +937,9 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     norm_fn = norm_fn or (lambda total_joint_stride: 2**total_joint_stride)
     factor = factor or 1
 
+    is_joint = bool(pair not in ('S0', 'S1'))
     E_flat = []
-    E_slices = [] if pair in ('S0', 'S1') else [[]]
+    E_slices = [] if not is_joint else [[]]
     meta_idx = [0]  # make mutable to avoid passing around
     for c in coeffs_flat:
         if hasattr(c, 'numpy'):
@@ -948,7 +953,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
         E = norm_fn(total_joint_stride) * fn(c) * factor
         E_flat.append(E)
 
-        if pair in ('S0', 'S1'):
+        if not is_joint:
             E_slices.append(E)  # append to list of coeffs
         elif n_is_equal(n_current(), n_prev):
             E_slices[-1].append(E)  # append to slice
@@ -956,7 +961,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
             E_slices[-1].append(E)  # append to slice
             E_slices.append([])
 
-    # # in case loop terminates early
+    # in case loop terminates early
     if isinstance(E_slices[-1], list) and len(E_slices[-1]) == 0:
         E_slices.pop()
 
@@ -1632,14 +1637,22 @@ def rel_ae(x0, x1, eps=None, ref_both=True):
     """Relative absolute error."""
     if ref_both:
         if eps is None:
-            eps = (np.abs(x0).max() + np.abs(x1).max()) / 2000
+            eps = _eps(x0, x1)
         ref = (x0 + x1)/2 + eps
     else:
         if eps is None:
-            eps = np.abs(x0).max() / 1000
+            eps = _eps(x0)
         ref = x0 + eps
     return np.abs(x0 - x1) / ref
 
+
+def _eps(x0, x1=None):
+    if x1 is None:
+        eps =  np.abs(x0).max() / 1000
+    else:
+        eps = (np.abs(x0).max() + np.abs(x1).max()) / 2000
+    eps = max(eps, 10 * np.finfo(x0.dtype).eps)
+    return eps
 
 #### test signals ###########################################################
 def echirp(N, fmin=1, fmax=None, tmin=0, tmax=1):
