@@ -845,7 +845,7 @@ def test_energy_conservation():
     pe_a, pe_u = [{pair: np.sum(pe[pair]) for pair in pe}
                   for pe in (pair_energies_a, pair_energies_u)]
 
-    # run assertions  # TODO N = 400
+    # run assertions
     # compute energy relations ###############################################
     E = {}
     E['in'] = energy(x)

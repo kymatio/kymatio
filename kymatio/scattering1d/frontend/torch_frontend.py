@@ -237,9 +237,12 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
 
         self.load_filters()
 
-        # convert to tensor if it isn't already
+        # convert to tensor if it isn't already, and move to appropriate device
         if type(x).__module__.split('.')[0] == 'numpy':
-            x = torch.from_numpy(x).to(device=self.psi1_f[0][0].device.type)
+            x = torch.from_numpy(x)
+        device = self.psi1_f[0][0].device.type
+        if x.device != device:
+            x = x.to(device)
 
         S = timefrequency_scattering(
             x,

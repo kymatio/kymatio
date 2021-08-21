@@ -499,9 +499,9 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
 
 
 def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
-             overwrite=False, save_images=None, show=None, cmap='jet', norms=None,
-             skip_spins=False, skip_unspinned=False, sample_idx=0, inf_token=-1,
-             verbose=False, gif_kw=None):
+             overwrite=False, save_images=None, show=None, cmap='turbo',
+             norms=None, skip_spins=False, skip_unspinned=False, sample_idx=0,
+             inf_token=-1, verbose=False, gif_kw=None):
     """Slice heatmaps of JTFS outputs.
     # TODO rename 2d?
 
@@ -654,9 +654,9 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
 
         meta_idx[0] += len(coef)
 
-    # handle args
-    savedir, images_ext, save_images, show, do_gif = _handle_gif_args(
-        savedir, base_name, images_ext, save_images, show)
+    # handle args & check if already exists (if so, delete if `overwrite`)
+    savedir, savepath, images_ext, save_images, show, do_gif = _handle_gif_args(
+        savedir, base_name, images_ext, save_images, overwrite, show=False)
 
     # set params
     out_3D = bool(meta['n']['psi_t * phi_f'].ndim == 3)
@@ -704,7 +704,6 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
     if do_gif:
         if gif_kw is None:
             gif_kw = {}
-        savepath = os.path.join(savedir, base_name + '.gif')
         make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
                  overwrite=overwrite, delimiter=base_name, verbose=verbose,
                  **gif_kw)
@@ -717,8 +716,8 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
 def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
                 overwrite=False, save_images=False,
-                width=800, height=800, surface_count=30, opacity=.2, zoom=1.61,
-                verbose=True, gif_kw=None):
+                width=800, height=800, surface_count=30, opacity=.2, zoom=1,
+                angles=None, verbose=True, gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
     # TODO rename 3d?
 
@@ -753,8 +752,15 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
     opacity : float
         Lesser makes 3D surfaces more transparent, exposing more detail.
 
-    zoom : float
-        Zoom factor on each 3D frame.
+    zoom : float (default=1) / None
+        Zoom factor on each 3D frame. If None, won't modify `angles`.
+        If not None, will first divide by L2 norm of `angles`, then by `zoom`.
+
+    angles : None / np.ndarray / list/tuple[np.ndarray]
+        Passed to `go.Figure.update_layout()` as
+        `'layout_kw': {'scene_camera': 'center': dict(x=e[0], y=e[1], z=e[2])}`,
+        where `e = angles[0]` up to `e = angles[len(packed) - 1]`.
+        If it's a single 1D array, will reuse for each frame.
 
     verbose : bool (default True)
         Whether to print GIF generation progress.
@@ -786,9 +792,9 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
         print("\n`plotly.graph_objs` is needed for `gif_jtfs_3D`.")
         raise e
 
-    # handle args
-    savedir, images_ext, save_images, *_ = _handle_gif_args(
-        savedir, base_name, images_ext, save_images, show=False)
+    # handle args & check if already exists (if so, delete if `overwrite`)
+    savedir, savepath, images_ext, save_images, *_ = _handle_gif_args(
+        savedir, base_name, images_ext, save_images, overwrite, show=False)
 
     # handle labels
     supported = ('t', 'xi2', 'xi1_fr', 'xi1')
@@ -815,8 +821,22 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
         _slc = (slice(None),) * (1 + idx) + (slice(None, None, -1),)
         packed = packed[_slc]
 
-    # camera focus, colormap norm
-    eye = np.array([2.5, .3, 2]) / zoom
+    # camera focus
+    if angles is None:
+        eye = np.array([2.5, .3, 2])
+        eye /= np.linalg.norm(eye)
+        eyes = [eye] * len(packed)
+    elif (isinstance(angles, (list, tuple)) or
+              (isinstance(angles, np.ndarray) and angles.ndim == 2)):
+        eyes = angles
+    else:
+        eyes = [angles] * len(packed)
+    assert len(eyes) == len(packed), (len(eyes), len(packed))
+    # camera zoom
+    if zoom is not None:
+        for i in range(len(eyes)):
+            eyes[i] /= (np.linalg.norm(eyes[i]) * .5 * zoom)
+    # colormap norm
     mx = cmap_norm * packed.max()
 
     # gif configs
@@ -850,7 +870,6 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
         scene_camera = dict(
             up=dict(x=0, y=1, z=0),
             center=dict(x=0, y=0, z=0),
-            eye=dict(x=eye[0], y=eye[1], z=eye[2]),
         ),
     )
 
@@ -858,6 +877,9 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
     img_paths = []
     for k, vol4 in enumerate(packed):
         fig = go.Figure(go.Volume(value=vol4.flatten(), **volume_kw))
+
+        eye = dict(x=eyes[k][0], y=eyes[k][1], z=eyes[k][2])
+        layout_kw['scene_camera']['eye'] = eye
         fig.update_layout(
             **layout_kw,
             title={'text': f"{frame_label}={k}",
@@ -1269,7 +1291,7 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
     if cmap == 'none':
         cmap = None
     elif cmap is None:
-        cmap = 'jet' if abs else 'bwr'
+        cmap = 'turbo' if abs else 'bwr'
     _kw = dict(vmin=vmin, vmax=vmax, cmap=cmap, aspect=aspect, **kw)
 
     if abs:
@@ -1528,7 +1550,8 @@ def _make_titles_jtfs(compute_pairs, target):
     return titles
 
 
-def _handle_gif_args(savedir, base_name, images_ext, save_images, show):
+def _handle_gif_args(savedir, base_name, images_ext, save_images, overwrite,
+                     show):
     do_gif = bool(savedir is not None)
     if save_images is None:
         if savedir is None:
@@ -1546,4 +1569,17 @@ def _handle_gif_args(savedir, base_name, images_ext, save_images, show):
     if not images_ext.startswith('.'):
         images_ext = '.' + images_ext
 
-    return savedir, images_ext, save_images, show, do_gif
+    savepath = os.path.join(savedir, base_name + '.gif')
+    _check_savepath(savepath, overwrite)
+    return savedir, savepath, images_ext, save_images, show, do_gif
+
+
+def _check_savepath(savepath, overwrite):
+    if os.path.isfile(savepath):
+        if not overwrite:
+            raise RuntimeError("File already exists at `savepath`; "
+                               "set `overwrite=True` to overwrite.\n"
+                               "%s" % str(savepath))
+        else:
+            # delete if exists
+            os.unlink(savepath)
