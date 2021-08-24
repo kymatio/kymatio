@@ -597,10 +597,11 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    r_psi : float, optional
+    r_psi : float / tuple[float], optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5)
+        Defaults to sqrt(0.5).
+        Tuple sets separately for first- and second-order filters.
     sigma0 : float, optional
         frequential width of the low-pass filter at scale J=0
         (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
@@ -629,6 +630,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
         `xi1, sigma1, j1, is_cqt1` for second order filters.
     """
     Q1, Q2 = Q if isinstance(Q, tuple) else (Q, 1)
+    r_psi1, r_psi2 = r_psi if isinstance(r_psi, tuple) else (r_psi, r_psi)
     if Q1 < 1 or Q2 < 1:
         raise ValueError('Q should always be >= 1, got {}'.format(Q))
 
@@ -637,9 +639,9 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     sigma_min = sigma0 / math.pow(2, J)
 
     xi1s, sigma1s, j1s, is_cqt1s = compute_params_filterbank(
-        sigma_min, Q1, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+        sigma_min, Q1, r_psi=r_psi1, alpha=alpha, xi_min=xi_min)
     xi2s, sigma2s, j2s, is_cqt2s = compute_params_filterbank(
-        sigma_min, Q2, r_psi=r_psi, alpha=alpha, xi_min=xi_min)
+        sigma_min, Q2, r_psi=r_psi2, alpha=alpha, xi_min=xi_min)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
@@ -854,11 +856,12 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                    shape_fr_scale_min, max_pad_factor_fr, unrestricted_pad_fr,
                    max_subsample_equiv_before_phi_fr,
                    subsample_equiv_relative_to_max_pad_init,
-                   average_fr_global,
+                   average_fr_global_phi,
                    sampling_psi_fr='resample', sampling_phi_fr='resample',
                    pad_mode_fr='reflect', sigma_max_to_min_max_ratio=1.2,
-                   r_psi=math.sqrt(0.5), normalize='l1', criterion_amplitude=1e-3,
-                   sigma0=0.1, alpha=4., P_max=5, eps=1e-7):
+                   r_psi_fr=math.sqrt(0.5), normalize='l1',
+                   criterion_amplitude=1e-3, sigma0=0.1, alpha=4., P_max=5,
+                   eps=1e-7):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -896,14 +899,14 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         are constructed fully correctly and devoid of boundary effects.
 
     max_subsample_equiv_before_phi_fr : int
-        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+        See `help(TimeFrequencyScattering1D)`. Used for waiving certain criterion
         checks if `shape_fr_scale` is too small.
 
     subsample_equiv_relative_to_max_pad_init : int
         See `help(TimeFrequencyScattering1D)`. Controls filter lengths.
 
-    average_fr_global : bool
-        See `help(TimeFrequencyScattering1D)`. Used for waving certain criterion
+    average_fr_global_phi : bool
+        See `help(TimeFrequencyScattering1D)`. Used for waiving certain criterion
         checks.
 
     sampling_psi_fr : str['resample', 'recalibrate', 'exclude']
@@ -934,7 +937,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         Largest permitted `max(sigma) / min(sigma)`.
         See `help(TimeFrequencyScattering1D)`.
 
-    r_psi, normalize, criterion_amplitude, sigma0, alpha, P_max, eps:
+    r_psi_fr, normalize, criterion_amplitude, sigma0, alpha, P_max, eps:
         See `help(kymatio.scattering1d.filter_bank.scattering_filter_factory)`.
 
     Returns
@@ -973,6 +976,13 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     j0_max : int / None
         Sets `max_subsample_equiv_before_psi_fr`, see its docs in
         `help(TimeFrequencyScattering1D)`.
+
+    Note
+    ----
+    For `average_fr_global==True`, largest `j0` for `psi_fr` may exceed that of
+    `phi_fr`, since `max_subsample_equiv_before_phi_fr` is set to
+    `J_pad_fr_max_init` rather than largest `j0` in `phi_fr`. This is for speed,
+    and since `phi_fr` will never be used.
     """
     # compute the spectral parameters of the filters
     J_support = J_pad_fr_max_init  # begin with longest
@@ -980,8 +990,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     xi_min = 2 / N  # minimal peak at bin 2
     T = 1  # for computing `sigma_low`, unused
     (_, xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, *_
-     ) = calibrate_scattering_filters(J_fr, Q_fr, T=T, r_psi=r_psi, sigma0=sigma0,
-                                      alpha=alpha, xi_min=xi_min)
+     ) = calibrate_scattering_filters(J_fr, Q_fr, T=T, r_psi=r_psi_fr,
+                                      sigma0=sigma0, alpha=alpha, xi_min=xi_min)
 
     # instantiate the dictionaries which will contain the filters
     psi1_f_fr_up = []
@@ -1040,7 +1050,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     # for later
     same_pad_limit = (unrestricted_pad_fr or
                       all(p == max_pad_factor_fr[0] for p in max_pad_factor_fr))
-    pad_contractive_phi = (average_fr_global or sampling_phi_fr == 'recalibrate')
+    pad_contractive_phi = (average_fr_global_phi or
+                           sampling_phi_fr == 'recalibrate')
     cleanup = False  # for later
     # sample spin down and up wavelets
     for n1_fr in range(len(j1_frs)):
@@ -1408,8 +1419,11 @@ def energy_norm_filterbank_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr,
                 raise Exception("largest scale filterbank must have >=4 filters")
             j0_break = j0
             break
+        phi_f = (phi_f_fr[j0][0] if j0 in phi_f_fr else
+                 # `average_fr_global==True` case
+                 None)
         scaling_factors = energy_norm_filterbank(
-            psi_fs_up, psi_fs_down, phi_f_fr[j0][0], J_fr, log2_F)
+            psi_fs_up, psi_fs_down, phi_f, J_fr, log2_F)
 
     # reuse last's
     if j0_break is not None:
@@ -1846,24 +1860,24 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
     return width
 
 #### helpers #################################################################
-def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None, force_phi=False):
+def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None):
     lp_sum = 0
     for psi_f in psi_fs:
         lp_sum += np.abs(psi_f)**2
-    if force_phi or (log2_T is not None and J is not None and log2_T >= J):
-        # else lowest frequency bandpasses are too attenuated
+    if phi_f is not None and (
+            # else lowest frequency bandpasses are too attenuated
+            log2_T is not None and J is not None and log2_T >= J):
         lp_sum += np.abs(phi_f)**2
     return lp_sum
 
-def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
-                       J=None, log2_T=None, force_phi=False):
+def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None, J=None, log2_T=None):
     lp_sum = {0: {}, 1: {}}
     psi_fs_all = (psi1_f, psi2_f)
     for order, psi_fs in enumerate(psi_fs_all):
         lp_sum[order] = 0
         for psi_f in psi_fs:
             lp_sum[order] += np.abs(psi_f[0])**2
-    if force_phi or log2_T >= J:
+    if phi_f is not None and log2_T >= J:
         # else lowest frequency bandpasses are too attenuated
         for order in lp_sum:
             # `[0]` for `trim_tm=0`

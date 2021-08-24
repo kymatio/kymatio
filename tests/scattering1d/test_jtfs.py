@@ -1,6 +1,7 @@
 """Joint Time-Frequency Scattering related tests."""
 import pytest
 import numpy as np
+import warnings
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
@@ -8,12 +9,14 @@ from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
                              l2, rel_ae, validate_filterbank_tm,
                              validate_filterbank_fr, pack_coeffs_jtfs,
                              tensor_padded)
-from kymatio.visuals import coeff_distance_jtfs, compare_distances_jtfs
+from kymatio.visuals import (coeff_distance_jtfs, compare_distances_jtfs,
+                             energy_profile_jtfs)
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
-default_backend = ('numpy', 'torch', 'tensorflow')[2]
+# note: non-'numpy' skips `test_meta()` and `test_lp_sum()`
+default_backend = ('numpy', 'torch', 'tensorflow')[0]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
@@ -478,6 +481,7 @@ def test_lp_sum():
 
     if default_backend != 'numpy':
         # filters don't change
+        warnings.warn("`test_lp_sum()` skipped per non-'numpy' `default_backend`")
         return
 
     N = 1024
@@ -707,8 +711,10 @@ def test_pack_coeffs_jtfs():
             if structure == 1:
                 out = out.transpose(1, 0, 2, 3)
                 if separate_lowpass:
-                    out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
-                    out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
+                    if out_phi_f is not None:
+                        out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
+                    if out_phi_t is not None:
+                        out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
 
             s = out.shape
             out_up   = (out[:, :s[1]//2 + 1] if not separate_lowpass else
@@ -779,20 +785,126 @@ def test_pack_coeffs_jtfs():
 
         # flatten rather than re-pack into original shape since it's flattened
         # in `pack_coeffs_jtfs` anyway
-        paired_flat = out_stored_into_pairs(out_stored, out_stored_keys)
+        paired_flat0 = out_stored_into_pairs(out_stored, out_stored_keys)
 
         for separate_lowpass in (False, True):
-            for structure in (1, 2, 3, 4):
+          for structure in (1, 2, 3, 4):
+            for out_exclude in (None, 1):
+                if out_exclude is not None:
+                    if not separate_lowpass:
+                        # invalid
+                        continue
+                    else:
+                        pairs_lp = ('psi_t * phi_f', 'phi_t * psi_f',
+                                    'phi_t * phi_f')
+                        out_exclude = (pairs_lp[-3:] if structure != 4 else
+                                       pairs_lp[-2:])
+
                 kw = {k: v for k, v in test_params.items()
                       if k in ('sampling_psi_fr',)}
                 info = "\nstructure={}\nseparate_lowpass={}\n{}".format(
                     structure, separate_lowpass,
                     "\n".join(f'{k}={v}' for k, v in test_params.items()))
 
+                # exclude pairs if needed
+                if out_exclude is None:
+                    paired_flat = paired_flat0
+                else:
+                    paired_flat = {}
+                    for pair in paired_flat0:
+                        if pair not in out_exclude:
+                            paired_flat[pair] = paired_flat0[pair]
+
+                # pack & validate
                 out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
                                        separate_lowpass=separate_lowpass,
                                        **kw, debug=True)
                 validate_packing(out, separate_lowpass, structure, t, info)
+
+
+def test_energy_conservation():
+    """E_out ~= E_in.
+
+    Refer to:
+     - https://github.com/kymatio/kymatio/discussions/732#discussioncomment-864097
+     - https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855701
+     - https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855702
+    """
+    np.random.seed(0)
+    # 8.5 on dyadic scale to test time unpad correction
+    N = 360
+    x = np.random.randn(N)
+
+    # configure ~tight frame; configured also for speed, not optimized for I/O
+    # https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855703
+    # https://github.com/kymatio/kymatio/discussions/732#discussioncomment-968384
+    r_psi = (.9, .9, .9)
+    J = int(np.ceil(np.log2(N)) - 3)
+    J_fr = 3
+    F = 2**J_fr
+    T = 2**J
+    Q = (8, 3)
+    Q_fr = 4
+    params = dict(
+        shape=N, J=J, J_fr=J_fr, Q=Q, Q_fr=Q_fr, F=F, T=T,
+        r_psi=r_psi, average_fr=False, sampling_filters_fr='resample',
+        max_pad_factor=None, max_pad_factor_fr=None,
+        pad_mode='reflect', pad_mode_fr='conj-reflect-zero',
+        out_type='dict:list', frontend=default_backend
+    )
+    jtfs_a = TimeFrequencyScattering1D(**params, average=True)
+    jtfs_u = TimeFrequencyScattering1D(**params, average=False)
+    jmeta_a = jtfs_a.meta()
+    jmeta_u = jtfs_a.meta()
+
+    # scatter
+    Scx_a = jtfs_a(x)
+    Scx_u = jtfs_u(x)
+
+    # compute energies
+    pairs = ('S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
+             'psi_t * psi_f_up', 'psi_t * psi_f_down')
+    kw = dict(kind='l2', plots=False)
+    _, pair_energies_a = energy_profile_jtfs(Scx_a, jmeta_a, **kw, pairs=pairs)
+    _, pair_energies_u = energy_profile_jtfs(Scx_u, jmeta_u, **kw, pairs=pairs)
+
+    pe_a, pe_u = [{pair: np.sum(pe[pair]) for pair in pe}
+                  for pe in (pair_energies_a, pair_energies_u)]
+
+    # run assertions
+    # compute energy relations ###############################################
+    E = {}
+    E['in'] = energy(x)
+    E['out'] = (np.sum([v for pair, v in pe_u.items()
+                        if pair not in ('S0', 'S1')]) +
+                pe_a['S0'])
+
+    E['S0'] = pe_a['S0']
+    E['S1'] = pe_a['S1']
+    E['U1'] = pe_u['S1']
+    # U2 + S2 = U1 - S1 --> U2 = (U1 - S1) - S2
+    E['U2'] = (E['U1'] - E['S1']) - pe_u['psi_t * phi_f']
+    E['S1_joint'] = (pe_u['phi_t * phi_f'] +
+                     pe_u['phi_t * psi_f'])
+    E['U2_joint'] = (pe_u['psi_t * psi_f_up'] +
+                     pe_u['psi_t * psi_f_down'])
+
+    r = {}
+    r['out / in'] = E['out'] / E['in']
+    r['(S0 + U1) / in'] = (E['S0'] + E['U1']) / E['in']
+    r['S1_joint / S1'] = E['S1_joint'] / E['S1']
+    r['U2_joint / U2'] = E['U2_joint'] / E['U2']
+
+    if metric_verbose:
+        print("\nEnergy conservation (w/ tight frame):")
+        for k, v in r.items():
+            print("{:.4f} -- {}".format(v, k))
+
+    # run assertions #########################################################
+    assert .9  < r['out / in']       < 1., r['out / in']
+    assert .95 < r['(S0 + U1) / in'] < 1., r['(S0 + U1) / in']
+    assert .95 < r['S1_joint / S1']  < 1., r['S1_joint / S1']
+    assert .83 < r['U2_joint / U2']  < 1., r['U2_joint / U2']
 
 
 def test_implementation():
@@ -848,10 +960,10 @@ def test_backends():
                 outs0  = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
                 outsn  = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw)
                 outs0n = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw, sample_idx=0)
-                outs   = outs  if isinstance(outs,  tuple) else [outs]
-                outs0  = outs0 if isinstance(outs0, tuple) else [outs0]
-                outsn  = outs  if isinstance(outs,  tuple) else [outs]
-                outs0n = outs0 if isinstance(outs0, tuple) else [outs0]
+                outs   = outs   if isinstance(outs,  tuple) else [outs]
+                outs0  = outs0  if isinstance(outs0, tuple) else [outs0]
+                outsn  = outsn  if isinstance(outs,  tuple) else [outsn]
+                outs0n = outs0n if isinstance(outs0, tuple) else [outs0n]
 
                 for o, o0, on, o0n in zip(outs, outs0, outsn, outs0n):
                     assert o.ndim == 5, o.shape
@@ -909,7 +1021,7 @@ def test_reconstruction_torch():
     Q = 8
     N = 1024
     n_iters = 30
-    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4, out_3D=True,
+    jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=4,
                                      frontend='torch', out_type='array',
                                      sampling_filters_fr=('exclude', 'resample'),
                                      max_pad_factor=1, max_pad_factor_fr=2
@@ -961,11 +1073,15 @@ def test_meta():
         - aligned
         - sampling_psi_fr
         - sampling_phi_fr
-    a total of 56 tests. All possible ways of packing the same coefficients
+    and, partially
+        - average_global
+        - average_global_phi
+        - average_global_fr
+        - average_global_fr_phi
+    a total of 60 tests. All possible ways of packing the same coefficients
     (via `out_type`) aren't tested.
 
     Not tested:
-        - average_fr_global
         - oversampling_fr
         - max_padding_fr
 
@@ -1102,6 +1218,7 @@ def test_meta():
 
     if default_backend != 'numpy':
         # meta doesn't change
+        warnings.warn("`test_meta()` skipped per non-'numpy' `default_backend`")
         return
 
     N = 512
@@ -1147,6 +1264,17 @@ def test_meta():
                   aligned=aligned,
                   sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
               run_test(params, test_params)
+
+    # minimal global averaging testing
+    N = 512
+    x = np.random.randn(N)
+    params = dict(shape=N, J=9, Q=9, J_fr=5, Q_fr=1, F=2**5, out_type=out_type)
+    for average_fr in (True, False):
+        for average in (True, False):
+            test_params = dict(average_fr=average_fr, average=average,
+                               sampling_filters_fr='resample',
+                               out_3D=False)
+            run_test(params, test_params)
 
 
 def test_output():
@@ -1357,6 +1485,7 @@ if __name__ == '__main__':
         test_compute_temporal_width()
         test_tensor_padded()
         test_pack_coeffs_jtfs()
+        test_energy_conservation()
         test_implementation()
         test_backends()
         test_differentiability_torch()

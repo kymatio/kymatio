@@ -94,6 +94,33 @@ def test_gif_jtfs_3D():
     _run_with_cleanup(fn, savename)
 
 
+def test_energy_profile_jtfs():
+    for i, Scx in enumerate(out_jtfss):
+      for flatten in (False, True):
+        for pairs in (None, ('phi_t * psi_f',)):
+          test_params = dict(flatten=flatten, pairs=pairs)
+          try:
+              _ = visuals.energy_profile_jtfs(Scx, metas[1 + i], **test_params)
+          except Exception as e:
+              test_params['i'] = i
+              print('\n'.join(f'{k}={v}' for k, v in test_params.items()))
+              raise e
+
+
+def test_coeff_distance_jtfs():
+    for i, Scx in enumerate(out_jtfss):
+      for flatten in (False, True):
+        for pairs in (None, ('phi_t * psi_f',)):
+          test_params = dict(flatten=flatten, pairs=pairs)
+          try:
+              _ = visuals.coeff_distance_jtfs(Scx, Scx, metas[1 + i],
+                                              **test_params)
+          except Exception as e:
+              test_params['i'] = i
+              print('\n'.join(f'{k}={v}' for k, v in test_params.items()))
+              raise e
+
+
 def _run_with_cleanup(fn, savename):
     with tempdir() as savedir:
         try:
@@ -118,5 +145,7 @@ if __name__ == '__main__':
         test_filterbank_jtfs()
         test_gif_jtfs()
         test_gif_jtfs_3D()
+        test_energy_profile_jtfs()
+        test_coeff_distance_jtfs()
     else:
         pytest.main([__file__, "-s"])

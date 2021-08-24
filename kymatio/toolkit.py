@@ -40,8 +40,8 @@ def _iterate_apply(Scx, fn):
     if isinstance(Scx, dict):
         out = {}  # don't modify source dict
         for pair in Scx:
-            out[pair] = []
             if isinstance(Scx[pair], list):
+                out[pair] = []
                 for i, s in enumerate(Scx[pair]):
                     out[pair].append(get_meta(s))
                     out[pair][i]['coef'] = fn(s['coef'])
@@ -242,13 +242,22 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
 
     Notes
     -----
-    Coefficients will be sorted in order of increasing center frequency -
-    along `n2`, and `n1_fr` for spin down (whihc makes it so that both spins are
-    increasing away from `psi_t * phi_f`). The overall packing is structured
-    same as in `kymatio.visuals.filterbank_jtfs()`.
+      - Coefficients will be sorted in order of increasing center frequency -
+        along `n2`, and `n1_fr` for spin down (which makes it so that both spins
+        are increasing away from `psi_t * phi_f`). The overall packing is
+        structured same as in `kymatio.visuals.filterbank_jtfs()`.
 
-    Method assumes `out_exclude=None`.
+      - Method assumes `out_exclude=None` if `not separate_lowpass` - else,
+        the following are allowed to be excluded: 'phi_t * psi_f',
+        'phi_t * phi_f', and if `structure != 4`, 'psi_t * phi_f'.
+
+      - The built-in energy renormalization includes doubling the energy
+        of `phi_t * psi_f` pairs to compensate for computing only once (for
+        just one spin since it's identical to other spin), while here it's
+        also packed twice; to compensate, its energy is halved before packing.
     """
+    B = get_unified_backend(_infer_backend(Scx, get_name=True)[1])
+
     def combined_to_tensor(combined_all, recursive):
         def process_dims(o):
             if recursive:
@@ -293,7 +302,6 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             out_phi_f = process_dims(out_phi_f)
 
         # spinned ############################################################
-        B = get_unified_backend(_infer_backend(combined_all[0], get_name=True)[1])
         if structure in (1, 2):
             out = tensor_padded(combined, **kw)
             out = process_dims(out)
@@ -302,8 +310,10 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                 tp_shape = (0, 2, 1, 3, 4)
                 out = B.transpose(out, tp_shape)
                 if separate_lowpass:
-                    out_phi_t = B.transpose(out_phi_t, tp_shape)
-                    out_phi_f = B.transpose(out_phi_f, tp_shape)
+                    if out_phi_t is not None:
+                        out_phi_t = B.transpose(out_phi_t, tp_shape)
+                    if out_phi_f is not None:
+                        out_phi_f = B.transpose(out_phi_f, tp_shape)
 
             out = (out if not separate_lowpass else
                    (out, out_phi_f, out_phi_t))
@@ -363,9 +373,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             assert out_up.shape == out_down.shape, (out_up.shape, out_down.shape)
 
         if not recursive:
-            # drop batch dim
+            # drop batch dim; `None` in case of `out_exclude`
             if isinstance(out, tuple):
-                out = tuple(o[0] for o in out)
+                out = tuple((o[0] if o is not None else o) for o in out)
             else:
                 out = out[0]
         return out
@@ -432,6 +442,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     Scx = drop_batch_dim_jtfs(Scx, sample_idx)
     t_ref = None
     for pair in Scx:
+        is_joint = bool(pair not in ('S0', 'S1'))
+        if not is_joint:
+            continue
         Scx_unpacked[pair] = []
         for coef in Scx[pair]:
             if list_coeffs and (isinstance(coef, dict) and 'coef' in coef):
@@ -448,13 +461,27 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                 raise ValueError("expected `coef.ndim` of 1 or 2, got "
                                  "shape = %s" % str(coef.shape))
 
-    # pack into dictionary indexed by `n1_fr`, `n2` ##########################
-    packed = {}
+    # check that all necessary pairs are present
     pairs = ('psi_t * psi_f_up', 'psi_t * psi_f_down', 'psi_t * phi_f',
              'phi_t * psi_f', 'phi_t * phi_f')
+    # structure 4 requires `psi_t * phi_f`
+    okay_to_exclude = (pairs[-3:] if structure != 4 else
+                       pairs[-2:])
+    Scx_pairs = list(Scx)
+    for p in pairs:
+      if p not in Scx_pairs:
+        if (not separate_lowpass or
+              (separate_lowpass and p not in okay_to_exclude)):
+          raise ValueError(("configuration requires pair '%s', which is "
+                            "missing") % p)
+
+    # pack into dictionary indexed by `n1_fr`, `n2` ##########################
+    packed = {}
     ns = meta['n']
     n_n1_frs_max = 0
     for pair in pairs:
+        if pair not in Scx_pairs:
+            continue
         packed[pair] = []
         nsp = ns[pair].astype(int).reshape(-1, 3)
 
@@ -496,6 +523,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                         except Exception as e:
                             print(pair, idx)
                             raise e
+                        if pair == 'phi_t * psi_f':
+                            # see "Notes" in docs
+                            coef = coef / B.sqrt(2., dtype=coef.dtype)
                         packed[pair][-1][-1].append(coef)
                         idx += 1
                         n1s_done += 1
@@ -529,11 +559,17 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         combined_down[n2] = combined_down[n2][::-1]
 
     # pack phi_t
-    c_phi_t = deepcopy(packed['phi_t * psi_f'])
-    c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
-    c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
+    if 'phi_t * psi_f' in Scx_pairs:
+        c_phi_t = deepcopy(packed['phi_t * psi_f'])
+        c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
+        c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
+    else:
+        c_phi_t = None
     # pack phi_f
-    c_phi_f = packed['psi_t * phi_f'][::-1]
+    if 'psi_t * phi_f' in Scx_pairs:
+        c_phi_f = packed['psi_t * phi_f'][::-1]
+    else:
+        c_phi_f = None
 
     # append `phi_f` if appropriate
     if (not separate_lowpass or structure == 4) and structure != 3:
@@ -747,7 +783,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
         L2==`sqrt(sum(abs(x)**2))`. L1 is not implemented for `correction=False`.
 
     correction: bool (default False)
-        See `help(coeff_energy)`.
+        See `help(kymatio.toolkit.coeff_energy)`.
 
     Returns
     -------
@@ -773,7 +809,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
                 2**total_joint_stride)
 
     c_flat0, c_slices0 = _iterate_coeffs(Scx0, meta0, pair, fn, norm_fn, factor)
-    c_flat1, c_slices1 = _iterate_coeffs(Scx1, meta0, pair, fn, norm_fn, factor)
+    c_flat1, c_slices1 = _iterate_coeffs(Scx1, meta1, pair, fn, norm_fn, factor)
 
     # make into array and assert shapes are as expected
     c_flat0, c_flat1 = np.asarray(c_flat0), np.asarray(c_flat1)
@@ -781,13 +817,16 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
     c_slices1 = [np.asarray(c) for c in c_slices1]
 
     assert c_flat0.ndim == c_flat1.ndim == 2, (c_flat0.shape, c_flat1.shape)
-    shapes = [np.array(c).shape for cs in (c_slices0, c_slices1) for c in cs]
-    # effectively 3D
-    assert all(len(s) == 2 for s in shapes), shapes
+    is_joint = bool(pair not in ('S0', 'S1'))
+    if is_joint:
+        shapes = [np.array(c).shape for cs in (c_slices0, c_slices1) for c in cs]
+        # effectively 3D
+        assert all(len(s) == 2 for s in shapes), shapes
 
     E = lambda x: _l2(x) if kind == 'l2' else _l1(x)
     ref0, ref1 = E(c_flat0), E(c_flat1)
-    ref = (ref0 + ref1) / 2
+    eps = _eps(ref0, ref1)
+    ref = (ref0 + ref1) / 2 + eps
 
     def D(x0, x1, axis):
         if isinstance(x0, list):
@@ -799,7 +838,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
 
     # do not collapse `freq` dimension
     reldist_flat   = D(c_flat0,   c_flat1,   axis=-1)
-    reldist_slices = D(c_slices0, c_slices1, axis=(-1, -2))
+    reldist_slices = D(c_slices0, c_slices1, axis=(-1, -2) if is_joint else -1)
 
     # return tuple consistency; we don't do "slices" here
     return reldist_flat, reldist_slices
@@ -922,8 +961,9 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     norm_fn = norm_fn or (lambda total_joint_stride: 2**total_joint_stride)
     factor = factor or 1
 
+    is_joint = bool(pair not in ('S0', 'S1'))
     E_flat = []
-    E_slices = [] if pair in ('S0', 'S1') else [[]]
+    E_slices = [] if not is_joint else [[]]
     meta_idx = [0]  # make mutable to avoid passing around
     for c in coeffs_flat:
         if hasattr(c, 'numpy'):
@@ -937,7 +977,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
         E = norm_fn(total_joint_stride) * fn(c) * factor
         E_flat.append(E)
 
-        if pair in ('S0', 'S1'):
+        if not is_joint:
             E_slices.append(E)  # append to list of coeffs
         elif n_is_equal(n_current(), n_prev):
             E_slices[-1].append(E)  # append to slice
@@ -945,7 +985,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
             E_slices[-1].append(E)  # append to slice
             E_slices.append([])
 
-    # # in case loop terminates early
+    # in case loop terminates early
     if isinstance(E_slices[-1], list) and len(E_slices[-1]) == 0:
         E_slices.pop()
 
@@ -1621,14 +1661,22 @@ def rel_ae(x0, x1, eps=None, ref_both=True):
     """Relative absolute error."""
     if ref_both:
         if eps is None:
-            eps = (np.abs(x0).max() + np.abs(x1).max()) / 2000
+            eps = _eps(x0, x1)
         ref = (x0 + x1)/2 + eps
     else:
         if eps is None:
-            eps = np.abs(x0).max() / 1000
+            eps = _eps(x0)
         ref = x0 + eps
     return np.abs(x0 - x1) / ref
 
+
+def _eps(x0, x1=None):
+    if x1 is None:
+        eps =  np.abs(x0).max() / 1000
+    else:
+        eps = (np.abs(x0).max() + np.abs(x1).max()) / 2000
+    eps = max(eps, 10 * np.finfo(x0.dtype).eps)
+    return eps
 
 #### test signals ###########################################################
 def echirp(N, fmin=1, fmax=None, tmin=0, tmax=1):
