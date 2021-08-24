@@ -48,7 +48,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right, pad_mode):
+    def pad(x, pad_left, pad_right, pad_mode='reflect'):
         """Pad real 1D tensors
 
         1D implementation of the padding function for real PyTorch tensors.
