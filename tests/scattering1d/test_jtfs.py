@@ -1,6 +1,7 @@
 """Joint Time-Frequency Scattering related tests."""
 import pytest
 import numpy as np
+import warnings
 from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
@@ -14,7 +15,8 @@ from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
-default_backend = ('numpy', 'torch', 'tensorflow')[1]
+# note: non-'numpy' skips `test_meta()` and `test_lp_sum()`
+default_backend = ('numpy', 'torch', 'tensorflow')[0]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
@@ -479,6 +481,7 @@ def test_lp_sum():
 
     if default_backend != 'numpy':
         # filters don't change
+        warnings.warn("`test_lp_sum()` skipped per non-'numpy' `default_backend`")
         return
 
     N = 1024
@@ -708,8 +711,10 @@ def test_pack_coeffs_jtfs():
             if structure == 1:
                 out = out.transpose(1, 0, 2, 3)
                 if separate_lowpass:
-                    out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
-                    out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
+                    if out_phi_f is not None:
+                        out_phi_f = out_phi_f.transpose(1, 0, 2, 3)
+                    if out_phi_t is not None:
+                        out_phi_t = out_phi_t.transpose(1, 0, 2, 3)
 
             s = out.shape
             out_up   = (out[:, :s[1]//2 + 1] if not separate_lowpass else
@@ -780,16 +785,37 @@ def test_pack_coeffs_jtfs():
 
         # flatten rather than re-pack into original shape since it's flattened
         # in `pack_coeffs_jtfs` anyway
-        paired_flat = out_stored_into_pairs(out_stored, out_stored_keys)
+        paired_flat0 = out_stored_into_pairs(out_stored, out_stored_keys)
 
         for separate_lowpass in (False, True):
-            for structure in (1, 2, 3, 4):
+          for structure in (1, 2, 3, 4):
+            for out_exclude in (None, 1):
+                if out_exclude is not None:
+                    if not separate_lowpass:
+                        # invalid
+                        continue
+                    else:
+                        pairs_lp = ('psi_t * phi_f', 'phi_t * psi_f',
+                                    'phi_t * phi_f')
+                        out_exclude = (pairs_lp[-3:] if structure != 4 else
+                                       pairs_lp[-2:])
+
                 kw = {k: v for k, v in test_params.items()
                       if k in ('sampling_psi_fr',)}
                 info = "\nstructure={}\nseparate_lowpass={}\n{}".format(
                     structure, separate_lowpass,
                     "\n".join(f'{k}={v}' for k, v in test_params.items()))
 
+                # exclude pairs if needed
+                if out_exclude is None:
+                    paired_flat = paired_flat0
+                else:
+                    paired_flat = {}
+                    for pair in paired_flat0:
+                        if pair not in out_exclude:
+                            paired_flat[pair] = paired_flat0[pair]
+
+                # pack & validate
                 out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
                                        separate_lowpass=separate_lowpass,
                                        **kw, debug=True)
@@ -1192,6 +1218,7 @@ def test_meta():
 
     if default_backend != 'numpy':
         # meta doesn't change
+        warnings.warn("`test_meta()` skipped per non-'numpy' `default_backend`")
         return
 
     N = 512
@@ -1240,11 +1267,12 @@ def test_meta():
 
     # minimal global averaging testing
     N = 512
+    x = np.random.randn(N)
     params = dict(shape=N, J=9, Q=9, J_fr=5, Q_fr=1, F=2**5, out_type=out_type)
     for average_fr in (True, False):
         for average in (True, False):
             test_params = dict(average_fr=average_fr, average=average,
-                               sampling_filters_fr=('exclude', 'resample'),
+                               sampling_filters_fr='resample',
                                out_3D=False)
             run_test(params, test_params)
 

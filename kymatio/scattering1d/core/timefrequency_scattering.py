@@ -1055,8 +1055,34 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     else:
         lowpass_subsample_fr = 0
 
-    # do lowpassing ##########################################################
+    # compute freq unpad params ##############################################
+    do_averaging    = bool(average    and n2    != -1)
     do_averaging_fr = bool(average_fr and n1_fr != -1)
+    total_conv_stride_over_U1_realized = n1_fr_subsample + lowpass_subsample_fr
+
+    # freq params
+    if out_3D:
+        pad_ref = (sc_freq.J_pad_fr_min if aligned else
+                   sc_freq.J_pad_fr_max)
+        subsample_equiv_due_to_pad_ref = sc_freq.J_pad_fr_max_init - pad_ref
+        stride_ref = _get_stride(
+            None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
+        ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
+        ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
+    else:
+        _stride = total_conv_stride_over_U1_realized
+        ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
+        ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
+
+    # unpad early if possible ################################################
+    # `not average` and `n2 == -1` already unpadded
+    if not do_averaging:
+        pass
+    if not do_averaging_fr:
+        U_2_m = unpad(U_2_m, ind_start_fr, ind_end_fr, axis=-2)
+    unpadded_tm, unpadded_fr = (not do_averaging), (not do_averaging_fr)
+
+    # freq lowpassing ########################################################
     if do_averaging_fr:
         if sc_freq.average_fr_global:
             S_2_fr = B.mean(U_2_m, axis=-2)
@@ -1071,25 +1097,11 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
     else:
         S_2_fr = U_2_m
 
-    total_conv_stride_over_U1_realized = n1_fr_subsample + lowpass_subsample_fr
-    # compute unpad params
-    if out_3D:
-        pad_ref = (sc_freq.J_pad_fr_min if aligned else
-                   sc_freq.J_pad_fr_max)
-        subsample_equiv_due_to_pad_ref = sc_freq.J_pad_fr_max_init - pad_ref
-        stride_ref = _get_stride(
-            None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
-        ind_start_fr = sc_freq.ind_start_fr_max[stride_ref]
-        ind_end_fr   = sc_freq.ind_end_fr_max[  stride_ref]
-    else:
-        _stride = total_conv_stride_over_U1_realized
-        ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
-        ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
     # unpad only if input isn't global averaged
-    if not global_averaged_fr:
+    if not global_averaged_fr and not unpadded_fr:
         S_2_fr = unpad(S_2_fr, ind_start_fr, ind_end_fr, axis=-2)
 
-    do_averaging = bool(average and n2 != -1)
+    # time lowpassing ########################################################
     if do_averaging:
         if average_global:
             S_2_r = B.mean(S_2_fr, axis=-1)
@@ -1103,21 +1115,21 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
             S_2_r = B.irfft(S_2_hat)
             total_conv_stride_tm = k1_plus_k2 + k2_tm_J
     else:
-        S_2_r = S_2_fr
         total_conv_stride_tm = k1_plus_k2
-
-    # compute for unpad / energy correction
+        S_2_r = S_2_fr
     ind_start_tm = ind_start[trim_tm][total_conv_stride_tm]
     ind_end_tm   = ind_end[  trim_tm][total_conv_stride_tm]
+
     # `not average` and `n2 == -1` already unpadded
-    if do_averaging and not average_global:
+    if not average_global and not unpadded_tm:
         S_2_r = unpad(S_2_r, ind_start_tm, ind_end_tm)
     S_2 = S_2_r
 
-    # energy correction due to stride & inexact unpad indices
+    # energy correction ######################################################
     param_tm = (N, ind_start_tm, ind_end_tm, total_conv_stride_tm)
     param_fr = (sc_freq.shape_fr[n2], ind_start_fr,
                 ind_end_fr, total_conv_stride_over_U1_realized)
+    # correction due to stride & inexact unpad indices
     S_2 = (_energy_correction(S_2, B, param_tm, param_fr) if n2 != -1 else
            # `n2=-1` already did time
            _energy_correction(S_2, B, param_fr=param_fr, phi_t_psi_f=True))

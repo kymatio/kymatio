@@ -247,7 +247,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         are increasing away from `psi_t * phi_f`). The overall packing is
         structured same as in `kymatio.visuals.filterbank_jtfs()`.
 
-      - Method assumes `out_exclude=None`.
+      - Method assumes `out_exclude=None` if `not separate_lowpass` - else,
+        the following are allowed to be excluded: 'phi_t * psi_f',
+        'phi_t * phi_f', and if `structure != 4`, 'psi_t * phi_f'.
 
       - The built-in energy renormalization includes doubling the energy
         of `phi_t * psi_f` pairs to compensate for computing only once (for
@@ -308,8 +310,10 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                 tp_shape = (0, 2, 1, 3, 4)
                 out = B.transpose(out, tp_shape)
                 if separate_lowpass:
-                    out_phi_t = B.transpose(out_phi_t, tp_shape)
-                    out_phi_f = B.transpose(out_phi_f, tp_shape)
+                    if out_phi_t is not None:
+                        out_phi_t = B.transpose(out_phi_t, tp_shape)
+                    if out_phi_f is not None:
+                        out_phi_f = B.transpose(out_phi_f, tp_shape)
 
             out = (out if not separate_lowpass else
                    (out, out_phi_f, out_phi_t))
@@ -369,9 +373,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             assert out_up.shape == out_down.shape, (out_up.shape, out_down.shape)
 
         if not recursive:
-            # drop batch dim
+            # drop batch dim; `None` in case of `out_exclude`
             if isinstance(out, tuple):
-                out = tuple(o[0] for o in out)
+                out = tuple((o[0] if o is not None else o) for o in out)
             else:
                 out = out[0]
         return out
@@ -457,13 +461,27 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                 raise ValueError("expected `coef.ndim` of 1 or 2, got "
                                  "shape = %s" % str(coef.shape))
 
-    # pack into dictionary indexed by `n1_fr`, `n2` ##########################
-    packed = {}
+    # check that all necessary pairs are present
     pairs = ('psi_t * psi_f_up', 'psi_t * psi_f_down', 'psi_t * phi_f',
              'phi_t * psi_f', 'phi_t * phi_f')
+    # structure 4 requires `psi_t * phi_f`
+    okay_to_exclude = (pairs[-3:] if structure != 4 else
+                       pairs[-2:])
+    Scx_pairs = list(Scx)
+    for p in pairs:
+      if p not in Scx_pairs:
+        if (not separate_lowpass or
+              (separate_lowpass and p not in okay_to_exclude)):
+          raise ValueError(("configuration requires pair '%s', which is "
+                            "missing") % p)
+
+    # pack into dictionary indexed by `n1_fr`, `n2` ##########################
+    packed = {}
     ns = meta['n']
     n_n1_frs_max = 0
     for pair in pairs:
+        if pair not in Scx_pairs:
+            continue
         packed[pair] = []
         nsp = ns[pair].astype(int).reshape(-1, 3)
 
@@ -541,11 +559,17 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         combined_down[n2] = combined_down[n2][::-1]
 
     # pack phi_t
-    c_phi_t = deepcopy(packed['phi_t * psi_f'])
-    c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
-    c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
+    if 'phi_t * psi_f' in Scx_pairs:
+        c_phi_t = deepcopy(packed['phi_t * psi_f'])
+        c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
+        c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
+    else:
+        c_phi_t = None
     # pack phi_f
-    c_phi_f = packed['psi_t * phi_f'][::-1]
+    if 'psi_t * phi_f' in Scx_pairs:
+        c_phi_f = packed['psi_t * phi_f'][::-1]
+    else:
+        c_phi_f = None
 
     # append `phi_f` if appropriate
     if (not separate_lowpass or structure == 4) and structure != 3:
