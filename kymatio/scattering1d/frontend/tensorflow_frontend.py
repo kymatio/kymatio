@@ -59,8 +59,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                          oversampling=self.oversampling,
                          vectorize=self.vectorize,
                          size_scattering=size_scattering,
-                         out_type=self.out_type,
-                         pad_mode=self.pad_mode)
+                         out_type=self.out_type)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = tf.shape(S)[-2:]
