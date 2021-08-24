@@ -58,6 +58,7 @@ class ScatteringBase1D(ScatteringBase):
         if isinstance(self.pad_mode, FunctionType):
             def pad_fn(x):
                 return self.pad_mode(x, self.pad_left, self.pad_right)
+            self.pad_mode = 'custom'
         elif self.pad_mode not in ('reflect', 'zero'):
             raise ValueError("`pad_mode` must be a function, or string, one of: "
                              "reflect, zero (got %s)" % str(self.pad_mode))
@@ -196,6 +197,8 @@ class ScatteringBase1D(ScatteringBase):
                 - zero:    [0, 0, 1, 2, 3, 0, 0, 0]
                 - reflect: [3, 2, 1, 2, 3, 2, 1, 2]
             Or, pad function with signature `pad_fn(x, pad_left, pad_right)`.
+            This sets `self.pad_mode='custom'` (the name of padding is used
+            for some internal logic).
         """
 
     _doc_attr_vectorize = \
