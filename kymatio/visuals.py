@@ -27,7 +27,7 @@ def filterbank_heatmap(scattering, first_order=None, second_order=False,
 
     first_order : bool / None
         Whether to show first-order filterbank. Defaults to `True` if
-        `scattering` is non-JTFS and `second_order == False`.
+        `scattering` is non-JTFS.
 
     second_order : bool (default False)
         Whether to show second-order filterbank.
@@ -101,7 +101,7 @@ def filterbank_heatmap(scattering, first_order=None, second_order=False,
     # process visuals selection
     is_jtfs = bool(hasattr(scattering, 'sc_freq'))
     if first_order is None:
-        first_order = not (is_jtfs or second_order)
+        first_order = not is_jtfs
     if frequential is None:
         # default to frequential only if is jtfs and first_order wasn't requested
         frequential = (False, is_jtfs and not (first_order or second_order))
