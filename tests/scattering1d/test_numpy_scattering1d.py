@@ -34,7 +34,28 @@ class TestScattering1DNumpy:
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0)
 
+    @pytest.mark.parametrize('backend', backends)
+    def test_pad_mode(self, backend):
+        """Ensures `pad_mode` works as intended."""
+        N = 511
+        J = 6
+        Q = 4
+        x = np.random.randn(N)
+
+        for mode in ('reflect', 'zero'):
+            def pad_fn(x, pad_left, pad_right):
+                pad_shape = (x.ndim - 1) * ((0, 0),) + ((pad_left, pad_right),)
+                return np.pad(x, pad_shape,
+                              mode=('reflect' if mode == 'reflect' else
+                                    'constant'))
+            Scxs = []
+            for pad_mode in (mode, pad_fn):
+                scattering = Scattering1D(J, N, Q, pad_mode=pad_mode,
+                                          backend=backend, frontend='numpy')
+                Scxs.append(scattering(x))
+            assert np.allclose(Scxs[0], Scxs[1])
+
         with pytest.raises(ValueError) as record:
-            sc = Scattering1D(
-                J, T, Q, backend=backend, frontend='numpy', pad_mode="invalid")
+            _ = Scattering1D(
+                J, N, Q, backend=backend, frontend='numpy', pad_mode="invalid")
         assert "pad_mode" in record.value.args[0]
