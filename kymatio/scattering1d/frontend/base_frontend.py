@@ -19,7 +19,7 @@ from ..utils import (compute_border_indices, compute_padding,
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, out_type='array', pad_mode='reflect',
-            max_pad_factor=2, r_psi=math.sqrt(.5), backend=None):
+            max_pad_factor=2, analytic=False, r_psi=math.sqrt(.5), backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -31,6 +31,7 @@ class ScatteringBase1D(ScatteringBase):
         self.out_type = out_type
         self.pad_mode = pad_mode
         self.max_pad_factor = max_pad_factor
+        self.analytic = analytic
         self.r_psi = r_psi if isinstance(r_psi, tuple) else (r_psi, r_psi)
         self.backend = backend
 
@@ -134,6 +135,15 @@ class ScatteringBase1D(ScatteringBase):
         # energy norm
         energy_norm_filterbank_tm(self.psi1_f, self.psi2_f, self.phi_f,
                                   self.J, self.log2_T)
+        # analyticity
+        if self.analytic:
+          for psi_fs in (self.psi1_f, self.psi2_f):
+            for p in psi_fs:
+              for k in p:
+                if isinstance(k, int):
+                    M = len(p[k])
+                    p[k][M//2 + 1:] = 0  # zero negatives
+                    p[k][M//2] /= 2      # halve Nyquist
 
     def meta(self):
         """Get meta information on the transform
@@ -285,6 +295,9 @@ class ScatteringBase1D(ScatteringBase):
             E.g. if input length is 150, then maximum padding with
             `max_pad_factor=2` is `256 * (2**2) = 1024`.
             If None, won't restrict padding.
+        analytic : bool (default False)
+            If True, will force negative frequencies to zero. Useful if
+            strict analyticity is desired, but may worsen time-domain decay.
         """
 
     _doc_class = \
@@ -479,8 +492,8 @@ class TimeFrequencyScatteringBase1D():
                  average_fr=False, aligned=True,
                  sampling_filters_fr=('exclude', 'resample'),
                  max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 r_psi=math.sqrt(.5), oversampling_fr=0, out_3D=False,
-                 out_type='array', out_exclude=None):
+                 r_psi=math.sqrt(.5), oversampling_fr=0,
+                 out_3D=False, out_type='array', out_exclude=None):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
@@ -582,8 +595,8 @@ class TimeFrequencyScatteringBase1D():
             self._shape_fr, self.J_fr, self.Q_fr, self.F, max_order_fr,
             self.average_fr, self.aligned, self.oversampling_fr,
             self.sampling_filters_fr, self.out_type, self.out_3D,
-            self.max_pad_factor_fr, self.pad_mode_fr, self.r_psi_fr,
-            self._n_psi1_f, self.backend)
+            self.max_pad_factor_fr, self.pad_mode_fr, self.analytic,
+            self.r_psi_fr, self._n_psi1_f, self.backend)
         self.finish_creating_filters()
 
         # detach __init__ args, instead access `sc_freq`'s via `__getattr__`
@@ -1472,7 +1485,8 @@ class _FrequencyScatteringBase(ScatteringBase):
                  average_fr=False, aligned=True, oversampling_fr=0,
                  sampling_filters_fr='resample', out_type='array', out_3D=False,
                  max_pad_factor_fr=None, pad_mode_fr='conj-reflect-zero',
-                 r_psi_fr=math.sqrt(.5), n_psi1=None, backend=None):
+                 analytic=True, r_psi_fr=math.sqrt(.5), n_psi1=None,
+                 backend=None):
         super(_FrequencyScatteringBase, self).__init__()
         self.shape_fr = shape_fr
         self.J_fr = J_fr
@@ -1489,6 +1503,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.out_3D = out_3D
         self.max_pad_factor_fr = max_pad_factor_fr
         self.pad_mode_fr = pad_mode_fr
+        self.analytic_fr = analytic
         self.r_psi_fr = r_psi_fr
         self._n_psi1_f = n_psi1
         self.backend = backend
@@ -1663,6 +1678,21 @@ class _FrequencyScatteringBase(ScatteringBase):
             raise Exception(("configuration yielded %s wavelets for frequential "
                              "scattering, need a minimum of 4; try increasing "
                              "J, Q, J_fr, or Q_fr." % n_psi_frs))
+
+        # analyticity
+        if self.analytic_fr:
+            psi_fs_all = (self.psi1_f_fr_up, self.psi1_f_fr_down)
+            for s1_fr, psi_fs in enumerate(psi_fs_all):
+              for n1_fr in range(len(psi_fs)):
+                for j0 in psi_fs[n1_fr]:
+                  if isinstance(j0, int):
+                      pf = psi_fs[n1_fr][j0]
+                      M = len(pf)
+                      if s1_fr == 0:
+                          pf[:M//2] = 0      # anti-analytic, zero positives
+                      else:
+                          pf[M//2 + 1:] = 0  # analytic, zero negatives
+                      pf[M//2] /= 2          # halve Nyquist
 
     def adjust_padding_and_filters(self):
         # adjust padding

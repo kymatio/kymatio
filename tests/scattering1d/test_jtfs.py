@@ -16,7 +16,7 @@ from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
 # note: non-'numpy' skips `test_meta()` and `test_lp_sum()`
-default_backend = ('numpy', 'torch', 'tensorflow')[0]
+default_backend = ('numpy', 'torch', 'tensorflow')[1]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`
@@ -487,7 +487,7 @@ def test_lp_sum():
     N = 1024
     J = int(np.log2(N))
     common_params = dict(shape=N, J=J, Q_fr=3, frontend=default_backend)
-    th_above = 1e-2
+    th_above = 1.5e-2
     th_below = .5
 
     for Q in (1, 8, 16):
@@ -1067,7 +1067,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, 1.05, 60
+    th, th_recon, th_end_ratio = 1e-5, 1.05, 50
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
