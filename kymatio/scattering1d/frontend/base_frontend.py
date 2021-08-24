@@ -11,7 +11,8 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, vectorize=True, out_type='array', analytic=False,
+            backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -21,6 +22,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
+        self.analytic = analytic
         self.backend = backend
 
     def build(self):
@@ -75,6 +77,16 @@ class ScatteringBase1D(ScatteringBase):
             criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
+
+        # analyticity
+        if self.analytic:
+          for psi_fs in (self.psi1_f, self.psi2_f):
+            for p in psi_fs:
+              for k in p:
+                if isinstance(k, int):
+                    M = len(p[k])
+                    p[k][M//2 + 1:] = 0  # zero negatives
+                    p[k][M//2] /= 2      # halve Nyquist
 
     def meta(self):
         """Get meta information on the transform
@@ -175,6 +187,9 @@ class ScatteringBase1D(ScatteringBase):
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
             `'array'`.
+        analytic : bool (default False)
+            If True, will force negative frequencies to zero. Useful if
+            strict analyticity is desired, but may worsen time-domain decay.
         """
 
     _doc_attr_vectorize = \
