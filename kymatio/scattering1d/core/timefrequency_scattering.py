@@ -4,7 +4,7 @@ from ..backend.agnostic_backend import unpad_dyadic
 
 def timefrequency_scattering(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
-        pad_left=0, pad_right=0, ind_start=None, ind_end=None,
+        pad_fn, pad_left=0, pad_right=0, ind_start=None, ind_end=None,
         oversampling=0, oversampling_fr=0, aligned=True, average=True,
         average_global=None, average_global_phi=None, out_type='array',
         out_3D=False, out_exclude=None, pad_mode='zero'):
@@ -609,7 +609,7 @@ def timefrequency_scattering(
                'phi_t * psi_f': [[]]}
 
     # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
+    U_0 = pad_fn(x)
     # compute the Fourier transform
     U_0_hat = B.rfft(U_0)
 
@@ -845,26 +845,31 @@ def timefrequency_scattering(
                 pad_fr = sc_freq.J_pad_fr_max
             else:
                 pad_fr = sc_freq.J_pad_fr[n2]
-            Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
 
+            if sc_freq.pad_mode_fr == 'custom':
+                Y_2_arr = sc_freq.pad_fn_fr(Y_2_list, pad_fr, sc_freq, B)
+            else:
+                Y_2_arr = _right_pad(Y_2_list, pad_fr, sc_freq, B)
+
+            # temporal pad modification
             if pad_mode == 'reflect' and average:
-                # since tensorflow makes copy
+                # `=` since tensorflow makes copy
                 Y_2_arr = B.conj_reflections(Y_2_arr,
                                              ind_start[trim_tm][k1_plus_k2],
                                              ind_end[  trim_tm][k1_plus_k2],
-                                             k1_plus_k2, N, pad_left, pad_right,
-                                             trim_tm)
+                                             k1_plus_k2, N,
+                                             pad_left, pad_right, trim_tm)
 
             # swap axes & map to Fourier domain to prepare for conv along freq
             Y_2_hat = B.fft(Y_2_arr, axis=-2)
 
-            # Transform over frequency + low-pass, for both spins
+            # Transform over frequency + low-pass, for both spins ############
             # `* psi_f` part of `U1 * (psi_t * psi_f)`
             if not skip_spinned:
                 _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2,
                                       trim_tm, commons, out_S_2['psi_t * psi_f'])
 
-            # Low-pass over frequency
+            # Low-pass over frequency ########################################
             # `* phi_f` part of `U1 * (psi_t * phi_f)`
             if 'psi_t * phi_f' not in out_exclude:
                 _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2,

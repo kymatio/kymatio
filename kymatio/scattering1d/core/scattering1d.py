@@ -1,8 +1,8 @@
 
-def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
-        pad_right=0, ind_start=None, ind_end=None, oversampling=0,
+def scattering1d(x, pad_fn, unpad, backend, J, log2_T, psi1, psi2, phi,
+        ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        out_type='array', pad_mode='reflect'):
+        out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -75,7 +75,7 @@ def scattering1d(x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, pad_left=0,
     out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right, pad_mode=pad_mode)
+    U_0 = pad_fn(x)
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 

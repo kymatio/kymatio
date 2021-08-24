@@ -858,10 +858,10 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                    subsample_equiv_relative_to_max_pad_init,
                    average_fr_global_phi,
                    sampling_psi_fr='resample', sampling_phi_fr='resample',
-                   pad_mode_fr='reflect', sigma_max_to_min_max_ratio=1.2,
-                   r_psi_fr=math.sqrt(0.5), normalize='l1',
-                   criterion_amplitude=1e-3, sigma0=0.1, alpha=4., P_max=5,
-                   eps=1e-7):
+                   pad_mode_fr='conj-reflect-zero',
+                   sigma_max_to_min_max_ratio=1.2, r_psi_fr=math.sqrt(0.5),
+                   normalize='l1', criterion_amplitude=1e-3, sigma0=0.1, alpha=4.,
+                   P_max=5, eps=1e-7):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 

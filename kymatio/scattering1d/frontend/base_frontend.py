@@ -2,6 +2,7 @@ from ...frontend.base_frontend import ScatteringBase
 import math
 import numbers
 import warnings
+from types import FunctionType
 
 import numpy as np
 
@@ -62,10 +63,20 @@ class ScatteringBase1D(ScatteringBase):
         # dyadic scale of N, also min possible padding
         self.N_scale = math.ceil(math.log2(self.N))
 
-        # check pad_mode
-        if self.pad_mode not in ('reflect', 'zero'):
-            raise ValueError("`pad_mode` must be one of: reflect, zero "
-                             "(got %s)" % self.pad_mode)
+        # check `pad_mode`, set `pad_fn`
+        if isinstance(self.pad_mode, FunctionType):
+            def pad_fn(x):
+                return self.pad_mode(x, self.pad_left, self.pad_right)
+            self.pad_mode = 'custom'
+        elif self.pad_mode not in ('reflect', 'zero'):
+            raise ValueError(("unsupported `pad_mode` '{}';\nmust be a "
+                              "function, or string, one of: 'zero', 'reflect'."
+                              ).format(str(self.pad_mode)))
+        else:
+            def pad_fn(x):
+                return self.backend.pad(x, self.pad_left, self.pad_right,
+                                        self.pad_mode)
+        self.pad_fn = pad_fn
 
         # ensure 2**J <= nextpow2(N)
         mx = 2**math.ceil(math.log2(self.N))
@@ -224,10 +235,13 @@ class ScatteringBase1D(ScatteringBase):
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
             `'array'`.
-        pad_mode : str (default 'reflect'), optional
-            One of supported padding modes:
-                - zero:    [0,0,0,0, 1,2,3,4, 0,0,0]
-                - reflect: [3,4,3,2, 1,2,3,4, 3,2,1]
+        pad_mode : str (default 'reflect') / function, optional
+            Name of padding scheme to use, one of (`x = [1, 2, 3]`):
+                - zero:    [0, 0, 1, 2, 3, 0, 0, 0]
+                - reflect: [3, 2, 1, 2, 3, 2, 1, 2]
+            Or, pad function with signature `pad_fn(x, pad_left, pad_right)`.
+            This sets `self.pad_mode='custom'` (the name of padding is used
+            for some internal logic).
         max_pad_factor : int (default 2), optional
             Will pad by at most `2**max_pad_factor` relative to `nextpow2(shape)`.
             E.g. if input length is 150, then maximum padding with
@@ -1025,9 +1039,12 @@ class TimeFrequencyScatteringBase1D():
               that yields a pure sinusoid wavelet (raises `ValueError` in
               `filter_bank.get_normalizing_factor`).
 
-    pad_mode_fr : str
+    pad_mode_fr : str (default 'conj-reflect-zero') / function
         Name of frequential padding mode to use, one of: 'zero',
-        'conj-reflect-zero' (default).
+        'conj-reflect-zero'.
+        Or, function with signature `pad_fn_fr(x, pad_fr, sc_freq, B)`;
+        see `_right_pad` in
+        `kymatio.scattering1d.core.timefrequency_scattering1d`.
 
         If using `pad_mode = 'reflect'` and `average = True`, reflected portions
         will be automatically conjugated before frequential scattering to avoid
@@ -1562,11 +1579,20 @@ class _FrequencyScatteringBase(ScatteringBase):
             raise err
         self.unrestricted_pad_fr = bool(self.max_pad_factor_fr is None)
 
-        # check `pad_mode_fr`
+        # check `pad_mode_fr`, set `pad_fn_fr`
         supported = ('conj-reflect-zero', 'zero')
-        if self.pad_mode_fr not in supported:
-            raise ValueError("unsupported `pad_mode_fr=%s`; " % self.pad_mode_fr
-                             + "must be one of: " + ', '.join(supported))
+        if isinstance(self.pad_mode_fr, FunctionType):
+            fn = self.pad_mode_fr
+            def pad_fn_fr(x, pad_fr, sc_freq, B):
+                return fn(x, pad_fr, sc_freq, B)
+            self.pad_mode_fr = 'custom'
+        elif self.pad_mode_fr not in supported:
+            raise ValueError(("unsupported `pad_mode_fr` '{}';\nmust be a "
+                              "function, or string, one of: {}").format(
+                                  self.pad_mode_fr, ', '.join(supported)))
+        else:
+            pad_fn_fr = None  # handled in `core`
+        self.pad_fn_fr = pad_fn_fr
 
         # unpack `sampling_` args
         if isinstance(self.sampling_filters_fr, tuple):
