@@ -1063,6 +1063,14 @@ class TimeFrequencyScatteringBase1D():
         will be automatically conjugated before frequential scattering to avoid
         spin cancellation. For same reason there isn't `pad_mode_fr = 'reflect'`.
 
+    analytic : bool (default True)
+        If True, will enforce strict analyticity/anti-analyticity:
+            - zero negative frequencies for temporal and spin down bandpasses
+            - zero positive frequencies for spin up bandpasses
+
+        `True` is likely to improve FDTS-discriminability, especially for
+        `r_psi > sqrt(.5)`, but may slightly worsen wavelet time decay.
+
     r_psi : float / tuple[float]
         See `help(kymatio.scattering1d.utils.calibrate_scattering_filters)`.
         Triple tuple sets `(r_psi1, r_psi2, r_psi_fr)`. If less than three
