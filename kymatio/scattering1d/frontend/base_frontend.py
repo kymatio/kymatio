@@ -60,8 +60,9 @@ class ScatteringBase1D(ScatteringBase):
                 return self.pad_mode(x, self.pad_left, self.pad_right)
             self.pad_mode = 'custom'
         elif self.pad_mode not in ('reflect', 'zero'):
-            raise ValueError("`pad_mode` must be a function, or string, one of: "
-                             "reflect, zero (got %s)" % str(self.pad_mode))
+            raise ValueError(("unsupported `pad_mode` '{}';\nmust be a "
+                              "function, or string, one of: 'zero', 'reflect'."
+                              ).format(str(self.pad_mode)))
         else:
             def pad_fn(x):
                 return self.backend.pad(x, self.pad_left, self.pad_right,
