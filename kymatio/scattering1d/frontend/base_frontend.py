@@ -56,8 +56,9 @@ class ScatteringBase1D(ScatteringBase):
 
         # check `pad_mode`, set `pad_fn`
         if isinstance(self.pad_mode, FunctionType):
+            fn = self.pad_mode
             def pad_fn(x):
-                return self.pad_mode(x, self.pad_left, self.pad_right)
+                return fn(x, self.pad_left, self.pad_right)
             self.pad_mode = 'custom'
         elif self.pad_mode not in ('reflect', 'zero'):
             raise ValueError(("unsupported `pad_mode` '{}';\nmust be a "
