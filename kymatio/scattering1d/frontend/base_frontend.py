@@ -1161,8 +1161,13 @@ class TimeFrequencyScatteringBase1D():
         True if `average_fr_global_phi and average_fr`. Same as
         `average_fr_global_phi` if `average_fr==True`.
 
-        In case of `average_fr==False`, controls scattering logic for
-        `psi_f` pairs.
+          - In case of `average_fr==False`, controls scattering logic for
+            `psi_f` pairs.
+          - If `True`, `phi_fr` filters are never used (but are still created).
+          - Results are very close to lowpassing w/ `F == 2**shape_fr_scale_max`.
+            Unlike with such lowpassing, `psi_fr` filters are allowed to be
+            created at lower `J_pad_fr` than shortest `phi_fr` (which also is
+            where greatest deviation with `not average_fr_global` occurs).
 
     log2_F : int
         Equal to `log2(prevpow2(F))`; is the maximum frequential subsampling

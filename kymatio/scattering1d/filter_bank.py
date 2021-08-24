@@ -976,6 +976,13 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     j0_max : int / None
         Sets `max_subsample_equiv_before_psi_fr`, see its docs in
         `help(TimeFrequencyScattering1D)`.
+
+    Note
+    ----
+    For `average_fr_global==True`, largest `j0` for `psi_fr` may exceed that of
+    `phi_fr`, since `max_subsample_equiv_before_phi_fr` is set to
+    `J_pad_fr_max_init` rather than largest `j0` in `phi_fr`. This is for speed,
+    and since `phi_fr` will never be used.
     """
     # compute the spectral parameters of the filters
     J_support = J_pad_fr_max_init  # begin with longest
@@ -1412,8 +1419,11 @@ def energy_norm_filterbank_fr(psi1_f_fr_up, psi1_f_fr_down, phi_f_fr,
                 raise Exception("largest scale filterbank must have >=4 filters")
             j0_break = j0
             break
+        phi_f = (phi_f_fr[j0][0] if j0 in phi_f_fr else
+                 # `average_fr_global==True` case
+                 None)
         scaling_factors = energy_norm_filterbank(
-            psi_fs_up, psi_fs_down, phi_f_fr[j0][0], J_fr, log2_F)
+            psi_fs_up, psi_fs_down, phi_f, J_fr, log2_F)
 
     # reuse last's
     if j0_break is not None:
@@ -1850,24 +1860,24 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
     return width
 
 #### helpers #################################################################
-def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None, force_phi=False):
+def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None):
     lp_sum = 0
     for psi_f in psi_fs:
         lp_sum += np.abs(psi_f)**2
-    if force_phi or (log2_T is not None and J is not None and log2_T >= J):
-        # else lowest frequency bandpasses are too attenuated
+    if phi_f is not None and (
+            # else lowest frequency bandpasses are too attenuated
+            log2_T is not None and J is not None and log2_T >= J):
         lp_sum += np.abs(phi_f)**2
     return lp_sum
 
-def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
-                       J=None, log2_T=None, force_phi=False):
+def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None, J=None, log2_T=None):
     lp_sum = {0: {}, 1: {}}
     psi_fs_all = (psi1_f, psi2_f)
     for order, psi_fs in enumerate(psi_fs_all):
         lp_sum[order] = 0
         for psi_f in psi_fs:
             lp_sum[order] += np.abs(psi_f[0])**2
-    if force_phi or log2_T >= J:
+    if phi_f is not None and log2_T >= J:
         # else lowest frequency bandpasses are too attenuated
         for order in lp_sum:
             # `[0]` for `trim_tm=0`
