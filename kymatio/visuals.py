@@ -15,10 +15,129 @@ except ImportError:
     warnings.warn("`kymatio.visuals` requires `matplotlib` installed.")
 
 
+def filterbank_heatmap(scattering, first_order=None, second_order=False,
+                       frequential=None, parts='all', j0=0, **plot_kw):
+    """Visualize scattering filterbank as heatmap of all bandpasses.
+
+    Parameters
+    ----------
+    scattering : kymatio.scattering1d.Scattering1D,
+                kymatio.scattering1d.TimeFrequencyScattering1D
+        Scattering object.
+
+    first_order : bool / None
+        Whether to show first-order filterbank. Defaults to `True` if
+        `scattering` is non-JTFS and `second_order == False`.
+
+    second_order : bool (default False)
+        Whether to show second-order filterbank.
+
+    frequential : bool / tuple[bool]
+        Whether to show frequential filterbank (requires JTFS `scattering`).
+        Tuple specifies `(up, down)` spins separately. Defaults to `(False, True)`
+        if `scattering` is JTFS and `first_order` is `False` or `None` and
+        `second_order == False`. If bool, becomes `(False, frequential)`.
+
+    parts : str / tuple/list
+        One of: 'abs', 'real', 'imag', 'freq'. First three refer to time-domain,
+        'freq' is abs of frequency domain.
+
+    j0 : int
+        `subsample_equiv_due_to_pad` if `scattering` is JTFS
+        (see `help(kymatio.scattering1d.TimeFrequencyScattering1D)`).
+
+    plot_kw : None / dict
+        Will pass to `kymatio.visuals.plot(**plot_kw)`.
+
+    Example
+    -------
+    ::
+
+        scattering = Scattering1D(shape=2048, J=10, Q=16)
+        filterbank_heatmap(scattering, first_order=True, second_order=True)
+    """
+    def to_time_and_viz(psi_fs, name, get_psi):
+        # move wavelets to time domain
+        psi_fs = [get_psi(p) for p in psi_fs]
+        psi_fs = [p for p in psi_fs if p is not None]
+        psi1s = [ifftshift(ifft(p)) for p in psi_fs]
+        psi1s = np.array([p / np.abs(p).max() for p in psi1s])
+
+        # handle kwargs
+        pkw = deepcopy(plot_kw)
+        user_kw = list(plot_kw)
+        if 'xlabel' not in user_kw:
+            pkw['xlabel'] = 'time [samples]'
+        if 'ylabel' not in user_kw:
+            pkw['ylabel'] = 'wavelet index'
+        if 'interpolation' not in user_kw and len(psi1s) < 30:
+            pkw['interpolation'] = 'none'
+
+        # plot
+        if 'abs' in parts:
+            apsi1s = np.abs(psi1s)
+            imshow(apsi1s, abs=1, **pkw, title=(f"{name} filterbank | modulus | "
+                                                "scaled to same amplitude"),)
+        if 'real' in parts:
+            imshow(psi1s.real, **pkw, title=f"{name} filterbank | real part")
+        if 'imag' in parts:
+            imshow(psi1s.imag, **pkw, title=f"{name} filterbank | imag part")
+        if 'freq' in parts:
+            if 'xlabel' not in user_kw:
+                pkw['xlabel'] = 'frequencies [samples] | dc, +, -'
+            psi_fs = np.array(psi_fs)
+            imshow(psi_fs, abs=1, **pkw, title=f"{name} filterbank | freq-domain")
+
+    # process `parts`
+    supported = ('abs', 'real', 'imag', 'freq')
+    if parts == 'all':
+        parts = supported
+    else:
+        for p in parts:
+            if p not in supported:
+                raise ValueError(("unsupported `parts` '{}'; must be one of: {}"
+                                  ).format(p, ', '.join(parts)))
+
+    # process visuals selection
+    is_jtfs = bool(hasattr(scattering, 'sc_freq'))
+    if first_order is None:
+        first_order = not (is_jtfs or second_order)
+    if frequential is None:
+        # default to frequential only if is jtfs and first_order wasn't requested
+        frequential = (False, is_jtfs and not (first_order or second_order))
+    elif isinstance(frequential, bool):
+        frequential = (False, frequential)
+    if all(not f for f in frequential):
+        frequential = False
+    if frequential and not is_jtfs:
+        raise ValueError("`frequential` requires JTFS `scattering`.")
+    if not any(arg for arg in (first_order, second_order, frequential)):
+        raise ValueError("Nothing to visualize! (got False for all of "
+                         "`first_order`, `second_order`, `frequential`)")
+
+    # visualize
+    if first_order or second_order:
+        get_psi = lambda p: (p[0] if not hasattr(p[0], 'cpu') else
+                                p[0].cpu().numpy())
+        if first_order:
+            to_time_and_viz(scattering.psi1_f, 'First-order', get_psi)
+        if second_order:
+            to_time_and_viz(scattering.psi2_f, 'Second-order', get_psi)
+    if frequential:
+        get_psi = lambda p: ((p[j0] if not hasattr(p[j0], 'cpu') else
+                              p[j0].cpu().numpy())[:, 0] if j0 in p else None)
+        if frequential[0]:
+            to_time_and_viz(scattering.psi1_f_fr_up, 'Frequential up',
+                            get_psi)
+        if frequential[1]:
+            to_time_and_viz(scattering.psi1_f_fr_down, 'Frequential down',
+                            get_psi)
+
+
 def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
                           lp_phi=True, first_order=True, second_order=False,
                           plot_kw=None):
-    """Visualize temporal filterbank.
+    """Visualize temporal filterbank in frequency domain, 1D.
 
     Parameters
     ----------
@@ -143,7 +262,7 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
 
 def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
                        lp_phi=True, center_dc=None, plot_kw=None):
-    """Visualize JTFS frequential filterbank.
+    """Visualize JTFS frequential filterbank in frequency domain, 1D.
 
     Parameters
     ----------
