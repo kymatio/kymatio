@@ -62,6 +62,89 @@ def _iterate_apply(Scx, fn):
                           "`jtfs(x)`.").format(type(Scx)))
     return out
 
+
+def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
+    """Log-normalize + (optionally) standardize coefficients for learning
+    algorithm suitability.
+
+    Is a modification of Eq. 10 of https://arxiv.org/pdf/2007.10926.pdf
+    For exact match (minus temporal global averaging), set `rscaling=None`
+    and `mean_axis=std_axis=(0, 2)`.
+
+    Parameters
+    ----------
+    X : tensor
+        Tensor with dimensions `(samples, features, spatial)`. If there's more
+        than one `features` or `spatial` dimensions, flatten before passing.
+
+    rscaling : str / None
+        If not None, string one of: 'l1', 'l2'. Interacts with `std_axis`
+        and `mean_axis`. See "Relative scaling" below.
+
+    std_axis : tuple[int] / int / None
+        If not None, will unit-variance after `rscaling` along specified axes.
+
+    mean_axis : tuple[int] / int / None
+        If not None, will zero-mean before `rscaling` along specified axes.
+
+    C : float / None
+        `log(1 + X * C / median)`. Defaults to `130 * mean(abs(X))`.
+        Greater will bring more disparate values closer. Too great will equalize
+        too much, too low will have minimal effect.
+
+    Returns
+    -------
+    Xnorm : tensor
+        Normalized `X`.
+
+    transformers : type / None
+        Transformer objects, if applicable - else None.
+
+    Relative scaling
+    ----------------
+    # TODO
+    """
+    # validate args & set defaults ###########################################
+    supported = ('l1', 'l2', None)
+    if rscaling not in supported:
+        raise ValueError(("unsupported `rscaling` {}; must be one of: {}"
+                          ).format(rscaling, ', '.join(supported)))
+    if X.ndim != 3:
+        raise ValueError("input must be 3D, `(samples, features, spatial)` - "
+                         "got %s" % str(X.shape))
+    if C is None:
+        C = 130 * np.abs(X).mean()
+
+    # main transform #########################################################
+    # time-sum
+    Xs = X.sum(axis=-1, keepdims=True)
+    # sample-median
+    mu = np.median(Xs, axis=0, keepdims=True)
+    # rescale
+    Xmu = X / mu
+    # log
+    Xmu = np.log(1 + Xmu * C)
+    Xnorm = Xmu
+
+    # standardization + relative scaling #####################################
+    if mean_axis is not None:
+        Xnorm -= Xnorm.mean(axis=mean_axis, keepdims=True)
+
+    if rscaling is not None:
+        kw = dict(axis=(0, 2), keepdims=True)
+        ord = (2 if rscaling == 'l2' else 1)
+        Xstd = X - X.mean(**kw)
+        norms_orig = np.linalg.norm(Xstd,  ord=ord, **kw)
+        norms_now  = np.linalg.norm(Xnorm, ord=ord, **kw)
+        norms = norms_orig / norms_now
+        Xnorm *= (norms / norms.mean())
+
+    if std_axis is not None:
+        Xnorm /= Xnorm.std(axis=std_axis, keepdims=True)
+
+    return Xnorm
+
+
 def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                      separate_lowpass=False, sampling_psi_fr=None, debug=False,
                      recursive=False):
