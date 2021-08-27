@@ -1,5 +1,5 @@
 import math
-from ...toolkit import _infer_backend, get_unified_backend
+from ...toolkit import _infer_backend, get_kymatio_backend
 
 
 def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
@@ -156,7 +156,7 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
 
     # infer & fetch backend
     backend_name = type(x).__module__.lower().split('.')[0]
-    B = get_unified_backend(backend_name)
+    B = get_kymatio_backend(backend_name)
 
     # conjugate and assign
     if (backend_name in ('numpy', 'tensorflow') or

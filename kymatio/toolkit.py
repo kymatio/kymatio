@@ -1930,11 +1930,16 @@ class ExtendedUnifiedBackend():
 
     def norm(self, x, ord=2, axis=None):
         if self.backend_name == 'numpy':
-            out = np.linalg.norm(x, ord=ord, axis=axis)
+            if ord == 1:
+                out = np.sum(np.abs(x), axis=axis)
+            elif ord == 2:
+                out = np.linalg.norm(x, ord=None, axis=axis)
+            else:
+                out = np.linalg.norm(x, ord=ord, axis=axis)
         elif self.backend_name == 'torch':
             out = self.B.norm(x, p=ord, dim=axis)
         else:
-            out = self.B.norm(x, ord=ord)
+            out = self.B.norm(x, ord=ord, axis=axis)
         return out
 
     def median(self, x, axis=None):
@@ -1964,7 +1969,7 @@ class ExtendedUnifiedBackend():
         if self.backend_name == 'numpy':
             out = x
         else:
-            if hasattr(x, 'cpu'):
+            if hasattr(x, 'to') and 'cpu' not in x.device.type:
                 x = x.cpu()
             out = x.numpy()
         return out
