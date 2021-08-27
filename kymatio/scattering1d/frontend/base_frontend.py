@@ -1545,7 +1545,7 @@ class _FrequencyScatteringBase(ScatteringBase):
         self.N_frs_max_all = self._n_psi1_f
         # compute corresponding scales
         self.N_fr_scales = [(math.ceil(math.log2(s)) if s != 0 else -1)
-                               for s in self.N_frs]
+                            for s in self.N_frs]
         self.N_fr_scales_max = max(self.N_fr_scales)
         # smallest scale is also smallest possible maximum padding
         # (cannot be overridden by `max_pad_factor_fr`)

@@ -24,13 +24,8 @@ def jtfs_to_numpy(Scx):
     """Convert PyTorch/TensorFlow tensors to numpy arrays, with meta copied,
     and without affecting original data structures.
     """
-    def fn(x):
-        if hasattr(x, 'to') and 'cpu' not in x.device.type:
-            x = x.cpu()
-        if hasattr(x, 'numpy'):
-            x = x.numpy()
-        return x
-    return _iterate_apply(Scx, fn)
+    B = ExtendedUnifiedBackend(Scx)
+    return _iterate_apply(Scx, B.numpy)
 
 
 def _iterate_apply(Scx, fn):
@@ -76,6 +71,7 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
     X : tensor
         Tensor with dimensions `(samples, features, spatial)`. If there's more
         than one `features` or `spatial` dimensions, flatten before passing.
+        (Obtain tensor via e.g. `pack_coeffs_jtfs(Scx)`, or `out_type='array'`.)
 
     rscaling : str / None
         If not None, string one of: 'l1', 'l2'. Interacts with `std_axis`
@@ -126,35 +122,36 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
     if X.ndim != 3:
         raise ValueError("input must be 3D, `(samples, features, spatial)` - "
                          "got %s" % str(X.shape))
+    B = ExtendedUnifiedBackend(X)
     if C is None:
-        C = 130 * np.abs(X).mean()
+        C = 130 * B.mean(B.abs(X))
 
     # main transform #########################################################
     # time-sum
-    Xs = X.sum(axis=-1, keepdims=True)
+    Xs = B.sum(X, axis=-1, keepdims=True)
     # sample-median
-    mu = np.median(Xs, axis=0, keepdims=True)
+    mu = B.median(Xs, axis=0, keepdims=True)
     # rescale
     Xmu = X / mu
     # log
-    Xmu = np.log(1 + Xmu * C)
+    Xmu = B.log(1 + Xmu * C)
     Xnorm = Xmu
 
     # standardization + relative scaling #####################################
     if mean_axis is not None:
-        Xnorm -= Xnorm.mean(axis=mean_axis, keepdims=True)
+        Xnorm -= B.mean(Xnorm, axis=mean_axis, keepdims=True)
 
     if rscaling is not None:
         kw = dict(axis=(0, 2), keepdims=True)
         ord = (2 if rscaling == 'l2' else 1)
-        Xstd = X - X.mean(**kw)
-        norms_orig = np.linalg.norm(Xstd,  ord=ord, **kw)
-        norms_now  = np.linalg.norm(Xnorm, ord=ord, **kw)
+        Xstd = X - B.mean(**kw)
+        norms_orig = B.norm(Xstd,  ord=ord, **kw)
+        norms_now  = B.norm(Xnorm, ord=ord, **kw)
         norms = norms_orig / norms_now
         Xnorm *= (norms / norms.mean())
 
     if std_axis is not None:
-        Xnorm /= Xnorm.std(axis=std_axis, keepdims=True)
+        Xnorm /= B.std(Xnorm, axis=std_axis, keepdims=True)
 
     return Xnorm
 
@@ -353,7 +350,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         just one spin since it's identical to other spin), while here it's
         also packed twice; to compensate, its energy is halved before packing.
     """
-    B = get_unified_backend(_infer_backend(Scx, get_name=True)[1])
+    B = ExtendedUnifiedBackend(Scx)
 
     def combined_to_tensor(combined_all, recursive):
         def process_dims(o):
@@ -1008,7 +1005,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
         out_3D = bool(coeffs.ndim == 3)
 
     # fetch backend
-    B = get_unified_backend(_infer_backend(coeffs, get_name=True)[1])
+    B = ExtendedUnifiedBackend(coeffs)
 
     # completely flatten into (*, time)
     if out_list:
@@ -1708,27 +1705,16 @@ def validate_filterbank(psi_fs, phi_f=None, criterion_amplitude=1e-3,
 def energy(x, kind='l2'):
     """Compute energy. L1==`sum(abs(x))`, L2==`sum(abs(x)**2)` (so actually L2^2).
     """
-    def sum(x):
-        if type(x).__module__ == 'tensorflow':
-            return backend.reduce_sum(x)
-        return backend.sum(x)
-
     x = x['coef'] if isinstance(x, dict) else x
-    backend = _infer_backend(x)
-    return (backend.sum(backend.abs(x)) if kind == 'l1' else
-            backend.sum(backend.abs(x)**2))
+    B = ExtendedUnifiedBackend(x)
+    return (B.norm(x, ord=1) if kind == 'l1' else
+            B.norm(x, ord=2)**2)
 
 
 def _l2(x):
     """`sqrt(sum(abs(x)**2))`."""
-    backend, backend_name = _infer_backend(x, get_name=True)
-    if backend_name == 'numpy':
-        l2 = np.linalg.norm(x)
-    elif backend_name == 'torch':
-        l2 = backend.norm(x)
-    elif backend_name == 'tensorflow':
-        l2 = backend.norm(x, ord='euclidean')
-    return l2
+    B = ExtendedUnifiedBackend(x)
+    return B.norm(x, ord=2)
 
 def l2(x0, x1, adj=False):
     """Coeff distance measure; Eq 2.24 in
@@ -1740,14 +1726,8 @@ def l2(x0, x1, adj=False):
 
 def _l1(x):
     """`sum(abs(x))`."""
-    backend, backend_name = _infer_backend(x, get_name=True)
-    if backend_name == 'numpy':
-        l1 = np.sum(np.abs(x))
-    elif backend_name == 'torch':
-        l1 = backend.norm(x, p=1)
-    elif backend_name == 'tensorflow':
-        l1 = backend.norm(x, ord=1)
-    return l1
+    B = ExtendedUnifiedBackend(x)
+    return B.norm(x, ord=1)
 
 def l1(x0, x1, adj=False):
     ref = _l1(x0) if not adj else (_l1(x0) + _l1(x1)) / 2
@@ -1756,6 +1736,7 @@ def l1(x0, x1, adj=False):
 
 def rel_ae(x0, x1, eps=None, ref_both=True):
     """Relative absolute error."""
+    B = ExtendedUnifiedBackend(x0)
     if ref_both:
         if eps is None:
             eps = _eps(x0, x1)
@@ -1764,15 +1745,16 @@ def rel_ae(x0, x1, eps=None, ref_both=True):
         if eps is None:
             eps = _eps(x0)
         ref = x0 + eps
-    return np.abs(x0 - x1) / ref
+    return B.abs(x0 - x1) / ref
 
 
 def _eps(x0, x1=None):
+    B = ExtendedUnifiedBackend(x0)
     if x1 is None:
-        eps =  np.abs(x0).max() / 1000
+        eps =  B.abs(x0).max() / 1000
     else:
-        eps = (np.abs(x0).max() + np.abs(x1).max()) / 2000
-    eps = max(eps, 10 * np.finfo(x0.dtype).eps)
+        eps = (B.abs(x0).max() + B.abs(x1).max()) / 2000
+    eps = max(eps, 10 * np.finfo(B.numpy(x0).dtype).eps)
     return eps
 
 #### test signals ###########################################################
@@ -1813,46 +1795,6 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
     return x, xs
 
 #### misc ###################################################################
-def _infer_backend(x, get_name=False):
-    while isinstance(x, (dict, list)):
-        if isinstance(x, dict):
-            if 'coef' in x:
-                x = x['coef']
-            else:
-                x = list(x.values())[0]
-        else:
-            x = x[0]
-
-    module = type(x).__module__.split('.')[0]
-
-    if module == 'numpy':
-        backend = np
-    elif module == 'torch':
-        import torch
-        backend = torch
-    elif module == 'tensorflow':
-        import tensorflow
-        backend = tensorflow
-    elif isinstance(x, (int, float)):
-        # list of lists, fallback to numpy
-        module = 'numpy'
-        backend = np
-    else:
-        raise ValueError("could not infer backend from %s" % type(x))
-    return (backend if not get_name else
-            (backend, module))
-
-
-def get_unified_backend(backend_name):
-    if backend_name == 'numpy':
-        from .backend.numpy_backend import NumpyBackend as B
-    elif backend_name == 'torch':
-        from .backend.torch_backend import TorchBackend as B
-    elif backend_name == 'tensorflow':
-        from .backend.tensorflow_backend import TensorFlowBackend as B
-    return B
-
-
 def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                   right_pad=True):
     """Make tensor from variable-length `seq` (e.g. nested list) padded with
@@ -1938,3 +1880,131 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     if is_tf:
         arr = tf.convert_to_tensor(arr)
     return arr
+
+# backend ####################################################################
+class ExtendedUnifiedBackend():
+    """Extends existing Kymatio backend with functionality."""
+    def __init__(self, x_or_backend_name):
+        if isinstance(x_or_backend_name, str):
+            backend_name = x_or_backend_name
+        else:
+            backend_name = _infer_backend(x_or_backend_name, get_name=True)[1]
+        self.backend_name = backend_name
+        if backend_name == 'torch':
+            import torch
+            self.B = torch
+        elif backend_name == 'tensorflow':
+            import tensorflow as tf
+            self.B = tf
+        else:
+            self.B = np
+        self.Bk = get_kymatio_backend(backend_name)
+
+    def __getattr__(self, name):
+        # fetch from kymatio.backend if possible
+        if hasattr(self.Bk, name):
+            return getattr(self.Bk, name)
+        raise AttributeError(f"'{type(self.Bk).__name__}' object has no "
+                             f"attribute '{name}'")
+
+    def abs(self, x):
+        return self.B.abs(x)
+
+    def log(self, x):
+        if self.backend_name == 'numpy':
+            out = np.log(x)
+        elif self.backend_name == 'torch':
+            out = self.B.log(x)
+        else:
+            out = self.B.math.log(x)
+        return out
+
+    def sum(self, x, axis=None, keepdims=False):
+        if self.backend_name == 'numpy':
+            out = np.sum(x, axis=axis, keepdims=keepdims)
+        elif self.backend_name == 'torch':
+            out = self.B.sum(x, dim=axis, keepdim=keepdims)
+        else:
+            out = self.B.reduce_sum(x, axis=axis, keepdims=keepdims)
+        return out
+
+    def norm(self, x, ord=2, axis=None):
+        if self.backend_name == 'numpy':
+            out = np.linalg.norm(x, ord=ord, axis=axis)
+        elif self.backend_name == 'torch':
+            out = self.B.norm(x, p=ord, dim=axis)
+        else:
+            out = self.B.norm(x, ord=ord)
+        return out
+
+    def median(self, x, axis=None):
+        if self.backend_name == 'numpy':
+            out = np.median(x, axis=axis)
+        elif self.backend_name == 'torch':
+            out = self.B.median(x, dim=axis)
+        else:
+            if axis is not None:
+                raise ValueError("`axis` for `median` in TensorFlow backend "
+                                 "not implemented.")
+            v = self.B.reshape(x, [-1])
+            m = v.get_shape()[0]//2
+            out = self.B.reduce_min(self.B.nn.top_k(v, m, sorted=False).values)
+        return out
+
+    def std(self, x, axis=None):
+        if self.backend_name == 'numpy':
+            out = np.std(x, axis=axis)
+        elif self.backend_name == 'torch':
+            out = self.B.std(x, dim=axis)
+        else:
+            out = self.B.math.reduce_std(x, axis=axis)
+        return out
+
+    def numpy(self, x):
+        if self.backend_name == 'numpy':
+            out = x
+        else:
+            if hasattr(x, 'cpu'):
+                x = x.cpu()
+            out = x.numpy()
+        return out
+
+
+def _infer_backend(x, get_name=False):
+    while isinstance(x, (dict, list)):
+        if isinstance(x, dict):
+            if 'coef' in x:
+                x = x['coef']
+            else:
+                x = list(x.values())[0]
+        else:
+            x = x[0]
+
+    module = type(x).__module__.split('.')[0]
+
+    if module == 'numpy':
+        backend = np
+    elif module == 'torch':
+        import torch
+        backend = torch
+    elif module == 'tensorflow':
+        import tensorflow
+        backend = tensorflow
+    elif isinstance(x, (int, float)):
+        # list of lists, fallback to numpy
+        module = 'numpy'
+        backend = np
+    else:
+        raise ValueError("could not infer backend from %s" % type(x))
+    return (backend if not get_name else
+            (backend, module))
+
+
+def get_kymatio_backend(backend_name):
+    if backend_name == 'numpy':
+        from .backend.numpy_backend import NumpyBackend as B
+    elif backend_name == 'torch':
+        from .backend.torch_backend import TorchBackend as B
+    elif backend_name == 'tensorflow':
+        from .backend.tensorflow_backend import TensorFlowBackend as B
+    return B
