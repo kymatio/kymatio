@@ -102,7 +102,21 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
 
     Relative scaling
     ----------------
-    # TODO
+
+    Scaling `features` independently changes the relative norms bewteen them.
+
+      - If a signal rarely has high frequencies and low are dominant, for example,
+        then post-normalization this nuance is lost and highs and lows are brought
+        to a common norm - which may be undesired.
+      - SNR is lowered, as low signal contents that are dominated by noise
+        or float inaccuracies are amplified.
+      - Convolutions over `features` dims are invalidated (as it's akin to
+        standardizing individual time steps in 1D convolution); e.g. if
+        normalizing on per-`n1` basis, then we can no longer do 2D convs
+        over the joint `(n1, time)` pairs.
+      - To keep convs valid, all spatial dims that are convolved over must be
+        standardized by the same factor - i.e. same `mean` and `std`. `rscaling`
+        also accounts for rescaling due to log.
     """
     # validate args & set defaults ###########################################
     supported = ('l1', 'l2', None)
