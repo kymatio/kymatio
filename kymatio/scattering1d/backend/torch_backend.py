@@ -101,12 +101,6 @@ class TorchBackend1D(TorchBackend):
         return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
-    def zeros_like(cls, ref, shape=None):
-        shape = shape if shape is not None else ref.shape
-        return torch.zeros(shape, dtype=ref.dtype, layout=ref.layout,
-                           device=ref.device)
-
-    @classmethod
     def fft(cls, x, axis=-1):
         return torch.fft.fft(x, dim=axis)
 
@@ -131,9 +125,8 @@ class TorchBackend1D(TorchBackend):
         return torch.fft.ifft(x, dim=axis)
 
     @classmethod
-    def mean(cls, x, axis=-1):
-        """Take mean along specified axis, without collapsing the axis."""
-        return x.mean(axis, keepdim=True)
+    def mean(cls, x, axis=-1, keepdims=True):
+        return x.mean(axis, keepdim=keepdims)
 
     @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,

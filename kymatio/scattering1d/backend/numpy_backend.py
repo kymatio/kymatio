@@ -97,11 +97,6 @@ class NumpyBackend1D(NumpyBackend):
         return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
-    def zeros_like(cls, ref, shape=None):
-        shape = shape if shape is not None else ref.shape
-        return cls._np.zeros(shape, dtype=ref.dtype)
-
-    @classmethod
     def fft(cls, x, axis=-1):
         return fft(x, axis=axis, workers=-1)
 
@@ -129,9 +124,8 @@ class NumpyBackend1D(NumpyBackend):
         return x.transpose(*list(range(x.ndim - 2)), -1, -2)
 
     @classmethod
-    def mean(cls, x, axis=-1):
-        """Take mean along specified axis, without collapsing the axis."""
-        return x.mean(axis, keepdims=True)
+    def mean(cls, x, axis=-1, keepdims=True):
+        return x.mean(axis, keepdims=keepdims)
 
     @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,

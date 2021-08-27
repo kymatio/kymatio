@@ -132,6 +132,12 @@ class TorchBackend:
         return out
 
     @classmethod
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return torch.zeros(shape, dtype=ref.dtype, layout=ref.layout,
+                           device=ref.device)
+
+    @classmethod
     def reshape(cls, x, shape):
         return x.reshape(*shape)
 

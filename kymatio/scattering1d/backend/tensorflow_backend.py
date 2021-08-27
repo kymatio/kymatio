@@ -93,11 +93,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
 
     @classmethod
-    def zeros_like(cls, ref, shape=None):
-        shape = shape if shape is not None else ref.shape
-        return tf.zeros(shape, dtype=ref.dtype)
-
-    @classmethod
     def fft(cls, x, axis=-1):
         x = cls._maybe_transpose_for_fft(x, axis)
 
@@ -129,9 +124,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
-    def mean(cls, x, axis=-1):
-        """Take mean along specified axis, without collapsing the axis."""
-        return tf.reduce_mean(x, axis=axis, keepdims=True)
+    def mean(cls, x, axis=-1, keepdims=True):
+        return tf.reduce_mean(x, axis=axis, keepdims=keepdims)
 
     @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
