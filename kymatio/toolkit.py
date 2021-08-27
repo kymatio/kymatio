@@ -49,9 +49,9 @@ def _iterate_apply(Scx, fn):
             o['coef'] = fn(s['coef'])
             out.append(o)
     elif isinstance(Scx, tuple):  # out_type=='array' && out_3D==True
-        Scx = (fn(Scx[0]), fn(Scx[1]))
+        out = (fn(Scx[0]), fn(Scx[1]))
     elif hasattr(Scx, 'ndim'):
-        Scx = fn(Scx)
+        out = fn(Scx)
     else:
         raise ValueError(("unrecognized input type: {}; must be as returned by "
                           "`jtfs(x)`.").format(type(Scx)))
@@ -127,7 +127,7 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
         C = 130 * B.mean(B.abs(X))
 
     # main transform #########################################################
-    # time-sum
+    # time-sum (integral)
     Xs = B.sum(X, axis=-1, keepdims=True)
     # sample-median
     mu = B.median(Xs, axis=0, keepdims=True)
@@ -173,6 +173,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     sampling_psi_fr : str / None
         Used for sanity check for padding along `n1_fr`.
         Must match what was passed to `TimeFrequencyScattering1D`.
+        If None, will assume library default.
 
     structure : int / None
         Structure to pack `Scx` into (see "Structures" below), integer 1 to 4.
@@ -625,6 +626,8 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                         n1s_done += 1
 
     # pad along `n1_fr`
+    if sampling_psi_fr is None:
+        sampling_psi_fr = 'exclude'
     pad_value = 0 if not debug else -2
     for pair in packed:
         if 'psi_f' not in pair:
