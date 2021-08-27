@@ -36,7 +36,14 @@ class NumpyBackend:
         return cls._np.stack(arrays, axis=axis)
 
     @classmethod
-    def concatenate_v2(cls, arrays, axis=1):
+    def concatenate_v2(cls, arrays, axis=1, stack=False):
+        if stack:
+            # emulate `np.stack`
+            if axis < 0:
+                slc = (slice(None),) * (arrays[0].ndim + axis + 1) + (None,)
+            else:
+                slc = (slice(None),) * axis + (None,)
+            arrays = [a[slc] for a in arrays]
         return cls._np.concatenate(arrays, axis=axis)
 
     @classmethod
@@ -109,6 +116,11 @@ class NumpyBackend:
         else:
             out = x
         return out
+
+    @classmethod
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return cls._np.zeros(shape, dtype=ref.dtype)
 
     @classmethod
     def reshape(cls, x, shape):

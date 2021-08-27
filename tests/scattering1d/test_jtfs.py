@@ -487,7 +487,7 @@ def test_lp_sum():
     N = 1024
     J = int(np.log2(N))
     common_params = dict(shape=N, J=J, Q_fr=3, frontend=default_backend)
-    th_above = 1e-2
+    th_above = 1.5e-2
     th_below = .5
 
     for Q in (1, 8, 16):
@@ -919,6 +919,21 @@ def test_implementation():
         _ = jtfs(x)
 
 
+def test_pad_mode_fr():
+    """Test that functional `pad_mode_fr` works."""
+    from kymatio.scattering1d.core.timefrequency_scattering1d import _right_pad
+    N = 512
+    x = echirp(N)
+
+    kw = dict(shape=N, J=4, Q=2, frontend=default_backend, out_type='array',
+              max_pad_factor_fr=1)
+    jtfs0 = TimeFrequencyScattering1D(**kw, pad_mode_fr='zero')
+    jtfs1 = TimeFrequencyScattering1D(**kw, pad_mode_fr=_right_pad)
+
+    out0 = jtfs0(x)
+    out1 = jtfs1(x)
+    assert np.allclose(out0, out1)
+
 def test_no_second_order_filters():
     """Reproduce edge case: configuration yields no second-order wavelets
     so can't do JTFS.
@@ -1052,7 +1067,7 @@ def test_reconstruction_torch():
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
         losses_recon.append(l2(yn, xn))
 
-    th, th_recon, th_end_ratio = 1e-5, 1.05, 60
+    th, th_recon, th_end_ratio = 1e-5, 1.05, 50
     end_ratio = losses[0] / losses[-1]
     assert end_ratio > th_end_ratio, end_ratio
     assert min(losses) < th, "{:.2e} > {}".format(min(losses), th)
@@ -1487,6 +1502,7 @@ if __name__ == '__main__':
         test_pack_coeffs_jtfs()
         test_energy_conservation()
         test_implementation()
+        test_pad_mode_fr()
         test_backends()
         test_differentiability_torch()
         test_reconstruction_torch()

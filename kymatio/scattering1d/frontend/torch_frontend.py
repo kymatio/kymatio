@@ -3,7 +3,7 @@ import math
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
-from ..core.timefrequency_scattering import timefrequency_scattering
+from ..core.timefrequency_scattering1d import timefrequency_scattering1d
 from ..utils import precompute_size_scattering
 from ...toolkit import pack_coeffs_jtfs
 from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
@@ -13,11 +13,12 @@ from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, out_type='array', pad_mode='reflect',
-            max_pad_factor=2, r_psi=math.sqrt(.5), register_filters=True,
-            backend='torch'):
+            max_pad_factor=2, analytic=False, r_psi=math.sqrt(.5),
+            register_filters=True, backend='torch'):
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
-                oversampling, out_type, pad_mode, max_pad_factor, r_psi, backend)
+                oversampling, out_type, pad_mode, max_pad_factor, analytic, r_psi,
+                backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -106,13 +107,12 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         if type(x).__module__.split('.')[0] == 'numpy':
             x = torch.from_numpy(x).to(device=self.psi1_f[0][0].device.type)
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.log2_T, self.psi1_f, self.psi2_f,
-                         self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
-                         pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
+        S = scattering1d(x, self.pad_fn, self.backend.unpad, self.backend, self.J, self.log2_T, self.psi1_f, self.psi2_f,
+                         self.phi_f, max_order=self.max_order, average=self.average,
+                         ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling,
                          size_scattering=size_scattering,
-                         out_type=self.out_type,
-                         pad_mode=self.pad_mode)
+                         out_type=self.out_type)
 
         if self.out_type == 'array':
                 scattering_shape = S.shape[-2:]
@@ -139,15 +139,15 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                  sampling_filters_fr=('exclude', 'resample'), out_type="array",
                  out_3D=False, out_exclude=None, pad_mode='reflect',
                  max_pad_factor=2, max_pad_factor_fr=None,
-                 pad_mode_fr='conj-reflect-zero', r_psi=math.sqrt(.5),
-                 backend="torch"):
+                 pad_mode_fr='conj-reflect-zero', analytic=True,
+                 r_psi=math.sqrt(.5), backend="torch"):
         oversampling_fr, r_psi_tm, r_psi_fr, max_order_tm, scattering_out_type = (
             _handle_args_jtfs(oversampling, oversampling_fr, r_psi, out_type))
 
         ScatteringTorch1D.__init__(
             self, J, shape, Q, T, max_order_tm, average, oversampling,
-            scattering_out_type, pad_mode, max_pad_factor, r_psi=r_psi_tm,
-            register_filters=False, backend=backend)
+            scattering_out_type, pad_mode, max_pad_factor, analytic,
+            r_psi=r_psi_tm, register_filters=False, backend=backend)
 
         TimeFrequencyScatteringBase1D.__init__(
             self, J_fr, Q_fr, F, implementation, average_fr, aligned,
@@ -161,6 +161,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         will create the filters as numpy array, and then, it
         saves those arrays as module's buffers."""
         n_final = self._register_filters(self, ('phi_f', 'psi1_f', 'psi2_f'))
+        # register filters from freq-scattering object (see base_frontend.py)
         self._register_filters(self.sc_freq,
                                ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
                                n0=n_final)
@@ -195,6 +196,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
     def load_filters(self):
         """This function loads filters from the module's buffer """
         n_final = self._load_filters(self, ('phi_f', 'psi1_f', 'psi2_f'))
+        # register filters from freq-scattering object (see base_frontend.py)
         self._load_filters(self.sc_freq,
                            ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
                            n0=n_final)
@@ -244,7 +246,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         if x.device != device:
             x = x.to(device)
 
-        S = timefrequency_scattering(
+        S = timefrequency_scattering1d(
             x,
             self.backend.pad, self.backend.unpad,
             self.backend,
@@ -252,6 +254,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             self.log2_T,
             self.psi1_f, self.psi2_f, self.phi_f,
             self.sc_freq,
+            self.pad_fn,
             average=self.average,
             average_global=self.average_global,
             average_global_phi=self.average_global_phi,

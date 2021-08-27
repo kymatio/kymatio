@@ -56,6 +56,13 @@ def make_reusables():
 
 #### Tests ###################################################################
 
+def test_filterbank_heatmap():
+    for i, sc in enumerate(sc_all):
+        frequential = bool(i > 0)
+        visuals.filterbank_heatmap(sc, first_order=True, second_order=True,
+                                   frequential=frequential)
+
+
 def test_filterbank_scattering():
     for sc in sc_all:
         visuals.filterbank_scattering(sc, second_order=1, lp_sum=1, zoom=0)
@@ -140,6 +147,7 @@ def _run_with_cleanup(fn, savename):
 if __name__ == '__main__':
     make_reusables()
     if run_without_pytest:
+        test_filterbank_heatmap()
         test_filterbank_scattering()
         test_filterbank_jtfs_1d()
         test_filterbank_jtfs()

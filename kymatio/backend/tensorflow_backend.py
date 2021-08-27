@@ -35,6 +35,11 @@ class TensorFlowBackend(NumpyBackend):
                 x)
 
     @classmethod
+    def zeros_like(cls, ref, shape=None):
+        shape = shape if shape is not None else ref.shape
+        return tf.zeros(shape, dtype=ref.dtype)
+
+    @classmethod
     def reshape(cls, x, shape):
         return tf.reshape(x, shape)
 

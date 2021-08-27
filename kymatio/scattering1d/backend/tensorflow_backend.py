@@ -44,7 +44,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.reduce_mean(y, axis=axis)
 
     @staticmethod
-    def pad(x, pad_left, pad_right, axis=-1, pad_mode='reflect'):
+    def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -68,7 +68,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis)
+        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis=axis)
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):
@@ -91,11 +91,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
             The tensor x[..., i0:i1].
         """
         return x[agnostic.index_axis(i0, i1, axis, x.ndim)]
-
-    @classmethod
-    def zeros_like(cls, ref, shape=None):
-        shape = shape if shape is not None else ref.shape
-        return tf.zeros(shape, dtype=ref.dtype)
 
     @classmethod
     def fft(cls, x, axis=-1):
@@ -129,9 +124,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
-    def mean(cls, x, axis=-1):
-        """Take mean along specified axis, without collapsing the axis."""
-        return tf.reduce_mean(x, axis=axis, keepdims=True)
+    def mean(cls, x, axis=-1, keepdims=True):
+        return tf.reduce_mean(x, axis=axis, keepdims=keepdims)
 
     @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
