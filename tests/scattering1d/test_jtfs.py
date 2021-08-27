@@ -921,7 +921,7 @@ def test_implementation():
 
 def test_pad_mode_fr():
     """Test that functional `pad_mode_fr` works."""
-    from kymatio.scattering1d.core.timefrequency_scattering import _right_pad
+    from kymatio.scattering1d.core.timefrequency_scattering1d import _right_pad
     N = 512
     x = echirp(N)
 

@@ -49,7 +49,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right, pad_mode='reflect'):
+    def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1):
         """Pad N-dim tensor along one dimension.
 
         Pads PyTorch tensor by `pad_left` and `pad_right` along one axis.
@@ -74,7 +74,7 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic.pad(x, pad_left, pad_right, pad_mode)
+        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis=axis)
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):

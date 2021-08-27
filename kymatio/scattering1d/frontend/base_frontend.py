@@ -91,9 +91,9 @@ class ScatteringBase1D(ScatteringBase):
         elif self.T == 'global':
             self.T == mx
         elif self.T > self.N:
-            raise ValueError("The temporal support T of the low-pass filter "
-                             "cannot exceed input length (got {} > {})".format(
-                                 self.T, self.N))
+            raise ValueError(("The temporal support T of the low-pass filter "
+                              "cannot exceed input length (got {} > {})"
+                              ).format(self.T, self.N))
         self.log2_T = math.floor(math.log2(self.T))
         self.average_global_phi = bool(self.T == mx)
         self.average_global = bool(self.average_global_phi and self.average)
@@ -381,7 +381,7 @@ class ScatteringBase1D(ScatteringBase):
                 - Q2: Recommended `1` for most (`Scattering1D`) applications.
         T : int
             temporal support of low-pass filter, controlling amount of imposed
-            time-shift invariance and maximum subsampling
+            time-shift invariance and maximum subsampling.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.

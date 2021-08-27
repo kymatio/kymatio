@@ -44,7 +44,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.reduce_mean(y, axis=axis)
 
     @staticmethod
-    def pad(x, pad_left, pad_right, axis=-1, pad_mode='reflect'):
+    def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -68,7 +68,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis)
+        return agnostic.pad(x, pad_left, pad_right, pad_mode, axis=axis)
 
     @staticmethod
     def unpad(x, i0, i1, axis=-1):
