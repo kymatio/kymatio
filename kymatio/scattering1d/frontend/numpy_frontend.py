@@ -1,7 +1,7 @@
 import math
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
-from ..core.timefrequency_scattering import timefrequency_scattering
+from ..core.timefrequency_scattering1d import timefrequency_scattering1d
 from ..utils import precompute_size_scattering
 from ...toolkit import pack_coeffs_jtfs
 from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
@@ -111,7 +111,7 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
         signal_shape = x.shape[-1:]
         x = x.reshape((-1, 1) + signal_shape)
 
-        S = timefrequency_scattering(
+        S = timefrequency_scattering1d(
             x,
             self.backend.pad, self.backend.unpad,
             self.backend,

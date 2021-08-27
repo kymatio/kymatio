@@ -3,7 +3,7 @@ import math
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
-from ..core.timefrequency_scattering import timefrequency_scattering
+from ..core.timefrequency_scattering1d import timefrequency_scattering1d
 from ..utils import precompute_size_scattering
 from ...toolkit import pack_coeffs_jtfs
 from .base_frontend import (ScatteringBase1D, TimeFrequencyScatteringBase1D,
@@ -246,7 +246,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         if x.device != device:
             x = x.to(device)
 
-        S = timefrequency_scattering(
+        S = timefrequency_scattering1d(
             x,
             self.backend.pad, self.backend.unpad,
             self.backend,

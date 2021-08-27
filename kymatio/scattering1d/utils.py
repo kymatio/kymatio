@@ -459,7 +459,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     Computation and Structure
     -------------------------
-    Computation replicates logic in `timefrequency_scattering()`. Meta values
+    Computation replicates logic in `timefrequency_scattering1d()`. Meta values
     depend on:
         - out_3D (True only possible with `average and average_fr`)
         - average
@@ -476,10 +476,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         - sampling_phi_fr
     and some of their interactions.
     """
-    from .core.timefrequency_scattering import _get_stride
+    from .core.timefrequency_scattering1d import _get_stride
 
     def _get_compute_params(n2, n1_fr):
-        """Reproduce exact logic in `timefrequency_scattering.py`."""
+        """Reproduce exact logic in `timefrequency_scattering1d.py`."""
         # _frequency_scattering() or _frequency_lowpass() ####################
         # `n2 == -1` correctly indexes maximal amount of padding and unpadding
         pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else

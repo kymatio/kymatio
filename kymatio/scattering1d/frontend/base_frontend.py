@@ -1057,7 +1057,7 @@ class TimeFrequencyScatteringBase1D():
         'conj-reflect-zero'.
         Or, function with signature `pad_fn_fr(x, pad_fr, sc_freq, B)`;
         see `_right_pad` in
-        `kymatio.scattering1d.core.timefrequency_scattering1d`.
+        `kymatio.scattering1d.core.timefrequency_scattering1d1d`.
 
         If using `pad_mode = 'reflect'` and `average = True`, reflected portions
         will be automatically conjugated before frequential scattering to avoid
@@ -1334,7 +1334,7 @@ class TimeFrequencyScatteringBase1D():
         from down spin.
 
     n1_fr_subsample, subsample_equiv_due_to_pad, n2 : int, int, int
-        See `help(kymatio.scattering1d.core.timefrequency_scattering)`.
+        See `help(kymatio.scattering1d.core.timefrequency_scattering1d)`.
         Not attributes. Summary:
 
             - n1_fr_subsample: subsampling done after convolving with `psi_fr`

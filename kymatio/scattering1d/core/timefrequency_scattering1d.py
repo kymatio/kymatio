@@ -2,7 +2,7 @@ import math
 from ..backend.agnostic_backend import unpad_dyadic
 
 
-def timefrequency_scattering(
+def timefrequency_scattering1d(
         x, pad, unpad, backend, J, log2_T, psi1, psi2, phi, sc_freq,
         pad_fn, pad_left=0, pad_right=0, ind_start=None, ind_end=None,
         oversampling=0, oversampling_fr=0, aligned=True, average=True,
@@ -1318,4 +1318,4 @@ def _energy_correction(x, B, param_tm=None, param_fr=None, phi_t_psi_f=False):
     return x
 
 
-__all__ = ['timefrequency_scattering']
+__all__ = ['timefrequency_scattering1d']
