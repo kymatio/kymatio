@@ -256,6 +256,9 @@ class ScatteringBase1D(ScatteringBase):
             Will pad by at most `2**max_pad_factor` relative to `nextpow2(shape)`.
             E.g. if input length is 150, then maximum padding with
             `max_pad_factor=2` is `256 * (2**2) = 1024`.
+            The maximum realizable value is `4`: a filter of scale `J` requires
+            `2**(J + 4)` samples to convolve without boundary effects, i.e.
+            x16 the scale, and largest permissible `J` or `log2_T` is `log2(N)`.
         average_global_phi : bool
             True if `T == nextpow2(shape)`, i.e. `T` is maximum possible
             and equivalent to global averaging, in which case lowpassing is
