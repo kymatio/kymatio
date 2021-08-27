@@ -16,7 +16,7 @@ from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
 # note: non-'numpy' skips `test_meta()` and `test_lp_sum()`
-default_backend = ('numpy', 'torch', 'tensorflow')[1]
+default_backend = ('numpy', 'torch', 'tensorflow')[0]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
 # set True to print assertion errors rather than raising them in `test_output()`

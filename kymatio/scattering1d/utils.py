@@ -484,7 +484,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         # `n2 == -1` correctly indexes maximal amount of padding and unpadding
         pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
                   sc_freq.J_pad_fr[n2])
-        shape_fr_padded = 2**pad_fr
+        N_fr_padded = 2**pad_fr
         subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
 
         if n1_fr != -1:
@@ -541,7 +541,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             ind_start_fr = sc_freq.ind_start_fr[n2][_stride]
             ind_end_fr   = sc_freq.ind_end_fr[  n2][_stride]
 
-        return (shape_fr_padded, total_conv_stride_over_U1_realized,
+        return (N_fr_padded, total_conv_stride_over_U1_realized,
                 n1_fr_subsample, subsample_equiv_due_to_pad,
                 ind_start_fr, ind_end_fr, global_averaged_fr)
 
@@ -578,7 +578,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             return True
 
         width = sc_freq.psi1_f_fr_up[n1_fr]['width'][subsample_equiv_due_to_pad]
-        if width > sc_freq.shape_fr[n2]:
+        if width > sc_freq.N_frs[n2]:
             return True
         return False
 
@@ -587,7 +587,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             return
 
         # track S1 from padding to `_joint_lowpass()`
-        (shape_fr_padded, total_conv_stride_over_U1_realized, n1_fr_subsample,
+        (N_fr_padded, total_conv_stride_over_U1_realized, n1_fr_subsample,
          subsample_equiv_due_to_pad, ind_start_fr, ind_end_fr, global_averaged_fr
          ) = _get_compute_params(n2, n1_fr)
 
@@ -633,10 +633,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             meta['key'   ][pair].append((n2_key,  n1_fr_key, 0))
             return
 
-        fr_max = sc_freq.shape_fr[n2] if (n2 != -1) else len(xi1s)
+        fr_max = sc_freq.N_frs[n2] if (n2 != -1) else len(xi1s)
         # simulate subsampling
         n1_step = 2 ** total_conv_stride_over_U1_realized
-        for n1 in range(0, shape_fr_padded, n1_step):
+        for n1 in range(0, N_fr_padded, n1_step):
             # simulate unpadding
             if n1 / n1_step < ind_start_fr:
                 continue
@@ -677,8 +677,8 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
     if sampling_psi_fr == 'recalibrate':
         (xi1s_fr_new, sigma1s_fr_new, j1s_fr_new, is_cqt1_frs_new, _
          ) = _recalibrate_psi_fr(xi1s_fr, sigma1s_fr, j1s_fr, is_cqt1_frs, N_fr,
-                                 sc_freq.alpha, sc_freq.shape_fr_scale_min,
-                                 sc_freq.shape_fr_scale_max,
+                                 sc_freq.alpha, sc_freq.N_fr_scales_min,
+                                 sc_freq.N_fr_scales_max,
                                  sc_freq.sigma_max_to_min_max_ratio)
 
     # fetch phi meta; must access `phi_f_fr` as `j1s_fr` requires sampling phi
@@ -747,7 +747,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         meta['key'   ]['S1'].append((0, 0, n1))
 
     S1_len = len(meta['n']['S1'])
-    assert S1_len >= sc_freq.shape_fr_max
+    assert S1_len >= sc_freq.N_frs_max
 
     # Joint scattering #######################################################
     # `phi_t * phi_f` coeffs

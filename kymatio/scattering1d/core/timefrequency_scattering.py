@@ -102,7 +102,7 @@ def timefrequency_scattering(
     Debug tips
     ----------
       - Check following sc_freq attributes:
-          - shape_fr
+          - N_frs
           - J_pad_fr, J_pad_fr_max_init
           - ind_end_fr, ind_end_fr_max
     """
@@ -132,7 +132,7 @@ def timefrequency_scattering(
     subsample maximally for each padding - that is, as much as the filters will
     permit. The only restriction is, still, to not end up with <= 0 `freq`.
       - "Pad more -> unpad mode" still holds in fr scattering, so
-        `total_downsample_fr_max` is set relative to `nextpow2(shape_fr_max)`.
+        `total_downsample_fr_max` is set relative to `nextpow2(N_frs_max)`.
         That is, shorter `freq` due to the combination of padding less, and
         conv stride (subsampling), is the same for all paddings, and for greater
         `J_pad_fr` we simply unpad more.
@@ -153,9 +153,9 @@ def timefrequency_scattering(
             and this is accounted for alongside existing constraints.
 
         Thus: account for `phi_fr`'s `j` at any length along other constraints.
-      - `log2_F` cannot exceed `nextpow2(shape_fr_max)`; can
+      - `log2_F` cannot exceed `nextpow2(N_frs_max)`; can
         `total_downsample_fr_max` exceed it? For max padded case, whose pad length
-        might exceed `nextpow2(shape_fr_max)`, we can still total subsample by
+        might exceed `nextpow2(N_frs_max)`, we can still total subsample by
         `log2_F` at most (`average_fr=True`; note this quantity is unused for
         `False`); the rest will "unpad more".
 
@@ -203,9 +203,9 @@ def timefrequency_scattering(
             `total_downsample_fr == freq / J_pad_fr_max_init`, where `freq` is
             length of frequential dimension *before* unpadding. It is also ==
             `lowpass_subsample_fr + n1_fr_subsample + subsample_equiv_due_to_pad`.
-        D2) `log2_N_fr == nextpow2(shape_fr_max)` is the maximum possible
+        D2) `log2_N_fr == nextpow2(N_frs_max)` is the maximum possible
             `total_conv_stride_over_U1` for any configuration.
-            (Exceeding would imply `freq` <0 0 over unpadded `shape_fr_max`).
+            (Exceeding would imply `freq` <0 0 over unpadded `N_frs_max`).
               - `log2_N_fr + diff == J_pad_fr_max_init` is the maximum possible
                 `total_downsample_fr` for any configuration.
               - `log2_F <= log2_N_fr` for all configurations.
@@ -784,7 +784,7 @@ def timefrequency_scattering(
         # energy correction due to stride & inexact unpad indices
         # time already done
         S_1 = _energy_correction(S_1, B,
-                                 param_fr=(sc_freq.shape_fr_max,
+                                 param_fr=(sc_freq.N_frs_max,
                                            ind_start_fr, ind_end_fr,
                                            total_conv_stride_over_U1_realized))
 
@@ -970,7 +970,7 @@ def _frequency_scattering(Y_2_hat, j2, n2, pad_fr, k1_plus_k2, trim_tm, commons,
                 if subsample_equiv_due_to_pad not in psi1_f[n1_fr]:
                     continue
                 width = psi1_f[n1_fr]['width'][subsample_equiv_due_to_pad]
-                if width > sc_freq.shape_fr[n2]:
+                if width > sc_freq.N_frs[n2]:
                     continue
 
             # compute subsampling
@@ -1013,7 +1013,7 @@ def _frequency_lowpass(Y_2_hat, Y_2_arr, j2, n2, pad_fr, k1_plus_k2, trim_tm,
     if sc_freq.average_fr_global_phi:
         Y_fr_c = B.mean(Y_2_arr, axis=-2)
         j1_fr = sc_freq.log2_F
-        # `min` in case `pad_fr > shape_fr_scale_max`
+        # `min` in case `pad_fr > N_fr_scales_max`
         total_conv_stride_over_U1 = min(pad_fr, sc_freq.log2_F)
         n1_fr_subsample = total_conv_stride_over_U1
     else:
@@ -1132,7 +1132,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
 
     # energy correction ######################################################
     param_tm = (N, ind_start_tm, ind_end_tm, total_conv_stride_tm)
-    param_fr = (sc_freq.shape_fr[n2], ind_start_fr,
+    param_fr = (sc_freq.N_frs[n2], ind_start_fr,
                 ind_end_fr, total_conv_stride_over_U1_realized)
     # correction due to stride & inexact unpad indices
     S_2 = (_energy_correction(S_2, B, param_tm, param_fr) if n2 != -1 else
@@ -1172,19 +1172,19 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
 #### helper methods ##########################################################
 def _right_pad(coeff_list, pad_fr, sc_freq, B):
     if sc_freq.pad_mode_fr == 'conj-reflect-zero':
-        return _pad_conj_reflect_zero(coeff_list, pad_fr, sc_freq.shape_fr_max, B)
+        return _pad_conj_reflect_zero(coeff_list, pad_fr, sc_freq.N_frs_max, B)
     # zero-pad
     zero_row = B.zeros_like(coeff_list[0])
     zero_rows = [zero_row] * (2**pad_fr - len(coeff_list))
     return B.concatenate_v2(coeff_list + zero_rows, axis=1)
 
 
-def _pad_conj_reflect_zero(coeff_list, pad_fr, shape_fr_max, B):
-    n_coeffs_input = len(coeff_list)  # == shape_fr
+def _pad_conj_reflect_zero(coeff_list, pad_fr, N_frs_max, B):
+    n_coeffs_input = len(coeff_list)  # == N_fr
     zero_row = B.zeros_like(coeff_list[0])
     padded_len = 2**pad_fr
     # first zero pad, then reflect remainder (including zeros as appropriate)
-    n_zeros = min(shape_fr_max - n_coeffs_input,  # never need more than this
+    n_zeros = min(N_frs_max - n_coeffs_input,  # never need more than this
                   padded_len - n_coeffs_input)    # cannot exceed `padded_len`
     zero_rows = [zero_row] * n_zeros
 

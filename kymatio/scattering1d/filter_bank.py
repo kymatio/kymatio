@@ -852,8 +852,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
     return phi_f, psi1_f, psi2_f
 
 
-def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
-                   shape_fr_scale_min, max_pad_factor_fr, unrestricted_pad_fr,
+def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, N_frs, N_fr_scales_max,
+                   N_fr_scales_min, max_pad_factor_fr, unrestricted_pad_fr,
                    max_subsample_equiv_before_phi_fr,
                    subsample_equiv_relative_to_max_pad_init,
                    average_fr_global_phi,
@@ -886,7 +886,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
     Q_fr : int
         Number of wavelets per octave for frequential scattering.
 
-    shape_fr, shape_fr_scale_max, shape_fr_scale_min : list[int], int, int
+    N_frs, N_fr_scales_max, N_fr_scales_min : list[int], int, int
         See `help(TimeFrequencyScattering1D)`. Used for filter computation at
         various lengths/scales depending on `sampling_psi_fr`.
 
@@ -900,7 +900,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
     max_subsample_equiv_before_phi_fr : int
         See `help(TimeFrequencyScattering1D)`. Used for waiving certain criterion
-        checks if `shape_fr_scale` is too small.
+        checks if `N_fr_scales` is too small.
 
     subsample_equiv_relative_to_max_pad_init : int
         See `help(TimeFrequencyScattering1D)`. Controls filter lengths.
@@ -917,7 +917,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
               preserved, including subsampling factor).
             - 'recalibrate': `j1_fr_max` is (likely) lesser with greater
               `subsample_equiv_due_to_pad` (by design, temporal width is halved
-              for shorter `shape_fr`). The limit, however, is set by
+              for shorter `N_frs`). The limit, however, is set by
               `sigma_max_to_min_max_ratio` (see its docs).
             - 'exclude': approximately same as 'recalibrate'. By design, excludes
               temporal widths above `min_width * 2**downsampling_factor`, which
@@ -1004,7 +1004,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
         # recalibrate filterbank to each j0
         (xi1_frs_new, sigma1_frs_new, j1_frs_new, is_cqt1_frs_new, scale_diff_max
          ) = _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N,
-                                 alpha, shape_fr_scale_min, shape_fr_scale_max,
+                                 alpha, N_fr_scales_min, N_fr_scales_max,
                                  sigma_max_to_min_max_ratio)
     elif sampling_psi_fr == 'resample' and unrestricted_pad_fr:
         # in this case filter temporal behavior is preserved across all lengths
@@ -1024,7 +1024,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                                     + "`J_pad_fr_max_init` computed incorrectly.")
                 j0_max = max(j0_max, 0)
                 break
-            elif len(psi_widest) == shape_fr_scale_min:
+            elif len(psi_widest) == N_fr_scales_min:
                 # smaller pad length is impossible
                 break
             j0 += 1
@@ -1061,18 +1061,18 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                                 normalize=normalize, P_max=P_max, eps=eps
                                 )[:, None]
         psi_down['width'] = {0: 2*compute_temporal_width(
-            psi_down[0], N=2**shape_fr_scale_max, **s0ca)}
+            psi_down[0], N=2**N_fr_scales_max, **s0ca)}
         psi_down['support'] = {0: 2*compute_temporal_support(psi_down[0].T, **ca)}
 
         # j0 is ordered greater to lower, so reverse
         j0_prev = 0
         for j0, N_fr in zip(subsample_equiv_relative_to_max_pad_init[::-1],
-                            shape_fr[::-1]):
+                            N_frs[::-1]):
             #### Validate `j0` & compute scale params ########################
             # ensure we compute at valid `j0`
             if j0 < 0:
                 continue
-            # `j0_max` restricts the *least* we can pad by for any `shape_fr`,
+            # `j0_max` restricts the *least* we can pad by for any `N_fr`,
             # while `max_pad_factor_fr` restricts the *most*.
             # Latter takes precedence.
             elif j0_max is not None and j0 > j0_max:
@@ -1081,8 +1081,8 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 break
 
             # compute scale params
-            shape_fr_scale = math.ceil(math.log2(N_fr))
-            scale_diff = shape_fr_scale_max - shape_fr_scale
+            N_fr_scales = math.ceil(math.log2(N_fr))
+            scale_diff = N_fr_scales_max - N_fr_scales
             if scale_diff_max is not None and scale_diff > scale_diff_max:
                 # subsequent `scale_diff` are only greater
                 # This takes precedence over `max_pad_factor_fr`.
@@ -1091,7 +1091,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
             # validate `subsample_equiv_relative_to_max_pad_init` ############
             # needed for variable list `max_pad_factor_fr` ###################
-            # j0 no longer strictly tied to shape_fr for logics that check it
+            # j0 no longer strictly tied to N_fr for logics that check it
             # (that raise errors); account for this
             j0_at_limit = bool(scale_diff >= max_subsample_equiv_before_phi_fr)
             must_be_unique = bool(pad_contractive_phi and same_pad_limit and
@@ -1113,12 +1113,12 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                     if must_be_unique:
                         # should not occur^1
                         # ^1: `min_to_pad` should halve with each
-                        # lesser `shape_fr_scale`, guaranteeing unique padding
+                        # lesser `N_fr_scales`, guaranteeing unique padding
                         raise err
                     else:
                         # would require triple-indexing
                         # Additionally, with 'resample',
-                        # `width(phi) > shape_fr_scale`, can't use any shorter psi
+                        # `width(phi) > N_fr_scales`, can't use any shorter psi
                         # `continue` because we still need the remaining `j0`
                         j0_prev = j0
                         continue
@@ -1149,11 +1149,11 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                     break
                 raise e
 
-            psi_width = 2*compute_temporal_width(psi, N=2**shape_fr_scale, **s0ca)
+            psi_width = 2*compute_temporal_width(psi, N=2**N_fr_scales, **s0ca)
             if sampling_psi_fr == 'exclude':
                 # if wavelet exceeds max possible width at this scale, exclude it
-                if psi_width > 2**shape_fr_scale:
-                    # subsequent `shape_fr_scale` are only lesser, and `psi_width`
+                if psi_width > 2**N_fr_scales:
+                    # subsequent `N_fr_scales` are only lesser, and `psi_width`
                     # doesn't change (approx w/ discretization error).
                     # `j0_max_exclude` can compute from `n1_fr=0` case alone
                     j0_max_exclude[n1_fr] = j0_prev
@@ -1202,7 +1202,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
                 psi_f[n1_fr]['j'][j0] = j
                 psi_f[n1_fr]['is_cqt'][j0] = is_cqt
 
-    # to ensure at least one wavelet for every `shape_fr_scale`
+    # to ensure at least one wavelet for every `N_fr_scales`
     if sampling_psi_fr == 'exclude' and 0 in j0_max_exclude:
         j0_max = max(j0_max_exclude.values())
         # `n1_fr==0` should be the most trimmable (lowest time width)
@@ -1216,7 +1216,7 @@ def psi_fr_factory(J_pad_fr_max_init, J_fr, Q_fr, shape_fr, shape_fr_scale_max,
 
 
 def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
-                   shape_fr_scale_min, shape_fr_scale_max, unrestricted_pad_fr,
+                   N_fr_scales_min, N_fr_scales_max, unrestricted_pad_fr,
                    sampling_phi_fr='resample', criterion_amplitude=1e-3,
                    sigma0=0.1, P_max=5, eps=1e-7):
     """
@@ -1249,7 +1249,7 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
         the most subsampled `phi_f_fr` *before* convolving with it - set by
         `max_subsample_before_phi_fr`.
 
-    shape_fr_scale_min : int
+    N_fr_scales_min : int
         Used to determine the shortest filter.
 
     unrestricted_pad_fr : bool
@@ -1304,7 +1304,7 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
     compute_all_subsamplings(phi_f_fr, j0=0)
 
     # lowpass filters at all possible input lengths
-    min_possible_pad_fr = shape_fr_scale_min
+    min_possible_pad_fr = N_fr_scales_min
     max_possible_j0 = J_pad_fr_max_init - min_possible_pad_fr
     for j0 in range(1, 1 + max_possible_j0):
         factor = 2**j0
@@ -1366,8 +1366,8 @@ def phi_fr_factory(J_pad_fr_max_init, F, log2_F,
         phi_f_fr['support'][j0] = []
         for j0_sub in range(len(phi_f_fr[j0])):
             # should halve with subsequent j0_sub, but compute exactly
-            # `j0`-to-`shape_fr` uniqueness asserted in `psi_fr_factory`
-            N_j0 = 2**(shape_fr_scale_max - j0_sub)
+            # `j0`-to-`N_fr` uniqueness asserted in `psi_fr_factory`
+            N_j0 = 2**(N_fr_scales_max - j0_sub)
             width = compute_temporal_width(
                 phi_f_fr[j0][j0_sub], N=N_j0, sigma0=sigma0,
                 criterion_amplitude=criterion_amplitude)
@@ -1973,7 +1973,7 @@ def _get_lp_sum_maxima(lp_sum, psi_fs, j0=None, anti_analytic=False):
 
 
 def _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N, alpha,
-                        shape_fr_scale_min, shape_fr_scale_max,
+                        N_fr_scales_min, N_fr_scales_max,
                         sigma_max_to_min_max_ratio):
     # recalibrate filterbank to each j0
     # j0=0 is the original length, no change needed
@@ -1981,9 +1981,9 @@ def _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N, alpha,
         {0: xi1_frs}, {0: sigma1_frs}, {0: j1_frs}, {0: is_cqt1_frs})
     scale_diff_max = None
 
-    for shape_fr_scale in range(shape_fr_scale_max - 1, shape_fr_scale_min - 1,
+    for N_fr_scales in range(N_fr_scales_max - 1, N_fr_scales_min - 1,
                                 -1):
-        scale_diff = shape_fr_scale_max - shape_fr_scale
+        scale_diff = N_fr_scales_max - N_fr_scales
         (xi1_frs_new[scale_diff], sigma1_frs_new[scale_diff],
          j1_frs_new[scale_diff], is_cqt1_frs_new[scale_diff]) = [], [], [], []
         factor = 2**scale_diff
