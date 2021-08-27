@@ -127,5 +127,8 @@ class TorchBackend1D(TorchBackend):
 
         return _ifft(x)
 
+    @classmethod
+    def mean(cls, x, axis=-1, keepdims=True):
+        return x.mean(axis, keepdim=keepdims)
 
 backend = TorchBackend1D

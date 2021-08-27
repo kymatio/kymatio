@@ -98,4 +98,8 @@ class NumpyBackend1D(NumpyBackend):
 
         return cls._fft.ifft(x)
 
+    @classmethod
+    def mean(cls, x, axis=-1, keepdims=True):
+        return x.mean(axis, keepdims=keepdims)
+
 backend = NumpyBackend1D

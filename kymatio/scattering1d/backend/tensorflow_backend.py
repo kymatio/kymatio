@@ -96,4 +96,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
 
         return tf.signal.ifft(x, name='ifft1d')
 
+    @classmethod
+    def mean(cls, x, axis=-1, keepdims=True):
+        return tf.reduce_mean(x, axis=axis, keepdims=keepdims)
+
 backend = TensorFlowBackend1D
