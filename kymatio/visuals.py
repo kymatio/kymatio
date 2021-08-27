@@ -447,6 +447,25 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
         plt.show()
 
 
+def hist(x, bins=500, title=None, show=0, stats=0):
+    """Histogram. `stats=True` to print mean, std, min, max of `x`."""
+    def _fmt(*nums):
+        return [(("%.3e" % n) if (abs(n) > 1e3 or abs(n) < 1e-3) else
+                 ("%.3f" % n)) for n in nums]
+
+    x = np.asarray(x)
+    _ = plt.hist(x.ravel(), bins=bins)
+    _title(title)
+    if show:
+        plt.show()
+
+    if stats:
+        mu, std, mn, mx = (x.mean(), x.std(), x.min(), x.max())
+        print("(mean, std, min, max) = ({}, {}, {}, {})".format(
+            *_fmt(mu, std, mn, mx)))
+        return mu, std, mn, mx
+
+
 def vhlines(lines, kind='v'):
     lfn = plt.axvline if kind=='v' else plt.axhline
 
