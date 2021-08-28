@@ -128,14 +128,13 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
 
     # main transform #########################################################
     # time-sum (integral)
-    Xs = B.sum(X, axis=-1, keepdims=True)
+    Xsum = B.sum(X, axis=-1, keepdims=True)
     # sample-median
-    mu = B.median(Xs, axis=0, keepdims=True)
+    mu = B.median(Xsum, axis=0, keepdims=True)
     # rescale
-    Xmu = X / mu
+    Xnorm = X / mu
     # log
-    Xmu = B.log(1 + Xmu * C)
-    Xnorm = Xmu
+    Xnorm = B.log(1 + Xnorm * C)
 
     # standardization + relative scaling #####################################
     if mean_axis is not None:
@@ -144,7 +143,7 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
     if rscaling is not None:
         kw = dict(axis=(0, 2), keepdims=True)
         ord = (2 if rscaling == 'l2' else 1)
-        Xstd = X - B.mean(**kw)
+        Xstd = X - B.mean(X, **kw)
         norms_orig = B.norm(Xstd,  ord=ord, **kw)
         norms_now  = B.norm(Xnorm, ord=ord, **kw)
         norms = norms_orig / norms_now
