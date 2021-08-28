@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import scipy.fft
+import scipy.fftpack
 
 from kymatio.scattering1d.backend.numpy_backend import backend
 

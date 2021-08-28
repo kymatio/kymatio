@@ -8,7 +8,7 @@ from colorsys import hls_to_rgb
 import matplotlib.pyplot as plt
 import numpy as np
 from kymatio.scattering2d.filter_bank import filter_bank
-from scipy.fft import fft2
+from scipy.fftpack import fft2
 
 
 ###############################################################################

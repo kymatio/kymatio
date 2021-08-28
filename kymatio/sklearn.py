@@ -1,5 +1,6 @@
-from .scattering1d.frontend.sklearn_frontend \
-    import ScatteringTransformer1D as Scattering1D
+from .scattering1d.frontend.sklearn_frontend import (
+    ScatteringTransformer1D as Scattering1D,
+    TimeFrequencyScatteringTransformer1D as TimeFrequencyScattering1D)
 from .scattering2d.frontend.sklearn_frontend \
     import ScatteringTransformer2D as Scattering2D
 from .scattering3d.frontend.sklearn_frontend \
@@ -14,4 +15,8 @@ Scattering2D.__name__ = 'Scattering2D'
 HarmonicScattering3D.__module__ = 'kymatio.sklearn'
 HarmonicScattering3D.__name__ = 'HarmonicScattering3D'
 
-__all__ = ['Scattering1D', 'Scattering2D', 'HarmonicScattering3D']
+TimeFrequencyScattering1D.__module__ = 'kymatio.sklearn'
+TimeFrequencyScattering1D.__name__ = 'TimeFrequencyScattering1D'
+
+__all__ = ['Scattering1D', 'Scattering2D', 'HarmonicScattering3D',
+           'TimeFrequencyScattering1D']
