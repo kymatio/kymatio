@@ -1,23 +1,12 @@
 import torch
 from torch.nn import ReflectionPad2d
 from collections import namedtuple
-from packaging import version
 
 from ...backend.torch_backend import TorchBackend
 
 
-if version.parse(torch.__version__) >= version.parse('1.8'):
-    _fft = lambda x: torch.view_as_real(torch.fft.fft2(torch.view_as_complex(x)))
-    _ifft = lambda x: torch.view_as_real(torch.fft.ifft2(torch.view_as_complex(x)))
-    _irfft = lambda x: torch.fft.ifft2(torch.view_as_complex(x)).real[..., None]
-else:
-    _fft = lambda x: torch.fft(x, 2, normalized=False)
-    _ifft = lambda x: torch.ifft(x, 2, normalized=False)
-    _irfft = lambda x: torch.irfft(x, 2, normalized=False, onesided=False)[..., None]
-
-
 class Pad(object):
-    def __init__(self, pad_size, input_size):
+    def __init__(self, pad_size, input_size, pre_pad=False):
         """Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
 
@@ -27,7 +16,11 @@ class Pad(object):
                 Size of padding to apply [top, bottom, left, right].
             input_size : list of 2 integers
                 size of the original signal [height, width].
+            pre_pad : boolean, optional
+                If set to true, then there is no padding, one simply adds the imaginary part.
+
         """
+        self.pre_pad = pre_pad
         self.pad_size = pad_size
         self.input_size = input_size
 
@@ -73,14 +66,15 @@ class Pad(object):
         batch_shape = x.shape[:-2]
         signal_shape = x.shape[-2:]
         x = x.reshape((-1, 1) + signal_shape)
-        x = self.padding_module(x)
+        if not self.pre_pad:
+            x = self.padding_module(x)
 
-        # Note: PyTorch is not effective to pad signals of size N-1 with N
-        # elements, thus we had to add this fix.
-        if self.pad_size[0] == self.input_size[0]:
-            x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.shape[2] - 2, :].unsqueeze(2)], 2)
-        if self.pad_size[2] == self.input_size[1]:
-            x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
+            # Note: PyTorch is not effective to pad signals of size N-1 with N
+            # elements, thus we had to add this fix.
+            if self.pad_size[0] == self.input_size[0]:
+                x = torch.cat([x[:, :, 1, :].unsqueeze(2), x, x[:, :, x.shape[2] - 2, :].unsqueeze(2)], 2)
+            if self.pad_size[2] == self.input_size[1]:
+                x = torch.cat([x[:, :, :, 1].unsqueeze(3), x, x[:, :, :, x.shape[3] - 2].unsqueeze(3)], 3)
 
         output = x.reshape(batch_shape + x.shape[-2:] + (1,))
         return output
@@ -128,6 +122,7 @@ class TorchBackend2D(TorchBackend):
 
         return out
 
+
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
@@ -138,21 +133,22 @@ class TorchBackend2D(TorchBackend):
         x_r = torch.zeros((x.shape[:-1] + (2,)), dtype=x.dtype, layout=x.layout, device=x.device)
         x_r[..., 0] = x[..., 0]
 
-        return _fft(x_r)
+        return torch.fft(x_r, 2, normalized=False)
 
     @classmethod
     def irfft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return _irfft(x)
+        return torch.ifft(x, 2, normalized=False)[..., :1]
+
 
     @classmethod
     def ifft(cls, x):
         cls.contiguous_check(x)
         cls.complex_check(x)
 
-        return _ifft(x)
+        return torch.ifft(x, 2, normalized=False)
 
     @staticmethod
     def unpad(in_):

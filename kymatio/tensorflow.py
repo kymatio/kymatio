@@ -1,4 +1,6 @@
-from .scattering1d.frontend.tensorflow_frontend import ScatteringTensorFlow1D as Scattering1D
+from .scattering1d.frontend.tensorflow_frontend import (
+    ScatteringTensorFlow1D as Scattering1D,
+    TimeFrequencyScatteringTensorFlow1D as TimeFrequencyScattering1D)
 from .scattering2d.frontend.tensorflow_frontend import ScatteringTensorFlow2D as Scattering2D
 from .scattering3d.frontend.tensorflow_frontend \
         import HarmonicScatteringTensorFlow3D as HarmonicScattering3D
@@ -12,4 +14,8 @@ Scattering2D.__name__ = 'Scattering2D'
 HarmonicScattering3D.__module__ = 'kymatio.tensorflow'
 HarmonicScattering3D.__name__ = 'HarmonicScattering3D'
 
-__all__ = ['Scattering1D', 'Scattering2D', 'HarmonicScattering3D']
+TimeFrequencyScattering1D.__module__ = 'kymatio.tensorflow'
+TimeFrequencyScattering1D.__name__ = 'TimeFrequencyScattering1D'
+
+__all__ = ['Scattering1D', 'Scattering2D', 'HarmonicScattering3D',
+           'TimeFrequencyScattering1D']

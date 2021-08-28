@@ -1,11 +1,28 @@
 name: Kymatio Pip CI
 
 on:
-    - push
-    - pull_request
+    push:
+        paths:
+          - "kymatio/*"
+          - "tests/*"
+          - ".github/workflows/*"
+          - ".coveragerc"
+          - "requirements.txt"
+          - "requirements_optional.txt"
+          
+    pull_request:
+        paths:
+          - "kymatio/*"
+          - "tests/*"
+          - ".github/workflows/*"
+          - ".coveragerc"
+          - "requirements.txt"
+          - "requirements_optional.txt"
 
 jobs:
     build-pip:
+        if: "contains(toJSON(github.event.commits.*.message), '[ci]')"
+
         runs-on: ubuntu-20.04
 
         strategy:
@@ -50,4 +67,7 @@ jobs:
             - name: Set up Kymatio
               run: python3 setup.py develop
             - name: Test
-              run: pytest --cov=kymatio
+              run: >
+                  pycodestyle --max-line-length=85 kymatio
+                  
+                  pytest --cov=kymatio
