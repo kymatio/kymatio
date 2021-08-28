@@ -1,7 +1,7 @@
 from ...backend.numpy_backend import NumpyBackend
 
 class Pad(object):
-    def __init__(self, np, pad_size, input_size):
+    def __init__(self, np, pad_size, input_size, pre_pad=False):
         """
             Padding which allows to simultaneously pad in a reflection fashion
             and map to complex.
@@ -12,17 +12,24 @@ class Pad(object):
                 size of padding to apply.
             input_size : list of 2 integers
                 size of the original signal
+            pre_pad : boolean
+                if set to true, then there is no padding, one simply converts
+                from real to complex.
 
         """
         self.np = np
+        self.pre_pad = pre_pad
         self.pad_size = pad_size
 
     def __call__(self, x):
-        paddings = ((0, 0),)
-        paddings += ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
+        if self.pre_pad:
+            return x
+        else:
+            paddings = (0, 0),
+            paddings += ((self.pad_size[0], self.pad_size[1]), (self.pad_size[2], self.pad_size[3]))
 
-        output = self.np.pad(x, paddings, mode='reflect')
-        return output
+            output = self.np.pad(x, paddings, mode='reflect')
+            return output
 
 
 class NumpyBackend2D(NumpyBackend):
@@ -76,8 +83,8 @@ class NumpyBackend2D(NumpyBackend):
         return out
 
     @classmethod
-    def Pad(cls, pad_size, input_size):
-        return cls._Pad(cls._np, pad_size, input_size)
+    def Pad(cls, pad_size, input_size, pre_pad=False):
+        return cls._Pad(cls._np, pad_size, input_size, pre_pad)
 
     @classmethod
     def concatenate(cls, arrays):

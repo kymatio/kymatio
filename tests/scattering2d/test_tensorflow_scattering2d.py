@@ -10,6 +10,7 @@ backends = []
 from kymatio.scattering2d.backend.tensorflow_backend import backend
 backends.append(backend)
 
+
 class TestScattering2DTensorFlow:
     @pytest.mark.parametrize('backend', backends)
     def test_Scattering2D(self, backend):

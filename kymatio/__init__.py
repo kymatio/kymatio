@@ -13,9 +13,12 @@ __all__ = [
             'Scattering1D',
             'Scattering2D',
             'HarmonicScattering3D'
+            'TimeFrequencyScattering1D',
             ]
 
-from .scattering1d import ScatteringEntry1D as Scattering1D
+from .scattering1d import (
+    ScatteringEntry1D as Scattering1D,
+    TimeFrequencyScatteringEntry1D as TimeFrequencyScattering1D)
 from .scattering2d import ScatteringEntry2D as Scattering2D
 from .scattering3d import HarmonicScatteringEntry3D as HarmonicScattering3D
 
