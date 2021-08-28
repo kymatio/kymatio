@@ -13,6 +13,11 @@ class ScatteringTensorFlow2D(ScatteringTensorFlow, ScatteringBase2D):
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
 
+        if pre_pad:
+            # Need to cast to complex in TF
+            self.pad = lambda x: tf.cast(x, tf.complex64)
+
+
     def scattering(self, input):
         with tf.name_scope('scattering') as scope:
             try:

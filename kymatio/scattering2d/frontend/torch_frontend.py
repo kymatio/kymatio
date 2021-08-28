@@ -14,6 +14,10 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
 
+        if pre_pad:
+            # Need to cast to complex in Torch
+            self.pad = lambda x: x.reshape(x.shape + (1,))
+
         self.register_filters()
 
     def register_single_filter(self, v, n):
