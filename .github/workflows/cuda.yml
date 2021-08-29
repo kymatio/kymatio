@@ -1,29 +1,12 @@
-name: Kymatio Conda CI
+name: Kymatio self-hosted CI
 
 on:
-    push:
-        paths:
-          - "kymatio/*"
-          - "tests/*"
-          - ".github/workflows/*"
-          - ".coveragerc"
-          - "requirements.txt"
-          - "requirements_optional.txt"
-          
-    pull_request:
-        paths:
-          - "kymatio/*"
-          - "tests/*"
-          - ".github/workflows/*"
-          - ".coveragerc"
-          - "requirements.txt"
-          - "requirements_optional.txt"
+    - push
+    - pull_request
 
 jobs:
-    build-conda:
-        if: "! contains(toJSON(github.event.commits.*.message), '[skip ci]')"
-
-        runs-on: ubuntu-20.04
+    build:
+        runs-on: [self-hosted, gpu]
 
         strategy:
             matrix:
@@ -47,7 +30,7 @@ jobs:
             - name: Install dependencies
               run: |
                   conda install -n ${CONDA_ENV} numpy scipy pytest pytest-cov
-                  conda install -n ${CONDA_ENV} pytorch=${{ matrix.pytorch-version }} torchvision cpuonly -c pytorch
+                  conda install -n ${CONDA_ENV} pytorch==${{ matrix.pytorch-version }} torchvision torchaudio cudatoolkit=10.2 -c pytorch
 
                   conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip
 
@@ -58,7 +41,5 @@ jobs:
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt
             - name: Set up Kymatio
               run: conda run -n ${CONDA_ENV} python3 setup.py develop
-            - name: Test
-              run: >
-                  
-                  conda run -n ${CONDA_ENV} pytest --cov=kymatio
+            - name: Test Torch
+              run: conda run -n ${CONDA_ENV} pytest tests/scattering*d/*torch*.py

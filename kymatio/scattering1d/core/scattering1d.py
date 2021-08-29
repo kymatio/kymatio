@@ -86,6 +86,7 @@ def scattering1d(x, pad_fn, unpad, backend, J, log2_T, psi1, psi2, phi,
         S_0_c = cdgmm(U_0_hat, phi[0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
+
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
