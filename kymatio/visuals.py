@@ -101,7 +101,7 @@ def filterbank_heatmap(scattering, first_order=None, second_order=False,
                                   ).format(p, ', '.join(parts)))
 
     # process visuals selection
-    is_jtfs = bool(hasattr(scattering, 'sc_freq'))
+    is_jtfs = bool(hasattr(scattering, 'scf'))
     if first_order is None:
         first_order = not is_jtfs
     if frequential is None:
@@ -408,7 +408,7 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
     linestyles = [ls_set for ls in "- -- -.".split() for ls_set in [ls]*nc]
 
     # shorthand references
-    p0 = jtfs.sc_freq.phi_f_fr
+    p0 = jtfs.scf.phi_f_fr
     pup = jtfs.psi1_f_fr_up
     pdn = jtfs.psi1_f_fr_down
 
@@ -497,13 +497,13 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
         _f_idx = len(jtfs.psi1_f_fr_up) - f_idx - 1
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f[0], jtfs.sc_freq.phi_f_fr[0]
+            p_t, p_f = jtfs.phi_f[0], jtfs.scf.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f[0], jtfs.sc_freq.psi1_f_fr_up[_f_idx]
+            p_t, p_f = jtfs.phi_f[0], jtfs.scf.psi1_f_fr_up[_f_idx]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", _f_idx, 0)
         elif f_idx == -1:
-            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr[0]
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.scf.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
 
         if t_idx == -1 or f_idx == -1:
@@ -515,8 +515,8 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             return Psi, title
 
         # else get spinned wavelets ##########################################
-        psi_spin = (jtfs.sc_freq.psi1_f_fr_up if s_idx == 0 else
-                    jtfs.sc_freq.psi1_f_fr_down)
+        psi_spin = (jtfs.scf.psi1_f_fr_up if s_idx == 0 else
+                    jtfs.scf.psi1_f_fr_down)
         psi_f = psi_spin[_f_idx][0].squeeze()
         psi_t = jtfs.psi2_f[t_idx][0].squeeze()
 
@@ -573,7 +573,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
                cmap=cmap)
 
     # get spinned wavelet arrays & metadata ##################################
-    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_fr_up)
+    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.scf.psi1_f_fr_up)
     imshow_data = {}
     for s_idx in (0, 1):
         for t_idx in range(n_rows):

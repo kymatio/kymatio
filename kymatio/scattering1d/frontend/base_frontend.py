@@ -618,7 +618,7 @@ class TimeFrequencyScatteringBase1D():
         self._n_psi1_f = len(self.psi1_f)
         max_order_fr = 1
 
-        self.sc_freq = _FrequencyScatteringBase(
+        self.scf = _FrequencyScatteringBase(
             self._N_frs, self.J_fr, self.Q_fr, self.F, max_order_fr,
             self.average_fr, self.aligned, self.oversampling_fr,
             self.sampling_filters_fr, self.out_type, self.out_3D,
@@ -626,7 +626,7 @@ class TimeFrequencyScatteringBase1D():
             self.normalize_fr, self.r_psi_fr, self._n_psi1_f, self.backend)
         self.finish_creating_filters()
 
-        # detach __init__ args, instead access `sc_freq`'s via `__getattr__`
+        # detach __init__ args, instead access `scf`'s via `__getattr__`
         # this is so that changes in attributes are reflected here
         init_args = ('J_fr', 'Q_fr', 'F', 'average_fr', 'oversampling_fr',
                      'sampling_filters_fr', 'max_pad_factor_fr', 'pad_mode_fr',
@@ -702,11 +702,11 @@ class TimeFrequencyScatteringBase1D():
                                  self.out_type, self.out_exclude,
                                  self.sampling_filters_fr, self.average,
                                  self.average_global, self.average_global_phi,
-                                 self.oversampling, self.r_psi, self.sc_freq)
+                                 self.oversampling, self.r_psi, self.scf)
 
     @property
     def fr_attributes(self):
-        """Exposes `sc_freq`'s attributes via main object."""
+        """Exposes `scf`'s attributes via main object."""
         return ('J_fr', 'Q_fr', 'N_frs', 'N_frs_max', 'N_frs_min',
                 'N_fr_scales_max', 'N_fr_scales_min',
                 'J_pad_frs', 'J_pad_frs_max', 'J_pad_frs_max_init', 'average_fr',
@@ -719,8 +719,8 @@ class TimeFrequencyScatteringBase1D():
         # access key attributes via frequential class
         # only called when default attribute lookup fails
         # `hasattr` in case called from Scattering1D
-        if name in self.fr_attributes and hasattr(self, 'sc_freq'):
-            return getattr(self.sc_freq, name)
+        if name in self.fr_attributes and hasattr(self, 'scf'):
+            return getattr(self.scf, name)
         raise AttributeError(f"'{type(self).__name__}' object has no "
                              f"attribute '{name}'")  # standard attribute error
 
@@ -740,9 +740,9 @@ class TimeFrequencyScatteringBase1D():
                 array=cls._doc_array,
                 n=cls._doc_array_n,
         ))
-        # doc `sc_freq` methods
-        cls.sc_freq_compute_padding_fr.__doc__ = cls._doc_compute_padding_fr
-        cls.sc_freq_compute_J_pad.__doc__ = cls._doc_compute_J_pad
+        # doc `scf` methods
+        cls.scf_compute_padding_fr.__doc__ = cls._doc_compute_padding_fr
+        cls.scf_compute_J_pad.__doc__ = cls._doc_compute_J_pad
 
     def output_size(self):
         raise NotImplementedError("Not implemented for JTFS.")
@@ -1082,7 +1082,7 @@ class TimeFrequencyScatteringBase1D():
     pad_mode_fr : str (default 'conj-reflect-zero') / function
         Name of frequential padding mode to use, one of: 'zero',
         'conj-reflect-zero'.
-        Or, function with signature `pad_fn_fr(x, pad_fr, sc_freq, B)`;
+        Or, function with signature `pad_fn_fr(x, pad_fr, scf, B)`;
         see `_right_pad` in
         `kymatio.scattering1d.core.timefrequency_scattering1d1d`.
 
@@ -1117,7 +1117,7 @@ class TimeFrequencyScatteringBase1D():
             - `False` will unpad freq by exact amounts for each joint slice,
               whereas `True` will unpad by minimum amount common to all
               slices at a given subsampling factor to enable concatenation.
-              See `sc_freq_compute_padding_fr()`.
+              See `scf_compute_padding_fr()`.
             - See `aligned` for its interactions with `out_3D`
 
         Both `True` and `False` can still be concatenated into the 'true' JTFS
@@ -1161,9 +1161,11 @@ class TimeFrequencyScatteringBase1D():
     r"""
     Attributes
     ----------
-    sc_freq : `_FrequencyScatteringBase`
+    scf : `_FrequencyScatteringBase`
         Frequential scattering object, storing pertinent attributes and filters.
         Temporal scattering's are accessed directly via `self`.
+
+        "scf" abbreviates "scattering frequency".
 
     N_frs : list[int]
         List of lengths of frequential columns (i.e. numbers of frequential rows)
@@ -1240,7 +1242,7 @@ class TimeFrequencyScatteringBase1D():
 
     J_pad_frs : list[int]
         log2 of padding lengths of frequential columns in joint scattering
-        (column lengths given by `N_frs`). See `sc_freq.compute_padding_fr()`.
+        (column lengths given by `N_frs`). See `scf.compute_padding_fr()`.
 
     J_pad_frs_max_init : int
         Set as reference for computing other `J_pad_fr`, is equal to
@@ -1264,7 +1266,7 @@ class TimeFrequencyScatteringBase1D():
 
     min_to_pad_fr_max : int
         `min_to_pad` from `compute_minimum_support_to_pad(N=N_frs_max)`.
-        Used in computing `J_pad_fr`. See `sc_freq.compute_J_pad()`.
+        Used in computing `J_pad_fr`. See `scf.compute_J_pad()`.
 
     unrestricted_pad_fr : bool
         `True` if `max_pad_factor is None`. Affects padding computation and
@@ -1279,7 +1281,7 @@ class TimeFrequencyScatteringBase1D():
     subsample_equiv_relative_to_max_pad_init : int
         Amount of *equivalent subsampling* of frequential padding relative to
         `J_pad_frs_max_init`, indexed by `n2`.
-        See `help(sc_freq.compute_padding_fr())`.
+        See `help(scf.compute_padding_fr())`.
 
     max_subsample_equiv_before_phi_fr : int
         Maximum permitted `subsample_equiv_due_to_pad` before convolving
@@ -1633,8 +1635,8 @@ class _FrequencyScatteringBase(ScatteringBase):
         supported = ('conj-reflect-zero', 'zero')
         if isinstance(self.pad_mode_fr, FunctionType):
             fn = self.pad_mode_fr
-            def pad_fn_fr(x, pad_fr, sc_freq, B):
-                return fn(x, pad_fr, sc_freq, B)
+            def pad_fn_fr(x, pad_fr, scf, B):
+                return fn(x, pad_fr, scf, B)
             self.pad_mode_fr = 'custom'
         elif self.pad_mode_fr not in supported:
             raise ValueError(("unsupported `pad_mode_fr` '{}';\nmust be a "

@@ -1337,7 +1337,7 @@ def test_output():
         4. True     False       False     8         ('resample', 'resample')
         5. False    True        True      16        ('recalibrate', 'recalibrate')
 
-        6. special: params such that `sc_freq.J_pad_fo > sc_freq.J_pad_max`
+        6. special: params such that `scf.J_pad_fo > scf.J_pad_max`
             - i.e. all first-order coeffs pad to greater than longest set of
             second-order, as in `U1 * phi_t * phi_f` and
             `(U1 * phi_t * psi_f) * phi_t * phi_f`.
