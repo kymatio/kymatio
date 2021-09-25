@@ -28,6 +28,10 @@ class TensorFlowBackend(NumpyBackend):
         return tf.math.sqrt(x)
 
     @classmethod
+    def mean(cls, x, axis=-1, keepdims=True):
+        return tf.reduce_mean(x, axis=axis, keepdims=keepdims)
+
+    @classmethod
     def conj(cls, x, inplace=False):
         if inplace:
             raise Exception("TensorFlow doesn't support `out=`")

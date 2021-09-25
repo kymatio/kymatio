@@ -121,6 +121,10 @@ class TorchBackend:
         return torch.sqrt(x)
 
     @classmethod
+    def mean(cls, x, axis=-1, keepdims=True):
+        return x.mean(axis, keepdim=keepdims)
+
+    @classmethod
     def conj(cls, x, inplace=False):
         if inplace and getattr(x, 'requires_grad', False):
             raise Exception("Torch autograd doesn't support `out=`")

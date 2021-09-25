@@ -124,10 +124,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return cls._maybe_transpose_for_fft(out, axis)
 
     @classmethod
-    def mean(cls, x, axis=-1, keepdims=True):
-        return tf.reduce_mean(x, axis=axis, keepdims=keepdims)
-
-    @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
                          trim_tm):
         return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,

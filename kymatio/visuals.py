@@ -77,11 +77,13 @@ def filterbank_heatmap(scattering, first_order=None, second_order=False,
         if 'abs' in parts:
             apsi1s = np.abs(psi1s)
             imshow(apsi1s, abs=1, **pkw, title=(f"{name} filterbank | modulus | "
-                                                "scaled to same amplitude"),)
+                                                "scaled to same amp."),)
         if 'real' in parts:
-            imshow(psi1s.real, **pkw, title=f"{name} filterbank | real part")
+            imshow(psi1s.real, **pkw,
+                   title=f"{name} filterbank | real part | scaled same amp.")
         if 'imag' in parts:
-            imshow(psi1s.imag, **pkw, title=f"{name} filterbank | imag part")
+            imshow(psi1s.imag, **pkw,
+                   title=f"{name} filterbank | imag part | scale same amp.")
         if 'freq' in parts:
             if 'xlabel' not in user_kw:
                 pkw['xlabel'] = 'frequencies [samples] | dc, +, -'
@@ -172,40 +174,50 @@ def filterbank_scattering(scattering, zoom=0, filterbank=True, lp_sum=False,
     """
     def _plot_filters(ps, p0, lp, title):
         # determine plot parameters ##########################################
-        # vertical lines (octave bounds)
         Nmax = len(ps[0][0])
         # x-axis zoom
-        if zoom == -1:
-            xlims = (-.02 * Nmax, 1.02 * Nmax)
+        if 'xlims' in user_plot_kw_names:
+            xlims = plot_kw['xlims']
         else:
-            xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
+            if zoom == -1:
+                xlims = (-.02 * Nmax, 1.02 * Nmax)
+            else:
+                xlims = (-.01 * Nmax/ 2**zoom, .55 * Nmax / 2**zoom)
 
-        if 'xlims' not in user_plot_kw_names:
-            plot_kw['xlims'] = xlims
         if 'title' not in user_plot_kw_names:
-            plot_kw['title'] = title
+            plot_kw['title'] = (title, {'fontsize': 18})
 
         # plot filterbank ####################################################
+        _, ax = plt.subplots(1, 1)
         if filterbank:
             # Morlets
             for p in ps:
                 j = p['j']
-                plot(p[0], color=colors[j], linestyle=linestyles[j])
-            # vlines
+                plot(p[0], color=colors[j], linestyle=linestyles[j], w=.69,
+                     h=.85)
+            # vertical lines (octave bounds)
             plot([], vlines=([Nmax//2**j for j in range(1, scattering.J + 2)],
-                             dict(color='k', linewidth=1)))
+                              dict(color='k', linewidth=1)), ax=ax)
             # lowpass
             if isinstance(p0[0], list):
                 p0 = p0[0]
-            plot(p0[0], color='k', **plot_kw, show=1)
+            plot([], vlines=(Nmax//2, dict(color='k', linewidth=1)))
+            plot(p0[0], color='k', **plot_kw, ax=ax)
+
+        N = len(p[0])
+        _filterbank_style_axes(ax, N, xlims)
+        plt.show()
 
         # plot LP sum ########################################################
-        if 'title' not in user_plot_kw_names:
-            plot_kw['title'] = "Littlewood-Paley sum"
         if lp_sum:
-            plot(lp, **plot_kw, show=1,
+            if 'title' not in user_plot_kw_names:
+                plot_kw['title'] = ("Littlewood-Paley sum", {'fontsize': 18})
+            fig, ax = plt.subplots(1, 1)
+            plot(lp, **plot_kw, show=0, w=.68, ax=ax, h=.85,
                  hlines=(2, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
+            _filterbank_style_axes(ax, N, xlims, ymax=lp.max()*1.03)
+            plt.show()
 
     # handle `plot_kw`
     if plot_kw is not None:
@@ -302,7 +314,7 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         jtfs = TimeFrequencyScattering1D(shape=2048, J=8, Q=8)
         filterbank_jtfs_1d(jtfs)
     """
-    def _plot_filters(ps, p0, lp, title_base, up):
+    def _plot_filters(ps, p0, lp, ax0, ax1, title_base, up):
         # determine plot parameters ##########################################
         # vertical lines (octave bounds)
         Nmax = len(ps[0][j0])
@@ -314,23 +326,23 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
             vlines = (Nmax//2 - j_dists if center_dc else
                       j_dists)
         # x-axis zoom
-        if zoom == -1:
-            xlims = (-.02 * Nmax, 1.02 * Nmax)
+        if 'xlims' in user_plot_kw_names:
+            xlims = plot_kw['xlims']
         else:
-            xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
-            if up:
-                xlims = (Nmax - xlims[1], Nmax - .2 * xlims[0])
+            if zoom == -1:
+                xlims = (-.02 * Nmax, 1.02 * Nmax)
+            else:
+                xlims = (-.01 * Nmax / 2**zoom, .55 * Nmax / 2**zoom)
+                if up:
+                    xlims = (Nmax - xlims[1], Nmax - .2 * xlims[0])
 
         # title
-        show = (zoom != -1) or not up
         if zoom != -1:
             title = title_base % "up" if up else title_base % "down"
         else:
             title = title_base
 
         # handle `plot_kw`
-        if 'xlims' not in user_plot_kw_names:
-            plot_kw['xlims'] = xlims
         if 'title' not in user_plot_kw_names:
             plot_kw['title'] = title
 
@@ -345,14 +357,17 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
                 if center_dc:
                     pplot = ifftshift(pplot)
                     pplot[1:] = pplot[1:][::-1]
-                plot(pplot, color=colors[j], linestyle=linestyles[j])
+                plot(pplot, color=colors[j], linestyle=linestyles[j], ax=ax0)
             # lowpass
             p0plot = p0[j0][0].squeeze()
             if center_dc:
                 p0plot = ifftshift(p0plot)
                 p0plot[1:] = p0plot[1:][::-1]
-            plot(p0plot, color='k', **plot_kw, show=show,
+            plot(p0plot, color='k', **plot_kw, ax=ax0,
                  vlines=(vlines, dict(color='k', linewidth=1)))
+
+        N = len(p[j0])
+        _filterbank_style_axes(ax0, N, xlims)
 
         # plot LP sum ########################################################
         plot_kw_lp = {}
@@ -361,11 +376,14 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
                                 " (no phi)" * int(not lp_phi))
         if 'ylims' not in user_plot_kw_names:
             plot_kw_lp['ylims'] = (0, None)
+
         if lp_sum and not (zoom == -1 and up):
             lpplot = ifftshift(lp) if center_dc else lp
-            plot(lpplot, **plot_kw, **plot_kw_lp, show=show,
+            plot(lpplot, **plot_kw, **plot_kw_lp, ax=ax1,
                  hlines=(1, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
+
+            _filterbank_style_axes(ax1, N, xlims, ymax=lp.max()*1.03)
 
     # handle `plot_kw`
     if plot_kw is not None:
@@ -414,9 +432,20 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         title_base = ("Frequential filterbank | J_fr, Q_fr, F = "
                       "{}, {}, {}").format(*params)
 
-    # plot
-    _plot_filters(pup, p0, lp, title_base=title_base, up=True)
-    _plot_filters(pdn, p0, lp, title_base=title_base, up=False)
+
+    # plot ###################################################################
+    def make_figs():
+        return ([plt.subplots(1, 1)[1] for _ in range(2)] if lp_sum else
+                (plt.subplots(1, 1)[1], None))
+
+    ax0, ax1 = make_figs()
+    _plot_filters(pup, p0, lp, ax0, ax1, title_base=title_base, up=True)
+    if zoom != -1:
+        plt.show()
+        ax0, ax1 = make_figs()
+
+    _plot_filters(pdn, p0, lp, ax0, ax1, title_base=title_base, up=False)
+    plt.show()
 
 
 def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
@@ -539,7 +568,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             Psi = _colorize_complex(Psi)
         cmap = 'bwr' if part in ('real', 'imag') else 'none'
         if not labels:
-            title=None
+            title = None
         imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=borders,
                cmap=cmap)
 
@@ -557,7 +586,11 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
     bounds = (max_t_bound, max_f_bound)
 
     # plot ###################################################################
-    fig, axes = plt.subplots(n_rows * 2 + 1, n_cols + 1, figsize=(8*w, 21*h))
+    n_rows_actual = n_rows * 2 + 1
+    n_cols_actual = n_cols + 1
+    figsize = (1.6 * n_cols_actual * w, 1.6 * n_rows_actual * h)
+    fig, axes = plt.subplots(n_rows_actual, n_cols_actual, figsize=figsize)
+
     _txt = "(%s%s" % (part, " part" if part in ('real', 'imag') else "")
     _txt += ", zoomed)" if zoomed else ")"
     if suptitle_y is not None:
@@ -820,16 +853,19 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
                     break
 
     # make gif & cleanup #####################################################
-    if do_gif:
-        if gif_kw is None:
-            gif_kw = {}
-        make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
-                 overwrite=overwrite, delimiter=base_name, verbose=verbose,
-                 **gif_kw)
-    if not save_images:
-        for path in img_paths:
-            if os.path.isfile(path):
-                os.unlink(path)
+    try:
+        if do_gif:
+            if gif_kw is None:
+                gif_kw = {}
+            make_gif(loaddir=savedir, savepath=savepath, ext=images_ext,
+                     overwrite=overwrite, delimiter=base_name, verbose=verbose,
+                     **gif_kw)
+    finally:
+        if not save_images:
+            # guarantee cleanup
+            for path in img_paths:
+                if os.path.isfile(path):
+                    os.unlink(path)
 
 
 def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
@@ -1024,7 +1060,7 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                  **gif_kw)
     finally:
         if not save_images:
-            # delete images
+            # guarantee cleanup
             for path in img_paths:
                 if os.path.isfile(path):
                     os.unlink(path)
@@ -1298,7 +1334,8 @@ def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
 
 
 def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
-             delimiter='', overwrite=False, HD=None, verbose=False):
+             delimiter='', overwrite=False, delete_images=False, HD=None,
+             verbose=False):
     """Makes gif out of images in `loaddir` directory with `ext` extension,
     and saves to `savepath`.
 
@@ -1331,6 +1368,9 @@ def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
         If True, will preserve image quality in GIFs and use `imageio`.
         Defaults to True if `imageio` is installed, else falls back on
         `PIL.Image`.
+
+    delete_images : bool (default False)
+        Whether to delete the images used to make the GIF.
 
     verbose : bool (default False)
         Whether to print to console the location of save file upon success.
@@ -1384,6 +1424,12 @@ def make_gif(loaddir, savepath, duration=250, start_end_pause=3, ext='.png',
     if verbose:
         print("Saved gif to", savepath)
 
+    if delete_images:
+        for p in paths:
+            os.unlink(p)
+        if verbose:
+            print("Deleted images used in making the GIF (%s total)" % len(paths))
+
 
 #### Visuals primitives ## messy code ########################################
 def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
@@ -1425,7 +1471,7 @@ def imshow(x, title=None, show=True, cmap=None, norm=None, abs=0,
         ax.set_xticks([])
         ax.set_yticks([])
     if xticks is not None or yticks is not None:
-        _ticks(xticks, yticks)
+        _ticks(xticks, yticks, ax)
     if not borders:
         for spine in ax.spines:
             ax.spines[spine].set_visible(False)
@@ -1481,9 +1527,9 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
 
     # styling
     if vlines:
-        vhlines(vlines, kind='v')
+        vhlines(vlines, kind='v', ax=ax)
     if hlines:
-        vhlines(hlines, kind='h')
+        vhlines(hlines, kind='h', ax=ax)
 
     ticks = ticks if isinstance(ticks, (list, tuple)) else (ticks, ticks)
     if not ticks[0]:
@@ -1491,7 +1537,7 @@ def plot(x, y=None, title=None, show=0, complex=0, abs=0, w=None, h=None,
     if not ticks[1]:
         ax.set_yticks([])
     if xticks is not None or yticks is not None:
-        _ticks(xticks, yticks)
+        _ticks(xticks, yticks, ax)
 
     if title is not None:
         _title(title, ax=ax)
@@ -1532,9 +1578,9 @@ def scat(x, y=None, title=None, show=0, s=18, w=None, h=None,
     if title is not None:
         _title(title, ax=ax)
     if vlines:
-        vhlines(vlines, kind='v')
+        vhlines(vlines, kind='v', ax=ax)
     if hlines:
-        vhlines(hlines, kind='h')
+        vhlines(hlines, kind='h', ax=ax)
     _scale_plot(fig, ax, show=show, w=w, h=h, xlims=xlims, ylims=ylims,
                 xlabel=xlabel, ylabel=ylabel, auto_xlims=auto_xlims)
 
@@ -1547,7 +1593,8 @@ def plotscat(*args, **kw):
         plt.show()
 
 
-def hist(x, bins=500, title=None, show=0, stats=0):
+def hist(x, bins=500, title=None, show=0, stats=0, ax=None, fig=None,
+         w=1, h=1, xlims=None, ylims=None, xlabel=None, ylabel=None):
     """Histogram. `stats=True` to print mean, std, min, max of `x`."""
     def _fmt(*nums):
         return [(("%.3e" % n) if (abs(n) > 1e3 or abs(n) < 1e-3) else
@@ -1556,6 +1603,11 @@ def hist(x, bins=500, title=None, show=0, stats=0):
     x = np.asarray(x)
     _ = plt.hist(x.ravel(), bins=bins)
     _title(title)
+
+    ax  = ax  or plt.gca()
+    fig = fig or plt.gcf()
+    _scale_plot(fig, ax, show=show, w=w, h=h, xlims=xlims, ylims=ylims,
+                xlabel=xlabel, ylabel=ylabel)
     if show:
         plt.show()
 
@@ -1566,8 +1618,8 @@ def hist(x, bins=500, title=None, show=0, stats=0):
         return mu, std, mn, mx
 
 
-def vhlines(lines, kind='v'):
-    lfn = getattr(plt, f'ax{kind}line')
+def vhlines(lines, kind='v', ax=None):
+    lfn = getattr(plt if ax is None else ax, f'ax{kind}line')
 
     if not isinstance(lines, (list, tuple)):
         lines, lkw = [lines], {}
@@ -1584,22 +1636,32 @@ def vhlines(lines, kind='v'):
         lfn(line, **lkw)
 
 #### misc / utils ############################################################
-def _ticks(xticks, yticks):
+def _ticks(xticks, yticks, ax):
     def fmt(ticks):
         return ("%.d" if all(float(h).is_integer() for h in ticks) else
                 "%.2f")
 
     if yticks is not None:
-        idxs = np.linspace(0, len(yticks) - 1, 8).astype('int32')
-        yt = [fmt(yticks) % h for h in np.asarray(yticks)[idxs]]
-        plt.yticks(idxs, yt)
+        if not hasattr(yticks, '__len__') and not yticks:
+            ax.set_yticks([])
+        else:
+            idxs = np.linspace(0, len(yticks) - 1, 8).astype('int32')
+            yt = [fmt(yticks) % h for h in np.asarray(yticks)[idxs]]
+            ax.set_yticks(idxs)
+            ax.set_yticklabels(yt)
     if xticks is not None:
-        idxs = np.linspace(0, len(xticks) - 1, 8).astype('int32')
-        xt = [fmt(xticks) % h for h in np.asarray(xticks)[idxs]]
-        plt.xticks(idxs, xt)
+        if not hasattr(xticks, '__len__') and not xticks:
+            ax.set_xticks([])
+        else:
+            idxs = np.linspace(0, len(xticks) - 1, 8).astype('int32')
+            xt = [fmt(xticks) % h for h in np.asarray(xticks)[idxs]]
+            ax.set_xticks(idxs)
+            ax.set_xticklabels(xt)
 
 
 def _title(title, ax=None):
+    if title is None:
+        return
     title, kw = (title if isinstance(title, tuple) else
                  (title, {}))
     defaults = dict(loc='left', fontsize=17, weight='bold')
@@ -1627,9 +1689,9 @@ def _scale_plot(fig, ax, show=False, ax_equal=False, w=None, h=None,
     if w or h:
         fig.set_size_inches(14*(w or 1), 8*(h or 1))
     if xlabel is not None:
-        plt.xlabel(xlabel, weight='bold', fontsize=15)
+        ax.set_xlabel(xlabel, weight='bold', fontsize=15)
     if ylabel is not None:
-        plt.ylabel(ylabel, weight='bold', fontsize=15)
+        ax.set_ylabel(ylabel, weight='bold', fontsize=15)
     if show:
         plt.show()
 
@@ -1650,7 +1712,7 @@ def _colorize_complex(z):
 
     c = np.vectorize(hls_to_rgb)(h, l, s)
     c = np.array(c)
-    c = c.swapaxes(0,2)
+    c = c.swapaxes(0, 2).transpose(1, 0, 2)
     return c
 
 
@@ -1666,6 +1728,19 @@ def _get_compute_pairs(pairs, meta):
         if pair in meta['n']:
             compute_pairs.append(pair)
     return compute_pairs
+
+
+def _filterbank_style_axes(ax, N, xlims, ymax=None):
+    # x limits and labels
+    xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
+    w = np.linspace(0, 1, len(xticks), 1)
+    w[w > .5] -= 1
+    ax.set_xticks(xticks[:-1])
+    ax.set_xticklabels(w[:-1])
+    ax.set_xlim(*xlims)
+
+    # y limits
+    ax.set_ylim(-.05, ymax)
 
 
 def _make_titles_jtfs(compute_pairs, target):

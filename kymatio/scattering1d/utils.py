@@ -250,7 +250,7 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
             return size_order0 + size_order1
 
 
-def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
+def compute_meta_scattering(J, Q, J_pad, T, r_psi=math.sqrt(.5), max_order=2):
     """Get metadata on the transform.
 
     This information specifies the content of each scattering coefficient,
@@ -270,12 +270,12 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
+    r_psi : float
+        Filter redundancy.
+        See `help(kymatio.scattering1d.filter_bank.calibrate_scattering_filters)`.
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
-    xi_min : float, optional
-        Lower bound on `xi` to ensure every bandpass is a valid wavelet
-        (doesn't peak at FFT bin 1) within `2*len(x)` padding.
 
     Returns
     -------
@@ -306,7 +306,7 @@ def compute_meta_scattering(J, Q, J_pad, T, max_order=2):
     """
     xi_min = (2 / 2**J_pad)  # leftmost peak at bin 2
     sigma_low, xi1s, sigma1s, j1s, is_cqt1s, xi2s, sigma2s, j2s, is_cqt2s = \
-        calibrate_scattering_filters(J, Q, T, xi_min=xi_min)
+        calibrate_scattering_filters(J, Q, T, r_psi=r_psi, xi_min=xi_min)
     log2_T = math.floor(math.log2(T))
 
     meta = {}
@@ -482,10 +482,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         """Reproduce exact logic in `timefrequency_scattering1d.py`."""
         # _frequency_scattering() or _frequency_lowpass() ####################
         # `n2 == -1` correctly indexes maximal amount of padding and unpadding
-        pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
-                  sc_freq.J_pad_fr[n2])
+        pad_fr = (sc_freq.J_pad_frs_max if (aligned and out_3D) else
+                  sc_freq.J_pad_frs[n2])
         N_fr_padded = 2**pad_fr
-        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+        subsample_equiv_due_to_pad = sc_freq.J_pad_frs_max_init - pad_fr
 
         if n1_fr != -1:
             j1_fr = sc_freq.psi1_f_fr_up[n1_fr]['j'][subsample_equiv_due_to_pad]
@@ -528,9 +528,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         # unpad params, used only if `not global_averaged_fr`
         # (except for energy correction, which isn't done here)
         if out_3D:
-            pad_ref = (sc_freq.J_pad_fr_min if aligned else
-                       sc_freq.J_pad_fr_max)
-            subsample_equiv_due_to_pad_ref = (sc_freq.J_pad_fr_max_init -
+            pad_ref = (sc_freq.J_pad_frs_min if aligned else
+                       sc_freq.J_pad_frs_max)
+            subsample_equiv_due_to_pad_ref = (sc_freq.J_pad_frs_max_init -
                                               pad_ref)
             stride_ref = _get_stride(
                 None, pad_ref, subsample_equiv_due_to_pad_ref, sc_freq, True)
@@ -559,7 +559,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                 p = [m[k] for m in (xi1s_fr_phi, sigma1_fr_phi, j1s_fr_phi)
                      ] + [nan]
             else:
-                pad_fr = sc_freq.J_pad_fr_max_init - subsample_equiv_due_to_pad
+                pad_fr = sc_freq.J_pad_frs_max_init - subsample_equiv_due_to_pad
                 j1_fr = min(pad_fr, sc_freq.log2_F)
                 p = (0, sc_freq.sigma0 / 2**j1_fr, j1_fr, nan)
 
@@ -570,9 +570,9 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
         if sc_freq.sampling_psi_fr != 'exclude' or n1_fr == -1:
             return False
 
-        pad_fr = (sc_freq.J_pad_fr_max if (aligned and out_3D) else
-                  sc_freq.J_pad_fr[n2])
-        subsample_equiv_due_to_pad = sc_freq.J_pad_fr_max_init - pad_fr
+        pad_fr = (sc_freq.J_pad_frs_max if (aligned and out_3D) else
+                  sc_freq.J_pad_frs[n2])
+        subsample_equiv_due_to_pad = sc_freq.J_pad_frs_max_init - pad_fr
         j0s = [k for k in sc_freq.psi1_f_fr_up[n1_fr] if isinstance(k, int)]
         if subsample_equiv_due_to_pad not in j0s:
             return True
@@ -660,7 +660,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
             meta['key'   ][pair].append((n2_key,  n1_fr_key,  n1))
 
     # set params
-    N, N_fr = 2**J_pad, 2**sc_freq.J_pad_fr_max_init
+    N, N_fr = 2**J_pad, 2**sc_freq.J_pad_frs_max_init
     xi_min = (2 / N)  # leftmost peak at bin 2
     xi_min_fr = (2 / N_fr)
     log2_T = math.floor(math.log2(T))

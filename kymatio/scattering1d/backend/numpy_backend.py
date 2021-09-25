@@ -124,10 +124,6 @@ class NumpyBackend1D(NumpyBackend):
         return x.transpose(*list(range(x.ndim - 2)), -1, -2)
 
     @classmethod
-    def mean(cls, x, axis=-1, keepdims=True):
-        return x.mean(axis, keepdims=keepdims)
-
-    @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
                          trim_tm):
         return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,

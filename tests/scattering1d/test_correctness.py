@@ -70,8 +70,7 @@ def _test_padding(backend_name):
             pad_right = int(np.ceil(N / 4) * pad_factor)
 
             for pad_mode in ('zero', 'reflect'):
-                out0 = pad(x, pad_left, pad_right, pad_mode=pad_mode,
-                           backend_name=backend_name)
+                out0 = pad(x, pad_left, pad_right, pad_mode=pad_mode)
                 out1 = np.pad(x,
                               [[0, 0]] * (x.ndim - 1) + [[pad_left, pad_right]],
                               mode=pad_mode if pad_mode != 'zero' else 'constant')
@@ -88,8 +87,7 @@ def _test_pad_axis(backend_name):
     x = backend.zeros((5, 6, 7, 8, 9, 10, 11))
 
     pad_left, pad_right = 4, 5
-    kw = dict(pad_left=pad_left, pad_right=pad_right, pad_mode='reflect',
-              backend_name=backend_name)
+    kw = dict(pad_left=pad_left, pad_right=pad_right, pad_mode='reflect')
 
     for axis in range(x.ndim):
         shape0 = list(x.shape)

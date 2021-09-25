@@ -58,7 +58,8 @@ def _iterate_apply(Scx, fn):
     return out
 
 
-def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
+def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
+              mu=None):
     """Log-normalize + (optionally) standardize coefficients for learning
     algorithm suitability.
 
@@ -88,6 +89,9 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
         Greater will bring more disparate values closer. Too great will equalize
         too much, too low will have minimal effect.
 
+    mu : float / None
+        In case precomputed; see "Online computation".
+
     Returns
     -------
     Xnorm : tensor
@@ -113,6 +117,30 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
       - To keep convs valid, all spatial dims that are convolved over must be
         standardized by the same factor - i.e. same `mean` and `std`. `rscaling`
         also accounts for rescaling due to log.
+
+    Regardless, this "channel normalization" has been used with success in
+    variuous settings; above are but points worth noting.
+
+    Online computation
+    ------------------
+
+    Any computation with `axis` that includes `0` requires simultaneous access
+    to all samples. This poses a problem in two settings:
+
+        1. Insufficient RAM. The solution is to write an *equivalent* computation
+           that aggregates statistics one sample at a time. E.g. for `mu`:
+
+               Xsum = []
+               for x in dataset:
+                   Xsum.append(B.sum(x, axis=-1, keepdims=True))
+               mu = B.median(B.vstack(Xsum), axis=0, keepdims=True)
+
+        2. Streaming / new samples. In this case we must reuse parameters computed
+           over e.g. entire train set.
+
+    Computations over all axes *except* `0` are done on per-sample basis, which
+    means not having to rely on other samples - but also an inability to do so
+    (i.e. to precompute and reuse params).
     """
     # validate args & set defaults ###########################################
     supported = ('l1', 'l2', None)
@@ -127,10 +155,11 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
         C = 130 * B.mean(B.abs(X))
 
     # main transform #########################################################
-    # time-sum (integral)
-    Xsum = B.sum(X, axis=-1, keepdims=True)
-    # sample-median
-    mu = B.median(Xsum, axis=0, keepdims=True)
+    if mu is None:
+        # spatial sum (integral)
+        Xsum = B.sum(X, axis=-1, keepdims=True)
+        # sample median
+        mu = B.median(Xsum, axis=0, keepdims=True)
     # rescale
     Xnorm = X / mu
     # log
@@ -141,7 +170,8 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None):
         Xnorm -= B.mean(Xnorm, axis=mean_axis, keepdims=True)
 
     if rscaling is not None:
-        kw = dict(axis=(0, 2), keepdims=True)
+        # rescale per `feature` and per `sample`
+        kw = dict(axis=-1, keepdims=True)
         ord = (2 if rscaling == 'l2' else 1)
         Xstd = X - B.mean(X, **kw)
         norms_orig = B.norm(Xstd,  ord=ord, **kw)
@@ -1093,6 +1123,191 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     return E_flat, E_slices
 
 
+def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
+                            max_pad_factor=None, max_pad_factor_fr=None,
+                            pad_mode=None, pad_mode_fr=None, average=None,
+                            average_fr=None, r_psi=None, analytic=None,
+                            jtfs=False, backend=None, verbose=True,
+                            get_out=False):
+    """Estimate energy conservation given scattering configurations, especially
+    scale of averaging. With default settings, passing only `T`/`F`, computes the
+    upper bound.
+
+    For time scattering (`jtfs=False`) and non-dyadic length `x`, the estimation
+    will be inaccurate per not accounting for energy loss due to unpadding.
+
+    Parameters
+    ----------
+    x : tensor
+        1D input.
+
+    sc : `Scattering1D` / `TimeFrequencyScattering1D` / None
+        Scattering object to use. If None, will create per parameters.
+
+    T, F, J, J_fr, max_pad_factor, max_pad_factor_fr, pad_mode, pad_mode_fr,
+    average, average_fr, r_psi, analytic:
+        Scattering parameters.
+
+    jtfs : bool (default False)
+        Whether to estimate per JTFS; if False, does time scattering.
+        Must pass also with `sc` to indicate which object it is.
+
+    backend : None / str
+        Backend to use (defaults to torch w/ GPU if available).
+
+    verbose : bool (default True)
+        Whether to print results to console.
+
+    get_out : bool (default False)
+        Whether to return computed coefficients and scattering objects alongside
+        energy ratios.
+
+    Returns
+    -------
+    ESr : dict[float]
+        Energy ratios.
+
+    Scx : tensor / dict[tensor]
+        Scattering output (if `get_out==True`).
+
+    sc : `Scattering1D` / `TimeFrequencyScattering1D`
+        Scattering object (if `get_out==True`).
+    """
+    # warn if passing params alongside `sc`
+    kw = dict(T=T, F=F, J=J, J_fr=J_fr, max_pad_factor=max_pad_factor,
+              max_pad_factor_fr=max_pad_factor_fr, pad_mode=pad_mode,
+              pad_mode_fr=pad_mode_fr, average=average, average_fr=average_fr)
+    tm_params = ('T', 'J', 'max_pad_factor', 'pad_mode', 'average')
+    fr_params = ('F', 'J_fr', 'max_pad_factor_fr', 'pad_mode_fr', 'average_fr')
+    all_params = (*tm_params, *fr_params)
+    if sc is not None and any(kw[arg] is not None for arg in all_params):
+        warnings.warn("`sc` object provided - parametric arguments ignored.")
+    elif not jtfs and any(kw[arg] is not None for arg in fr_params):
+        warnings.warn("passed JTFS parameters with `jtfs=False` -- ignored.")
+
+    # create scattering object, if not provided
+    if sc is None:
+        if jtfs:
+            from kymatio import TimeFrequencyScattering1D as SC
+        else:
+            from kymatio import Scattering1D as SC
+
+        # handle args & pack parameters
+        N = x.shape[-1]
+        Q = (8, 3)
+        if pad_mode is None:
+            pad_mode = 'reflect'
+        if r_psi is None:
+            r_psi = (.9, .9, .9) if jtfs else (.9, .9)
+        if backend is None:
+            try:
+                import torch
+                backend = 'torch'
+            except:
+                backend = 'numpy'
+        kw = dict(shape=N, J=int(np.log2(N)), T=T, max_pad_factor=max_pad_factor,
+                  pad_mode=pad_mode, Q=Q, frontend=backend, r_psi=r_psi)
+        if not jtfs:
+            if average is None:
+                average = True
+            if analytic is None:
+                analytic = False  # library default
+            kw.update(**dict(average=average, analytic=analytic, out_type='list'))
+        else:
+            # handle `J_fr` & `F`
+            if J_fr is None:
+                if F is None:
+                    sc_temp = SC(**kw)
+                    n_psi1 = len(sc_temp.psi1_f)
+                    J_fr = int(np.log2(n_psi1)) - 1
+                    F = 2**J_fr
+                else:
+                    J_fr = int(np.log2(F))
+            elif F is None:
+                F = 2**J_fr
+            # handle other args
+            if pad_mode_fr is None:
+                pad_mode_fr = 'conj-reflect-zero'
+            if average_fr is None:
+                average_fr = False
+            if analytic is None:
+                analytic = True  # library default
+
+            # pack JTFS args
+            kw.update(**dict(max_pad_factor_fr=max_pad_factor_fr, F=F,
+                             pad_mode_fr=pad_mode_fr, average_fr=average_fr,
+                             analytic=analytic, Q_fr=4, out_type='dict:list',
+                             sampling_filters_fr='resample'))
+            if average is None:
+                kw_u = dict(**kw, average=False)
+                kw_a = dict(**kw, average=True)
+            else:
+                kw_u = kw_a = dict(**kw, average=average)
+
+        # create scattering object
+        if backend == 'torch':
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        if not jtfs:
+            sc = SC(**kw)
+            if backend == 'torch':
+                sc = sc.to(device)
+            meta = sc.meta()
+        else:
+            sc_u, sc_a = SC(**kw_u), SC(**kw_a)
+            if backend == 'torch':
+                sc_u, sc_a = sc_u.to(device), sc_a.to(device)
+
+    # scatter
+    if not jtfs:
+        Scx = sc(x)
+        Scx = jtfs_to_numpy(Scx)
+    else:
+        Scx_u = sc_u(x)
+        Scx_a = sc_a(x)
+        Scx_u, Scx_a = jtfs_to_numpy(Scx_u), jtfs_to_numpy(Scx_a)
+
+    # compute energies
+    # input energy
+    Ex = energy(x)
+    if not jtfs and average:
+        # TODO undo if Scattering1D normalizes subsampling energy
+        Ex /= 2**sc.log2_T
+
+    # scattering energy & ratios
+    ES = {}
+    if not jtfs:
+        for o in (0, 1, 2):
+            ES[f'S{o}'] = np.sum([energy(Scx[int(i)]['coef']) for i in
+                                  np.where(meta['order'] == o)[0]])
+    else:
+        for pair in Scx_u:
+            Scx = Scx_u if pair not in ('S0', 'S1') else Scx_a
+            ES[pair] = np.sum([energy(c['coef']) for c in Scx[pair]])
+
+    ESr = {k: v/Ex for k, v in ES.items()}
+    if not jtfs:
+        ESr['total'] = np.sum(list(ES.values())) / Ex
+    else:
+        E_common = sum(ES[pair] for pair in ('S0', 'psi_t * phi_f',
+                                             'psi_t * psi_f_up',
+                                             'psi_t * psi_f_down'))
+        E_v1 = E_common + ES['phi_t * phi_f'] + ES['phi_t * psi_f']
+        E_v2 = E_common + ES['S1']
+        ESr['total_v1'], ESr['total_v2'] = E_v1 / Ex, E_v2 / Ex
+
+    # print energies
+    if T is None:
+        T = (sc_a if jtfs else sc).T
+    _txt = f", F={F}" if jtfs else ""
+    print(f"E(Sx)/E(x) | T={T}{_txt}")
+    for k, v in ESr.items():
+        print("{:.4f} -- {}".format(v, k))
+
+    if jtfs:
+        sc = (sc_u, sc_a)
+    return (ESr, Scx, sc) if get_out else ESr
+
+
 #### Validating 1D filterbank ################################################
 def validate_filterbank_tm(sc=None, psi1_f=None, psi2_f=None, phi_f=None,
                            criterion_amplitude=1e-3, verbose=True):
@@ -1709,31 +1924,34 @@ def energy(x, kind='l2'):
     """
     x = x['coef'] if isinstance(x, dict) else x
     B = ExtendedUnifiedBackend(x)
-    return (B.norm(x, ord=1) if kind == 'l1' else
-            B.norm(x, ord=2)**2)
+    out = (B.norm(x, ord=1) if kind == 'l1' else
+           B.norm(x, ord=2)**2)
+    if np.sum(out.size) == 1:
+        out = float(out)
+    return out
 
 
-def _l2(x):
+def _l2(x, axis=None):
     """`sqrt(sum(abs(x)**2))`."""
     B = ExtendedUnifiedBackend(x)
-    return B.norm(x, ord=2)
+    return B.norm(x, ord=2, axis=axis)
 
-def l2(x0, x1, adj=False):
+def l2(x0, x1, axis=None, adj=False):
     """Coeff distance measure; Eq 2.24 in
     https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
     """
-    ref = _l2(x0) if not adj else (_l2(x0) + _l2(x1)) / 2
-    return _l2(x1 - x0) / ref
+    ref = _l2(x0, axis) if not adj else (_l2(x0, axis) + _l2(x1, axis)) / 2
+    return _l2(x1 - x0, axis) / ref
 
 
-def _l1(x):
+def _l1(x, axis=None):
     """`sum(abs(x))`."""
     B = ExtendedUnifiedBackend(x)
     return B.norm(x, ord=1)
 
-def l1(x0, x1, adj=False):
-    ref = _l1(x0) if not adj else (_l1(x0) + _l1(x1)) / 2
-    return _l1(x1 - x0) / ref
+def l1(x0, x1, adj=False, axis=None):
+    ref = _l1(x0, axis) if not adj else (_l1(x0, axis) + _l1(x1, axis)) / 2
+    return _l1(x1 - x0, axis) / ref
 
 
 def rel_ae(x0, x1, eps=None, ref_both=True):
@@ -1765,11 +1983,15 @@ def echirp(N, fmin=1, fmax=None, tmin=0, tmax=1):
     fmax = fmax or N // 2
     t = np.linspace(tmin, tmax, N)
 
+    phi = _echirp_fn(fmin, fmax, tmin, tmax)(t)
+    return np.cos(phi)
+
+
+def _echirp_fn(fmin, fmax, tmin=0, tmax=1):
     a = (fmin**tmax / fmax**tmin) ** (1/(tmax - tmin))
     b = fmax**(1/tmax) * (1/a)**(1/tmax)
-
-    phi = 2*np.pi * (a/np.log(b)) * (b**t - b**tmin)
-    return np.cos(phi)
+    phi = lambda t: 2*np.pi * (a/np.log(b)) * (b**t - b**tmin)
+    return phi
 
 
 def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
@@ -1906,7 +2128,7 @@ class ExtendedUnifiedBackend():
         # fetch from kymatio.backend if possible
         if hasattr(self.Bk, name):
             return getattr(self.Bk, name)
-        raise AttributeError(f"'{type(self.Bk).__name__}' object has no "
+        raise AttributeError(f"'{self.Bk.__name__}' object has no "
                              f"attribute '{name}'")
 
     def abs(self, x):
@@ -1930,41 +2152,43 @@ class ExtendedUnifiedBackend():
             out = self.B.reduce_sum(x, axis=axis, keepdims=keepdims)
         return out
 
-    def norm(self, x, ord=2, axis=None):
+    def norm(self, x, ord=2, axis=None, keepdims=True):
         if self.backend_name == 'numpy':
             if ord == 1:
-                out = np.sum(np.abs(x), axis=axis)
+                out = np.sum(np.abs(x), axis=axis, keepdims=keepdims)
             elif ord == 2:
-                out = np.linalg.norm(x, ord=None, axis=axis)
+                out = np.linalg.norm(x, ord=None, axis=axis, keepdims=keepdims)
             else:
-                out = np.linalg.norm(x, ord=ord, axis=axis)
+                out = np.linalg.norm(x, ord=ord, axis=axis, keepdims=keepdims)
         elif self.backend_name == 'torch':
-            out = self.B.norm(x, p=ord, dim=axis)
+            out = self.B.norm(x, p=ord, dim=axis, keepdim=keepdims)
         else:
-            out = self.B.norm(x, ord=ord, axis=axis)
+            out = self.B.norm(x, ord=ord, axis=axis, keepdims=keepdims)
         return out
 
-    def median(self, x, axis=None):
+    def median(self, x, axis=None, keepdims=None):
+        if keepdims is None and self.backend_name != 'tensorflow':
+            keepdims = True
         if self.backend_name == 'numpy':
-            out = np.median(x, axis=axis)
+            out = np.median(x, axis=axis, keepdims=keepdims)
         elif self.backend_name == 'torch':
-            out = self.B.median(x, dim=axis)
+            out = self.B.median(x, dim=axis, keepdim=keepdims)
         else:
-            if axis is not None:
-                raise ValueError("`axis` for `median` in TensorFlow backend "
-                                 "not implemented.")
+            if axis is not None or keepdims is not None:
+                raise ValueError("`axis` and `keepdims` for `median` in "
+                                 "TensorFlow backend are not implemented.")
             v = self.B.reshape(x, [-1])
             m = v.get_shape()[0]//2
             out = self.B.reduce_min(self.B.nn.top_k(v, m, sorted=False).values)
         return out
 
-    def std(self, x, axis=None):
+    def std(self, x, axis=None, keepdims=True):
         if self.backend_name == 'numpy':
-            out = np.std(x, axis=axis)
+            out = np.std(x, axis=axis, keepdims=keepdims)
         elif self.backend_name == 'torch':
-            out = self.B.std(x, dim=axis)
+            out = self.B.std(x, dim=axis, keepdim=keepdims)
         else:
-            out = self.B.math.reduce_std(x, axis=axis)
+            out = self.B.math.reduce_std(x, axis=axis, keepdims=keepdims)
         return out
 
     def numpy(self, x):

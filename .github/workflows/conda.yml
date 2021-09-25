@@ -46,7 +46,7 @@ jobs:
                   conda create -q -n ${CONDA_ENV} python=${{ matrix.python-version }}
             - name: Install dependencies
               run: |
-                  conda install -n ${CONDA_ENV} numpy scipy pytest pytest-cov
+                  conda install -n ${CONDA_ENV} numpy scipy pytest pytest-cov coverage
                   conda install -n ${CONDA_ENV} pytorch=${{ matrix.pytorch-version }} torchvision cpuonly -c pytorch
 
                   conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip
@@ -61,4 +61,10 @@ jobs:
             - name: Test
               run: >
                   
-                  conda run -n ${CONDA_ENV} pytest --cov=kymatio
+                  conda run -n ${CONDA_ENV} pytest --cov=kymatio --cov-report=xml || true
+
+            - name: codecov upload coverage
+              uses: codecov/codecov-action@v1 
+              with:
+                token: ${{ secrets.CODECOV_TOKEN }}
+                directory: ./

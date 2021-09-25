@@ -6,16 +6,16 @@ from pathlib import Path
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
                              fdts, echirp, coeff_energy_ratios,
-                             l2, rel_ae, validate_filterbank_tm,
-                             validate_filterbank_fr, pack_coeffs_jtfs,
-                             tensor_padded)
+                             est_energy_conservation, l2, rel_ae,
+                             validate_filterbank_tm, validate_filterbank_fr,
+                             pack_coeffs_jtfs, tensor_padded)
 from kymatio.visuals import (coeff_distance_jtfs, compare_distances_jtfs,
                              energy_profile_jtfs)
 from kymatio.scattering1d.filter_bank import compute_temporal_width, gauss_1d
 from utils import cant_import
 
 # backend to use for all tests (except `test_backends`)
-# note: non-'numpy' skips `test_meta()` and `test_lp_sum()`
+# NOTE: non-'numpy' skips `test_meta()` and `test_lp_sum()`
 default_backend = ('numpy', 'torch', 'tensorflow')[0]
 # set True to execute all test functions without pytest
 run_without_pytest = 1
@@ -82,7 +82,7 @@ def test_alignment():
                           mx_idx_i, mx_idx, pair, i, test_params_str)
 
           if J_fr == 3:
-              # assert not all J_pad_fr are same so test covers this case
+              # assert not all J_pad_frs are same so test covers this case
               assert_pad_difference(jtfs, test_params_str)
 
 
@@ -148,8 +148,8 @@ def test_jtfs_vs_ts():
     jtfs_x  = concat_joint(jtfs_x_all)
     jtfs_xs = concat_joint(jtfs_xs_all)  # compare against joint coeffs only
 
-    l2_ts   = l2(ts_x, ts_xs)
-    l2_jtfs = l2(jtfs_x, jtfs_xs)
+    l2_ts   = float(l2(ts_x, ts_xs))
+    l2_jtfs = float(l2(jtfs_x, jtfs_xs))
 
     # max ratio limited by `N`; can do better with longer input
     # and by comparing only against up & down, and via per-coeff basis
@@ -206,7 +206,7 @@ def test_freq_tp_invar():
 
         jtfs_x0 = concat_joint(jtfs_x0_all)
         jtfs_x1 = concat_joint(jtfs_x1_all)
-        global_distances.append(l2(jtfs_x0, jtfs_x1))
+        global_distances.append(float(l2(jtfs_x0, jtfs_x1)))
 
     if metric_verbose:
         print("\nFrequency transposition invariance stats:")
@@ -235,15 +235,15 @@ def test_up_vs_down():
     if metric_verbose:
         print("\nFDTS directional sensitivity; E_down / E_up:")
 
-    r_th = (35, 105)
-    l2_th = (50, 110)
+    m_th = (60, 170)
+    l2_th = (55, 150)
     for i, pad_mode in enumerate(['reflect', 'zero']):
         pad_mode_fr = 'conj-reflect-zero' if pad_mode == 'reflect' else 'zero'
         jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
                                          average_fr=True, out_type='dict:array',
                                          pad_mode=pad_mode,
-                                         sampling_filters_fr=(
-                                             'resample', 'resample'),
+                                          sampling_filters_fr=(
+                                              'resample', 'resample'),
                                          pad_mode_fr=pad_mode_fr,
                                          frontend=default_backend)
         Scx = jtfs(x)
@@ -262,7 +262,7 @@ def test_up_vs_down():
                    "Slice mean: {2:<5.1f} -- '{1}' pad").format(
                        r_l2, pad_mode, r_m))
         assert r_l2 > l2_th[i], "{} < {} | '{}'".format(r_l2, l2_th[i], pad_mode)
-        assert r_m  > r_th[i],  "{} < {} | '{}'".format(r_m,  r_th[i],  pad_mode)
+        assert r_m  > m_th[i],  "{} < {} | '{}'".format(r_m,  m_th[i],  pad_mode)
 
 
 def test_sampling_psi_fr_exclude():
@@ -283,7 +283,7 @@ def test_sampling_psi_fr_exclude():
     # required otherwise 'exclude' == 'resample'
     assert_pad_difference(jtfs0, test_params_str)
     # reproduce case with different J_pad_fr
-    assert jtfs0.J_pad_fr != jtfs1.J_pad_fr, jtfs0.J_pad_fr
+    assert jtfs0.J_pad_frs != jtfs1.J_pad_frs, jtfs0.J_pad_frs
 
     Scx0 = jtfs0(x)
     Scx1 = jtfs1(x)
@@ -303,7 +303,7 @@ def test_sampling_psi_fr_exclude():
 
             is_joint = bool(pair not in ('S0', 'S1'))
             if is_joint:
-                pad, pad_max = jtfs1.J_pad_fr[n0[0]], jtfs1.J_pad_fr_max
+                pad, pad_max = jtfs1.J_pad_frs[n0[0]], jtfs1.J_pad_frs_max
             if n0 != n1:
                 assert is_joint, (
                     "found mismatch in time scattered coefficients\n%s" % info)
@@ -397,8 +397,8 @@ def test_out_exclude():
 
 
 def test_global_averaging():
-    """Test that `T==N` and `F==pow2(shape_fr_max)` doesn't error, and outputs
-    close to `T==N-1` and `F==pow2(shape_fr_max)-1`
+    """Test that `T==N` and `F==pow2(N_frs_max)` doesn't error, and outputs
+    close to `T==N-1` and `F==pow2(N_frs_max)-1`
     """
     np.random.seed(0)
     N = 512
@@ -414,7 +414,7 @@ def test_global_averaging():
     metas = {}
     Ts, Fs = (N - 1, N), (2**5 - 1, 2**5)
     for T in Ts:
-        # shape_fr_max ~= Q*max(p2['j'] for p2 in psi2_f); found 29 at runtime
+        # N_frs_max ~= Q*max(p2['j'] for p2 in psi2_f); found 29 at runtime
         for F in Fs:
             jtfs = TimeFrequencyScattering1D(**params, T=T, F=F)
             assert (jtfs.average_fr_global if F == Fs[-1] else
@@ -591,6 +591,20 @@ def test_compute_temporal_width():
             else:
                 assert T_est - T > th_undershoot, "{} - {} <= {} | {}".format(
                     T_est, T, th_undershoot, test_params_str)
+
+    # Agreement of `fast=True` with `False` for complete decay
+    # also try non-default `sigma0`
+    N = 256
+    for T in range(1, 16):
+        p_f = gauss_1d(N, sigma=0.1 / T)
+        w0 = compute_temporal_width(p_f, fast=True)
+        w1 = compute_temporal_width(p_f, fast=False)
+        assert w0 == w1 == T, (w0, w1, T)
+
+        sigma0 = .15
+        p_f = gauss_1d(N, sigma=sigma0 / T)
+        w = compute_temporal_width(p_f, sigma0=sigma0, fast=False)
+        assert w == T, (w, T)
 
 
 def test_tensor_padded():
@@ -855,7 +869,7 @@ def test_energy_conservation():
     jtfs_a = TimeFrequencyScattering1D(**params, average=True)
     jtfs_u = TimeFrequencyScattering1D(**params, average=False)
     jmeta_a = jtfs_a.meta()
-    jmeta_u = jtfs_a.meta()
+    jmeta_u = jtfs_u.meta()
 
     # scatter
     Scx_a = jtfs_a(x)
@@ -871,7 +885,6 @@ def test_energy_conservation():
     pe_a, pe_u = [{pair: np.sum(pe[pair]) for pair in pe}
                   for pe in (pair_energies_a, pair_energies_u)]
 
-    # run assertions
     # compute energy relations ###############################################
     E = {}
     E['in'] = energy(x)
@@ -907,6 +920,25 @@ def test_energy_conservation():
     assert .83 < r['U2_joint / U2']  < 1., r['U2_joint / U2']
 
 
+def test_est_energy_conservation():
+    """Tests that `toolkit.est_energy_conservation` doesn't error, and that
+    values are sensible.
+    """
+    N = 256
+    x = np.random.randn(N)
+
+    kw = dict(verbose=1, analytic=1)
+    print()
+    ESr0 = est_energy_conservation(x, jtfs=0, **kw)
+    print()
+    ESr1 = est_energy_conservation(x, jtfs=1, **kw)
+
+    for ESr in (ESr0, ESr1):
+        for k, v in ESr.items():
+            tol = .03  # random with torch cuda default
+            assert 0 < v < 1 + tol, (k, v)
+
+
 def test_implementation():
     """Test that every `implementation` kwarg works."""
     N = 512
@@ -933,6 +965,7 @@ def test_pad_mode_fr():
     out0 = jtfs0(x)
     out1 = jtfs1(x)
     assert np.allclose(out0, out1)
+
 
 def test_no_second_order_filters():
     """Reproduce edge case: configuration yields no second-order wavelets
@@ -1065,7 +1098,7 @@ def test_reconstruction_torch():
         optimizer.step()
         losses.append(float(loss.detach().cpu().numpy()))
         xn, yn = x.detach().cpu().numpy(), y.detach().cpu().numpy()
-        losses_recon.append(l2(yn, xn))
+        losses_recon.append(float(l2(yn, xn)))
 
     th, th_recon, th_end_ratio = 1e-5, 1.05, 50
     end_ratio = losses[0] / losses[-1]
@@ -1478,10 +1511,10 @@ def concat_joint(Scx):
 
 def assert_pad_difference(jtfs, test_params_str):
     assert not all(
-        J_pad_fr == jtfs.J_pad_fr_max
-        for J_pad_fr in jtfs.J_pad_fr if J_pad_fr != -1
-        ), "\n{}\nJ_pad_fr={}\nshape_fr={}".format(
-            test_params_str, jtfs.J_pad_fr, jtfs.shape_fr)
+        J_pad_fr == jtfs.J_pad_frs_max
+        for J_pad_fr in jtfs.J_pad_frs if J_pad_fr != -1
+        ), "\n{}\nJ_pad_fr={}\nN_frs={}".format(
+            test_params_str, jtfs.J_pad_frs, jtfs.N_frs)
 
 
 if __name__ == '__main__':
@@ -1501,6 +1534,7 @@ if __name__ == '__main__':
         test_tensor_padded()
         test_pack_coeffs_jtfs()
         test_energy_conservation()
+        test_est_energy_conservation()
         test_implementation()
         test_pad_mode_fr()
         test_backends()

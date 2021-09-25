@@ -125,10 +125,6 @@ class TorchBackend1D(TorchBackend):
         return torch.fft.ifft(x, dim=axis)
 
     @classmethod
-    def mean(cls, x, axis=-1, keepdims=True):
-        return x.mean(axis, keepdim=keepdims)
-
-    @classmethod
     def conj_reflections(cls, x, ind_start, ind_end, k, N, pad_left, pad_right,
                          trim_tm):
         return agnostic.conj_reflections(cls, x, ind_start, ind_end, k, N,

@@ -107,6 +107,10 @@ class NumpyBackend:
         return cls._np.sqrt(x, dtype=dtype)
 
     @classmethod
+    def mean(cls, x, axis=-1, keepdims=True):
+        return x.mean(axis, keepdims=keepdims)
+
+    @classmethod
     def conj(cls, x, inplace=False):
         if inplace and cls._is_complex(x):
             out = cls._np.conj(x, out=x)

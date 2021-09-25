@@ -83,7 +83,7 @@ def test_T_and_F():
                     raise e
 
                 # can't know easily ahead of time so set at runtime
-                Fmax = int(2**np.ceil(np.log2(jtfs.shape_fr_max)))
+                Fmax = int(2**np.ceil(np.log2(jtfs.N_frs_max)))
                 F_all[-1] = Fmax
                 if verbose:
                     print(dtime() - t0, T, F, out_type)
