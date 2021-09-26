@@ -534,6 +534,7 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                                               pad_ref)
             stride_ref = _get_stride(
                 None, pad_ref, subsample_equiv_due_to_pad_ref, scf, True)
+            stride_ref = max(stride_ref - scf.oversampling_fr, 0)
             ind_start_fr = scf.ind_start_fr_max[stride_ref]
             ind_end_fr   = scf.ind_end_fr_max[  stride_ref]
         else:
@@ -839,11 +840,15 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
 
     # ensure time / freq stride doesn't exceed log2_T / log2_F in averaged cases,
     # and J / J_fr in unaveraged
-    smax_t = log2_T if average else J
-    smax_f = log2_F if scf.average_fr else scf.J_fr
+    smax_t_nophi = log2_T if average else J
+    smax_f_nophi = log2_F if scf.average_fr else scf.J_fr
     for pair in meta['stride']:
         if pair == 'S0' and not average:
             continue
+        smax_t = (smax_t_nophi if ('phi_t' not in pair) else
+                  log2_T)
+        smax_f = (smax_f_nophi if ('phi_f' not in pair) else
+                  log2_F)
         for i, s in enumerate(meta['stride'][pair][..., 1].ravel()):
             assert s <= smax_t, ("meta['stride'][{}][{}] > stride_max_t "
                                  "({} > {})").format(pair, i, s, smax_t)

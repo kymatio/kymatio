@@ -1072,6 +1072,7 @@ def _joint_lowpass(U_2_m, n2, n1_fr, subsample_equiv_due_to_pad, n1_fr_subsample
         subsample_equiv_due_to_pad_ref = scf.J_pad_frs_max_init - pad_ref
         stride_ref = _get_stride(
             None, pad_ref, subsample_equiv_due_to_pad_ref, scf, True)
+        stride_ref = max(stride_ref - oversampling_fr, 0)
         ind_start_fr = scf.ind_start_fr_max[stride_ref]
         ind_end_fr   = scf.ind_end_fr_max[  stride_ref]
     else:
