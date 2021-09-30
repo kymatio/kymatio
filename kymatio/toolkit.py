@@ -2104,11 +2104,17 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
         backend = np
         backend_name = 'numpy'
 
+    # infer dtype
+    sq = seq
+    while isinstance(sq, list):
+        sq = sq[0]
+    dtype = sq.dtype
+
     if init_fn is None:
         if backend_name == 'numpy':
-            init_fn = lambda s: np.full(s, pad_value)
+            init_fn = lambda s: np.full(s, pad_value, dtype=dtype)
         elif backend_name == 'torch':
-            init_fn = lambda s: backend.full(s, pad_value)
+            init_fn = lambda s: backend.full(s, pad_value, dtype=dtype)
 
     if cast_fn is None:
         if is_tf:

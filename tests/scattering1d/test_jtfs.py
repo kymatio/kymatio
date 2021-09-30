@@ -237,11 +237,11 @@ def test_up_vs_down():
     if metric_verbose:
         print("\nFDTS directional sensitivity; E_down / E_up:")
 
-    m_th = (60, 170)
-    l2_th = (55, 150)
+    m_th = (170, 420)
+    l2_th = (85, 470)
     for i, pad_mode in enumerate(['reflect', 'zero']):
         pad_mode_fr = 'conj-reflect-zero' if pad_mode == 'reflect' else 'zero'
-        jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=8, J_fr=4, F=4, Q_fr=2,
+        jtfs = TimeFrequencyScattering1D(shape=N, J=8, Q=16, J_fr=4, F=4, Q_fr=2,
                                          average_fr=True, out_type='dict:array',
                                          pad_mode=pad_mode,
                                           sampling_filters_fr=(
