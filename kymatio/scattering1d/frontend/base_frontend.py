@@ -756,9 +756,9 @@ class TimeFrequencyScatteringBase1D():
 
     JTFS builds on time scattering by convolving first order coefficients
     with joint 2D wavelets along time and frequency, increasing discriminability
-    while preserving time-shift invariance. Invariance to frequency transposition
-    can be imposed via frequential averaging, while preserving sensitivity to
-    frequency-dependent time shifts.
+    while preserving time-shift invariance and time-warp stability. Invariance
+    to frequency transposition can be imposed via frequential averaging,
+    while preserving sensitivity to frequency-dependent time shifts.
 
     Joint wavelets are defined separably in time and frequency and permit fast
     separable convolution. Convolutions are followed by complex modulus and
@@ -770,13 +770,14 @@ class TimeFrequencyScatteringBase1D():
 
     where
 
-        $S_J^{{(0)}} x(t) = x \star \phi_T(t),$
+        $S_{{J, J_{{fr}}}}^{{(0)}} x(t) = x \star \phi_T(t),$
 
-        $S_J^{{(1)}} x(t, \lambda) =
+        $S_{{J, J_{{fr}}}}^{{(1)}} x(t, \lambda) =
         |x \star \psi_\lambda^{{(1)}}| \star \phi_T,$ and
 
-        $S_J^{{(2)}} x(t, \lambda, \mu, l, s) =
-        ||x \star \psi_\lambda^{{(1)}}| \star \Psi_{{\mu, l, s}}| \star \Phi_J.$
+        $S_{{J, J_{{fr}}}}^{{(2)}} x(t, \lambda, \mu, l, s) =
+        ||x \star \psi_\lambda^{{(1)}}| \star \Psi_{{\mu, l, s}}|
+        \star \Phi_{{T, F}}.$
 
     $\Psi_{{\mu, l, s}}$ comprises of five kinds of joint wavelets:
 
@@ -800,9 +801,9 @@ class TimeFrequencyScatteringBase1D():
         = \phi_T(t) \phi_F(\lambda)$
         joint lowpass
 
-    and $\Phi_J$ optionally does temporal and/or frequential averaging:
+    and $\Phi_{{T, F}}$ optionally does temporal and/or frequential averaging:
 
-        $\Phi_J(t, \lambda) = \phi_T(t) \phi_F(\lambda)$
+        $\Phi_{{T, F}}(t, \lambda) = \phi_T(t) \phi_F(\lambda)$
 
     Above, :math:`\star` denotes convolution in time and/or frequency. The
     filters $\psi_\lambda^{{(1)}}(t)$ and $\psi_\mu^{{(2)}}(t)$ are analytic
@@ -860,6 +861,9 @@ class TimeFrequencyScatteringBase1D():
     J, shape, T, average, oversampling, pad_mode :
         See `help(kymatio.scattering1d.Scattering1D)`.
 
+        Unlike in time scattering, `T` plays a role even if `average=False`,
+        to compute `phi_t` pairs.
+
     Q : int / tuple[int]
         `(Q1, Q2)`, where `Q2=1` if `Q` is int. `Q1` is the number of first-order
         wavelets per octave, and `Q2` the second-order.
@@ -868,7 +872,7 @@ class TimeFrequencyScatteringBase1D():
             or length of inputs to frequential scattering.
           - `Q2`, together with `J`, determines `N_frs` (via `j2 > j1`
             criterion), and total number of joint slices.
-          - Greater `Q2` values better capture temporal AM modulations of
+          - Greater `Q2` values better capture temporal AM modulations (AMM) of
             multiple rates. Suited for inputs of multirate or intricate AM.
             `Q2=2` is in close correspondence with the mamallian auditory cortex:
             https://asa.scitation.org/doi/full/10.1121/1.1945807
@@ -1044,8 +1048,8 @@ class TimeFrequencyScatteringBase1D():
               motivation behind wavelets, a "multi-scale zoom".)
             - 'exclude' circumvents the problem by simply excluding wide filters.
               'exclude' is simply a subset of 'resample', preserving all center
-              frequencies and widths - but 3D/4D concat is no longer possible.
-              Preferred if not caring for 3D/4D concat.
+              frequencies and widths - a 3D/4D coefficient packing will zero-pad
+              to compensate (see `help(kymatio.toolkit.pack_coeffs_jtfs)`).
 
         Note: `sampling_phi_fr = 'exclude'` will re-set to `'resample'`, as
         `'exclude'` isn't a valid option (there must exist a lowpass for every
@@ -1084,7 +1088,7 @@ class TimeFrequencyScatteringBase1D():
         'conj-reflect-zero'.
         Or, function with signature `pad_fn_fr(x, pad_fr, scf, B)`;
         see `_right_pad` in
-        `kymatio.scattering1d.core.timefrequency_scattering1d1d`.
+        `kymatio.scattering1d.core.timefrequency_scattering1d`.
 
         If using `pad_mode = 'reflect'` and `average = True`, reflected portions
         will be automatically conjugated before frequential scattering to avoid
@@ -1097,6 +1101,12 @@ class TimeFrequencyScatteringBase1D():
 
         `True` is likely to improve FDTS-discriminability, especially for
         `r_psi > sqrt(.5)`, but may slightly worsen wavelet time decay.
+
+    normalize : str / tuple[str]
+        See `help(kymatio.scattering1d.Scattering1D)`.
+
+        Tuple sets `normalize` separately for time and joint scattering,
+        respectively.
 
     r_psi : float / tuple[float]
         See `help(kymatio.scattering1d.utils.calibrate_scattering_filters)`.
@@ -1122,9 +1132,10 @@ class TimeFrequencyScatteringBase1D():
 
         Both `True` and `False` can still be concatenated into the 'true' JTFS
         4D structure; see `help(kymatio.toolkit.pack_coeffs_jtfs)` for a complete
-        description on coefficient structuring.
+        description. The difference is in how values are computed, especially
+        near boundaries. More importantly, `True` enforces `aligned=True` on
+        *per-`n2`* basis, enabling 3D convs even with `aligned=False`.
 
-        The difference is in how values are computed, esp. near boundaries.
         From an information/classification standpoint,
 
           - `True` is more information-rich. The 1D equivalent case is unpadding
@@ -1151,7 +1162,7 @@ class TimeFrequencyScatteringBase1D():
     out_exclude : list/tuple[str] / None
         Will exclude coefficients with these names from computation and output
         (except for `S1`, which always computes but still excludes from output).
-        All names:
+        All names (JTFS pairs, except 'S0', 'S1'):
 
             - 'S0', 'S1', 'phi_t * phi_f', 'phi_t * psi_f', 'psi_t * phi_f',
               'psi_t * psi_f_up', 'psi_t * psi_f_down'
@@ -1163,7 +1174,7 @@ class TimeFrequencyScatteringBase1D():
     ----------
     scf : `_FrequencyScatteringBase`
         Frequential scattering object, storing pertinent attributes and filters.
-        Temporal scattering's are accessed directly via `self`.
+        Temporal scattering's attributes are accessed directly via `self`.
 
         "scf" abbreviates "scattering frequency".
 

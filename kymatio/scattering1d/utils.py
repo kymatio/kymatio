@@ -494,8 +494,11 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                      if not scf.average_fr_global_phi else
                      min(pad_fr, scf.log2_F))
 
-        # `* phi_f` pairs always behave per `average_fr=True`
-        _average_fr = (True if n1_fr == -1 else scf.average_fr)
+        # `* phi_f` pairs always behave per `average_fr=True` (if `not aligned`)
+        if not scf.aligned:
+            _average_fr = (True if n1_fr == -1 else scf.average_fr)
+        else:
+            _average_fr = scf.average_fr
         total_conv_stride_over_U1 = _get_stride(j1_fr, pad_fr,
                                                 subsample_equiv_due_to_pad,
                                                 scf, _average_fr)
@@ -532,8 +535,10 @@ def compute_meta_jtfs(J_pad, J, Q, J_fr, Q_fr, T, F, aligned, out_3D, out_type,
                        scf.J_pad_frs_max)
             subsample_equiv_due_to_pad_ref = (scf.J_pad_frs_max_init -
                                               pad_ref)
+            # ensure stride is zero if `not average and aligned`
+            average_fr = bool(scf.average_fr or not aligned)
             stride_ref = _get_stride(
-                None, pad_ref, subsample_equiv_due_to_pad_ref, scf, True)
+                None, pad_ref, subsample_equiv_due_to_pad_ref, scf, average_fr)
             stride_ref = max(stride_ref - scf.oversampling_fr, 0)
             ind_start_fr = scf.ind_start_fr_max[stride_ref]
             ind_end_fr   = scf.ind_end_fr_max[  stride_ref]

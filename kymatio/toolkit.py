@@ -186,8 +186,8 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
 
 
 def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
-                     separate_lowpass=False, sampling_psi_fr=None, debug=False,
-                     recursive=False):
+                     separate_lowpass=False, sampling_psi_fr=None, out_3D=None,
+                     debug=False, recursive=False):
     """Packs efficiently JTFS coefficients into one of valid 4D structures.
 
     Parameters
@@ -198,11 +198,6 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
 
     meta : dict
         JTFS meta.
-
-    sampling_psi_fr : str / None
-        Used for sanity check for padding along `n1_fr`.
-        Must match what was passed to `TimeFrequencyScattering1D`.
-        If None, will assume library default.
 
     structure : int / None
         Structure to pack `Scx` into (see "Structures" below), integer 1 to 4.
@@ -222,6 +217,15 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         If True, will pack spinned (`psi_t * psi_f_up`, `psi_t * psi_f_down`)
         and lowpass (`phi_t * phi_f`, `phi_t * psi_f`, `psi_t * phi_f`) pairs
         separately. Recommended for convolutions (see Structures & Ordinality).
+
+    sampling_psi_fr : str / None
+        Used for sanity check for padding along `n1_fr`.
+        Must match what was passed to `TimeFrequencyScattering1D`.
+        If None, will assume library default.
+
+    out_3D : bool / None
+        Used for sanity check for padding along `n1`
+        (enforces same `n1` per `n2`).
 
     debug : bool (defualt False)
         If True, coefficient values will be replaced by meta `n` values for
@@ -349,6 +353,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
           `(n1_fr, n1, time)`, has the same stride, and forms valid conv pair
           (so use 3 or 4). Other structures require similar accounting.
           Rules out structure 1 for 3D/4D convs.
+      - out_3D:
+        - True: enforces same freq conv stride on *per-`n2`* basis, enabling
+          3D convs even if `aligned=False`.
       - sampling_psi_fr:
         - 'resample': enables the true JTFS structure.
         - 'exclude': enables the true JTFS structure (it's simply a subset of
@@ -410,11 +417,12 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                         for n2_idx in range(len(cb))
                         for n1_fr_idx in range(len(cb[n2_idx])))
         pad_value = 0 if not debug else -2
-        kw = dict(pad_value=pad_value, right_pad=False)
+        left_pad_axis = -2  # left pad along `n1`
+        kw = dict(pad_value=pad_value, left_pad_axis=left_pad_axis)
 
         # `phi`s #############################################################
         out_phi_t, out_phi_f = None, None
-        # ensure `phi`s pad to same number of `n1`s as spinned
+        # ensure `phi`s and spinned pad to the same number of `n1`s
         ref_shape = ((None, None, n_n1s_max, None) if not recursive else
                      (None, None, None, n_n1s_max, None))
         # this will pad along `n1`
@@ -617,14 +625,21 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             packed[pair].append([])
             n1_frs_all = nsp[n2s_all == n2, 1]
             n1_frs = np.unique(n1_frs_all)
-            n_n1s = len(n1_frs_all)
             n_n1_frs_max = max(n_n1_frs_max, len(n1_frs))
 
             for n1_fr in n1_frs:
                 packed[pair][-1].append([])
                 n1s_done = 0
-                n_n1s_in_n1_fr = n_n1s // len(n1_frs)
 
+                if out_3D:
+                    # same number of `n1`s for all frequential slices *per-`n2`*
+                    n_n1s = len(n1_frs_all)
+                    n_n1s_in_n1_fr = n_n1s // len(n1_frs)
+                    assert (n_n1s / len(n1_frs)
+                            ).is_integer(), (n_n1s, len(n1_frs))
+                else:
+                    n_n1s_in_n1_fr = len(nsp[n2s_all == n2, 2
+                                             ][n1_frs_all == n1_fr])
                 if debug:
                     # pack meta instead of coeffs
                     n1s = nsp[n2s_all == n2, 2][n1_frs_all == n1_fr]
@@ -1126,9 +1141,9 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
 def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
                             max_pad_factor=None, max_pad_factor_fr=None,
                             pad_mode=None, pad_mode_fr=None, average=None,
-                            average_fr=None, r_psi=None, analytic=None,
-                            jtfs=False, backend=None, verbose=True,
-                            get_out=False):
+                            average_fr=None, sampling_filters_fr=None,
+                            r_psi=None, analytic=None, jtfs=False, backend=None,
+                            verbose=True, get_out=False):
     """Estimate energy conservation given scattering configurations, especially
     scale of averaging. With default settings, passing only `T`/`F`, computes the
     upper bound.
@@ -1145,7 +1160,7 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
         Scattering object to use. If None, will create per parameters.
 
     T, F, J, J_fr, max_pad_factor, max_pad_factor_fr, pad_mode, pad_mode_fr,
-    average, average_fr, r_psi, analytic:
+    average, average_fr, sampling_filters_fr, r_psi, analytic:
         Scattering parameters.
 
     jtfs : bool (default False)
@@ -1176,9 +1191,11 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
     # warn if passing params alongside `sc`
     kw = dict(T=T, F=F, J=J, J_fr=J_fr, max_pad_factor=max_pad_factor,
               max_pad_factor_fr=max_pad_factor_fr, pad_mode=pad_mode,
-              pad_mode_fr=pad_mode_fr, average=average, average_fr=average_fr)
+              pad_mode_fr=pad_mode_fr, average=average, average_fr=average_fr,
+              sampling_filters_fr=sampling_filters_fr)
     tm_params = ('T', 'J', 'max_pad_factor', 'pad_mode', 'average')
-    fr_params = ('F', 'J_fr', 'max_pad_factor_fr', 'pad_mode_fr', 'average_fr')
+    fr_params = ('F', 'J_fr', 'max_pad_factor_fr', 'pad_mode_fr', 'average_fr',
+                 'sampling_filters_fr')
     all_params = (*tm_params, *fr_params)
     if sc is not None and any(kw[arg] is not None for arg in all_params):
         warnings.warn("`sc` object provided - parametric arguments ignored.")
@@ -1232,12 +1249,14 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
                 average_fr = False
             if analytic is None:
                 analytic = True  # library default
+            if sampling_filters_fr is None:
+                sampling_filters_fr = 'resample'
 
             # pack JTFS args
             kw.update(**dict(max_pad_factor_fr=max_pad_factor_fr, F=F,
                              pad_mode_fr=pad_mode_fr, average_fr=average_fr,
                              analytic=analytic, Q_fr=4, out_type='dict:list',
-                             sampling_filters_fr='resample'))
+                             sampling_filters_fr=sampling_filters_fr))
             if average is None:
                 kw_u = dict(**kw, average=False)
                 kw_a = dict(**kw, average=True)
@@ -1270,7 +1289,6 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
     # input energy
     Ex = energy(x)
     if not jtfs and average:
-        # TODO undo if Scattering1D normalizes subsampling energy
         Ex /= 2**sc.log2_T
 
     # scattering energy & ratios
@@ -1995,7 +2013,7 @@ def _echirp_fn(fmin, fmax, tmin=0, tmax=1):
 
 
 def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
-         endpoint=False):
+         partials_f_sep=1.6, endpoint=False):
     """Generate windowed tones with Frequency-dependent Time Shifts (FDTS)."""
     total_shift = total_shift or N//16
     f0 = f0 or N//12
@@ -2009,10 +2027,10 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
 
     x = np.zeros(N)
     xs = x.copy()
-    for p in range(1, 1 + n_partials):
-        x_partial = np.sin(2*np.pi * p*f0 * t) * window
-        partial_shift = int(total_shift * np.log2(p) / np.log2(n_partials)
-                            ) - total_shift//2
+    for p in range(0, n_partials):
+        f_shift = partials_f_sep**p
+        x_partial = np.sin(2*np.pi * f0 * f_shift * t) * window
+        partial_shift = int(total_shift * np.log2(f_shift) / np.log2(n_partials))
         xs_partial = np.roll(x_partial, partial_shift)
         x += x_partial
         xs += xs_partial
@@ -2020,7 +2038,7 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
 
 #### misc ###################################################################
 def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
-                  right_pad=True):
+                  left_pad_axis=None):
     """Make tensor from variable-length `seq` (e.g. nested list) padded with
     `fill_value`.
 
@@ -2034,7 +2052,7 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     Not implemented for TensorFlow: will convert to numpy array then revert to
     TF tensor.
 
-    Code taken from: https://stackoverflow.com/a/27890978/10133797
+    Code borrows from: https://stackoverflow.com/a/27890978/10133797
     """
     def find_shape(seq):
         try:
@@ -2045,7 +2063,13 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
         return (len_,) + tuple(max(sizes) for sizes in
                                zip_longest(*shapes, fillvalue=1))
 
+    iter_axis = [0]
+    prev_axis = [iter_axis[0]]
+
     def fill_tensor(arr, seq, fill_value=0):
+        if iter_axis[0] != prev_axis[0]:
+            prev_axis[0] = iter_axis[0]
+
         if arr.ndim == 1:
             try:
                 len_ = len(seq)
@@ -2053,16 +2077,24 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                 len_ = 0
 
             if len_ == 0:
-                arr[:] = fill_value
-            elif right_pad:
+                pass#arr[:] = fill_value
+            elif len(shape) not in left_pad_axis:  # right pad
                 arr[:len_] = cast_fn(seq)
-                arr[len_:] = fill_value
-            else:
+                # arr[len_:] = fill_value
+            else:  # left pad
                 arr[-len_:] = cast_fn(seq)
-                arr[:-len_] = fill_value
+                # arr[:-len_] = fill_value
         else:
+            iter_axis[0] += 1
+
+            left_pad = bool(iter_axis[0] in left_pad_axis)
+            if left_pad:
+                seq = IterWithDelay(seq, len(arr) - len(seq), fillvalue=())
+
             for subarr, subseq in zip_longest(arr, seq, fillvalue=()):
                 fill_tensor(subarr, subseq, fill_value)
+                if subarr.ndim != 1:
+                    iter_axis[0] -= 1
 
     # infer `init_fn` and `cast_fn` from `seq`, if not provided ##############
     backend, backend_name = _infer_backend(seq, get_name=True)
@@ -2074,9 +2106,9 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
 
     if init_fn is None:
         if backend_name == 'numpy':
-            init_fn = lambda s: np.empty(s)
+            init_fn = lambda s: np.full(s, pad_value)
         elif backend_name == 'torch':
-            init_fn = lambda s: backend.zeros(s)
+            init_fn = lambda s: backend.full(s, pad_value)
 
     if cast_fn is None:
         if is_tf:
@@ -2096,6 +2128,21 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                 shape[i] = s
     shape = tuple(shape)
 
+    # handle `left_pad_axis`
+    if left_pad_axis is None:
+        left_pad_axis = ()
+    elif isinstance(left_pad_axis, int):
+        left_pad_axis = [left_pad_axis]
+    elif isinstance(left_pad_axis, tuple):
+        left_pad_axis = list(left_pad_axis)
+    # negatives -> positives
+    for i, a in enumerate(left_pad_axis):
+        if a < 0:
+            # +1 since counting index depth which goes `1, 2, ...`
+            left_pad_axis[i] = (len(shape) + 1) + a
+    if 0 in left_pad_axis:
+        raise NotImplementedError("`0` in `left_pad_axis`")
+
     # fill
     arr = init_fn(shape)
     fill_tensor(arr, seq, fill_value=pad_value)
@@ -2104,6 +2151,31 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     if is_tf:
         arr = tf.convert_to_tensor(arr)
     return arr
+
+
+class IterWithDelay():
+    """Allows implementing left padding by delaying iteration of a sequence."""
+    def __init__(self, x, delay, fillvalue=()):
+        self.x = x
+        self.delay = delay
+        self.fillvalue = fillvalue
+
+    def __iter__(self):
+        self.idx = 0
+        return self
+
+    def __next__(self):
+        if self.idx > self.delay - 1:
+            idx = self.idx - self.delay
+            if idx < len(self.x):
+                out = self.x[idx]
+            else:
+                raise StopIteration
+        else:
+            out = self.fillvalue
+        self.idx += 1
+        return out
+
 
 # backend ####################################################################
 class ExtendedUnifiedBackend():

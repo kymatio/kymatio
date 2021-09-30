@@ -121,19 +121,21 @@ def test_jtfs_vs_ts():
     """
     # design signal
     N = 2048
-    f0 = N // 12
+    f0 = N // 20
     n_partials = 5
-    total_shift = N//12
-    seg_len = N//8
+    partials_f_sep = 1.6
+    total_shift = N//14
+    seg_len = N//6
 
-    x, xs = fdts(N, n_partials, total_shift, f0, seg_len)
+    x, xs = fdts(N, n_partials, total_shift, f0, seg_len,
+                 partials_f_sep=partials_f_sep)
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    Q = (16, 2)
-    kw = dict(J=J, shape=N, max_pad_factor=1, frontend=default_backend)
-    ts = Scattering1D(Q=Q[0], pad_mode="zero", out_type='array', **kw)
-    jtfs = TimeFrequencyScattering1D(Q=Q, Q_fr=2, J_fr=4, average_fr=True,
+    Q = (8, 2)
+    kw = dict(Q=Q, J=J, shape=N, max_pad_factor=1, frontend=default_backend)
+    ts = Scattering1D(pad_mode="zero", out_type='array', **kw)
+    jtfs = TimeFrequencyScattering1D(Q_fr=2, J_fr=4, average_fr=True,
                                      out_3D=True, out_type='dict:array', **kw,
                                      sampling_filters_fr=('resample', 'resample'))
 
@@ -155,7 +157,7 @@ def test_jtfs_vs_ts():
     # and by comparing only against up & down, and via per-coeff basis
     assert l2_jtfs / l2_ts > 25, ("\nJTFS/TS: %s \nTS: %s\nJTFS: %s"
                                   ) % (l2_jtfs / l2_ts, l2_ts, l2_jtfs)
-    assert l2_ts < .006, "TS: %s" % l2_ts
+    assert l2_ts < .008, "TS: %s" % l2_ts
 
     if metric_verbose:
         print(("\nFDTS sensitivity:\n"
@@ -533,6 +535,12 @@ def test_lp_sum():
                               lp += np.abs(p[j0])**2
                       check_above(lp, test_params_str, j0=j0)
                       check_below(lp, test_params_str, psi_fs, j0=j0)
+              # assert same peak values (symmetry)
+              for i, (p_up, p_dn) in enumerate(zip(jtfs.psi1_f_fr_up,
+                                                   jtfs.psi1_f_fr_down)):
+                  up_mx, dn_mx = p_up[0].max(), p_dn[0].max()
+                  assert up_mx == dn_mx, (i, up_mx, dn_mx,
+                                          "\n%s" % test_params_str)
 
 
 def test_compute_temporal_width():
@@ -647,21 +655,28 @@ def test_pack_coeffs_jtfs():
         assert o.ndim == 4, "{}{}".format(o.shape, info)
 
         # pack here directly via arrays, see if they match
-        n2s = o[:, :, 0, 0]
+        n2s = o[:, :, :, 0]
 
-        # if phi_t is present, ensure it's the first
+        # fetch unpadded
+        n2s_no_pad = n2s[np.where(n2s != -2)]
+        # if phi_t is present, ensure it's the first (and only the first)
         if -1 in n2s:
-            n_n2s = np.sum(n2s == -1)
-            assert np.sum(n2s[0] == -1) == n_n2s, "{}{}".format(n2s, info)
+            n2s0_no_pad = n2s[:1][np.where(n2s[:1] != -2)]
+            assert np.all(n2s0_no_pad == -1), "{}{}".format(n2s, info)
+            assert -1 not in n2s[1:], "{}{}".format(n2s, info)
 
-        # should never require to pad along `n2`
-        assert -2 not in n2s, "{}{}".format(n2s, info)
+        # should never require to pad along `n2` (i.e. fully empty coeff)
+        for o_n2 in o:
+            assert not np.all(o_n2 == -2), "{}{}".format(o_n2, info)
 
         # exclude phis
         n2s = n2s[n2s != -1]
 
         # ensure high-to-low n2 (low-to-high freq)
-        assert np.all(n2s == sorted(n2s, reverse=True)), "{}{}".format(n2s, info)
+        # no pad & no lowpass
+        n2s_np_nlp = n2s_no_pad[np.where(n2s_no_pad != -1)]
+        assert np.all(n2s_np_nlp == sorted(n2s_np_nlp, reverse=True)
+                      ), "{}{}".format(n2s, info)
 
     def validate_n1s(o, info, spin):
         info = info + "\nspin={}".format(spin)
@@ -670,9 +685,9 @@ def test_pack_coeffs_jtfs():
             for n1_fr_idx in range(len(o[n2_idx])):
                 n1s = o[n2_idx, n1_fr_idx, :, 2]
                 if -2 in n1s:
-                    # assert right-padded
+                    # assert left-padded
                     n_pad = sum(n1s == -2)
-                    assert np.all(n1s[-n_pad:] == -2), (
+                    assert np.all(n1s[:n_pad] == -2), (
                         "{}, {}{}").format(n_pad, n1s, info)
                 # remove padded
                 n1s = np.array([n1 for n1 in n1s if n1 != -2])
@@ -814,6 +829,13 @@ def test_pack_coeffs_jtfs():
                         out_exclude = (pairs_lp[-3:] if structure != 4 else
                                        pairs_lp[-2:])
 
+                if not (structure == 1 and
+                        not separate_lowpass and
+                        test_params['average'] and
+                        test_params['average_fr'] and
+                        not test_params['out_3D'] and
+                        test_params['sampling_psi_fr'] == 'exclude'):
+                    continue
                 kw = {k: v for k, v in test_params.items()
                       if k in ('sampling_psi_fr',)}
                 info = "\nstructure={}\nseparate_lowpass={}\n{}".format(
@@ -832,6 +854,7 @@ def test_pack_coeffs_jtfs():
                 # pack & validate
                 out = pack_coeffs_jtfs(paired_flat, meta, structure=structure,
                                        separate_lowpass=separate_lowpass,
+                                       out_3D=test_params['out_3D'],
                                        **kw, debug=True)
                 validate_packing(out, separate_lowpass, structure, t, info)
 
@@ -853,7 +876,7 @@ def test_energy_conservation():
     # https://github.com/kymatio/kymatio/discussions/732#discussioncomment-855703
     # https://github.com/kymatio/kymatio/discussions/732#discussioncomment-968384
     r_psi = (.9, .9, .9)
-    J = int(np.ceil(np.log2(N)) - 3)
+    J = int(np.ceil(np.log2(N)) - 2)
     J_fr = 3
     F = 2**J_fr
     T = 2**J
@@ -916,7 +939,7 @@ def test_energy_conservation():
     # run assertions #########################################################
     assert .9  < r['out / in']       < 1., r['out / in']
     assert .95 < r['(S0 + U1) / in'] < 1., r['(S0 + U1) / in']
-    assert .95 < r['S1_joint / S1']  < 1., r['S1_joint / S1']
+    assert .93 < r['S1_joint / S1']  < 1., r['S1_joint / S1']
     assert .83 < r['U2_joint / U2']  < 1., r['U2_joint / U2']
 
 
@@ -1219,6 +1242,18 @@ def test_meta():
             n_freqs = Scx[pair][i]['coef'].shape[1]
             meta_idx[0] += n_freqs
 
+    def assert_aligned_stride(Scx, test_params_str):
+        """Assert all frequential strides are equal in `aligned`."""
+        ref_stride = Scx['psi_t * psi_f_up'][0]['stride'][0]
+        for pair in Scx:
+            if pair in ('S0', 'S1'):
+                continue
+            for i, c in enumerate(Scx[pair]):
+                s = c['stride'][0]
+                assert s == ref_stride, (
+                    "Scx[{}][{}]['stride'] = {} != ref_stride == {}\n{}".format(
+                        pair, i, s, ref_stride, test_params_str))
+
     def run_test(params, test_params):
         jtfs = TimeFrequencyScattering1D(**params, **test_params,
                                          frontend=default_backend)
@@ -1239,7 +1274,6 @@ def test_meta():
             print("Failed at:\n%s" % test_params_str)
             raise e
 
-
         # ensure no output shape was completely reduced
         for pair in Scx:
             for i, c in enumerate(Scx[pair]):
@@ -1256,13 +1290,22 @@ def test_meta():
                 assert_equal_values(Scx, jmeta, field, pair, i, meta_idx,
                                     out_3D, test_params_str, test_params, jtfs)
 
+        # check stride if `aligned`
+        if aligned:
+            assert_aligned_stride(Scx, test_params_str)
+
         # save compute and test this method for thoroughness
         if average:
             for structure in (1, 2, 3, 4):
                 for separate_lowpass in (False, True):
-                    _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
-                                         separate_lowpass=separate_lowpass,
-                                         sampling_psi_fr=jtfs.sampling_psi_fr)
+                    try:
+                        _ = pack_coeffs_jtfs(Scx, jmeta, structure=structure,
+                                             separate_lowpass=separate_lowpass,
+                                             sampling_psi_fr=jtfs.sampling_psi_fr,
+                                             out_3D=jtfs.out_3D)
+                    except Exception as e:
+                        print(test_params_str)
+                        raise e
 
     if default_backend != 'numpy':
         # meta doesn't change
@@ -1303,12 +1346,13 @@ def test_meta():
     params = dict(shape=N, J=J, Q=Q, J_fr=J_fr, Q_fr=Q_fr, F=F, out_type=out_type)
 
     sampling_psi_fr = 'exclude'
+    out_3D = False
     for average_fr in (True, False):
       for average in (True, False):
         for aligned in (True, False):
           for sampling_phi_fr in ('resample', 'recalibrate'):
               test_params = dict(
-                  out_3D=False, average_fr=average_fr, average=average,
+                  out_3D=out_3D, average_fr=average_fr, average=average,
                   aligned=aligned,
                   sampling_filters_fr=(sampling_psi_fr, sampling_phi_fr))
               run_test(params, test_params)

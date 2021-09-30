@@ -314,7 +314,7 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         jtfs = TimeFrequencyScattering1D(shape=2048, J=8, Q=8)
         filterbank_jtfs_1d(jtfs)
     """
-    def _plot_filters(ps, p0, lp, ax0, ax1, title_base, up):
+    def _plot_filters(ps, p0, lp, fig0, ax0, fig1, ax1, title_base, up):
         # determine plot parameters ##########################################
         # vertical lines (octave bounds)
         Nmax = len(ps[0][j0])
@@ -363,11 +363,11 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
             if center_dc:
                 p0plot = ifftshift(p0plot)
                 p0plot[1:] = p0plot[1:][::-1]
-            plot(p0plot, color='k', **plot_kw, ax=ax0,
+            plot(p0plot, color='k', **plot_kw, ax=ax0, fig=fig0,
                  vlines=(vlines, dict(color='k', linewidth=1)))
 
         N = len(p[j0])
-        _filterbank_style_axes(ax0, N, xlims)
+        _filterbank_style_axes(ax0, N, xlims, zoom=zoom, is_jtfs=True)
 
         # plot LP sum ########################################################
         plot_kw_lp = {}
@@ -379,11 +379,12 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
         if lp_sum and not (zoom == -1 and up):
             lpplot = ifftshift(lp) if center_dc else lp
-            plot(lpplot, **plot_kw, **plot_kw_lp, ax=ax1,
+            plot(lpplot, **plot_kw, **plot_kw_lp, ax=ax1, fig=fig1,
                  hlines=(1, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
 
-            _filterbank_style_axes(ax1, N, xlims, ymax=lp.max()*1.03)
+            _filterbank_style_axes(ax1, N, xlims, ymax=lp.max()*1.03,
+                                   zoom=zoom, is_jtfs=True)
 
     # handle `plot_kw`
     if plot_kw is not None:
@@ -435,16 +436,18 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
     # plot ###################################################################
     def make_figs():
-        return ([plt.subplots(1, 1)[1] for _ in range(2)] if lp_sum else
-                (plt.subplots(1, 1)[1], None))
+        return ([plt.subplots(1, 1) for _ in range(2)] if lp_sum else
+                (plt.subplots(1, 1), None))
 
-    ax0, ax1 = make_figs()
-    _plot_filters(pup, p0, lp, ax0, ax1, title_base=title_base, up=True)
+    (fig0, ax0), (fig1, ax1) = make_figs()
+    _plot_filters(pup, p0, lp, fig0, ax0, fig1, ax1, title_base=title_base,
+                  up=True)
     if zoom != -1:
         plt.show()
         ax0, ax1 = make_figs()
 
-    _plot_filters(pdn, p0, lp, ax0, ax1, title_base=title_base, up=False)
+    _plot_filters(pdn, p0, lp, fig0, ax0, fig1, ax1, title_base=title_base,
+                  up=False)
     plt.show()
 
 
@@ -1682,7 +1685,7 @@ def _scale_plot(fig, ax, show=False, ax_equal=False, w=None, h=None,
     elif auto_xlims:
         xmin, xmax = ax.get_xlim()
         rng = xmax - xmin
-        ax.set_xlim(xmin + .018 * rng, xmax - .018 * rng)
+        ax.set_xlim(xmin + .02 * rng, xmax - .02 * rng)
 
     if ylims:
         ax.set_ylim(*ylims)
@@ -1730,14 +1733,20 @@ def _get_compute_pairs(pairs, meta):
     return compute_pairs
 
 
-def _filterbank_style_axes(ax, N, xlims, ymax=None):
-    # x limits and labels
-    xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
-    w = np.linspace(0, 1, len(xticks), 1)
-    w[w > .5] -= 1
-    ax.set_xticks(xticks[:-1])
-    ax.set_xticklabels(w[:-1])
-    ax.set_xlim(*xlims)
+def _filterbank_style_axes(ax, N, xlims, ymax=None, zoom=None, is_jtfs=False):
+    if not (is_jtfs and zoom == -1):
+        xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
+        # x limits and labels
+        w = np.linspace(0, 1, len(xticks), 1)
+        w[w > .5] -= 1
+        ax.set_xticks(xticks[:-1])
+        ax.set_xticklabels(w[:-1])
+        ax.set_xlim(*xlims)
+    else:
+        xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
+        w = [-.5, -.375, -.25, -.125, 0, .125, .25, .375, .5]
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(w)
 
     # y limits
     ax.set_ylim(-.05, ymax)

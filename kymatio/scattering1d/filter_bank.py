@@ -1522,7 +1522,8 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None, J=None, log2_T=Non
             else:
                 b = peak_idxs[n + 1]
         else:
-            b = None
+            b = (None if s_idx == 0 else
+                 1)  # exclude dc
 
         # peak duplicate
         if a == b:
@@ -1533,12 +1534,13 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None, J=None, log2_T=Non
         start, end = (a, b) if s_idx == 0 else (b, a)
 
         # include endpoint
-        end = end + 1 if end is not None else None
+        if end is not None:
+            end += 1
 
         # if we're at endpoints, don't base estimate on single point
-        if start is None:
+        if start is None:  # left endpoint
             end = max(end, 2)
-        elif end is None:
+        elif end is None:  # right endpoint
             start = min(start, len(lp_sum) - 1)
         elif end - start == 1:
             if start == 0:
