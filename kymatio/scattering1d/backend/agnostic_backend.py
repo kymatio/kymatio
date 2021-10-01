@@ -43,8 +43,8 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
         assert out.shape == padded_shape, (out.shape, padded_shape)
 
     # fill initial `x`
-    pad_right_idx = (out.shape[axis] -
-                     (pad_right if pad_right != 0 else None))
+    pad_right_idx = ((out.shape[axis] - pad_right) if pad_right != 0 else
+                     None)
     ix = index_axis(pad_left, pad_right_idx, axis, x.ndim)
     if backend_name != 'tensorflow':
         out[ix] = x
