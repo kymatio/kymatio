@@ -437,24 +437,23 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
     # plot ###################################################################
     def make_figs():
         return ([plt.subplots(1, 1) for _ in range(2)] if lp_sum else
-                (plt.subplots(1, 1), None))
+                (plt.subplots(1, 1), (None, None)))
 
     (fig0, ax0), (fig1, ax1) = make_figs()
     _plot_filters(pup, p0, lp, fig0, ax0, fig1, ax1, title_base=title_base,
                   up=True)
     if zoom != -1:
         plt.show()
-        ax0, ax1 = make_figs()
+        (fig0, ax0), (fig1, ax1) = make_figs()
 
     _plot_filters(pdn, p0, lp, fig0, ax0, fig1, ax1, title_base=title_base,
                   up=False)
     plt.show()
 
 
-def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
-                    labels=True, suptitle_y=1.015):
+def filterbank_jtfs_2d(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
+                       labels=True, suptitle_y=1.015):
     """Visualize JTFS joint 2D filterbank in time domain.
-    # TODO rename to _2d?
 
     Parameters
     ----------
@@ -488,7 +487,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
 
         N, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
         jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=J_fr, Q_fr=Q_fr)
-        filterbank_jtfs(jtfs)
+        filterbank_jtfs_2d(jtfs)
     """
     def to_time(p):
         # center & ifft
@@ -569,11 +568,17 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             Psi = Psi.imag
         else:
             Psi = _colorize_complex(Psi)
+        # handle float noise case
+        if np.abs(Psi).max() < 1e-12:
+            Psi *= 0
+            kw = dict(norm=(-.1, .1))  # show white
+        else:
+            kw = {}
         cmap = 'bwr' if part in ('real', 'imag') else 'none'
         if not labels:
             title = None
         imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=borders,
-               cmap=cmap)
+               cmap=cmap, **kw)
 
     # get spinned wavelet arrays & metadata ##################################
     n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.scf.psi1_f_fr_up)
@@ -650,15 +655,16 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             ax.spines[spine].set_visible(False)
 
     # tight
-    plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
+
+    return fig, axes
 
 
-def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
+def gif_jtfs_2d(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
              overwrite=False, save_images=None, show=None, cmap='turbo',
              norms=None, skip_spins=False, skip_unspinned=False, sample_idx=0,
              inf_token=-1, verbose=False, gif_kw=None):
     """Slice heatmaps of JTFS outputs.
-    # TODO rename 2d?
 
     Parameters
     ----------
@@ -730,7 +736,7 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
         Scx = jtfs(x)
         meta = jtfs.meta()
 
-        gif_jtfs(Scx, meta)
+        gif_jtfs_2d(Scx, meta)
     """
     def _title(meta_idx, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star \mathrm{U1}|$"
@@ -871,13 +877,12 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
                     os.unlink(path)
 
 
-def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
+def gif_jtfs_3d(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
                 overwrite=False, save_images=False,
                 width=800, height=800, surface_count=30, opacity=.2, zoom=1,
                 angles=None, verbose=True, gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
-    # TODO rename 3d?
 
     Parameters
     ----------
@@ -942,12 +947,12 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                                           separate_lowpass=True)
         packed_spinned = packed[0]
         packed_spinned = packed_spinned.transpose(-1, 0, 1, 2)  # time first
-        gif_jtfs_3D(packed_spinned, savedir='')
+        gif_jtfs_3d(packed_spinned, savedir='')
     """
     try:
         import plotly.graph_objs as go
     except ImportError as e:
-        print("\n`plotly.graph_objs` is needed for `gif_jtfs_3D`.")
+        print("\n`plotly.graph_objs` is needed for `gif_jtfs_3d`.")
         raise e
 
     # handle args & check if already exists (if so, delete if `overwrite`)

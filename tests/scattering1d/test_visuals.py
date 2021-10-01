@@ -83,26 +83,26 @@ def test_filterbank_jtfs_1d(G):
         visuals.filterbank_jtfs_1d(jtfs, lp_sum=0, lp_phi=0, zoom=zoom)
 
 
-def test_filterbank_jtfs(G):
+def test_filterbank_jtfs_2d(G):
     jtfss = G['jtfss']
-    visuals.filterbank_jtfs(jtfss[1])
+    visuals.filterbank_jtfs_2d(jtfss[1])
 
 
-def test_gif_jtfs(G):
+def test_gif_jtfs_2d(G):
     out_jtfss, metas = G['out_jtfss'], G['metas']
     savename = 'jtfs2d'
-    fn = lambda savedir: visuals.gif_jtfs(out_jtfss[1], metas[2], savedir=savedir,
+    fn = lambda savedir: visuals.gif_jtfs_2d(out_jtfss[1], metas[2], savedir=savedir,
                                           base_name=savename)
     _run_with_cleanup(fn, savename)
 
 
-def test_gif_jtfs_3D(G):
+def test_gif_jtfs_3d(G):
     out_jtfss, metas = G['out_jtfss'], G['metas']
     packed = pack_coeffs_jtfs(out_jtfss[1], metas[2], structure=2,
                               sampling_psi_fr='exclude')
 
     savename = 'jtfs3d'
-    fn = lambda savedir: visuals.gif_jtfs_3D(packed, savedir=savedir,
+    fn = lambda savedir: visuals.gif_jtfs_3d(packed, savedir=savedir,
                                              base_name=savename,
                                              images_ext='.png', verbose=False)
     _run_with_cleanup(fn, savename)
@@ -178,9 +178,9 @@ if __name__ == '__main__':
         test_filterbank_heatmap(G)
         test_filterbank_scattering(G)
         test_filterbank_jtfs_1d(G)
-        test_filterbank_jtfs(G)
-        test_gif_jtfs(G)
-        test_gif_jtfs_3D(G)
+        test_filterbank_jtfs_2d(G)
+        test_gif_jtfs_2d(G)
+        test_gif_jtfs_3d(G)
         test_energy_profile_jtfs(G)
         test_coeff_distance_jtfs(G)
     else:

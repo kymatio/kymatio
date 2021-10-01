@@ -376,7 +376,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
       - Coefficients will be sorted in order of increasing center frequency -
         along `n2`, and `n1_fr` for spin down (which makes it so that both spins
         are increasing away from `psi_t * phi_f`). The overall packing is
-        structured same as in `kymatio.visuals.filterbank_jtfs()`.
+        structured same as in `kymatio.visuals.filterbank_jtfs_2d()`.
 
       - Method assumes `out_exclude=None` if `not separate_lowpass` - else,
         the following are allowed to be excluded: 'phi_t * psi_f',
