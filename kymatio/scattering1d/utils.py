@@ -324,8 +324,8 @@ def compute_meta_scattering(J, Q, J_pad, T, r_psi=math.sqrt(.5), max_order=2):
     meta['sigma'][0].append((sigma_low,))
     meta['j'][0].append((log2_T,))
     meta['is_cqt'][0].append(())
-    meta['n'][0].append((0,))
-    meta['key'][0].append((0,))
+    meta['n'][0].append(())
+    meta['key'][0].append(())
 
     for (n1, (xi1, sigma1, j1, is_cqt1)
          ) in enumerate(zip(xi1s, sigma1s, j1s, is_cqt1s)):

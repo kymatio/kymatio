@@ -7,7 +7,7 @@ import io
 import numpy as np
 
 # set True to execute all test functions without pytest
-run_without_pytest = 0
+run_without_pytest = 1
 
 backends = []
 
@@ -215,12 +215,12 @@ def test_coordinates(device, backend, random_state=42):
     torch.manual_seed(random_state)
     J = 6
     Q = 8
-    T = 2**12
+    N = 2**12
 
-    scattering = Scattering1D(J, T, Q, max_order=2, backend=backend,
+    scattering = Scattering1D(J, N, Q, max_order=2, backend=backend,
                               max_pad_factor=1, frontend='torch')
 
-    x = torch.randn(2, T)
+    x = torch.randn(2, N)
 
     scattering.to(device)
     x = x.to(device)
