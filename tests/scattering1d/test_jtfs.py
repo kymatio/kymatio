@@ -179,7 +179,7 @@ def test_freq_tp_invar():
 
     # make scattering objects
     J = int(np.log2(N) - 1)  # have 2 time units at output
-    J_fr = 6
+    J_fr = 5
     F_all = [32, 64]
 
     pair_distances, global_distances = [], []
@@ -187,7 +187,6 @@ def test_freq_tp_invar():
         jtfs = TimeFrequencyScattering1D(J=J, Q=16, Q_fr=1, J_fr=J_fr, shape=N,
                                          F=F, average_fr=True, out_3D=False,
                                          out_type='dict:array',
-                                         oversampling=0, oversampling_fr=0,
                                          out_exclude=('S0', 'S1'),
                                          # pad_mode='zero', pad_mode_fr='zero',
                                          pad_mode='reflect',

@@ -1334,6 +1334,7 @@ def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
              vlines=(vidxs, dict(color='k', linewidth=1)))
         scat(idxs, ratios_flat[idxs], color='tab:red', show=1)
     if verbose:
+        print("Ratios (Sx/Sx_ref):")
         print("mean  min   max   | pair")
         for pair in ratios:
             print("{:<5.2f} {:<5.2f} {:<5.2f} | {}".format(
