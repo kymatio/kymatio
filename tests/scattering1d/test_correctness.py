@@ -7,7 +7,7 @@ from kymatio.scattering1d.backend.agnostic_backend import pad, stride_axis
 from kymatio.toolkit import l2
 
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 # will run most tests with this backend
 default_frontend = 'numpy'
 
