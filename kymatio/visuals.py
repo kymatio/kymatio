@@ -101,7 +101,7 @@ def filterbank_heatmap(scattering, first_order=None, second_order=False,
                                   ).format(p, ', '.join(parts)))
 
     # process visuals selection
-    is_jtfs = bool(hasattr(scattering, 'sc_freq'))
+    is_jtfs = bool(hasattr(scattering, 'scf'))
     if first_order is None:
         first_order = not is_jtfs
     if frequential is None:
@@ -314,7 +314,7 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
         jtfs = TimeFrequencyScattering1D(shape=2048, J=8, Q=8)
         filterbank_jtfs_1d(jtfs)
     """
-    def _plot_filters(ps, p0, lp, ax0, ax1, title_base, up):
+    def _plot_filters(ps, p0, lp, fig0, ax0, fig1, ax1, title_base, up):
         # determine plot parameters ##########################################
         # vertical lines (octave bounds)
         Nmax = len(ps[0][j0])
@@ -363,11 +363,11 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
             if center_dc:
                 p0plot = ifftshift(p0plot)
                 p0plot[1:] = p0plot[1:][::-1]
-            plot(p0plot, color='k', **plot_kw, ax=ax0,
+            plot(p0plot, color='k', **plot_kw, ax=ax0, fig=fig0,
                  vlines=(vlines, dict(color='k', linewidth=1)))
 
         N = len(p[j0])
-        _filterbank_style_axes(ax0, N, xlims)
+        _filterbank_style_axes(ax0, N, xlims, zoom=zoom, is_jtfs=True)
 
         # plot LP sum ########################################################
         plot_kw_lp = {}
@@ -379,11 +379,12 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
         if lp_sum and not (zoom == -1 and up):
             lpplot = ifftshift(lp) if center_dc else lp
-            plot(lpplot, **plot_kw, **plot_kw_lp, ax=ax1,
+            plot(lpplot, **plot_kw, **plot_kw_lp, ax=ax1, fig=fig1,
                  hlines=(1, dict(color='tab:red', linestyle='--')),
                  vlines=(Nmax//2, dict(color='k', linewidth=1)))
 
-            _filterbank_style_axes(ax1, N, xlims, ymax=lp.max()*1.03)
+            _filterbank_style_axes(ax1, N, xlims, ymax=lp.max()*1.03,
+                                   zoom=zoom, is_jtfs=True)
 
     # handle `plot_kw`
     if plot_kw is not None:
@@ -408,7 +409,7 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
     linestyles = [ls_set for ls in "- -- -.".split() for ls_set in [ls]*nc]
 
     # shorthand references
-    p0 = jtfs.sc_freq.phi_f_fr
+    p0 = jtfs.scf.phi_f_fr
     pup = jtfs.psi1_f_fr_up
     pdn = jtfs.psi1_f_fr_down
 
@@ -435,23 +436,24 @@ def filterbank_jtfs_1d(jtfs, zoom=0, j0=0, filterbank=True, lp_sum=False,
 
     # plot ###################################################################
     def make_figs():
-        return ([plt.subplots(1, 1)[1] for _ in range(2)] if lp_sum else
-                (plt.subplots(1, 1)[1], None))
+        return ([plt.subplots(1, 1) for _ in range(2)] if lp_sum else
+                (plt.subplots(1, 1), (None, None)))
 
-    ax0, ax1 = make_figs()
-    _plot_filters(pup, p0, lp, ax0, ax1, title_base=title_base, up=True)
+    (fig0, ax0), (fig1, ax1) = make_figs()
+    _plot_filters(pup, p0, lp, fig0, ax0, fig1, ax1, title_base=title_base,
+                  up=True)
     if zoom != -1:
         plt.show()
-        ax0, ax1 = make_figs()
+        (fig0, ax0), (fig1, ax1) = make_figs()
 
-    _plot_filters(pdn, p0, lp, ax0, ax1, title_base=title_base, up=False)
+    _plot_filters(pdn, p0, lp, fig0, ax0, fig1, ax1, title_base=title_base,
+                  up=False)
     plt.show()
 
 
-def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
-                    labels=True, suptitle_y=1.015):
+def filterbank_jtfs_2d(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
+                       labels=True, suptitle_y=1.015):
     """Visualize JTFS joint 2D filterbank in time domain.
-    # TODO rename to _2d?
 
     Parameters
     ----------
@@ -485,7 +487,7 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
 
         N, J, Q, J_fr, Q_fr = 512, 5, 16, 3, 1
         jtfs = TimeFrequencyScattering1D(J, N, Q, J_fr=J_fr, Q_fr=Q_fr)
-        filterbank_jtfs(jtfs)
+        filterbank_jtfs_2d(jtfs)
     """
     def to_time(p):
         # center & ifft
@@ -497,13 +499,13 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
         _f_idx = len(jtfs.psi1_f_fr_up) - f_idx - 1
         # if lowpass, get lowpass data #######################################
         if t_idx == -1 and f_idx == -1:
-            p_t, p_f = jtfs.phi_f[0], jtfs.sc_freq.phi_f_fr[0]
+            p_t, p_f = jtfs.phi_f[0], jtfs.scf.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", "-\infty", 0)
         elif t_idx == -1:
-            p_t, p_f = jtfs.phi_f[0], jtfs.sc_freq.psi1_f_fr_up[_f_idx]
+            p_t, p_f = jtfs.phi_f[0], jtfs.scf.psi1_f_fr_up[_f_idx]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % ("-\infty", _f_idx, 0)
         elif f_idx == -1:
-            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.sc_freq.phi_f_fr[0]
+            p_t, p_f = jtfs.psi2_f[t_idx], jtfs.scf.phi_f_fr[0]
             psi_txt = r"$\Psi_{%s, %s, %s}$" % (t_idx, "-\infty", 0)
 
         if t_idx == -1 or f_idx == -1:
@@ -515,8 +517,8 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             return Psi, title
 
         # else get spinned wavelets ##########################################
-        psi_spin = (jtfs.sc_freq.psi1_f_fr_up if s_idx == 0 else
-                    jtfs.sc_freq.psi1_f_fr_down)
+        psi_spin = (jtfs.scf.psi1_f_fr_up if s_idx == 0 else
+                    jtfs.scf.psi1_f_fr_down)
         psi_f = psi_spin[_f_idx][0].squeeze()
         psi_t = jtfs.psi2_f[t_idx][0].squeeze()
 
@@ -566,14 +568,20 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             Psi = Psi.imag
         else:
             Psi = _colorize_complex(Psi)
+        # handle float noise case
+        if np.abs(Psi).max() < 1e-12:
+            Psi *= 0
+            kw = dict(norm=(-.1, .1))  # show white
+        else:
+            kw = {}
         cmap = 'bwr' if part in ('real', 'imag') else 'none'
         if not labels:
             title = None
         imshow(Psi, title=title, show=0, ax=ax, ticks=0, borders=borders,
-               cmap=cmap)
+               cmap=cmap, **kw)
 
     # get spinned wavelet arrays & metadata ##################################
-    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.sc_freq.psi1_f_fr_up)
+    n_rows, n_cols = len(jtfs.psi2_f), len(jtfs.scf.psi1_f_fr_up)
     imshow_data = {}
     for s_idx in (0, 1):
         for t_idx in range(n_rows):
@@ -647,15 +655,16 @@ def filterbank_jtfs(jtfs, part='real', zoomed=False, w=1, h=1, borders=False,
             ax.spines[spine].set_visible(False)
 
     # tight
-    plt.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
+    fig.subplots_adjust(left=0, right=1, bottom=0, top=1, wspace=0, hspace=0)
+
+    return fig, axes
 
 
-def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
+def gif_jtfs_2d(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
              overwrite=False, save_images=None, show=None, cmap='turbo',
              norms=None, skip_spins=False, skip_unspinned=False, sample_idx=0,
              inf_token=-1, verbose=False, gif_kw=None):
     """Slice heatmaps of JTFS outputs.
-    # TODO rename 2d?
 
     Parameters
     ----------
@@ -727,7 +736,7 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
         Scx = jtfs(x)
         meta = jtfs.meta()
 
-        gif_jtfs(Scx, meta)
+        gif_jtfs_2d(Scx, meta)
     """
     def _title(meta_idx, pair, spin):
         txt = r"$|\Psi_{%s, %s, %s} \star \mathrm{U1}|$"
@@ -868,13 +877,12 @@ def gif_jtfs(Scx, meta, savedir='', base_name='jtfs2d', images_ext='.png',
                     os.unlink(path)
 
 
-def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
+def gif_jtfs_3d(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                 cmap='turbo', cmap_norm=.5, axes_labels=('xi2', 'xi1_fr', 'xi1'),
                 overwrite=False, save_images=False,
                 width=800, height=800, surface_count=30, opacity=.2, zoom=1,
                 angles=None, verbose=True, gif_kw=None):
     """Generate and save GIF of 3D JTFS slices.
-    # TODO rename 3d?
 
     Parameters
     ----------
@@ -939,12 +947,12 @@ def gif_jtfs_3D(packed, savedir='', base_name='jtfs3d', images_ext='.png',
                                           separate_lowpass=True)
         packed_spinned = packed[0]
         packed_spinned = packed_spinned.transpose(-1, 0, 1, 2)  # time first
-        gif_jtfs_3D(packed_spinned, savedir='')
+        gif_jtfs_3d(packed_spinned, savedir='')
     """
     try:
         import plotly.graph_objs as go
     except ImportError as e:
-        print("\n`plotly.graph_objs` is needed for `gif_jtfs_3D`.")
+        print("\n`plotly.graph_objs` is needed for `gif_jtfs_3d`.")
         raise e
 
     # handle args & check if already exists (if so, delete if `overwrite`)
@@ -1326,6 +1334,7 @@ def compare_distances_jtfs(pair_distances, pair_distances_ref, plots=True,
              vlines=(vidxs, dict(color='k', linewidth=1)))
         scat(idxs, ratios_flat[idxs], color='tab:red', show=1)
     if verbose:
+        print("Ratios (Sx/Sx_ref):")
         print("mean  min   max   | pair")
         for pair in ratios:
             print("{:<5.2f} {:<5.2f} {:<5.2f} | {}".format(
@@ -1682,7 +1691,7 @@ def _scale_plot(fig, ax, show=False, ax_equal=False, w=None, h=None,
     elif auto_xlims:
         xmin, xmax = ax.get_xlim()
         rng = xmax - xmin
-        ax.set_xlim(xmin + .018 * rng, xmax - .018 * rng)
+        ax.set_xlim(xmin + .02 * rng, xmax - .02 * rng)
 
     if ylims:
         ax.set_ylim(*ylims)
@@ -1730,14 +1739,20 @@ def _get_compute_pairs(pairs, meta):
     return compute_pairs
 
 
-def _filterbank_style_axes(ax, N, xlims, ymax=None):
-    # x limits and labels
-    xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
-    w = np.linspace(0, 1, len(xticks), 1)
-    w[w > .5] -= 1
-    ax.set_xticks(xticks[:-1])
-    ax.set_xticklabels(w[:-1])
-    ax.set_xlim(*xlims)
+def _filterbank_style_axes(ax, N, xlims, ymax=None, zoom=None, is_jtfs=False):
+    if not (is_jtfs and zoom == -1):
+        xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
+        # x limits and labels
+        w = np.linspace(0, 1, len(xticks), 1)
+        w[w > .5] -= 1
+        ax.set_xticks(xticks[:-1])
+        ax.set_xticklabels(w[:-1])
+        ax.set_xlim(*xlims)
+    else:
+        xticks = np.linspace(0, N, 9, endpoint=1).astype(int)
+        w = [-.5, -.375, -.25, -.125, 0, .125, .25, .375, .5]
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(w)
 
     # y limits
     ax.set_ylim(-.05, ymax)

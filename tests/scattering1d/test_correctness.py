@@ -7,7 +7,7 @@ from kymatio.scattering1d.backend.agnostic_backend import pad, stride_axis
 from kymatio.toolkit import l2
 
 # set True to execute all test functions without pytest
-run_without_pytest = 1
+run_without_pytest = 0
 # will run most tests with this backend
 default_frontend = 'numpy'
 
@@ -16,9 +16,9 @@ default_frontend = 'numpy'
 def test_T():
     """Test that `T` controls degree of invariance as intended."""
     # configure scattering & signal
-    J = 11
+    J = 10
     Q = 16
-    N = 4096
+    N = 2048
     width = N//8
     shift = N//8
     T0, T1 = N//2, N//4

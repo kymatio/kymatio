@@ -43,7 +43,8 @@ def test_periodize_filter_fourier(random_state=42):
         x = rng.randn(N) + 1j * rng.randn(N)
         x_f = np.fft.fft(x)
         for per in periods:
-            x_per_f = periodize_filter_fourier(x_f, nperiods=per)
+            x_per_f = periodize_filter_fourier(x_f, nperiods=per,
+                                               aggregation='mean')
             x_per = np.fft.ifft(x_per_f)
             assert np.max(np.abs(x_per - x[::per])) < 1e-7
 
@@ -167,8 +168,8 @@ def test_calibrate_scattering_filters():
     Q_range = np.arange(1, 21, dtype=int)
     for J in J_range:
         for Q in Q_range:
-            sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-                calibrate_scattering_filters( J, Q)
+            sigma_low, xi1, sigma1, j1, is_cqt1, xi2, sigma2, j2, is_cqt2 = \
+                calibrate_scattering_filters(J, Q, T=2**J)
             # Check that all sigmas are > 0
             assert sigma_low > 0
             for sig in sigma1:
@@ -182,7 +183,7 @@ def test_calibrate_scattering_filters():
                 assert sig >= sigma_low
 
     with pytest.raises(ValueError) as ve:
-        calibrate_scattering_filters(J_range[0], 0.9)
+        calibrate_scattering_filters(J_range[0], 0.9, T=2**J_range[0])
     assert "should always be >= 1" in ve.value.args[0]
 
 
@@ -227,5 +228,5 @@ def test_compute_temporal_support():
     # border effects.
     h_f = np.fft.fft(np.ones((1, 4)), axis=1)
     with pytest.warns(UserWarning) as record:
-        compute_temporal_support(h_f)
+        compute_temporal_support(h_f, warn=True)
     assert "too small to avoid border effects" in record[0].message.args[0]

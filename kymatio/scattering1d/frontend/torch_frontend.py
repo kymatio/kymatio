@@ -167,7 +167,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         saves those arrays as module's buffers."""
         n_final = self._register_filters(self, ('phi_f', 'psi1_f', 'psi2_f'))
         # register filters from freq-scattering object (see base_frontend.py)
-        self._register_filters(self.sc_freq,
+        self._register_filters(self.scf,
                                ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
                                n0=n_final)
 
@@ -202,7 +202,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
         """This function loads filters from the module's buffer """
         n_final = self._load_filters(self, ('phi_f', 'psi1_f', 'psi2_f'))
         # register filters from freq-scattering object (see base_frontend.py)
-        self._load_filters(self.sc_freq,
+        self._load_filters(self.scf,
                            ('phi_f_fr', 'psi1_f_fr_up', 'psi1_f_fr_down'),
                            n0=n_final)
 
@@ -258,7 +258,7 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
             self.J,
             self.log2_T,
             self.psi1_f, self.psi2_f, self.phi_f,
-            self.sc_freq,
+            self.scf,
             self.pad_fn,
             average=self.average,
             average_global=self.average_global,
@@ -278,11 +278,11 @@ class TimeFrequencyScatteringTorch1D(TimeFrequencyScatteringBase1D,
                                  sampling_psi_fr=self.sampling_psi_fr)
         return S
 
-    def sc_freq_compute_padding_fr(self):
+    def scf_compute_padding_fr(self):
         raise NotImplementedError("Here for docs; implemented in "
                                   "`_FrequencyScatteringBase`.")
 
-    def sc_freq_compute_J_pad(self):
+    def scf_compute_J_pad(self):
         raise NotImplementedError("Here for docs; implemented in "
                                   "`_FrequencyScatteringBase`.")
 

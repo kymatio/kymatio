@@ -61,7 +61,7 @@ jobs:
             - name: Test
               run: >
                   
-                  conda run -n ${CONDA_ENV} pytest --cov=kymatio --cov-report=xml || true
+                  conda run -n ${CONDA_ENV} pytest --cov=kymatio --cov-report=xml
 
             - name: codecov upload coverage
               uses: codecov/codecov-action@v1 

@@ -68,7 +68,7 @@ jmeta = jtfs.meta()
 savedir = ''
 # time between GIF frames (ms)
 duration = 200
-visuals.gif_jtfs(Scx, jmeta, savedir=savedir, save_images=0, overwrite=1,
+visuals.gif_jtfs_2d(Scx, jmeta, savedir=savedir, save_images=0, overwrite=1,
                  gif_kw={'duration': duration})
 # Notice how -1 spin coefficients contain nearly all the energy
 # and +1 barely any; this is FDTS discriminability.
@@ -79,4 +79,4 @@ visuals.gif_jtfs(Scx, jmeta, savedir=savedir, save_images=0, overwrite=1,
 jtfs_min = TimeFrequencyScattering1D(shape=512, J=5, Q=16, J_fr=3, Q_fr=1)
 # nearly invisible, omit (also unused in scattering per `j2 > 0`)
 jtfs_min.psi2_f.pop(0)
-visuals.filterbank_jtfs(jtfs_min, part='real')
+visuals.filterbank_jtfs_2d(jtfs_min, part='real')

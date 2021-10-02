@@ -5,7 +5,7 @@ from kymatio.scattering1d.backend.tensorflow_backend import backend
 
 def test_subsample_fourier():
     J = 10
-    # 1d signal 
+    # 1d signal
     x = np.random.randn(2, 2 ** J) + 1j * np.random.randn(2, 2 ** J)
     x_f = np.fft.fft(x, axis=-1)
 
@@ -23,16 +23,16 @@ def test_subsample_fourier():
 def test_pad():
     N = 128
     x = np.random.rand(2, 4, N)
-    
+
     for pad_left in range(0, N - 16, 16):
         for pad_right in [pad_left, pad_left + 16]:
             x_pad = backend.pad(x, pad_left, pad_right)
-            
-            # compare left reflected part of padded array with left side 
+
+            # compare left reflected part of padded array with left side
             # of original array
             for t in range(1, pad_left + 1):
                 assert np.allclose(x_pad[..., pad_left - t], x[..., t])
-            # compare left part of padded array with left side of 
+            # compare left part of padded array with left side of
             # original array
             for t in range(x.shape[-1]):
                 assert np.allclose(x_pad[..., pad_left + t], x[..., t])
@@ -40,18 +40,10 @@ def test_pad():
             # of original array
             for t in range(1, pad_right + 1):
                 assert np.allclose(x_pad[..., x_pad.shape[-1] - 1 - pad_right + t], x[..., x.shape[-1] - 1 - t])
-            # compare right part of padded array with right side of 
+            # compare right part of padded array with right side of
             # original array
             for t in range(1, pad_right + 1):
                 assert np.allclose(x_pad[..., x_pad.shape[-1] - 1 - pad_right - t], x[..., x.shape[-1] - 1 - t])
-
-    with pytest.raises(ValueError) as ve:
-        backend.pad(x, x.shape[-1], 0)
-    assert "padding size" in ve.value.args[0]
-    
-    with pytest.raises(ValueError) as ve:
-        backend.pad(x, 0, x.shape[-1])
-    assert "padding size" in ve.value.args[0]
 
 
 def test_unpad():
@@ -81,7 +73,7 @@ def test_fft_type():
         y = backend.rfft(x)
     assert 'should be real' in record.value.args[0]
 
-    x = np.random.rand(8, 4) 
+    x = np.random.rand(8, 4)
 
     with pytest.raises(TypeError) as record:
         y = backend.ifft(x)
@@ -101,7 +93,7 @@ def test_fft():
     I, K = np.meshgrid(np.arange(4), np.arange(4), indexing='ij')
 
     coefficents = coefficent(K * I / x_r.shape[0])
-        
+
     y_r = (x_r * coefficents).sum(-1)
 
     z = backend.rfft(x_r)

@@ -121,7 +121,7 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
             self.J,
             self.log2_T,
             self.psi1_f, self.psi2_f, self.phi_f,
-            self.sc_freq,
+            self.scf,
             self.pad_fn,
             average=self.average,
             average_global=self.average_global,
@@ -141,11 +141,11 @@ class TimeFrequencyScatteringTensorFlow1D(TimeFrequencyScatteringBase1D,
                                  sampling_psi_fr=self.sampling_psi_fr)
         return S
 
-    def sc_freq_compute_padding_fr(self):
+    def scf_compute_padding_fr(self):
         raise NotImplementedError("Here for docs; implemented in "
                                   "`_FrequencyScatteringBase`.")
 
-    def sc_freq_compute_J_pad(self):
+    def scf_compute_J_pad(self):
         raise NotImplementedError("Here for docs; implemented in "
                                   "`_FrequencyScatteringBase`.")
 
