@@ -1,7 +1,8 @@
-def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
-        pad_right=0, ind_start=None, ind_end=None, oversampling=0,
+
+def scattering1d(x, pad_fn, unpad, backend, J, log2_T, psi1, psi2, phi,
+        ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -28,6 +29,9 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
+    log2_T : int
+        (log2 of) temporal support of low-pass filter, controlling amount of
+        imposed time-shift invariance and maximum subsampling
     pad_left : int, optional
         how much to pad the signal on the left. Defaults to `0`
     pad_right : int, optional
@@ -51,6 +55,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
+    pad_mode : str
+        name of padding to use.
 
     """
     subsample_fourier = backend.subsample_fourier
@@ -64,17 +70,17 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
-    kJ = max(J - oversampling, 0)
+    kJ = max(log2_T - oversampling, 0)
     temporal_size = ind_end[kJ] - ind_start[kJ]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
+    U_0 = pad_fn(x)
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
     # Get S0
-    k0 = max(J - oversampling, 0)
+    k0 = max(log2_T - oversampling, 0)
 
     if average:
         S_0_c = cdgmm(U_0_hat, phi[0])
@@ -93,7 +99,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         # Convolution + downsampling
         j1 = psi1[n1]['j']
 
-        k1 = max(j1 - oversampling, 0)
+        k1 = max(min(j1, log2_T) - oversampling, 0)
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
         U_1_c = cdgmm(U_0_hat, psi1[n1][0])
@@ -108,7 +114,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
 
         if average:
             # Convolve with phi_J
-            k1_J = max(J - k1 - oversampling, 0)
+            k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
@@ -130,7 +136,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     assert psi2[n2]['xi'] < psi1[n1]['xi']
 
                     # convolution + downsampling
-                    k2 = max(j2 - k1 - oversampling, 0)
+                    k2 = max(min(j2, log2_T) - k1 - oversampling, 0)
 
                     U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
@@ -143,7 +149,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                         U_2_hat = rfft(U_2_m)
 
                         # Convolve with phi_J
-                        k2_J = max(J - k2 - k1 - oversampling, 0)
+                        k2_J = max(log2_T - k2 - k1 - oversampling, 0)
 
                         S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
@@ -162,14 +168,8 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
 
-    if out_type == 'array' and vectorize:
+    if out_type == 'array' and average:
         out_S = concatenate([x['coef'] for x in out_S])
-    elif out_type == 'array' and not vectorize:
-        out_S = {x['n']: x['coef'] for x in out_S}
-    elif out_type == 'list':
-        # NOTE: This overrides the vectorize flag.
-        for x in out_S:
-            x.pop('n')
 
     return out_S
 

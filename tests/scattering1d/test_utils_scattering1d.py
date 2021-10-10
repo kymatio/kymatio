@@ -17,10 +17,6 @@ def test_compute_padding():
         _, _ = compute_padding(3, 16)
     assert "should be larger" in ve.value.args[0]
 
-    with pytest.raises(ValueError) as ve:
-        _, _ = compute_padding(6, 16)
-    assert "Too large padding value" in ve.value.args[0]
-
 
 def test_border_indices(random_state=42):
     """
@@ -31,6 +27,7 @@ def test_border_indices(random_state=42):
     J = 6  # maximal subsampling
 
     T = 2**J_signal
+    log2_T = int(np.log2(T))
 
     i0 = rng.randint(0, T // 2 + 1, 1)[0]
     i1 = rng.randint(i0 + 1, T, 1)[0]
@@ -38,7 +35,7 @@ def test_border_indices(random_state=42):
     x = np.ones(T)
     x[i0:i1] = 0.
 
-    ind_start, ind_end = compute_border_indices(J, i0, i1)
+    ind_start, ind_end = compute_border_indices(log2_T, J, i0, i1)
 
     for j in range(J + 1):
         assert j in ind_start.keys()
