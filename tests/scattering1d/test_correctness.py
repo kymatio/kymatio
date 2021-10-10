@@ -22,8 +22,7 @@ def _test_padding(backend_name):
             pad_right = int(np.ceil(N / 4) * pad_factor)
 
             for pad_mode in ('zero', 'reflect'):
-                out0 = pad(x, pad_left, pad_right, pad_mode=pad_mode,
-                           backend_name=backend_name)
+                out0 = pad(x, pad_left, pad_right, pad_mode=pad_mode)
                 out1 = np.pad(x,
                               [[0, 0]] * (x.ndim - 1) + [[pad_left, pad_right]],
                               mode=pad_mode if pad_mode != 'zero' else 'constant')
@@ -33,17 +32,18 @@ def _test_padding(backend_name):
                     "{} | (N, pad_mode, pad_left, pad_right) = ({}, {}, {}, {})"
                     ).format(backend_name, N, pad_mode, pad_left, pad_right)
 
-
 def _test_pad_axis(backend_name):
     """Test that padding any N-dim axis works as expected."""
     backend = _get_backend(backend_name)
     x = backend.zeros((5, 6, 7, 8, 9, 10, 11))
 
     pad_left, pad_right = 4, 5
-    kw = dict(pad_left=pad_left, pad_right=pad_right, pad_mode='reflect',
-              backend_name=backend_name)
+    kw = dict(pad_left=pad_left, pad_right=pad_right, pad_mode='reflect')
 
     for axis in range(x.ndim):
+        if backend_name == 'tensorflow' and axis != x.ndim - 1:
+            # implemented only for last axis
+            continue
         shape0 = list(x.shape)
         shape0[axis] += (pad_left + pad_right)
         shape1 = pad(x, axis=axis, **kw).shape
@@ -52,32 +52,25 @@ def _test_pad_axis(backend_name):
         assert np.allclose(shape0, shape1)
         assert np.allclose(shape0, shape2)
 
-
 def test_pad_numpy():
     _test_padding('numpy')
     _test_pad_axis('numpy')
 
 
 def test_pad_torch():
-    try:
-        import torch
-    except ImportError:
-        warnings.warn("Failed to import torch")
+    if cant_import('torch'):
         return
     _test_padding('torch')
     _test_pad_axis('torch')
 
 
 def test_pad_tensorflow():
-    try:
-        import tensorflow
-    except ImportError:
-        warnings.warn("Failed to import tensorflow")
+    if cant_import('tensorflow'):
         return
     _test_padding('tensorflow')
     _test_pad_axis('tensorflow')
 
-
+#### utilities ###############################################################
 def _get_backend(backend_name):
     if backend_name == 'numpy':
         backend = np
@@ -89,6 +82,21 @@ def _get_backend(backend_name):
         backend = tf
     return backend
 
+def cant_import(backend_name):
+    if backend_name == 'numpy':
+        return False
+    elif backend_name == 'torch':
+        try:
+            import torch
+        except ImportError:
+            warnings.warn("Failed to import torch")
+            return True
+    elif backend_name == 'tensorflow':
+        try:
+            import tensorflow
+        except ImportError:
+            warnings.warn("Failed to import tensorflow")
+            return True
 
 if __name__ == '__main__':
     if run_without_pytest:
