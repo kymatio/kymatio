@@ -846,16 +846,20 @@ def compute_temporal_width(p_f, N=None, pts_per_scale=6, fast=True,
     ca = dict(criterion_amplitude=criterion_amplitude)
 
     # compute "complete decay" factor
-    if sigma0 == .1 and criterion_amplitude == 1e-3:
+    uses_defaults = bool(sigma0 == .1 and criterion_amplitude == 1e-3)
+    if uses_defaults:
         # precomputed
         complete_decay_factor = 16
         fast_approx_amp_ratio = 0.8208687174155399
     else:
+        if fast:
+            raise ValueError("`fast` requires using default values of "
+                             "`sigma0` and `criterion_amplitude`.")
         T = Np
         phi_f_fn = lambda Np_phi: gauss_1d(Np_phi, sigma0 / T)
         Np_min = compute_minimum_required_length(phi_f_fn, Np, **ca)
         complete_decay_factor = 2 ** math.ceil(math.log2(Np_min / Np))
-        phi_t = phi_f_fn(Np_min, sigma0 / T)
+        phi_t = phi_f_fn(Np_min)
         fast_approx_amp_ratio = phi_t[T] / phi_t[0]
 
     if fast:
