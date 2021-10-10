@@ -90,11 +90,12 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         convolution and padding.
         The larger criterion_amplitude, the smaller the padding size is.
         Defaults to `1e-3`
-    r_psi : float, optional
-        Should be `>0` and `<1`. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent
-        wavelets).
-        Defaults to `sqrt(0.5)`.
+    r_psi : float / tuple[float], optional
+        Should be >0 and <1. Controls the redundancy of the filters
+        (the larger r_psi, the larger the overlap between adjacent wavelets),
+        and stability against time-warp deformations (larger r_psi improves it).
+        Defaults to sqrt(0.5).
+        Tuple sets separately for first- and second-order filters.
     sigma0 : float, optional
         parameter controlling the frequential width of the
         low-pass filter at J_scattering=0; at a an absolute J_scattering,
@@ -181,7 +182,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
             return size_order0 + size_order1
 
 
-def compute_meta_scattering(J, Q, max_order=2):
+def compute_meta_scattering(J, Q, r_psi=math.sqrt(.5), max_order=2):
     """Get metadata on the transform.
 
     This information specifies the content of each scattering coefficient,
@@ -195,6 +196,12 @@ def compute_meta_scattering(J, Q, max_order=2):
     Q : int >= 1
         The number of first-order wavelets per octave.
         Second-order wavelets are fixed to one wavelet per octave.
+    r_psi : float / tuple[float], optional
+        Should be >0 and <1. Controls the redundancy of the filters
+        (the larger r_psi, the larger the overlap between adjacent wavelets),
+        and stability against time-warp deformations (larger r_psi improves it).
+        Defaults to sqrt(0.5).
+        Tuple sets separately for first- and second-order filters.
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
@@ -224,7 +231,7 @@ def compute_meta_scattering(J, Q, max_order=2):
             in the non-vectorized output.
     """
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-        calibrate_scattering_filters(J, Q)
+        calibrate_scattering_filters(J, Q, r_psi=r_psi)
 
     meta = {}
 

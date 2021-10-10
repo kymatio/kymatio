@@ -22,7 +22,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.vectorize = vectorize
         self.out_type = out_type
-        self.r_psi = r_psi
+        self.r_psi = r_psi if isinstance(r_psi, tuple) else (r_psi, r_psi)
         self.backend = backend
 
     def build(self):
@@ -88,7 +88,8 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, max_order=self.max_order)
+        return compute_meta_scattering(self.J, self.Q, r_psi=self.r_psi,
+                                       max_order=self.max_order)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
@@ -195,6 +196,12 @@ class ScatteringBase1D(ScatteringBase):
             output is a list of dictionaries, each containing a scattering
             coefficient along with meta information. For more information, see
             the documentation for `scattering`.
+        r_psi : float / tuple[float], optional
+            Should be >0 and <1. Controls the redundancy of the filters
+            (the larger r_psi, the larger the overlap between adjacent wavelets),
+            and stability against time-warp deformations (larger r_psi improves it).
+            Defaults to sqrt(0.5).
+            Tuple sets separately for first- and second-order filters.
         """
 
     _doc_class = \

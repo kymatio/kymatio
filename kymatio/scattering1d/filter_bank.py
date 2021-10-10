@@ -435,7 +435,8 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
         number of wavelets per octave.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
+        (the larger r_psi, the larger the overlap between adjacent wavelets),
+        and stability against time-warp deformations (larger r_psi improves it).
         Defaults to sqrt(0.5).
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
@@ -510,10 +511,12 @@ def calibrate_scattering_filters(J, Q, r_psi=math.sqrt(0.5), sigma0=0.1,
         maximal scale of the scattering (controls the number of wavelets)
     Q : int
         number of wavelets per octave for the first order
-    r_psi : float, optional
+    r_psi : float / tuple[float], optional
         Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5)
+        (the larger r_psi, the larger the overlap between adjacent wavelets),
+        and stability against time-warp deformations (larger r_psi improves it).
+        Defaults to sqrt(0.5).
+        Tuple sets separately for first- and second-order filters.
     sigma0 : float, optional
         frequential width of the low-pass filter at scale J=0
         (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
@@ -577,10 +580,12 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     Q : int
         number of wavelets per octave at the first order. For audio signals,
         a value Q >= 12 is recommended in order to separate partials.
-    r_psi : float, optional
+    r_psi : float / tuple[float], optional
         Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
+        (the larger r_psi, the larger the overlap between adjacent wavelets),
+        and stability against time-warp deformations (larger r_psi improves it).
         Defaults to sqrt(0.5).
+        Tuple sets separately for first- and second-order filters.
     criterion_amplitude : float, optional
         Represents the numerical error which is allowed to be lost after
         convolution and padding. Defaults to 1e-3.
