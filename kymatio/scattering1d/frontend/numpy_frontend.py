@@ -144,7 +144,7 @@ class TimeFrequencyScatteringNumPy1D(TimeFrequencyScatteringBase1D,
         raise NotImplementedError("Here for docs; implemented in "
                                   "`_FrequencyScatteringBase`.")
 
-    def scf_compute_J_pad(self):
+    def scf_compute_J_pad_fr(self):
         raise NotImplementedError("Here for docs; implemented in "
                                   "`_FrequencyScatteringBase`.")
 

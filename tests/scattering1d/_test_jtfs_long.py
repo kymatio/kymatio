@@ -93,6 +93,5 @@ if __name__ == '__main__':
     if run_without_pytest:
         test_average_combos()
         test_T_and_F()
-        # test_long_input()  # TODO anything interesting here?
     else:
         pytest.main([__file__, "-s"])

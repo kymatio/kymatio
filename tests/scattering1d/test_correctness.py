@@ -1,15 +1,18 @@
+# -*- coding: utf-8 -*-
+"""Tests related to Scattering1D, and for utilities."""
 import pytest
 import numpy as np
 import scipy.signal
 from utils import cant_import
 from kymatio import Scattering1D
-from kymatio.scattering1d.backend.agnostic_backend import pad, stride_axis
-from kymatio.toolkit import l2
+from kymatio.scattering1d.backend.agnostic_backend import (
+    pad, stride_axis, unpad_dyadic, _emulate_get_conjugation_indices)
+from kymatio.toolkit import rel_l2
 
 # set True to execute all test functions without pytest
 run_without_pytest = 0
 # will run most tests with this backend
-default_frontend = 'numpy'
+default_frontend = ('numpy', 'torch', 'tensorflow')[0]
 
 
 #### Scattering tests ########################################################
@@ -45,8 +48,8 @@ def test_T():
     ts1_xs = ts1(xs)
 
     # compare distances
-    l2_00_xxs = l2(ts0_x, ts0_xs)
-    l2_11_xxs = l2(ts1_x, ts1_xs)
+    l2_00_xxs = rel_l2(ts0_x, ts0_xs)
+    l2_11_xxs = rel_l2(ts1_x, ts1_xs)
 
     th0, th1 = .021, .15
     assert l2_00_xxs < th0, "{} > {}".format(l2_00_xxs, th0)
@@ -90,6 +93,9 @@ def _test_pad_axis(backend_name):
     kw = dict(pad_left=pad_left, pad_right=pad_right, pad_mode='reflect')
 
     for axis in range(x.ndim):
+        if backend_name == 'tensorflow' and axis != x.ndim - 1:
+            # implemented only for last axis
+            continue
         shape0 = list(x.shape)
         shape0[axis] += (pad_left + pad_right)
         shape1 = pad(x, axis=axis, **kw).shape
@@ -105,8 +111,10 @@ def _test_subsample_fourier_axis(backend_name):
     B = _get_kymatio_backend(backend_name)
     x = np.random.randn(4, 8, 16, 32)
 
-    if backend_name != 'numpy':
+    if backend_name == 'torch':
         xb = backend.tensor(x)
+    elif backend_name == 'tensorflow':
+        xb = backend.cast(backend.convert_to_tensor(x), backend.complex64)
     else:
         xb = x
 
@@ -114,13 +122,18 @@ def _test_subsample_fourier_axis(backend_name):
     axis = 3
     for k in (2, 4):
         for axis in range(x.ndim):
+            if (backend_name == 'tensorflow' and
+                    axis not in (x.ndim - 1, x.ndim - 2)):
+                # not implemented
+                continue
             xf = B.fft(xb, axis=axis)
             outf = B.subsample_fourier(xf, k, axis=axis)
-            out = B.ifft(outf, axis=axis).real
+            out = B.ifft(outf, axis=axis)
 
             xref = xb[stride_axis(k, axis, xb.ndim)]
             if backend_name != 'numpy':
                 out = out.numpy()
+            out = out.real
             assert np.allclose(xref, out, atol=5e-7), np.abs(xref - out).max()
 
 
@@ -159,6 +172,51 @@ def test_subsample_fourier_tensorflow():
     _test_subsample_fourier_axis('tensorflow')
 
 
+def test_emulate_get_conjugation_indices():
+    """Test that `conj_reflections` indices fetcher works correctly."""
+    for N in (123, 124, 125, 126, 127, 128, 129, 159, 180, 2048, 9589, 65432):
+      for K in (1, 2, 3, 4, 5, 6):
+        for pad_factor in (1, 2, 3, 4):
+          for trim_tm in (0, 1, 2, 3, 4):
+              if trim_tm > pad_factor:
+                  continue
+              test_params = dict(N=N, K=K, pad_factor=pad_factor)
+              test_params_str = '\n'.join([f'{k}={v}' for k, v in
+                                           test_params.items()])
+
+              padded_len = 2**pad_factor * int(2**np.ceil(np.log2(N)))
+              pad_left = int(np.ceil((padded_len - N) / 2))
+              pad_right = padded_len - pad_left - N
+
+              kw = dict(N=N, K=K, pad_left=pad_left, pad_right=pad_right,
+                        trim_tm=trim_tm)
+              out0, rp = _get_conjugation_indices(**kw)
+              out1 = _emulate_get_conjugation_indices(**kw)
+
+              errmsg = "{}\n{}\n{}".format(out0, out1, test_params_str)
+
+              # first validate the original output ###########################
+              # check by sign flipping at obtained slices and adding to
+              # original then seeing if it sums to zero with original
+              # in at least as many places as there are indices
+              rp0 = rp[::2**K]
+              rp1 = rp0.copy()
+              for slc in out0:
+                  rp1[slc] *= -1
+
+              n_zeros_min = sum((s.stop - s.start) for s in out0)
+              n_zeros_sum = np.sum((rp0 + rp1) == 0)
+
+              if n_zeros_sum < n_zeros_min:
+                  raise AssertionError("{} < {}\n{}".format(
+                      n_zeros_sum, n_zeros_min, errmsg))
+
+              # now assert equality with the emulation #######################
+              for s0, s1 in zip(out0, out1):
+                  assert s0.start == s1.start, errmsg
+                  assert s0.stop  == s1.stop,  errmsg
+
+
 #### utilities ###############################################################
 def _get_backend(backend_name):
     if backend_name == 'numpy':
@@ -185,6 +243,49 @@ def _get_kymatio_backend(backend_name):
         return TensorFlowBackend1D
 
 
+def _get_conjugation_indices(N, K, pad_left, pad_right, trim_tm):
+    """Ground truth of the algorithm. Not tested for extreme edge cases, but
+    those are impossible in implementation (stride > signal length).
+    """
+    import numpy as np
+
+    # compute boundary indices from simulated reflected ramp at original length
+    r = np.arange(N)
+    rp = np.pad(r, [pad_left, pad_right], mode='reflect')
+    if trim_tm > 0:
+        rp = unpad_dyadic(rp, N, len(rp), len(rp) // 2**trim_tm)
+
+    # will conjugate where sign is negative
+    rpdiffo = np.diff(rp)
+    rpdiffo = np.hstack([rpdiffo[0], rpdiffo])
+
+    # mark rising ramp as +1, including bounds, and everything else as -1;
+    # -1 will conjugate. This instructs to not conjugate: non-reflections, bounds.
+    # diff will mark endpoints with sign opposite to rise's; correct manually
+    rpdiffo2 = rpdiffo.copy()
+    rpdiffo2[np.where(np.diff(rpdiffo) > 0)[0]] = 1
+
+    rpdiff = rpdiffo2[::2**K]
+
+    idxs = np.where(rpdiff == -1)[0]
+
+    # convert to slices ######################################################
+    if idxs.size == 0:
+        slices_contiguous = []
+    else:
+        ic = [0, *(np.where(np.diff(idxs) > 1)[0] + 1)]
+        ic.append(None)
+        slices_contiguous = []
+        for i in range(len(ic) - 1):
+            s, e = ic[i], ic[i + 1]
+            start = idxs[s]
+            end = idxs[e - 1] + 1 if e is not None else idxs[-1] + 1
+            slices_contiguous.append(slice(start, end))
+
+    out = slices_contiguous
+    return out, rp
+
+
 if __name__ == '__main__':
     if run_without_pytest:
         test_T()
@@ -194,5 +295,6 @@ if __name__ == '__main__':
         test_subsample_fourier_numpy()
         test_subsample_fourier_torch()
         test_subsample_fourier_tensorflow()
+        test_emulate_get_conjugation_indices()
     else:
         pytest.main([__file__, "-s"])

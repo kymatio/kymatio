@@ -55,8 +55,6 @@ def scattering1d(x, pad_fn, unpad, backend, J, log2_T, psi1, psi2, phi,
         speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
-    pad_mode : str
-        name of padding to use.
 
     """
     subsample_fourier = backend.subsample_fourier

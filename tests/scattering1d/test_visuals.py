@@ -1,5 +1,5 @@
 """Test that visuals.py methods run without error."""
-import pytest, os
+import pytest, os, warnings
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import echirp, pack_coeffs_jtfs
 from kymatio import visuals
@@ -97,6 +97,12 @@ def test_gif_jtfs_2d(G):
 
 
 def test_gif_jtfs_3d(G):
+    try:
+        import plotly
+    except ImportError:
+        warnings.warn("Skipped `test_gif_jtfs_3d` since `plotly` not installed.")
+        return
+
     out_jtfss, metas = G['out_jtfss'], G['metas']
     packed = pack_coeffs_jtfs(out_jtfss[1], metas[2], structure=2,
                               sampling_psi_fr='exclude')

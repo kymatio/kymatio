@@ -799,6 +799,9 @@ def coeff_energy(Scx, meta, pair=None, aggregate=True, correction=False,
                  kind='l2'):
     """Computes energy of JTFS coefficients.
 
+    Current implementation permits computing energy directly via
+    `sum(abs(coef)**2)`, hence this method isn't necessary.
+
     Parameters
     ----------
     Scx: dict[list] / dict[np.ndarray]
@@ -905,6 +908,9 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
                    kind='l2'):
     """Computes L2 or L1 relative distance between `Scx0` and `Scx1`.
 
+    Current implementation permits computing distance directly between
+    coefficients, as `toolkit.rel_l2(coef0, coef1)`.
+
     Parameters
     ----------
     Scx0, Scx1: dict[list] / dict[np.ndarray]
@@ -964,7 +970,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
         # effectively 3D
         assert all(len(s) == 2 for s in shapes), shapes
 
-    E = lambda x: _l2(x) if kind == 'l2' else _l1(x)
+    E = lambda x: l2(x) if kind == 'l2' else l1(x)
     ref0, ref1 = E(c_flat0), E(c_flat1)
     eps = _eps(ref0, ref1)
     ref = (ref0 + ref1) / 2 + eps
@@ -987,7 +993,7 @@ def coeff_distance(Scx0, Scx1, meta0, meta1=None, pair=None, correction=False,
 
 def coeff_energy_ratios(Scx, meta, down_to_up=True, max_to_eps_ratio=10000):
     """Compute ratios of coefficient slice energies, spin down vs up.
-    Statisticallyrobust alternative measure to ratio of total energies.
+    Statistically robust alternative measure to ratio of total energies.
 
     Parameters
     ----------
@@ -1108,7 +1114,7 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     meta_idx = [0]  # make mutable to avoid passing around
     for c in coeffs_flat:
         if hasattr(c, 'numpy'):
-            if hasattr(c, 'cpu'):  # torch
+            if hasattr(c, 'cpu') and 'torch' in str(type(c)):
                 c = c.cpu()
             c = c.numpy()  # TF/torch
         n_prev = n_current()
@@ -1949,27 +1955,27 @@ def energy(x, kind='l2'):
     return out
 
 
-def _l2(x, axis=None):
+def l2(x, axis=None):
     """`sqrt(sum(abs(x)**2))`."""
     B = ExtendedUnifiedBackend(x)
     return B.norm(x, ord=2, axis=axis)
 
-def l2(x0, x1, axis=None, adj=False):
+def rel_l2(x0, x1, axis=None, adj=False):
     """Coeff distance measure; Eq 2.24 in
     https://www.di.ens.fr/~mallat/papiers/ScatCPAM.pdf
     """
-    ref = _l2(x0, axis) if not adj else (_l2(x0, axis) + _l2(x1, axis)) / 2
-    return _l2(x1 - x0, axis) / ref
+    ref = l2(x0, axis) if not adj else (l2(x0, axis) + l2(x1, axis)) / 2
+    return l2(x1 - x0, axis) / ref
 
 
-def _l1(x, axis=None):
+def l1(x, axis=None):
     """`sum(abs(x))`."""
     B = ExtendedUnifiedBackend(x)
     return B.norm(x, ord=1)
 
-def l1(x0, x1, adj=False, axis=None):
-    ref = _l1(x0, axis) if not adj else (_l1(x0, axis) + _l1(x1, axis)) / 2
-    return _l1(x1 - x0, axis) / ref
+def rel_l1(x0, x1, adj=False, axis=None):
+    ref = l1(x0, axis) if not adj else (l1(x0, axis) + l1(x1, axis)) / 2
+    return l1(x1 - x0, axis) / ref
 
 
 def rel_ae(x0, x1, eps=None, ref_both=True):
@@ -2108,10 +2114,12 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     sq = seq
     while isinstance(sq, list):
         sq = sq[0]
-    dtype = sq.dtype
+    dtype = sq.dtype if hasattr(sq, 'dtype') else type(sq)
 
     if init_fn is None:
         if backend_name == 'numpy':
+            if is_tf:
+                dtype = dtype.name
             init_fn = lambda s: np.full(s, pad_value, dtype=dtype)
         elif backend_name == 'torch':
             init_fn = lambda s: backend.full(s, pad_value, dtype=dtype)
@@ -2275,6 +2283,8 @@ class ExtendedUnifiedBackend():
         else:
             if hasattr(x, 'to') and 'cpu' not in x.device.type:
                 x = x.cpu()
+            if getattr(x, 'requires_grad', False):
+                x = x.detach()
             out = x.numpy()
         return out
 

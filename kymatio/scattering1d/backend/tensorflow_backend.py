@@ -131,10 +131,11 @@ class TensorFlowBackend1D(TensorFlowBackend):
 
     @classmethod
     def _maybe_transpose_for_fft(cls, x, axis):
-        if axis == -2:
+        if axis in (-2, x.ndim - 2) and x.ndim > 2:
             D = x.ndim
             x = tf.transpose(x, (*list(range(D - 2)), D - 1, D - 2))
-        elif axis != -1:
+        elif axis not in (-1, x.ndim - 1):
+            # -1 means no need to transpose
             raise NotImplementedError("`axis` must be -1 or -2")
         return x
 

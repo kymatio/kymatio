@@ -125,61 +125,37 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
         [..., 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 2, 3, 4, 5, 6, 7]
         [..., 1, 2, 3, 4, 5, 6, 7,-6,-5,-4,-3,-2, 1, 2, 3, 4, 5, 6, 7]
     """
-    import numpy as np
+    slices_contiguous = _emulate_get_conjugation_indices(
+        N, k, pad_left, pad_right, trim_tm)
+
+    def is_in(ind):
+        for slc in slices_contiguous:
+            if ind in (slc.start, slc.stop):
+                return True
+        return False
 
 
-    # compute boundary indices from simulated reflected ramp at original length
-    r = np.arange(N)
-    rpo = np.pad(r, [pad_left, pad_right], mode='reflect')
-    if trim_tm > 0:
-        rpo = unpad_dyadic(rpo, N, len(rpo), len(rpo) // 2**trim_tm)
-
-    # will conjugate where sign is negative
-    rpdiffo = np.diff(rpo)
-    rpdiffo = np.hstack([rpdiffo[0], rpdiffo])
-    # mark rising ramp as +1, including bounds, and everything else as -1;
-    # -1 will conjugate. This instructs to not conjugate: non-reflections, bounds.
-    # diff will mark endpoints with sign opposite to rise's; correct manually
-    rpdiffo[np.where(np.diff(rpdiffo) > 0)[0]] = 1
-    rpdiff = rpdiffo[::2**k]
-
-    idxs = np.where(rpdiff == -1)[0]
     # conjugate to left of left bound
-    assert ind_start - 1 in idxs, (ind_start - 1, idxs)
+    assert is_in(ind_start), (ind_start - 1, slices_contiguous)
     # do not conjugate left bound
-    assert ind_start not in idxs, (ind_start, idxs)
+    assert not is_in(ind_start + 1), (ind_start, slices_contiguous)
     # conjugate to right of right bound
     # (Python indexing excludes `ind_end`, so `ind_end - 1` is the right bound)
-    assert ind_end in idxs, (ind_end, idxs)
+    assert is_in(ind_end), (ind_end, slices_contiguous)
     # do not conjugate the right bound
-    assert ind_end - 1 not in idxs, (ind_end - 1, idxs)
+    assert not is_in(ind_end - 1), (ind_end - 1, slices_contiguous)
 
     # infer & fetch backend
     backend_name = type(x).__module__.lower().split('.')[0]
     B = get_kymatio_backend(backend_name)
 
     # conjugate and assign
-    if (backend_name in ('numpy', 'tensorflow') or
-            (backend_name == 'torch' and getattr(x, 'requires_grad', False))):
-        ic = [0, *(np.where(np.diff(idxs) > 1)[0] + 1)]
-        ic.append(None)
-        ic = np.array(ic)
-        slices_contiguous = []
-        for i in range(len(ic) - 1):
-            s, e = ic[i], ic[i + 1]
-            start = idxs[s]
-            end = idxs[e - 1] + 1 if e is not None else None
-            slices_contiguous.append(slice(start, end))
-
-        inplace = bool(backend_name == 'numpy' or
-                       (backend_name == 'torch' and
-                        not getattr(x, 'requires_grad', False)))
-        for slc in slices_contiguous:
-            x = B.assign_slice(x, B.conj(x[..., slc], inplace=inplace),
-                               index_axis_with_array(slc, axis=-1, ndim=x.ndim))
-    else:  # TODO any faster solution?
-        x = B.assign_slice(x, B.conj(x[..., idxs]),
-                           index_axis_with_array(idxs, axis=-1, ndim=x.ndim))
+    inplace = bool(backend_name == 'numpy' or
+                   (backend_name == 'torch' and
+                    not getattr(x, 'requires_grad', False)))
+    for slc in slices_contiguous:
+        x = B.assign_slice(x, B.conj(x[..., slc], inplace=inplace),
+                           index_axis_with_array(slc, axis=-1, ndim=x.ndim))
     # only because of tensorflow
     return x
 
@@ -226,3 +202,98 @@ def flip_axis(axis, ndim, step=1):
 
 def stride_axis(step, axis, ndim):
     return index_axis(None, None, axis, ndim, step)
+
+
+def _emulate_get_conjugation_indices(N, K, pad_left, pad_right, trim_tm):
+    import numpy as np
+
+    orig_dyadic_len = int(2**np.ceil(np.log2(N)))
+    padded_len = N + pad_left + pad_right
+    pad_factor = int(np.log2(padded_len / orig_dyadic_len))
+    pad_factor -= trim_tm
+
+    padded_len = 2**pad_factor * int(2**np.ceil(np.log2(N)))
+    pad_left = int(np.ceil((padded_len - N) / 2))
+    pad_right = padded_len - pad_left - N
+
+    ramp_len = N
+    ramp_padded_len = ramp_len + pad_left + pad_right
+    ramp_orig_left = pad_left
+    ramp_orig_right = ramp_orig_left + (N - 1)
+
+    # left
+    border_idxs_left = []
+    idx = ramp_orig_left
+    last_is_start = False
+    while idx > 0:
+        border_idxs_left.append(idx)
+        idx -= (N - 1)
+        last_is_start = not last_is_start
+    # right
+    border_idxs_right = []
+    idx = ramp_orig_right
+    while idx < ramp_padded_len:
+        border_idxs_right.append(idx)
+        idx += (N - 1)
+    # concat
+    border_idxs_left, border_idxs_right = [np.array(b) for b in
+                                           (border_idxs_left, border_idxs_right)]
+    border_idxs = np.array([*border_idxs_left[::-1], *border_idxs_right])
+
+    # given border indices, and status of initial index, will find all
+    # conjugation indices
+    ixs = []
+    # we're at down ramp (and to left of it, even if at last sample of down)
+    start_of_down = last_is_start
+    # if `border_idxs[0]` is at down ramp, include all points up to that
+    # border index
+    if start_of_down:
+        ixs.append(0)
+        # no longer at start
+        start_of_down = False
+        # use all indices
+        bidxs = border_idxs
+    else:
+        ix = border_idxs[0] + 1
+        ix = np.ceil(ix / 2**K)
+        ix_inclusive_orig = 2**K * ix
+        if ix_inclusive_orig < ramp_padded_len:
+            ixs.append(ix)
+        # still no longer at start, but we don't begin at `0`
+        start_of_down = False
+        # drop first since already used
+        bidxs = border_idxs[1:]
+
+    for i, ix in enumerate(bidxs):
+        # idx at down ramp will be `1` right or left of border idx
+        ix_inclusive = ((ix + 1) if start_of_down else
+                        (ix - 1))
+
+        # down ramp index in strided space
+        iis = ix_inclusive / 2**K
+        ix_inclusive_strided = (np.ceil(iis) if start_of_down else
+                                np.floor(iis))
+        # project back to original
+        ix_inclusive_orig = 2**K * ix_inclusive_strided
+
+        if ix_inclusive_orig < ramp_padded_len:
+            ixs.append(ix_inclusive_strided)
+            # this assumes strided step size is smaller than reflection size
+            start_of_down = not start_of_down
+        # move onto next
+
+    # if we ended left, add finishing index
+    if not start_of_down and len(ixs) > 0:
+        ix = ramp_padded_len // 2**K - 1
+        ixs.append(ramp_padded_len // 2**K - 1)
+    ixs = np.array(ixs).astype(int)
+
+    assert len(ixs) % 2 == 0, len(ixs)
+
+    slices_contiguous = []
+    for i in range(0, len(ixs), 2):
+        s, e = ixs[i], ixs[i + 1] + 1
+        slices_contiguous.append(slice(s, e))
+    out = slices_contiguous
+
+    return out
