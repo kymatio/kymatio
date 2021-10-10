@@ -314,7 +314,6 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
                                     criterion_amplitude=1e-3):
     """Computes minimum required number of samples for `fn(N)` to have temporal
     support less than `N`, as determined by `compute_temporal_support`.
-
     Parameters
     ----------
     fn: FunctionType
@@ -329,7 +328,6 @@ def compute_minimum_required_length(fn, N_init, max_N=None,
         value \\epsilon controlling the numerical
         error. The larger criterion_amplitude, the smaller the temporal
         support and the larger the numerical error. Defaults to 1e-3
-
     Returns
     -------
     N: int
