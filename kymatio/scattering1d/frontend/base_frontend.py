@@ -56,9 +56,8 @@ class ScatteringBase1D(ScatteringBase):
 
         # check `pad_mode`, set `pad_fn`
         if isinstance(self.pad_mode, FunctionType):
-            fn = self.pad_mode
             def pad_fn(x):
-                return fn(x, self.pad_left, self.pad_right)
+                return self.pad_mode(x, self.pad_left, self.pad_right)
             self.pad_mode = 'custom'
         elif self.pad_mode not in ('reflect', 'zero'):
             raise ValueError(("unsupported `pad_mode` '{}';\nmust be a "
@@ -194,7 +193,7 @@ class ScatteringBase1D(ScatteringBase):
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
             `'array'`.
-        pad_mode : str / function, optional
+        pad_mode : str (default 'reflect') / function, optional
             Name of padding scheme to use, one of (`x = [1, 2, 3]`):
                 - zero:    [0, 0, 1, 2, 3, 0, 0, 0]
                 - reflect: [3, 2, 1, 2, 3, 2, 1, 2]
@@ -216,6 +215,12 @@ class ScatteringBase1D(ScatteringBase):
             output is a list of dictionaries, each containing a scattering
             coefficient along with meta information. For more information, see
             the documentation for `scattering`.
+        pad_mode : str
+            One of supported padding modes: 'reflect', 'zero' - or 'custom'
+            if a function was passed.
+        pad_fn : function
+            A backend padding function, or user function (as passed
+            to `pad_mode`), with signature `pad_fn(x, pad_left, pad_right)`.
         """
 
     _doc_class = \
