@@ -77,8 +77,9 @@ class ScatteringBase1D(ScatteringBase):
             P_max=self.P_max, eps=self.eps)
 
         # energy norm
-        energy_norm_filterbank_tm(self.psi1_f, self.psi2_f, self.phi_f,
-                                  self.J, self.log2_T)
+        if 'energy' in self.normalize:
+            energy_norm_filterbank_tm(self.psi1_f, self.psi2_f, self.phi_f,
+                                      self.J, self.log2_T)
 
     def meta(self):
         """Get meta information on the transform
@@ -179,6 +180,21 @@ class ScatteringBase1D(ScatteringBase):
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
             `'array'`.
+        normalize : str, optional
+            One of:
+
+                - 'l1': bandpass normalization; all filters' amplitude envelopes
+                  sum to 1 in time domain (for Morlets makes them peak at 1
+                  in frequency domain). `sum(abs(psi)) == 1`.
+                - 'l2': energy normalization; all filters' energies are 1
+                  in time domain; not suitable for scattering.
+                  `sum(abs(psi)**2) == 1`.
+                - 'l1-energy', 'l2-energy': additionally renormalizes the
+                  entire filterbank such that its LP-sum (overlap of
+                  frequency-domain energies) is `<=1` (`<=2` for time scattering
+                  per using only analytic filters, without anti-analytic).
+                  This improves "even-ness" of input's representation, i.e.
+                  no frequency is tiled too great or little.
         """
 
     _doc_attr_vectorize = \

@@ -156,6 +156,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
     if np.abs(h_real).sum() < 1e-7:
         raise ValueError('Zero division error is very likely to occur, ' +
                          'aborting computations now.')
+    normalize = normalize.split('-')[0]  # in case of `-energy`
     if normalize == 'l1':
         norm_factor = 1. / (np.abs(h_real).sum())
     elif normalize == 'l2':
@@ -732,7 +733,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi
 
-
 #### Energy renormalization ##################################################
 def energy_norm_filterbank_tm(psi1_f, psi2_f, phi_f, J, log2_T):
     """Energy-renormalize temporal filterbank; used by `base_frontend`.
@@ -751,12 +751,11 @@ def energy_norm_filterbank_tm(psi1_f, psi2_f, phi_f, J, log2_T):
     for n2 in range(len(psi2_f)):
         for k in psi2_f[n2]:
             if isinstance(k, int) and k != 0:
-                psi2_f[n2][k] *= scaling_factors2[n2]
+                psi2_f[n2][k] *= scaling_factors2[1][n2]
 
 
-def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
-                           J=None, log2_T=None, r_th=.3, passes=3,
-                           scaling_factors=None):
+def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None, J=None, log2_T=None,
+                           r_th=.3, passes=3, scaling_factors=None):
     """Rescale wavelets such that their frequency-domain energy sum
     (Littlewood-Paley sum) peaks at 2 for an analytic-only filterbank
     (e.g. time scattering for real inputs) or 1 for analytic + anti-analytic.
@@ -812,6 +811,7 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
     the computational burden is minimal.
     """
     def norm_filter(psi_fs, peak_idxs, lp_sum, n, s_idx=1):
+        # higher freq idx
         if n - 1 in peak_idxs:
             # midpoint
             pi0, pi1 = peak_idxs[n], peak_idxs[n - 1]
@@ -829,13 +829,15 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
         else:
             a = peak_idxs[n]
 
+        # lower freq idx
         if n + 1 in peak_idxs:
-            if n == 0 and do_nyquist_correction:
+            if n == 0 and nyquist_correction:
                 b = a + 1 if s_idx == 0 else a - 1
             else:
                 b = peak_idxs[n + 1]
         else:
-            b = None
+            b = (None if s_idx == 0 else
+                 1)  # exclude dc
 
         # peak duplicate
         if a == b:
@@ -846,12 +848,13 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
         start, end = (a, b) if s_idx == 0 else (b, a)
 
         # include endpoint
-        end = end + 1 if end is not None else None
+        if end is not None:
+            end += 1
 
         # if we're at endpoints, don't base estimate on single point
-        if start is None:
+        if start is None:  # left endpoint
             end = max(end, 2)
-        elif end is None:
+        elif end is None:  # right endpoint
             start = min(start, len(lp_sum) - 1)
         elif end - start == 1:
             if start == 0:
@@ -862,15 +865,15 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
         lp_max = lp_sum[start:end].max()
         factor = np.sqrt(peak_target / lp_max)
         psi_fs[n] *= factor
-        scaling_factors[n] = factor
+        scaling_factors[s_idx][n] = factor
 
     def correct_nyquist(psi_fs_all, peak_idxs, lp_sum):
-        def _do_correction(start, end):
+        def _do_correction(start, end, s_idx=1):
             lp_max = lp_sum[start:end].max()
             factor = np.sqrt(peak_target / lp_max)
             for n in (0, 1):
                 psi_fs[n] *= factor
-                scaling_factors[n] *= factor
+                scaling_factors[s_idx][n] *= factor
 
         # first (Nyquist-nearest) psi rescaling may drive LP sum above bound
         # for second psi, since peak was taken only at itself
@@ -886,38 +889,36 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
                 start, end = (a, b) if s_idx == 0 else (b, a)
                 # include endpoint
                 end += 1
-                _do_correction(start, end)
+                _do_correction(start, end, s_idx)
 
-    # run input checks
+    # run input checks #######################################################
     assert len(psi_fs0) >= 3, (
         "must have at least 3 filters in filterbank (got %s)" % len(psi_fs0))
     if psi_fs1 is not None:
         assert len(psi_fs0) == len(psi_fs1), (
             "analytic & anti-analytic filterbanks "
             "must have same number of filters")
-
-    # as opposed to `analytic_and_anti_analytic`
-    analytic_only = psi_fs1 is None
-    peak_target = 2 if analytic_only else 1
-
-    # store rescaling factors
-    if scaling_factors is None:  # else means passes>1
-        scaling_factors = {}
-
-    # determine whether to do Nyquist correction
     # assume same overlap for analytic and anti-analytic
     r = compute_filter_redundancy(psi_fs0[0], psi_fs0[1])
-    do_nyquist_correction = bool(r < r_th)
+    nyquist_correction = bool(r < r_th)
+
+    # as opposed to `analytic_and_anti_analytic`
+    analytic_only = bool(psi_fs1 is None)
+    peak_target = 2 if analytic_only else 1
+
+    # execute ################################################################
+    # store rescaling factors
+    if scaling_factors is None:  # else means passes>1
+        scaling_factors = {0: {}, 1: {}}
 
     # compute peak indices
+    peak_idxs = {}
     if analytic_only:
         psi_fs_all = psi_fs0
-        peak_idxs = {}
         for n, psi_f in enumerate(psi_fs0):
             peak_idxs[n] = np.argmax(psi_f)
     else:
         psi_fs_all = (psi_fs0, psi_fs1)
-        peak_idxs = {}
         for s_idx, psi_fs in enumerate(psi_fs_all):
             peak_idxs[s_idx] = {}
             for n, psi_f in enumerate(psi_fs):
@@ -931,16 +932,16 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None,
                 _compute_lp_sum(psi_fs1))
 
     lp_sum = get_lp_sum()
-    if analytic_only:
+    if analytic_only:  # time scattering
         for n in range(len(psi_fs0)):
             norm_filter(psi_fs0, peak_idxs, lp_sum, n)
-    else:
+    else:  # frequential scattering
         for s_idx, psi_fs in enumerate(psi_fs_all):
             for n in range(len(psi_fs)):
                 norm_filter(psi_fs, peak_idxs[s_idx], lp_sum, n, s_idx)
 
-    if do_nyquist_correction:
-        lp_sum = get_lp_sum()
+    if nyquist_correction:
+        lp_sum = get_lp_sum()  # compute against latest
         correct_nyquist(psi_fs_all, peak_idxs, lp_sum)
 
     if passes == 1:
@@ -959,92 +960,12 @@ def compute_filter_redundancy(p0_f, p1_f):
     r = np.sum(p0sq * p1sq) / ((p0sq.sum() + p1sq.sum()) / 2)
     return r
 
-#### helpers #################################################################
-def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None, force_phi=False):
+def _compute_lp_sum(psi_fs, phi_f=None, J=None, log2_T=None):
     lp_sum = 0
     for psi_f in psi_fs:
         lp_sum += np.abs(psi_f)**2
-    if force_phi or (log2_T is not None and J is not None and log2_T >= J):
-        # else lowest frequency bandpasses are too attenuated
+    if phi_f is not None and (
+            # else lowest frequency bandpasses are too attenuated
+            log2_T is not None and J is not None and log2_T >= J):
         lp_sum += np.abs(phi_f)**2
     return lp_sum
-
-def _compute_lp_sum_tm(psi1_f, psi2_f, phi_f=None,
-                       J=None, log2_T=None, force_phi=False):
-    lp_sum = {0: {}, 1: {}}
-    psi_fs_all = (psi1_f, psi2_f)
-    for order, psi_fs in enumerate(psi_fs_all):
-        lp_sum[order] = 0
-        for psi_f in psi_fs:
-            lp_sum[order] += np.abs(psi_f[0])**2
-    if force_phi or log2_T >= J:
-        # else lowest frequency bandpasses are too attenuated
-        for order in lp_sum:
-            # `[0]` for `trim_tm=0`
-            phi = phi_f[0][0] if isinstance(phi_f[0], list) else phi_f[0]
-            lp_sum[order] += np.abs(phi)**2
-    return lp_sum
-
-
-def _get_lp_sum_maxima(lp_sum, psi_fs, j0=None, anti_analytic=False):
-    def _find_cqt_start(lp_sum, peak_idx):
-        # it's possible to get
-        pass
-
-    # compute number of non-CQT filters
-    n_non_cqt = 0
-    for p in psi_fs:
-        n_non_cqt += int(not p['is_cqt'] if j0 is None else
-                         not p['is_cqt'][j0])
-
-    # for later, to rescale analytic and anti-analytic separately;
-    # include Nyquist in analytic, exclude in anti-analytic
-    N = len(psi_fs[0][0] if j0 is None else psi_fs[0][j0])
-
-    # rescale non-CQT separately (lesser overlap -> lesser LP-sum peak)
-    # compute non-CQT bounds in sample indices
-    if n_non_cqt > 0:
-        if j0 is None:
-            non_cqt_psis = [p[0]  for p in psi_fs if not p['is_cqt']]
-        else:
-            non_cqt_psis = [p[j0] for p in psi_fs if not p['is_cqt'][j0]]
-
-        peak_idx = np.argmax(non_cqt_psis[0])
-        if anti_analytic:
-            assert peak_idx >= N//2, ("found anti-analytic wavelet peak "
-                                      "to left of Nyquist ({} <= {})".format(
-                                          peak_idx, N//2))
-            # no dc on negative freqs side; include peak & Nyquist
-            non_cqt_start, non_cqt_end = peak_idx, None
-            if peak_idx != N // 2:
-                # CQT is to left of non-CQT
-                cqt_start, cqt_end = N//2, non_cqt_start
-            else:
-                # everything is non-CQT (e.g. 'recalibrate')
-                cqt_start, cqt_end = None, None
-        else:
-            assert peak_idx <= N//2, ("found analytic wavelet peak "
-                                      "to right of Nyquist ({} > {})".format(
-                                          peak_idx, N//2))
-            # exclude dc; include peak & Nyquist
-            non_cqt_start, non_cqt_end = 1, peak_idx + 1
-            if peak_idx != N // 2:
-                # CQT is to right of non-CQT
-                cqt_start, cqt_end = non_cqt_end, N//2 + 1
-            else:
-                # everything is non-CQT (e.g. 'recalibrate')
-                cqt_start, cqt_end = None, None
-        lp_max_non_cqt = lp_sum[non_cqt_start:non_cqt_end].max()
-        if cqt_start is not None:
-            lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
-        else:
-            lp_max_cqt = None
-    else:
-        if anti_analytic:
-            cqt_start, cqt_end = N//2, None
-        else:
-            cqt_start, cqt_end = 1, N//2 + 1
-        lp_max_cqt = lp_sum[cqt_start:cqt_end].max()
-        lp_max_non_cqt = None
-
-    return lp_max_cqt, lp_max_non_cqt
