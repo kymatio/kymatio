@@ -94,9 +94,8 @@ class TorchBackend:
                                '(shapes: %s, %s)' % (tuple(A.shape),
                                                      tuple(B.shape)))
 
-        # if A.dtype is not B.dtype:
-        # TODO does "last dim 2" allow faster multiplication? (real * complex)
-        #     raise TypeError('Input and filter must be of the same dtype.')
+        if A.dtype is not B.dtype:
+            raise TypeError('Input and filter must be of the same dtype.')
 
         if B.device.type == 'cuda':
             if A.device.type == 'cuda':
