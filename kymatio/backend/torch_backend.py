@@ -9,8 +9,6 @@ class TorchBackend:
         if x is None:
             raise TypeError('The input should be not empty.')
 
-        cls.contiguous_check(x)
-
     @classmethod
     def complex_check(cls, x):
         if not cls._is_complex(x):
@@ -20,11 +18,6 @@ class TorchBackend:
     def real_check(cls, x):
         if not cls._is_real(x):
             raise TypeError('The input should be real (got %s).' % x.dtype)
-
-    @classmethod
-    def complex_contiguous_check(cls, x):
-        cls.complex_check(x)
-        cls.contiguous_check(x)
 
     @staticmethod
     def contiguous_check(x):

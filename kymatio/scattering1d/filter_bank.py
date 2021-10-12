@@ -1894,8 +1894,7 @@ def _recalibrate_psi_fr(xi1_frs, sigma1_frs, j1_frs, is_cqt1_frs, N, alpha,
         {0: xi1_frs}, {0: sigma1_frs}, {0: j1_frs}, {0: is_cqt1_frs})
     scale_diff_max = None
 
-    for N_fr_scales in range(N_fr_scales_max - 1, N_fr_scales_min - 1,
-                                -1):
+    for N_fr_scales in range(N_fr_scales_max - 1, N_fr_scales_min - 1, -1):
         scale_diff = N_fr_scales_max - N_fr_scales
         (xi1_frs_new[scale_diff], sigma1_frs_new[scale_diff],
          j1_frs_new[scale_diff], is_cqt1_frs_new[scale_diff]) = [], [], [], []
