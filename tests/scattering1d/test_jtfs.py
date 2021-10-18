@@ -703,24 +703,26 @@ def test_pack_coeffs_jtfs():
             # if phi_f is present, ensure it's centered (and len(n1_frs) is odd)
             if -1 in n1_frs:
                 if up:
-                    assert n1_frs[-1] == -1, n1_frs
+                    assert n1_frs[-1] == -1, "%s\n%s" % (n1_frs, info)
                 else:
-                    assert n1_frs[0] == -1, n1_frs
+                    assert n1_frs[0] == -1, "%s\n%s" % (n1_frs, info)
                 # exclude phi_f
                 n1_frs = np.array([n1_fr for n1_fr in n1_frs if n1_fr != -1])
 
             # ensure only psi_f pairs present
-            assert -1 not in n1_frs, n1_frs
+            assert -1 not in n1_frs, (n1_frs, info)
 
             # check padding
             if -2 in n1_frs:
                 n_pad = sum(n1_frs == -2)
                 if up:
                     # ensure right-padded
-                    assert np.all(n1_frs[-n_pad:] == -2), (n_pad, n1_frs)
+                    assert np.all(n1_frs[-n_pad:] == -2), "%s, %s\n%s" % (
+                        n_pad, n1_frs, info)
                 else:
                     # ensure left-padded
-                    assert np.all(n1_frs[:n_pad]  == -2), (n_pad, n1_frs)
+                    assert np.all(n1_frs[:n_pad]  == -2), "%s, %s\n%s" % (
+                        n_pad, n1_frs, info)
                 # exclude pad values
                 n1_frs = np.array([n1_fr for n1_fr in n1_frs if n1_fr != -2])
 
@@ -991,7 +993,9 @@ def test_pad_mode_fr():
 
 
 def test_normalize():
-    """Ensure no error."""
+    """Ensure error thrown upon invalid input, but otherwise method
+    doesn't error.
+    """
     for rscaling in ('l1', 'l2'):
       for mean_axis in (0, (1, 2), -1):
         for std_axis in (0, (1, 2), -1):
@@ -1000,7 +1004,10 @@ def test_normalize():
               for dim0 in (1, 64):
                 for dim1 in (1, 65):
                   for dim2 in (1, 66):
-                      x = np.random.randn(dim0, dim1, dim2)
+                      if dim0 == dim1 == dim2 == 1:
+                          # invalid combo
+                          continue
+                      x = np.abs(np.random.randn(dim0, dim1, dim2))
                       test_params = dict(
                           rscaling=rscaling, mean_axis=mean_axis,
                           std_axis=std_axis, C=C, mu=mu, dim0=dim0, dim1=dim1,
@@ -1008,16 +1015,15 @@ def test_normalize():
                       test_params_str = '\n'.join(f'{k}={v}' for k, v in
                                                   test_params.items())
                       try:
-                          kw = test_params.copy()
-                          for k in ('dim0', 'dim1', 'dim2'):
-                              kw.pop(k)
-                          if any(d == 1 for d in (dim0, dim1, dim2)):
-                              # will complain about zero division per zero
-                              # statistics along length-one axis
-                              with warnings.catch_warnings():
-                                  _ = normalize(x, **kw)
+                          kw = {k: v for k, v in test_params.items()
+                                if k not in ('dim0', 'dim1', 'dim2')}
+                          _ = normalize(x, **kw)
+                      except ValueError as e:
+                          if "input dims cannot be" in str(e):
+                              continue
                           else:
-                            _ = normalize(x, **kw)
+                              print(test_params_str)
+                              raise e
                       except Exception as e:
                           print(test_params_str)
                           raise e

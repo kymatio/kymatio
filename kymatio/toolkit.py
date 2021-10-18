@@ -3,7 +3,7 @@
 import numpy as np
 import scipy.signal
 import warnings
-from itertools import zip_longest
+from itertools import zip_longest, chain
 from copy import deepcopy
 
 
@@ -70,13 +70,15 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
     Parameters
     ----------
     X : tensor
-        Tensor with dimensions `(samples, features, spatial)`. If there's more
-        than one `features` or `spatial` dimensions, flatten before passing.
+        Nonnegative tensor with dimensions `(samples, features, spatial)`.
+        If there's more than one `features` or `spatial` dimensions, flatten
+        before passing.
         (Obtain tensor via e.g. `pack_coeffs_jtfs(Scx)`, or `out_type='array'`.)
 
     rscaling : str / None
         If not None, string one of: 'l1', 'l2'. Interacts with `std_axis`
         and `mean_axis`. See "Relative scaling" below.
+        Must be None if spatial dim is `1`.
 
     std_axis : tuple[int] / int / None
         If not None, will unit-variance after `rscaling` along specified axes.
@@ -85,9 +87,13 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         If not None, will zero-mean before `rscaling` along specified axes.
 
     C : float / None
-        `log(1 + X * C / median)`. Defaults to `130 * mean(abs(X))`.
+        `log(1 + X * C / median)`.
         Greater will bring more disparate values closer. Too great will equalize
         too much, too low will have minimal effect.
+
+        Defaults to `5 / mean(abs(X / mu))`, which should yield moderate
+        contraction for a variety of signals. This was computed on a mixture
+        of random processes, with outliers, and may not generalize to all signals.
 
     mu : float / None
         In case precomputed; see "Online computation".
@@ -151,8 +157,47 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         raise ValueError("input must be 3D, `(samples, features, spatial)` - "
                          "got %s" % str(X.shape))
     B = ExtendedUnifiedBackend(X)
-    if C is None:
-        C = 130 * B.mean(B.abs(X))
+
+    # check input values
+    if B.min(X) < 0:
+        warnings.warn("`X` must be non-negative; will take modulus.")
+        X = B.abs(X)
+    # convert axes to positive
+    axes = [mean_axis, std_axis]
+    for i, ax in enumerate(axes):
+        if ax is None:
+            continue
+        ax = ax if isinstance(ax, (list, tuple)) else [ax]
+        ax = list(ax)
+        for j, a in enumerate(ax):
+            if a < 0:
+                ax[j] = X.ndim + a
+        axes[i] = tuple(ax)
+    mean_axis, std_axis = axes
+
+    # check input dims
+    dim_ones = tuple(d for d in range(X.ndim) if X.shape[d] == 1)
+    if dim_ones != ():
+        def check_dims(g, name):
+            g = g if isinstance(g, (tuple, list)) else (g,)
+            if all(dim in dim_ones for dim in g):
+                raise ValueError("input dims cannot be `1` along same dims as "
+                                 "`{}` (gives NaNs); got X.shape == {}, "
+                                 "{} = {}".format(name, X.shape, name, mean_axis))
+
+        check_dims(mean_axis, 'mean_axis')
+        check_dims(std_axis,  'std_axis')
+        # check mu
+        if mu is None and 0 in dim_ones and 2 in dim_ones:
+            raise ValueError("input dims cannot be `1` along dims 0 and 2 "
+                             "if `mu` is None (gives NaNs); "
+                             "got X.shape == {}".format(X.shape))
+        # check rscaling
+        if rscaling is not None and 2 in dim_ones:
+            raise ValueError("input dims cannot be `1` along dim 2 "
+                             "if `rscaling` is not None (gives NaNs); "
+                             "git X.shape == {}".format(X.shape))
+
 
     # main transform #########################################################
     if mu is None:
@@ -162,6 +207,9 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         mu = B.median(Xsum, axis=0, keepdims=True)
     # rescale
     Xnorm = X / mu
+    # contraction factor
+    if C is None:
+        C = 5 / B.mean(B.abs(Xnorm), axis=None, keepdims=False)
     # log
     Xnorm = B.log(1 + Xnorm * C)
 
@@ -171,16 +219,27 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
 
     if rscaling is not None:
         # rescale per `feature` and per `sample`
+        # so compute statistics along `spatial`
         kw = dict(axis=-1, keepdims=True)
         ord = (2 if rscaling == 'l2' else 1)
+        # produces zeros if spatial dim is of size 1 or values are equal (dc)
         Xstd = X - B.mean(X, **kw)
         norms_orig = B.norm(Xstd,  ord=ord, **kw)
         norms_now  = B.norm(Xnorm, ord=ord, **kw)
         norms = norms_orig / norms_now
+        if np.any(np.isnan(norms)) or np.any(np.isinf(norms)):
+            raise Exception
+        if norms.mean() == 0:
+            raise Exception
         Xnorm *= (norms / norms.mean())
 
     if std_axis is not None:
-        Xnorm /= B.std(Xnorm, axis=std_axis, keepdims=True)
+        try:
+            Xnorm /= B.std(Xnorm, axis=std_axis, keepdims=True)
+        except:
+            raise Exception
+    if np.any(np.isnan(norms)) or np.any(np.isinf(norms)):
+        raise Exception
 
     return Xnorm
 
@@ -418,7 +477,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                         for n1_fr_idx in range(len(cb[n2_idx])))
         pad_value = 0 if not debug else -2
         left_pad_axis = -2  # left pad along `n1`
-        kw = dict(pad_value=pad_value, left_pad_axis=left_pad_axis)
+        general = False  # use routine optimized for JTFS
+        kw = dict(pad_value=pad_value, left_pad_axis=left_pad_axis,
+                  general=general)
 
         # `phi`s #############################################################
         out_phi_t, out_phi_f = None, None
@@ -434,6 +495,8 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             out_phi_f = process_dims(out_phi_f)
 
         # spinned ############################################################
+        # don't need `ref_shape` here since by implementation max `n1`s
+        # should be found in spinned (`phi`s are trimmed to ensure this)
         if structure in (1, 2):
             out = tensor_padded(combined, **kw)
             out = process_dims(out)
@@ -677,14 +740,22 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         if 'psi_f' not in pair:
             continue
         for n2_idx in range(len(packed[pair])):
-            ref = tensor_padded(packed[pair][n2_idx][0], pad_value)
-            if debug:
-                # n2 will be same, everything else variable
-                ref[..., 1:] = ref[..., 1:] * 0 + pad_value
-            else:
-                ref *= 0
-            while len(packed[pair][n2_idx]) < n_n1_frs_max:
+            if len(packed[pair][n2_idx]) < n_n1_frs_max:
                 assert sampling_psi_fr == 'exclude'  # should not occur otherwise
+            else:
+                continue
+
+            ref = packed[pair][n2_idx][0]
+            # assumes last dim is same (`average=False`)
+            # and is 2D, `(n1, t)` (should always be true)
+            for i in range(len(ref)):
+                if debug:
+                    # n2 will be same, everything else variable
+                    ref[i][1:] = ref[i][1:] * 0 + pad_value
+                else:
+                    ref[i] *= 0
+
+            while len(packed[pair][n2_idx]) < n_n1_frs_max:
                 packed[pair][n2_idx].append(list(ref))
 
     # pack into list ready to convert to 4D tensor ###########################
@@ -2044,31 +2115,51 @@ def fdts(N, n_partials=2, total_shift=None, f0=None, seg_len=None,
 
 #### misc ###################################################################
 def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
-                  left_pad_axis=None):
+                  left_pad_axis=None, general=True):
     """Make tensor from variable-length `seq` (e.g. nested list) padded with
     `fill_value`.
 
-    `init_fn` e.g. `lambda shape: torch.zeros(shape)`.
-    `cast_fn` e.g. `lambda x: torch.tensor(x)`.
+    Parameters
+    ----------
+    seq : list[tensor]
+        Nested list of tensors.
 
-    Will pad per `ref_shape` instead of what's determined from `seq`, if provided,
-    and if not None and >= existing along selected dims (e.g. `(None, 3)` will
-    pad dim0 per `seq` and dim1 to 3, unless `seq`'s dim1 would pad to 4).
+    pad_value : float
+        Value to pad with.
 
-    Not implemented for TensorFlow: will convert to numpy array then revert to
+    init_fn : function / None
+        Instantiates packing tensor, e.g. `lambda shape: torch.zeros(shape)`.
+        Defaults to `backend.full`.
+
+    cast_fn : function / None
+        Function to cast tensor values before packing, e.g.
+        `lambda x: torch.tensor(x)`.
+
+    ref_shape : tuple[int] / None
+        Tensor output shape to pack into, instead of what's inferred for `seq`,
+        as long as >= that shape. Shape inferred from `seq` is the minimal size
+        determined from longest list at each nest level, i.e. we can't go lower
+        without losing elements.
+
+        Tuple can contain `None`: `(None, 3)` will pad dim0 per `seq` and dim1
+        to 3, unless `seq`'s dim1 is 4, then will pad to 4.
+
+        Recommended to pass this argument if applying `tensor_padded` multiple
+        times, as time to infer shape is significant, especially relative to
+        GPU computation.
+
+    left_pad_axis : int / tuple[int] / None
+        Along these axes, will pad from left instead of the default right.
+        Not implemented for dim0 (`0 in left_pad_axis`).
+
+    general : bool (default True)
+        If `False`, will use a much faster routine that's for JTFS.
+
+    Not implemented for TensorFlow: will convert to numpy array then rever to
     TF tensor.
 
     Code borrows from: https://stackoverflow.com/a/27890978/10133797
     """
-    def find_shape(seq):
-        try:
-            len_ = len(seq)
-        except TypeError:
-            return ()
-        shapes = [find_shape(subseq) for subseq in seq]
-        return (len_,) + tuple(max(sizes) for sizes in
-                               zip_longest(*shapes, fillvalue=1))
-
     iter_axis = [0]
     prev_axis = [iter_axis[0]]
 
@@ -2083,13 +2174,11 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                 len_ = 0
 
             if len_ == 0:
-                pass#arr[:] = fill_value
+                pass
             elif len(shape) not in left_pad_axis:  # right pad
                 arr[:len_] = cast_fn(seq)
-                # arr[len_:] = fill_value
             else:  # left pad
                 arr[-len_:] = cast_fn(seq)
-                # arr[:-len_] = fill_value
         else:
             iter_axis[0] += 1
 
@@ -2110,11 +2199,15 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
         backend = np
         backend_name = 'numpy'
 
-    # infer dtype
+    # infer dtype & whether on GPU
     sq = seq
     while isinstance(sq, list):
         sq = sq[0]
     dtype = sq.dtype if hasattr(sq, 'dtype') else type(sq)
+    if backend_name == 'torch':
+        device = sq.device
+    else:
+        device = None
 
     if init_fn is None:
         if backend_name == 'numpy':
@@ -2122,7 +2215,8 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
                 dtype = dtype.name
             init_fn = lambda s: np.full(s, pad_value, dtype=dtype)
         elif backend_name == 'torch':
-            init_fn = lambda s: backend.full(s, pad_value, dtype=dtype)
+            init_fn = lambda s: backend.full(s, pad_value, dtype=dtype,
+                                             device=device)
 
     if cast_fn is None:
         if is_tf:
@@ -2130,16 +2224,20 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
         elif backend_name == 'numpy':
             cast_fn = lambda x: x
         elif backend_name == 'torch':
-            cast_fn = lambda x: (backend.tensor(x)
+            cast_fn = lambda x: (backend.tensor(x, device=device)
                                  if not isinstance(x, backend.Tensor) else x)
 
     ##########################################################################
-    # infer shape
-    shape = list(find_shape(seq))
-    if ref_shape is not None:
-        for i, s in enumerate(ref_shape):
-            if s is not None and s >= shape[i]:
-                shape[i] = s
+    # infer shape if not provided
+    if ref_shape is None or any(s is None for s in ref_shape):
+        shape = list(find_shape(seq, fast=not general))
+        # override shape with `ref_shape` where provided
+        if ref_shape is not None:
+            for i, s in enumerate(ref_shape):
+                if s is not None and s >= shape[i]:
+                    shape[i] = s
+    else:
+        shape = ref_shape
     shape = tuple(shape)
 
     # handle `left_pad_axis`
@@ -2165,6 +2263,36 @@ def tensor_padded(seq, pad_value=0, init_fn=None, cast_fn=None, ref_shape=None,
     if is_tf:
         arr = tf.convert_to_tensor(arr)
     return arr
+
+
+def find_shape(seq, fast=False):
+    """Finds shape to pad a variably nested list to.
+    `fast=True` uses an implementation optimized for JTFS.
+    """
+    if fast:
+        """Assumes 4D/5D and only variable length lists are in dim3."""
+        flat = chain.from_iterable
+        try:
+            dim4 = len(seq[0][0][0][0])  # 5D
+            dims = (len(seq), len(seq[0]), len(seq[0][0]),
+                    max(map(len, flat(flat(seq)))), dim4)
+        except:
+            dims = (len(seq), len(seq[0]),
+                    max(map(len, flat(seq))), len(seq[0][0][0]))
+    else:
+        dims = _find_shape_gen(seq)
+    return dims
+
+
+def _find_shape_gen(seq):
+    """Code borrows from https://stackoverflow.com/a/27890978/10133797"""
+    try:
+        len_ = len(seq)
+    except TypeError:
+        return ()
+    shapes = [_find_shape_gen(subseq) for subseq in seq]
+    return (len_,) + tuple(max(sizes) for sizes in
+                           zip_longest(*shapes, fillvalue=1))
 
 
 class IterWithDelay():
@@ -2275,6 +2403,15 @@ class ExtendedUnifiedBackend():
             out = self.B.std(x, dim=axis, keepdim=keepdims)
         else:
             out = self.B.math.reduce_std(x, axis=axis, keepdims=keepdims)
+        return out
+
+    def min(self, x, axis=None, keepdims=False):
+        if self.backend_name == 'numpy':
+            out = np.min(x, axis=axis, keepdims=keepdims)
+        elif self.backend_name == 'torch':
+            out = self.B.min(x, dim=axis, keepdim=keepdims)
+        else:
+            out = self.B.math.reduce_min(x, axis=axis, keepdims=keepdims)
         return out
 
     def numpy(self, x):
