@@ -802,6 +802,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     if 'phi_t * psi_f' in Scx_pairs:
         c_phi_t = deepcopy(packed['phi_t * psi_f'])
         c_phi_t[0].append(packed['phi_t * phi_f'][0][0])
+        # TODO pointless with `separate_lowpass`
         c_phi_t[0].extend(packed['phi_t * psi_f'][0][::-1])
     else:
         c_phi_t = None
