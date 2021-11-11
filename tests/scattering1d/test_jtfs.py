@@ -4,9 +4,11 @@ import pytest
 import numpy as np
 import warnings
 from pathlib import Path
+from copy import deepcopy
+
 from kymatio import Scattering1D, TimeFrequencyScattering1D
 from kymatio.toolkit import (drop_batch_dim_jtfs, jtfs_to_numpy, coeff_energy,
-                             fdts, echirp, coeff_energy_ratios,
+                             fdts, echirp, coeff_energy_ratios, energy,
                              est_energy_conservation, rel_l2, rel_ae,
                              validate_filterbank_tm, validate_filterbank_fr,
                              pack_coeffs_jtfs, tensor_padded, normalize)
@@ -1066,6 +1068,8 @@ def test_backends():
                 kw = dict(meta=jmeta, structure=structure,
                           separate_lowpass=separate_lowpass,
                           sampling_psi_fr=jtfs.sampling_psi_fr)
+                # keep original copy
+                Scxnc  = deepcopy(jtfs_to_numpy(Scx))
                 outs   = pack_coeffs_jtfs(Scx, **kw)
                 outs0  = pack_coeffs_jtfs(Scx, **kw, sample_idx=0)
                 outsn  = pack_coeffs_jtfs(jtfs_to_numpy(Scx), **kw)
@@ -1075,6 +1079,13 @@ def test_backends():
                 outsn  = outsn  if isinstance(outs,  tuple) else [outsn]
                 outs0n = outs0n if isinstance(outs0, tuple) else [outs0n]
 
+                # ensure methods haven't altered original array ##############
+                # (with e.g. inplace ops) ####################################
+                for pair in Scx:
+                    coef = Scx[pair].cpu().numpy()
+                    assert np.allclose(coef, Scxnc[pair]), pair
+
+                # shape and value checks #####################################
                 for o, o0, on, o0n in zip(outs, outs0, outsn, outs0n):
                     assert o.ndim == 5, o.shape
                     assert len(o) == len(x), (len(o), len(x))
@@ -1084,6 +1095,9 @@ def test_backends():
                     assert np.allclose(o.numpy(), on)
                     assert np.allclose(o0.numpy(), o0n)
 
+                # E_in == E_out ##############################################
+                _test_packing_energy_io(Scx, outs, structure, separate_lowpass)
+
         ######################################################################
 
         Scx = jtfs_to_numpy(Scx)
@@ -1091,6 +1105,102 @@ def test_backends():
         E_down = coeff_energy(Scx, jmeta, pair='psi_t * psi_f_down')
         th = 32
         assert E_down / E_up > th, "{:.2f} < {}".format(E_down / E_up, th)
+
+
+def _test_packing_energy_io(Scx, outs, structure, separate_lowpass):
+    from kymatio.toolkit import ExtendedUnifiedBackend
+
+    def phi_t_energies(out_phi_t, structure):
+        if structure == 1:
+            B = ExtendedUnifiedBackend(out_phi_t)
+            out_phi_t = B.transpose(out_phi_t, (0, 2, 1, 3, 4))
+        s = tuple(out_phi_t.shape)
+        # out_phi_t includes `phi_t * phi_f`
+        E_out_phi = energy(out_phi_t[:, :, s[2]//2])
+        E_out_phi_t = energy(out_phi_t) - E_out_phi
+        return E_out_phi, E_out_phi_t
+
+    def check_phi_t_energies(out_phi_t, structure):
+        E_out_phi, E_out_phi_t = phi_t_energies(out_phi_t, structure)
+        assert np.allclose(E_in_phi_t, E_out_phi_t), (E_in_phi_t, E_out_phi_t)
+        assert np.allclose(E_in_phi, E_out_phi), (E_in_phi, E_out_phi)
+        return E_out_phi, E_out_phi_t
+
+    E_in_up = energy(Scx['psi_t * psi_f_up'])
+    E_in_dn = energy(Scx['psi_t * psi_f_down'])
+    E_in_spinned = E_in_up + E_in_dn
+    E_in_phi_t = energy(Scx['phi_t * psi_f'])
+    E_in_phi_f = energy(Scx['psi_t * phi_f'])
+    E_in_phi   = energy(Scx['phi_t * phi_f'])
+    E_in = E_in_spinned + E_in_phi_t + E_in_phi_f + E_in_phi
+    if structure in (1, 2):
+        if separate_lowpass:
+            out_spinned, out_phi_f, out_phi_t = outs
+            E_out_spinned = energy(out_spinned)
+            assert np.allclose(E_in_spinned, E_out_spinned
+                               ), (E_in_spinned, E_out_spinned)
+
+            E_out_phi, E_out_phi_t = check_phi_t_energies(out_phi_t, structure)
+
+            E_out_phi_f = energy(out_phi_f)
+            assert np.allclose(E_in_phi_f, E_out_phi_f), (E_in_phi_f, E_out_phi_f)
+
+            E_out = E_out_spinned + E_out_phi_f + E_out_phi + E_out_phi_t
+        else:
+            E_out = energy(outs[0])
+
+    elif structure == 3:
+        if separate_lowpass:
+            """E(outs) == E_in_spinned + E_in_phi_t + E_in_phi_f + 2*E_in_phi"""
+            out_up, out_down, out_phi_f, out_phi_t = outs
+
+            # method properly splits `phi_t * phi_f` and `phi_t * psi_f` energies
+            # so no duplication in `E_out`
+            E_out_phi, E_out_phi_t = check_phi_t_energies(out_phi_t, structure)
+        else:
+            """E(outs) == E_in_spinned + E_in_phi_t + E_in_phi_f + 2*E_in_phi"""
+            out_up, out_down, out_phi_f = outs
+            # `phi_t * psi_f` packed along `psi_t * psi_f`
+            E_in_spinned += E_in_phi_t
+
+        E_out_spinned = energy(out_up) + energy(out_down)
+        assert np.allclose(E_in_spinned, E_out_spinned
+                           ), (E_in_spinned, E_out_spinned)
+
+        E_out_phi_f = energy(out_phi_f)
+        # `phi_t * phi_f` is packed with `psi_t * phi_f`
+        E_in_phi_f += E_in_phi
+        assert np.allclose(E_in_phi_f, E_out_phi_f), (E_in_phi_f, E_out_phi_f)
+
+        E_out = E_out_spinned + E_out_phi_f
+        if separate_lowpass:
+            E_out += E_out_phi_t
+
+    elif structure == 4:
+        if separate_lowpass:
+            out_up, out_down, out_phi_t = outs
+            # `psi_t * phi_f` packed for each spin
+            E_in_spinned += 2*E_in_phi_f
+            E_out_spinned = energy(out_up) + energy(out_down)
+
+            E_out_phi, E_out_phi_t = check_phi_t_energies(out_phi_t, structure)
+        else:
+            out_up, out_down = outs
+            # phi_t and phi_f pairs included
+            # only `phi_t * phi_f` and `psi_t * phi_f` energy duped
+            E_in_spinned += E_in_phi_t + 2*(E_in_phi + E_in_phi_f)
+            E_out_spinned = energy(out_up) + energy(out_down)
+
+        assert np.allclose(E_in_spinned, E_out_spinned
+                           ), (E_in_spinned, E_out_spinned)
+
+        E_out = E_out_spinned
+        E_in = E_in_spinned
+        if separate_lowpass:
+            E_out += (E_out_phi + E_out_phi_t)
+            E_in  += (E_in_phi + E_in_phi_t)
+
+    assert np.allclose(E_in, E_out), (E_in, E_out, structure, separate_lowpass)
 
 
 def test_differentiability_torch():
@@ -1567,17 +1677,6 @@ def packed_meta_into_arr(data):
         for pair in meta_arr[field]:
             meta_arr[field][pair] = np.array(meta_arr[field][pair])
     return meta_arr
-
-
-def energy(x):
-    if isinstance(x, np.ndarray):
-        return np.sum(np.abs(x)**2)
-    elif 'torch' in str(type(x)):
-        import torch
-        return torch.sum(torch.abs(x)**2)
-    elif 'tensorflow' in str(type(x)):
-        import tensorflow as tf
-        return tf.reduce_sum(tf.abs(x)**2)
 
 
 def concat_joint(Scx):

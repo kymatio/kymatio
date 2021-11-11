@@ -59,7 +59,7 @@ def _iterate_apply(Scx, fn):
 
 
 def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
-              mu=None):
+              mu=None, C_mult=5):
     """Log-normalize + (optionally) standardize coefficients for learning
     algorithm suitability.
 
@@ -75,7 +75,7 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         before passing.
         (Obtain tensor via e.g. `pack_coeffs_jtfs(Scx)`, or `out_type='array'`.)
 
-    rscaling : str / None
+    rscaling : str / None  # TODO deprecate
         If not None, string one of: 'l1', 'l2'. Interacts with `std_axis`
         and `mean_axis`. See "Relative scaling" below.
         Must be None if spatial dim is `1`.
@@ -196,8 +196,7 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         if rscaling is not None and 2 in dim_ones:
             raise ValueError("input dims cannot be `1` along dim 2 "
                              "if `rscaling` is not None (gives NaNs); "
-                             "git X.shape == {}".format(X.shape))
-
+                             "got X.shape == {}".format(X.shape))
 
     # main transform #########################################################
     if mu is None:
@@ -205,11 +204,20 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         Xsum = B.sum(X, axis=-1, keepdims=True)
         # sample median
         mu = B.median(Xsum, axis=0, keepdims=True)
+
+    def sparse_mean(x, div=100, iters=4):
+        """Mean of non-negligible points"""
+        m = x.mean()
+        for _ in range(iters - 1):
+            m = x[x > m / div].mean()
+        return m
+
     # rescale
     Xnorm = X / mu
     # contraction factor
     if C is None:
-        C = 5 / B.mean(B.abs(Xnorm), axis=None, keepdims=False)
+        C = 1 / sparse_mean(B.abs(Xnorm), iters=4)
+    C *= C_mult
     # log
     Xnorm = B.log(1 + Xnorm * C)
 
@@ -234,12 +242,7 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
         Xnorm *= (norms / norms.mean())
 
     if std_axis is not None:
-        try:
-            Xnorm /= B.std(Xnorm, axis=std_axis, keepdims=True)
-        except:
-            raise Exception
-    if np.any(np.isnan(norms)) or np.any(np.isinf(norms)):
-        raise Exception
+        Xnorm /= B.std(Xnorm, axis=std_axis, keepdims=True)
 
     return Xnorm
 
@@ -303,6 +306,12 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                `(out_up, out_down, out_phi_f, out_phi_t)`
           - 4: `(out_up, out_down)` if False else
                `(out_up, out_down, out_phi_t)`
+
+        `out_phi_t` is `phi_t * psi_f` and `phi_t * phi_f` concatenated.
+        `out_phi_f` is `psi_t * phi_f` for all configs except
+        `3, True`, where it is concatenated with `phi_t * phi_f`.
+
+        For further info, see "Structures", "Parameter effects", and "Notes".
 
     Structures
     ----------
@@ -375,6 +384,9 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
     Structures not suited for convolutions may be suited for other transforms,
     e.g. Dense or Graph Neural Networks.
 
+    Helpful visuals:
+      https://github.com/kymatio/kymatio/discussions/708#discussioncomment-1624521
+
     Ordinality
     ----------
     Coefficients are "ordinal" if their generating wavelets are spaced linearly
@@ -445,6 +457,20 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         of `phi_t * psi_f` pairs to compensate for computing only once (for
         just one spin since it's identical to other spin), while here it's
         also packed twice; to compensate, its energy is halved before packing.
+
+      - Energy duplication isn't avoided for all `structure` & `separate_lowpass`:
+          - `3, separate_lowpass`: packs the `phi_t * phi_f` pair twice -
+            with `phi_t * psi_f`, and with `psi_t * phi_f`.
+            `out_phi_f` always concats with `phi_t * phi_f` for `3` since
+            `phi_f` is never concat with spinned, so it can't concat with
+            `phi_t` pairs as usual.
+          - `4, not separate_lowpass`: packs `phi_t * phi_f` and `psi_t * phi_f`
+            pairs twice, once for each spin.
+          - `4, separate_lowpass`: packs `psi_t * phi_f` pairs twice, once for
+            each spin.
+          - Note both `3` and `4` pack `phi_t * psi_f` pairs twice if
+            `not separate_lowpass`, but the energy is halved anyway and hence
+            not duped.
     """
     B = ExtendedUnifiedBackend(Scx)
 
@@ -580,6 +606,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         raise ValueError("must use `out_type` 'dict:array' or 'dict:list' "
                          "for `pack_coeffs_jtfs` (got `type(Scx) = %s`)" % (
                              type(Scx)))
+
     # infer batch size
     ref_pair = list(Scx)[0]
     if isinstance(Scx[ref_pair], list):
@@ -745,7 +772,8 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             else:
                 continue
 
-            ref = packed[pair][n2_idx][0]
+            # make a copy to avoid modifying `packed`
+            ref = list(tensor_padded(packed[pair][n2_idx][0]))
             # assumes last dim is same (`average=False`)
             # and is 2D, `(n1, t)` (should always be true)
             for i in range(len(ref)):
@@ -753,7 +781,7 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
                     # n2 will be same, everything else variable
                     ref[i][1:] = ref[i][1:] * 0 + pad_value
                 else:
-                    ref[i] *= 0
+                    ref[i] = ref[i] * 0
 
             while len(packed[pair][n2_idx]) < n_n1_frs_max:
                 packed[pair][n2_idx].append(list(ref))
@@ -811,6 +839,12 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
             combined_phi_f = c_phi_f
         combined_phi_t = c_phi_t
 
+    # `3` won't pack `phi_f` with `psi_f` so can't pack `phi_t * phi_f` along
+    # `phi_t * psi_f`, must pack with `psi_t * phi_f` instead
+    if structure == 3:
+        _len = len(c_phi_t[0])
+        combined_phi_f.insert(0, c_phi_t[0][_len//2:_len//2 + 1])
+
     # pack spinned (+ `phi` maybe)
     assert len(combined_down) == len(combined), (
         len(combined_down), len(combined))
@@ -820,13 +854,15 @@ def pack_coeffs_jtfs(Scx, meta, structure=1, sample_idx=None,
         if not separate_lowpass:
             combined.insert(0, c_phi_t[0])
         combined_up = None
-
     else:
         combined_up = combined
-        if not separate_lowpass and structure == 4:
+        if not separate_lowpass:
             _len = len(c_phi_t[0])
-            combined_up.insert(  0, c_phi_t[0][:_len//2 + 1])
-            combined_down.insert(0, c_phi_t[0][_len//2:])
+            # `3` never includes `phi_f` in spinned, so exclude `phi_t * phi_f`
+            idx_up   = _len//2 + 1 if structure == 4 else _len//2
+            idx_down = _len//2     if structure == 4 else _len//2 + 1
+            combined_up.insert(  0, c_phi_t[0][:idx_up])
+            combined_down.insert(0, c_phi_t[0][idx_down:])
 
     # reverse ordering of `n1` ###############################################
     if combined_up is not None:
@@ -1215,11 +1251,12 @@ def _iterate_coeffs(Scx, meta, pair, fn=None, norm_fn=None, factor=None):
     return E_flat, E_slices
 
 
-def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
-                            max_pad_factor=None, max_pad_factor_fr=None,
-                            pad_mode=None, pad_mode_fr=None, average=None,
-                            average_fr=None, sampling_filters_fr=None,
-                            r_psi=None, analytic=None, jtfs=False, backend=None,
+def est_energy_conservation(x, sc=None, T=None, F=None, J=None, J_fr=None,
+                            Q=None, Q_fr=None, max_pad_factor=None,
+                            max_pad_factor_fr=None, pad_mode=None,
+                            pad_mode_fr=None, average=None, average_fr=None,
+                            sampling_filters_fr=None, r_psi=None, analytic=None,
+                            out_3D=None, aligned=None, jtfs=False, backend=None,
                             verbose=True, get_out=False):
     """Estimate energy conservation given scattering configurations, especially
     scale of averaging. With default settings, passing only `T`/`F`, computes the
@@ -1236,13 +1273,16 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
     sc : `Scattering1D` / `TimeFrequencyScattering1D` / None
         Scattering object to use. If None, will create per parameters.
 
-    T, F, J, J_fr, max_pad_factor, max_pad_factor_fr, pad_mode, pad_mode_fr,
-    average, average_fr, sampling_filters_fr, r_psi, analytic:
+    T, F, J, J_fr, Q, Q_fr, max_pad_factor, max_pad_factor_fr, pad_mode,
+    pad_mode_fr, average, average_fr, sampling_filters_fr, r_psi, analytic,
+    out_3D, aligned:
         Scattering parameters.
 
     jtfs : bool (default False)
         Whether to estimate per JTFS; if False, does time scattering.
         Must pass also with `sc` to indicate which object it is.
+        If `sc` is passed, won't use unaveraged variant where appropriate,
+        which won't provide upper bound on energy if `sc(average_fr=True)`.
 
     backend : None / str
         Backend to use (defaults to torch w/ GPU if available).
@@ -1266,21 +1306,26 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
         Scattering object (if `get_out==True`).
     """
     # warn if passing params alongside `sc`
-    kw = dict(T=T, F=F, J=J, J_fr=J_fr, max_pad_factor=max_pad_factor,
-              max_pad_factor_fr=max_pad_factor_fr, pad_mode=pad_mode,
-              pad_mode_fr=pad_mode_fr, average=average, average_fr=average_fr,
-              sampling_filters_fr=sampling_filters_fr)
-    tm_params = ('T', 'J', 'max_pad_factor', 'pad_mode', 'average')
-    fr_params = ('F', 'J_fr', 'max_pad_factor_fr', 'pad_mode_fr', 'average_fr',
-                 'sampling_filters_fr')
+    _kw = dict(T=T, F=F, J=J, J_fr=J_fr, Q=Q, Q_fr=Q_fr,
+               max_pad_factor=max_pad_factor, max_pad_factor_fr=max_pad_factor_fr,
+               pad_mode=pad_mode, pad_mode_fr=pad_mode_fr,
+               average=average, average_fr=average_fr,
+               sampling_filters_fr=sampling_filters_fr,
+               out_3D=out_3D, aligned=aligned)
+    tm_params = ('T', 'J', 'Q', 'max_pad_factor', 'pad_mode', 'average')
+    fr_params = ('F', 'J_fr', 'Q_fr', 'max_pad_factor_fr', 'pad_mode_fr',
+                 'average_fr', 'sampling_filters_fr', 'out_3D', 'aligned')
     all_params = (*tm_params, *fr_params)
-    if sc is not None and any(kw[arg] is not None for arg in all_params):
+    if sc is not None and any(_kw[arg] is not None for arg in all_params):
         warnings.warn("`sc` object provided - parametric arguments ignored.")
-    elif not jtfs and any(kw[arg] is not None for arg in fr_params):
+    elif not jtfs and any(_kw[arg] is not None for arg in fr_params):
         warnings.warn("passed JTFS parameters with `jtfs=False` -- ignored.")
 
     # create scattering object, if not provided
-    if sc is None:
+    if sc is not None:
+        if jtfs:
+            sc_u = sc_a = sc
+    else:
         if jtfs:
             from kymatio import TimeFrequencyScattering1D as SC
         else:
@@ -1288,7 +1333,8 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
 
         # handle args & pack parameters
         N = x.shape[-1]
-        Q = (8, 3)
+        if Q is None:
+            Q = (8, 3)
         if pad_mode is None:
             pad_mode = 'reflect'
         if r_psi is None:
@@ -1328,12 +1374,15 @@ def est_energy_conservation(x, T=None, F=None, sc=None, J=None, J_fr=None,
                 analytic = True  # library default
             if sampling_filters_fr is None:
                 sampling_filters_fr = 'resample'
+            if Q_fr is None:
+                Q_fr = 4
 
             # pack JTFS args
             kw.update(**dict(max_pad_factor_fr=max_pad_factor_fr, F=F,
                              pad_mode_fr=pad_mode_fr, average_fr=average_fr,
-                             analytic=analytic, Q_fr=4, out_type='dict:list',
-                             sampling_filters_fr=sampling_filters_fr))
+                             analytic=analytic, Q_fr=Q_fr, out_type='dict:list',
+                             sampling_filters_fr=sampling_filters_fr,
+                             out_3D=out_3D, aligned=aligned))
             if average is None:
                 kw_u = dict(**kw, average=False)
                 kw_a = dict(**kw, average=True)
@@ -2021,15 +2070,15 @@ def energy(x, kind='l2'):
     B = ExtendedUnifiedBackend(x)
     out = (B.norm(x, ord=1) if kind == 'l1' else
            B.norm(x, ord=2)**2)
-    if np.sum(out.size) == 1:
+    if np.prod(out.shape) == 1:
         out = float(out)
     return out
 
 
-def l2(x, axis=None):
+def l2(x, axis=None, keepdims=True):
     """`sqrt(sum(abs(x)**2))`."""
     B = ExtendedUnifiedBackend(x)
-    return B.norm(x, ord=2, axis=axis)
+    return B.norm(x, ord=2, axis=axis, keepdims=keepdims)
 
 def rel_l2(x0, x1, axis=None, adj=False):
     """Coeff distance measure; Eq 2.24 in
@@ -2039,10 +2088,10 @@ def rel_l2(x0, x1, axis=None, adj=False):
     return l2(x1 - x0, axis) / ref
 
 
-def l1(x, axis=None):
+def l1(x, axis=None, keepdims=True):
     """`sum(abs(x))`."""
     B = ExtendedUnifiedBackend(x)
-    return B.norm(x, ord=1)
+    return B.norm(x, ord=1, axis=axis, keepdims=keepdims)
 
 def rel_l1(x0, x1, adj=False, axis=None):
     ref = l1(x0, axis) if not adj else (l1(x0, axis) + l1(x1, axis)) / 2

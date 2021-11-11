@@ -134,7 +134,6 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
                 return True
         return False
 
-
     # conjugate to left of left bound
     assert is_in(ind_start), (ind_start - 1, slices_contiguous)
     # do not conjugate left bound
@@ -150,9 +149,12 @@ def conj_reflections(backend, x, ind_start, ind_end, k, N, pad_left, pad_right,
     B = get_kymatio_backend(backend_name)
 
     # conjugate and assign
-    inplace = bool(backend_name == 'numpy' or
-                   (backend_name == 'torch' and
-                    not getattr(x, 'requires_grad', False)))
+    if backend_name == 'torch':
+        import torch
+        torch110 = bool(int(torch.__version__.split('.')[1]) >= 10)
+        inplace = bool(torch110 or not getattr(x, 'requires_grad', False))
+    else:
+        inplace = bool(backend_name == 'numpy')
     for slc in slices_contiguous:
         x = B.assign_slice(x, B.conj(x[..., slc], inplace=inplace),
                            index_axis_with_array(slc, axis=-1, ndim=x.ndim))

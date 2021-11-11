@@ -119,11 +119,15 @@ class TorchBackend:
 
     @classmethod
     def conj(cls, x, inplace=False):
-        if inplace and getattr(x, 'requires_grad', False):
+        torch110 = bool(int(torch.__version__.split('.')[1]) >= 10)
+        if inplace and (not torch110 and getattr(x, 'requires_grad', False)):
             raise Exception("Torch autograd doesn't support `out=`")
         if inplace:
-            out = torch.conj(x, out=x)
+            out = (torch.conj(x) if torch110 else
+                   torch.conj(x, out=x))
         else:
+            if torch110:
+                x = x.detach().clone()
             out = (torch.conj(x) if cls._is_complex(x) else
                    x)
         return out
