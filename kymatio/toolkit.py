@@ -59,7 +59,7 @@ def _iterate_apply(Scx, fn):
 
 
 def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
-              mu=None, C_mult=5):
+              mu=None, C_mult=None):
     """Log-normalize + (optionally) standardize coefficients for learning
     algorithm suitability.
 
@@ -97,6 +97,10 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
 
     mu : float / None
         In case precomputed; see "Online computation".
+
+    C_mult : float / None
+        Multiplies `C`. Useful if the default `C` compute scheme is appropriate
+        but needs adjusting. Defaults to `5` if `C` is None, else to `1`.
 
     Returns
     -------
@@ -215,6 +219,8 @@ def normalize(X, rscaling='l1', mean_axis=(1, 2), std_axis=(1, 2), C=None,
     # rescale
     Xnorm = X / mu
     # contraction factor
+    if C_mult is None:
+        C_mult = 5 if C is None else 1
     if C is None:
         C = 1 / sparse_mean(B.abs(Xnorm), iters=4)
     C *= C_mult
