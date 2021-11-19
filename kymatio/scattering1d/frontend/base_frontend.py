@@ -12,6 +12,7 @@ from ..filter_bank import (scattering_filter_factory, periodize_filter_fourier,
 from ..utils import (compute_border_indices, compute_padding,
                      compute_minimum_support_to_pad,
                      compute_meta_scattering,
+                     compute_meta_jtfs,
                      precompute_size_scattering)
 
 
@@ -706,7 +707,12 @@ class TimeFrequencyScatteringBase1D():
         meta : dictionary
             See `help(kymatio.scattering1d.utils.compute_meta_jtfs)`.
         """
-        return {}
+        return compute_meta_jtfs(self.J_pad, self.J, self.Q, self.J_fr, self.Q_fr,
+                                 self.T, self.F, self.aligned, self.out_3D,
+                                 self.out_type, self.out_exclude,
+                                 self.sampling_filters_fr, self.average,
+                                 self.average_global, self.average_global_phi,
+                                 self.oversampling, self.r_psi, self.scf)
 
     @property
     def fr_attributes(self):
