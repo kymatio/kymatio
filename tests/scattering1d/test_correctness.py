@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Tests related to Scattering1D, and for utilities."""
-import pytest
+import pytest, warnings
 import numpy as np
 import scipy.signal
 from utils import cant_import
@@ -284,6 +284,23 @@ def _get_conjugation_indices(N, K, pad_left, pad_right, trim_tm):
 
     out = slices_contiguous
     return out, rp
+
+
+def cant_import(backend_name):
+    if backend_name == 'numpy':
+        return False
+    elif backend_name == 'torch':
+        try:
+            import torch
+        except ImportError:
+            warnings.warn("Failed to import torch")
+            return True
+    elif backend_name == 'tensorflow':
+        try:
+            import tensorflow
+        except ImportError:
+            warnings.warn("Failed to import tensorflow")
+            return True
 
 
 if __name__ == '__main__':
