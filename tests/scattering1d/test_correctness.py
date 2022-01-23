@@ -3,7 +3,6 @@
 import pytest, warnings
 import numpy as np
 import scipy.signal
-from utils import cant_import
 from kymatio import Scattering1D
 from kymatio.scattering1d.backend.agnostic_backend import (
     pad, stride_axis, unpad_dyadic, _emulate_get_conjugation_indices)
