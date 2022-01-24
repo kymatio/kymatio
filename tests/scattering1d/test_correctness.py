@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Tests related to Scattering1D, and for utilities."""
-import pytest, warnings
+import pytest
 import numpy as np
 import scipy.signal
 from kymatio import Scattering1D
 from kymatio.scattering1d.backend.agnostic_backend import (
-    pad, stride_axis, unpad_dyadic, _emulate_get_conjugation_indices)
+    pad, stride_axis, unpad_dyadic)
 from kymatio.toolkit import rel_l2
 
 # set True to execute all test functions without pytest
@@ -140,80 +140,8 @@ def test_pad_numpy():
     _test_padding('numpy')
     _test_pad_axis('numpy')
 
-
-def test_pad_torch():
-    if cant_import('torch'):
-        return
-    _test_padding('torch')
-    _test_pad_axis('torch')
-
-
-def test_pad_tensorflow():
-    if cant_import('tensorflow'):
-        return
-    _test_padding('tensorflow')
-    _test_pad_axis('tensorflow')
-
-
 def test_subsample_fourier_numpy():
     _test_subsample_fourier_axis('numpy')
-
-
-def test_subsample_fourier_torch():
-    if cant_import('torch'):
-        return
-    _test_subsample_fourier_axis('torch')
-
-
-def test_subsample_fourier_tensorflow():
-    if cant_import('tensorflow'):
-        return
-    _test_subsample_fourier_axis('tensorflow')
-
-
-def test_emulate_get_conjugation_indices():
-    """Test that `conj_reflections` indices fetcher works correctly."""
-    for N in (123, 124, 125, 126, 127, 128, 129, 159, 180, 2048, 9589, 65432):
-      for K in (1, 2, 3, 4, 5, 6):
-        for pad_factor in (1, 2, 3, 4):
-          for trim_tm in (0, 1, 2, 3, 4):
-              if trim_tm > pad_factor:
-                  continue
-              test_params = dict(N=N, K=K, pad_factor=pad_factor)
-              test_params_str = '\n'.join([f'{k}={v}' for k, v in
-                                           test_params.items()])
-
-              padded_len = 2**pad_factor * int(2**np.ceil(np.log2(N)))
-              pad_left = int(np.ceil((padded_len - N) / 2))
-              pad_right = padded_len - pad_left - N
-
-              kw = dict(N=N, K=K, pad_left=pad_left, pad_right=pad_right,
-                        trim_tm=trim_tm)
-              out0, rp = _get_conjugation_indices(**kw)
-              out1 = _emulate_get_conjugation_indices(**kw)
-
-              errmsg = "{}\n{}\n{}".format(out0, out1, test_params_str)
-
-              # first validate the original output ###########################
-              # check by sign flipping at obtained slices and adding to
-              # original then seeing if it sums to zero with original
-              # in at least as many places as there are indices
-              rp0 = rp[::2**K]
-              rp1 = rp0.copy()
-              for slc in out0:
-                  rp1[slc] *= -1
-
-              n_zeros_min = sum((s.stop - s.start) for s in out0)
-              n_zeros_sum = np.sum((rp0 + rp1) == 0)
-
-              if n_zeros_sum < n_zeros_min:
-                  raise AssertionError("{} < {}\n{}".format(
-                      n_zeros_sum, n_zeros_min, errmsg))
-
-              # now assert equality with the emulation #######################
-              for s0, s1 in zip(out0, out1):
-                  assert s0.start == s1.start, errmsg
-                  assert s0.stop  == s1.stop,  errmsg
 
 
 #### utilities ###############################################################
@@ -285,32 +213,10 @@ def _get_conjugation_indices(N, K, pad_left, pad_right, trim_tm):
     return out, rp
 
 
-def cant_import(backend_name):
-    if backend_name == 'numpy':
-        return False
-    elif backend_name == 'torch':
-        try:
-            import torch
-        except ImportError:
-            warnings.warn("Failed to import torch")
-            return True
-    elif backend_name == 'tensorflow':
-        try:
-            import tensorflow
-        except ImportError:
-            warnings.warn("Failed to import tensorflow")
-            return True
-
-
 if __name__ == '__main__':
     if run_without_pytest:
         test_T()
         test_pad_numpy()
-        test_pad_torch()
-        test_pad_tensorflow()
         test_subsample_fourier_numpy()
-        test_subsample_fourier_torch()
-        test_subsample_fourier_tensorflow()
-        test_emulate_get_conjugation_indices()
     else:
         pytest.main([__file__, "-s"])

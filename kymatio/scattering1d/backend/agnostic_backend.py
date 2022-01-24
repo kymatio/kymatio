@@ -27,19 +27,24 @@ def pad(x, pad_left, pad_right, pad_mode='reflect', axis=-1, out=None):
     """
     import numpy as np
 
+    if pad_mode == 'zero':
+        pad_mode = 'constant'
+    pad_widths = [[0, 0]] * x.ndim
+    pad_widths[axis] = [pad_left, pad_right]
+
     # handle backend
     backend, backend_name = _infer_backend(x, get_name=True)
     if backend_name == 'torch':
-        info = {k: getattr(x, k) for k in ('dtype', 'device', 'layout')}
+        info = {k: getattr(x, k) for k in ('dtype', 'device')}
         x = x.cpu().detach().numpy()
-        x = np.pad(x, [pad_left, pad_right], mode=pad_mode, axis=axis)
-        x = backend.from_numpy(x, **info)
+        x = np.pad(x, pad_widths, mode=pad_mode)
+        x = backend.tensor(x, **info)
     elif backend_name == 'tensorflow':
         info = {k: getattr(x, k) for k in ('dtype',)}
-        x = np.pad(x, [pad_left, pad_right], mode=pad_mode, axis=axis)
+        x = np.pad(x, pad_widths, mode=pad_mode)
         x = backend.convert_to_tensor(x, **info)
     else:
-        x = np.pad(x, [pad_left, pad_right], mode=pad_mode, axis=axis)
+        x = np.pad(x, pad_widths, mode=pad_mode)
     return x
 
 
