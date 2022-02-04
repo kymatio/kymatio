@@ -40,5 +40,3 @@ def test_Scattering1D(self):
   Sg1 = model1.predict(x)
   assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
   
-if __name__ == '__main__':
- test_Scattering1D(0)
