@@ -670,8 +670,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T,
         Each value for k is an array (or tensor) of size 2**(J_support - k)
         containing the Fourier transform of the filter after subsampling by
         2**k
-    * 'width': temporal width
-    * 'support': temporal support
+    * 'width': temporal width (interval of temporal invariance, i.e. its "T")
+    * 'support': temporal support (interval outside which wavelet is ~0)
 
     Parameters
     ----------
@@ -877,8 +877,8 @@ def psi_fr_factory(J_pad_frs_max_init, J_fr, Q_fr, N_frs, N_fr_scales_max,
     * 'sigma': frequential width
     * 'j': subsampling factor from 0 to `J_fr` (or potentially less if
       `sampling_psi_fr != 'resample'`).
-    * 'width': temporal width (scale; interval of imposed invariance)
-    * 'support': temporal support (duration of decay)
+    * 'width': temporal width (interval of temporal invariance, i.e. its "T")
+    * 'support': temporal support (interval outside which wavelet is ~0)
 
     Parameters
     ----------
