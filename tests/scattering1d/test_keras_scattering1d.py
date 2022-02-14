@@ -6,7 +6,7 @@ import os
 import numpy as np
 import io
 
-def test_Scattering1D(self):
+def test_Scattering1D():
   """
   Applies scattering on a stored signal to make sure its output agrees with
   a previously calculated version.
