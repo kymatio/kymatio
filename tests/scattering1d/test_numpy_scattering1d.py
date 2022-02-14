@@ -10,9 +10,9 @@ backends = []
 
 from kymatio.scattering1d.backend.numpy_backend import backend
 backends.append(backend)
+@pytest.mark.parametrize('backend', backends)
 
 class TestScattering1DNumpy:
-    @pytest.mark.parametrize('backend', backends)
     def test_Scattering1D(self, backend):
         """
         Applies scattering on a stored signal to make sure its output agrees with
