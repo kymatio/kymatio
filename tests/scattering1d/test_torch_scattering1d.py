@@ -254,11 +254,11 @@ def test_precompute_size_scattering(device, backend, random_state=42):
 
     J = 6
     Q = 8
-    T = 2**12
+    N = 2**12
 
-    scattering = Scattering1D(J, T, Q, vectorize=False, backend=backend, frontend='torch')
+    scattering = Scattering1D(J, N, Q, vectorize=False, backend=backend, frontend='torch')
 
-    x = torch.randn(2, T)
+    x = torch.randn(2, N)
 
     scattering.to(device)
     x = x.to(device)
@@ -407,7 +407,7 @@ def test_T(device, backend):
 
     # default
     N = x.shape[-1]
-    T = N
+    T = 2**J
     scattering0 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='torch'
                                ).to(device)
 
