@@ -3,10 +3,12 @@ pipeline {
   options {
     disableConcurrentBuilds()
     buildDiscarder(logRotator(numToKeepStr: '8', daysToKeepStr: '20'))
-    timeout(time: 1, unit: 'HOURS')
   }
   stages {
     stage('main') {
+      options {
+        timeout(time: 30, unit: 'MINUTES')
+      }
       agent {
 	dockerfile {
 	  dir 'tools'
