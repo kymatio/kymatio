@@ -1554,7 +1554,9 @@ def energy_norm_filterbank(psi_fs0, psi_fs1=None, phi_f=None, J=None, log2_T=Non
         lp_max = lp_sum[start:end].max()
         factor = np.sqrt(peak_target / lp_max)
         psi_fs[n] *= factor
-        scaling_factors[s_idx][n] = factor
+        if n not in scaling_factors[s_idx]:
+            scaling_factors[s_idx][n] = 1
+        scaling_factors[s_idx][n] *= factor
 
     def correct_nyquist(psi_fs_all, peak_idxs, lp_sum):
         def _do_correction(start, end, s_idx=1):
