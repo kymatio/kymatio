@@ -1,4 +1,3 @@
-import pytest
 import numpy as np
 import scipy.signal
 from kymatio.numpy import Scattering1D
@@ -53,10 +52,3 @@ def _l1l2(x):
 def l1l2(x0, x1):
     """Coeff distance measure; Thm 2.12 in https://arxiv.org/abs/1101.2286"""
     return _l1l2(x1 - x0) / _l1l2(x0)
-
-
-if __name__ == '__main__':
-    if run_without_pytest:
-        test_T()
-    else:
-        pytest.main([__file__, "-s"])
