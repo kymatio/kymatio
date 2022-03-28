@@ -673,22 +673,22 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         N = 2**J_support
 
         psi_f = {}
-        psi_f[0] = morlet_1d(
+        psi_f['0'] = morlet_1d(
             N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
             eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
             factor_subsampling = 2**subsampling
-            psi_f[subsampling] = periodize_filter_fourier(
-                psi_f[0], nperiods=factor_subsampling)
+            psi_f[f"{subsampling}"] = periodize_filter_fourier(
+                psi_f['0'], nperiods=factor_subsampling)
         psi2_f.append(psi_f)
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         N = 2**J_support
-        psi1_f.append({0: morlet_1d(
+        psi1_f.append({'0': morlet_1d(
             N, xi1[n1], sigma1[n1], normalize=normalize,
             P_max=P_max, eps=eps)})
 
@@ -704,12 +704,12 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    phi_f['0'] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter
-        phi_f[subsampling] = periodize_filter_fourier(
-            phi_f[0], nperiods=factor_subsampling)
+        phi_f[f"{subsampling}"] = periodize_filter_fourier(
+            phi_f['0'], nperiods=factor_subsampling)
 
     # Embed the meta information within the filters
     for (n1, j1) in enumerate(j1s):
@@ -727,7 +727,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, r_psi=math.sqrt(0.5),
     # compute the support size allowing to pad without boundary errors
     # at the finest resolution
     t_max_phi = compute_temporal_support(
-        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
+        phi_f['0'].reshape(1, -1), criterion_amplitude=criterion_amplitude)
 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi

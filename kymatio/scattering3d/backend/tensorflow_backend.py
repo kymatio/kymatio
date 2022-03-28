@@ -87,7 +87,7 @@ class TensorFlowBackend3D(TensorFlowBackend):
                 complex multiplication of A with B.
 
         """
-        if B.ndim != 3:
+        if len(B.shape) != 3: # Previously, this was B.ndim !=3
             raise RuntimeError('The dimension of the second input must be 3.')
 
         Cr = tf.cast(tf.math.real(A) * np.real(B) - tf.math.imag(A) * np.imag(B), tf.complex64)

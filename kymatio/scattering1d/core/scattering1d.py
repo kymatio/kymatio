@@ -77,7 +77,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
     k0 = max(J - oversampling, 0)
 
     if average:
-        S_0_c = cdgmm(U_0_hat, phi[0])
+        S_0_c = cdgmm(U_0_hat, phi['0'])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
 
@@ -96,7 +96,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         k1 = max(j1 - oversampling, 0)
 
         assert psi1[n1]['xi'] < 0.5 / (2**k1)
-        U_1_c = cdgmm(U_0_hat, psi1[n1][0])
+        U_1_c = cdgmm(U_0_hat, psi1[n1]['0'])
         U_1_hat = subsample_fourier(U_1_c, 2**k1)
         U_1_c = ifft(U_1_hat)
 
@@ -109,7 +109,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
         if average:
             # Convolve with phi_J
             k1_J = max(J - k1 - oversampling, 0)
-            S_1_c = cdgmm(U_1_hat, phi[k1])
+            S_1_c = cdgmm(U_1_hat, phi[f"{k1}"])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
 
@@ -132,7 +132,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                     # convolution + downsampling
                     k2 = max(j2 - k1 - oversampling, 0)
 
-                    U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
+                    U_2_c = cdgmm(U_1_hat, psi2[n2][f"{k1}"])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
                     # take the modulus
                     U_2_c = ifft(U_2_hat)
@@ -145,7 +145,7 @@ def scattering1d(x, pad, unpad, backend, J, psi1, psi2, phi, pad_left=0,
                         # Convolve with phi_J
                         k2_J = max(J - k2 - k1 - oversampling, 0)
 
-                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
+                        S_2_c = cdgmm(U_2_hat, phi[f"{k1 + k2}"])
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_J)
                         S_2_r = irfft(S_2_hat)
 
