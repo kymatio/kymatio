@@ -477,7 +477,7 @@ def compute_params_filterbank(sigma_low, Q, r_psi=math.sqrt(0.5), alpha=5.):
         # get the last key
         last_xi = xi[-1]
     # fill num_interm wavelets between last_xi and 0, both excluded
-    num_intermediate = Q - 1
+    num_intermediate = Q
     for q in range(1, num_intermediate + 1):
         factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
         new_xi = factor * last_xi
