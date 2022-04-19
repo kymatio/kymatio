@@ -8,10 +8,10 @@ from .base_frontend import ScatteringBase1D
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
-    def __init__(self, J, shape, Q=1, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
             oversampling=0, vectorize=True, out_type='array', backend='torch'):
         ScatteringTorch.__init__(self)
-        ScatteringBase1D.__init__(self, J, shape, Q, max_order, average,
+        ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
                 oversampling, vectorize, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
@@ -103,12 +103,12 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         # treat the arguments
         if self.vectorize:
             size_scattering = precompute_size_scattering(
-                self.J, self.Q, max_order=self.max_order, detail=True)
+                self.J, self.Q, self.T, max_order=self.max_order, detail=True)
         else:
             size_scattering = 0
 
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.J, self.psi1_f, self.psi2_f, self.phi_f,\
+        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                        pad_left=self.pad_left, pad_right=self.pad_right,
                        ind_start=self.ind_start, ind_end=self.ind_end,

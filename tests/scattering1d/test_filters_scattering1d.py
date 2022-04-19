@@ -168,7 +168,7 @@ def test_calibrate_scattering_filters():
     for J in J_range:
         for Q in Q_range:
             sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-                calibrate_scattering_filters( J, Q)
+                calibrate_scattering_filters( J, Q, 2**J)
             # Check that all sigmas are > 0
             assert sigma_low > 0
             for sig in sigma1:
@@ -182,7 +182,7 @@ def test_calibrate_scattering_filters():
                 assert sig >= sigma_low
 
     with pytest.raises(ValueError) as ve:
-        calibrate_scattering_filters(J_range[0], 0.9)
+        calibrate_scattering_filters(J_range[0], 0.9, 2**J_range[0])
     assert "should always be >= 1" in ve.value.args[0]
 
 

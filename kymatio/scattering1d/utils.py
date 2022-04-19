@@ -2,7 +2,7 @@ import numpy as np
 import math
 from .filter_bank import scattering_filter_factory, calibrate_scattering_filters
 
-def compute_border_indices(J, i0, i1):
+def compute_border_indices(log2_T, J, i0, i1):
     """
     Computes border indices at all scales which correspond to the original
     signal boundaries after padding.
@@ -12,10 +12,15 @@ def compute_border_indices(J, i0, i1):
     This function finds the integers i0, i1 for all temporal subsamplings
     by 2**J, being conservative on the indices.
 
+    Maximal subsampling is by `2**log2_T` if `average=True`, else by
+    `2**max(log2_T, J)`. We compute indices up to latter to be sure.
+
     Parameters
     ----------
+    log2_T : int
+        Maximal subsampling by low-pass filtering is `2**log2_T`.
     J : int
-        maximal subsampling by 2**J
+        Maximal subsampling by band-pass filtering is `2**J`.
     i0 : int
         start index of the original signal at the finest resolution
     i1 : int
@@ -23,29 +28,29 @@ def compute_border_indices(J, i0, i1):
 
     Returns
     -------
-    ind_start, ind_end: dictionaries with keys in [0, ..., J] such that the
+    ind_start, ind_end: dictionaries with keys in [0, ..., log2_T] such that the
         original signal is in padded_signal[ind_start[j]:ind_end[j]]
         after subsampling by 2**j
     """
     ind_start = {0: i0}
     ind_end = {0: i1}
-    for j in range(1, J + 1):
+    for j in range(1, max(log2_T, J) + 1):
         ind_start[j] = (ind_start[j - 1] // 2) + (ind_start[j - 1] % 2)
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
 
-def compute_padding(J_pad, T):
+def compute_padding(J_pad, N):
     """
     Computes the padding to be added on the left and on the right
     of the signal.
 
-    It should hold that 2**J_pad >= T
+    It should hold that 2**J_pad >= N
 
     Parameters
     ----------
     J_pad : int
         2**J_pad is the support of the padded signal
-    T : int
+    N : int
         original signal support size
 
     Returns
@@ -53,18 +58,18 @@ def compute_padding(J_pad, T):
     pad_left: amount to pad on the left ("beginning" of the support)
     pad_right: amount to pad on the right ("end" of the support)
     """
-    T_pad = 2**J_pad
-    if T_pad < T:
+    N_pad = 2**J_pad
+    if N_pad < N:
         raise ValueError('Padding support should be larger than the original' +
                          'signal size!')
-    to_add = 2**J_pad - T
+    to_add = 2**J_pad - N
     pad_left = to_add // 2
     pad_right = to_add - pad_left
-    if max(pad_left, pad_right) >= T:
+    if max(pad_left, pad_right) >= N:
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
 
-def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
+def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
                                        sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
 
@@ -75,12 +80,15 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
 
     Parameters
     ----------
-    T : int
+    N : int
         temporal size of the input signal
     J : int
         scale of the scattering
     Q : int
         number of wavelets per octave
+    T : int
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and maximum subsampling
     normalize : string, optional
         normalization type for the wavelets.
         Only `'l2'` or `'l1'` normalizations are supported.
@@ -121,16 +129,16 @@ def compute_minimum_support_to_pad(T, J, Q, criterion_amplitude=1e-3,
         minimal value to pad the signal on one size to avoid any
         boundary error.
     """
-    J_tentative = int(np.ceil(np.log2(T)))
+    J_tentative = int(np.ceil(np.log2(N)))
     _, _, _, t_max_phi = scattering_filter_factory(
-        J_tentative, J, Q, normalize=normalize, to_torch=False,
+        J_tentative, J, Q, T, normalize=normalize, to_torch=False,
         max_subsampling=0, criterion_amplitude=criterion_amplitude,
         r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
     min_to_pad = 3 * t_max_phi
     return min_to_pad
 
 
-def precompute_size_scattering(J, Q, max_order=2, detail=False):
+def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
     """Get size of the scattering transform
 
     The number of scattering coefficients depends on the filter
@@ -145,6 +153,9 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
     Q : int >= 1
         The number of first-order wavelets per octave.
         Second-order wavelets are fixed to one wavelet per octave.
+    T : int
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and maximum subsampling
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
@@ -160,7 +171,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
         the number of coefficients in each order.
     """
     sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-        calibrate_scattering_filters(J, Q)
+        calibrate_scattering_filters(J, Q, T)
 
     size_order0 = 1
     size_order1 = len(xi1)
@@ -181,7 +192,7 @@ def precompute_size_scattering(J, Q, max_order=2, detail=False):
             return size_order0 + size_order1
 
 
-def compute_meta_scattering(J, Q, max_order=2):
+def compute_meta_scattering(J, Q, T, max_order=2):
     """Get metadata on the transform.
 
     This information specifies the content of each scattering coefficient,
@@ -195,6 +206,10 @@ def compute_meta_scattering(J, Q, max_order=2):
     Q : int >= 1
         The number of first-order wavelets per octave.
         Second-order wavelets are fixed to one wavelet per octave.
+    T : int
+        temporal support of low-pass filter, controlling amount of imposed
+        time-shift invariance and maximum subsampling
+
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
         Must be either equal to `1` or `2`. Defaults to `2`.
@@ -224,7 +239,7 @@ def compute_meta_scattering(J, Q, max_order=2):
             in the non-vectorized output.
     """
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-        calibrate_scattering_filters(J, Q)
+        calibrate_scattering_filters(J, Q, T)
 
     meta = {}
 

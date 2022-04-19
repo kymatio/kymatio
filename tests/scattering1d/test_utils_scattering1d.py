@@ -38,7 +38,7 @@ def test_border_indices(random_state=42):
     x = np.ones(T)
     x[i0:i1] = 0.
 
-    ind_start, ind_end = compute_border_indices(J, i0, i1)
+    ind_start, ind_end = compute_border_indices(J_signal, J, i0, i1)
 
     for j in range(J + 1):
         assert j in ind_start.keys()

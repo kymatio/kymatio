@@ -254,11 +254,11 @@ def test_precompute_size_scattering(device, backend, random_state=42):
 
     J = 6
     Q = 8
-    T = 2**12
+    N = 2**12
 
-    scattering = Scattering1D(J, T, Q, vectorize=False, backend=backend, frontend='torch')
+    scattering = Scattering1D(J, N, Q, vectorize=False, backend=backend, frontend='torch')
 
-    x = torch.randn(2, T)
+    x = torch.randn(2, N)
 
     scattering.to(device)
     x = x.to(device)
@@ -384,3 +384,48 @@ def test_batch_shape_agnostic(device, backend):
             assert v.shape[-1] == length_ds
             assert v.shape[-2] == 1
             assert v.shape[:-2] == test_shape[:-1]
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_T(device, backend):
+    """
+    Applies scattering on a stored signal with non-default T to make sure its
+    output agrees with a previously calculated version.
+    """
+    test_data_dir = os.path.dirname(__file__)
+
+    with open(os.path.join(test_data_dir, 'test_data_1d.npz'), 'rb') as f:
+        buffer = io.BytesIO(f.read())
+        data = np.load(buffer)
+
+
+    x = torch.from_numpy(data['x']).to(device)
+    J = data['J']
+    Q = data['Q']
+    Sx0 = torch.from_numpy(data['Sx']).to(device)
+
+    # default
+    N = x.shape[-1]
+    T = 2**J
+    scattering0 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='torch'
+                               ).to(device)
+
+    # adjust T
+    sigma_low_scale_factor = 2
+    T = 2**(J - sigma_low_scale_factor)
+    scattering1 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='torch'
+                               ).to(device)
+
+
+    if backend.name == 'torch_skcuda' and device == 'cpu':
+        with pytest.raises(TypeError) as ve:
+            for scattering in (scattering0, scattering1):
+                _ = scattering(x)
+        assert "CPU" in ve.value.args[0]
+        return
+
+    Sg0 = scattering0(x)
+    Sg1 = scattering1(x)
+    assert np.allclose(Sg0, Sx0)
+    assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
