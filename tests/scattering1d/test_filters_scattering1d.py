@@ -275,3 +275,4 @@ def test_spinned_xi_signs():
 
     assert np.all(xi_pos > 0)
     assert np.all(xi_neg < 0)
+    assert np.all(xi_pos == -xi_neg)
