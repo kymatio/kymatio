@@ -124,10 +124,17 @@ def test_transpose_1d():
     shape = (10, 20, 3, 5)
     shape_T = (10, 20, 5, 3)
 
-    x = np.ones(shape)
+    x = np.ones(shape) * 1j
     x_T = backend.transpose(x)
     assert tuple(x_T.shape) == shape_T
 
     x_T_T = backend.transpose(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
+
+    with pytest.raises(TypeError) as record:
+        x = np.ones(shape + (4,))
+        y = backend.transpose(x)
+    assert 'should be complex' in record.value.args[0]
+
+
