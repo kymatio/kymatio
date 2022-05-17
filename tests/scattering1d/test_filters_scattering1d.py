@@ -1,7 +1,7 @@
 """
 Testing all functions in filters_bank
 """
-from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor,
+from kymatio.scattering1d.filter_bank import (scattering_filter_factory, adaptive_choice_P, periodize_filter_fourier, get_normalizing_factor,
     compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
     get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
@@ -229,3 +229,34 @@ def test_compute_temporal_support():
     with pytest.warns(UserWarning) as record:
         compute_temporal_support(h_f)
     assert "too small to avoid border effects" in record[0].message.args[0]
+
+
+def test_filter_bank_length():
+    N = 2**13
+    J = 5
+    T = 2**J
+    Q = 8
+    _, psi1_f, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=False)
+    _, psi1_f_spinned, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=True)
+    assert len(psi1_f)*2 == len(psi1_f_spinned)
+
+
+def test_filter_bank_sum():
+    N = 2**13
+    J = 5
+    T = 2**J
+    Q = 8
+    
+    _, psi1_f, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=False)
+    _, psi1_f_spinned, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=True)
+    probe_frequency = int((7/8)*psi1_f[0][0].shape[0])
+    psi1_f = np.asarray([psi_f[0] for psi_f in psi1_f])
+    psi1_spinned_f = np.asarray([psi_f[0] for psi_f in psi1_f_spinned])
+    
+    lwp = np.sum(np.power(psi1_f, 2), 0)
+    assert lwp[probe_frequency] < 1e-9
+    lwp_spinned = np.sum(np.power(psi1_spinned_f, 2), 0)
+    assert lwp_spinned[probe_frequency] > .8 
+
+
+

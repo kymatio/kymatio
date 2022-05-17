@@ -561,7 +561,7 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
 def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
                               criterion_amplitude=1e-3, normalize='l1',
                               max_subsampling=None, sigma0=0.1, alpha=5.,
-                              P_max=5, eps=1e-7, **kwargs):
+                              P_max=5, eps=1e-7, spinned=False, **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -587,7 +587,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         a value Q >= 12 is recommended in order to separate partials.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and maximum subsampling
+        time-shift invariance and maximum subsampling.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -657,6 +657,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
+
     # compute the spectral parameters of the filters
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
         J_scattering, Q, T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
@@ -665,6 +666,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     phi_f = {}
     psi1_f = []
     psi2_f = []
+
+    if spinned:
+        psi1_spin_f = []
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
@@ -699,10 +703,16 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         N = 2**J_support
-        psi1_f.append({0: morlet_1d(
-            N, xi1[n1], sigma1[n1], normalize=normalize,
-            P_max=P_max, eps=eps)})
-
+        this_psi1_f = morlet_1d(N, xi1[n1], sigma1[n1], normalize=normalize,
+            P_max=P_max, eps=eps)
+        if spinned:
+            this_psi1_conj_f = this_psi1_f.copy()
+            this_psi1_conj_f[1:] = np.flip(this_psi1_conj_f[1:])
+            psi1_spin_f.append({0: this_psi1_conj_f, "spin": -1})
+            psi1_f.append({0: this_psi1_f, "spin": 1})
+        else:
+            psi1_f.append({0: this_psi1_f})
+          
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
     # input it can accept (both 1st and 2nd order)
@@ -711,7 +721,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
         max_sub_phi = min(max(max_subsampling_after_psi1,
-                              max_subsampling_after_psi2), log2_T)
+                          max_subsampling_after_psi2), log2_T)
     else:
         max_sub_phi = max_subsampling
 
@@ -728,6 +738,10 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         psi1_f[n1]['xi'] = xi1[n1]
         psi1_f[n1]['sigma'] = sigma1[n1]
         psi1_f[n1]['j'] = j1
+        if spinned:
+            psi1_spin_f[n1]['xi'] = -xi1[n1]
+            psi1_spin_f[n1]['sigma'] = sigma1[n1]
+            psi1_spin_f[n1]['j'] = j1
     for (n2, j2) in enumerate(j2s):
         psi2_f[n2]['xi'] = xi2[n2]
         psi2_f[n2]['sigma'] = sigma2[n2]
@@ -737,9 +751,11 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     phi_f['j'] = log2_T
 
     # compute the support size allowing to pad without boundary errors
-    # at the finest resolution  # TODO
+    # at the finest resolution
     t_max_phi = compute_temporal_support(
         phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
-
+    if spinned:
+      psi1_f = psi1_f + psi1_spin_f 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi
+
