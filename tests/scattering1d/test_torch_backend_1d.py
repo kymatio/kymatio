@@ -260,8 +260,8 @@ def test_transpose_1d(device, backend, random_state=42):
     """
     Tests the correctness and differentiability of pad_1d
     """
-    shape = (10, 20, 3, 5)
-    shape_T = (10, 20, 5, 3)
+    shape = (10, 20, 3, 5, 2)
+    shape_T = (10, 20, 5, 3, 2)
 
     x = torch.ones(shape)
     x_T = backend.transpose(x)
