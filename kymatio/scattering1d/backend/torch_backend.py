@@ -127,5 +127,10 @@ class TorchBackend1D(TorchBackend):
 
         return _ifft(x)
 
+    @classmethod
+    def transpose(cls, x):
+        cls.complex_check(x)
+
+        return torch.transpose(x, dim0=-2, dim1=-3)
 
 backend = TorchBackend1D
