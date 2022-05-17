@@ -98,4 +98,10 @@ class NumpyBackend1D(NumpyBackend):
 
         return cls._fft.ifft(x)
 
+    @classmethod
+    def transpose(cls, x):
+        cls.complex_check(x)
+
+        return cls._np.moveaxis(x, source=(-1, -2), destination=(-2, -1))
+
 backend = NumpyBackend1D
