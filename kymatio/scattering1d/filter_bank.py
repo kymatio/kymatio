@@ -657,7 +657,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
-
     # compute the spectral parameters of the filters
     sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
         J_scattering, Q, T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
@@ -718,7 +717,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         max_subsampling_after_psi1 = max(j1s)
         max_subsampling_after_psi2 = max(j2s)
         max_sub_phi = min(max(max_subsampling_after_psi1,
-                          max_subsampling_after_psi2), log2_T)
+                              max_subsampling_after_psi2), log2_T)
     else:
         max_sub_phi = max_subsampling
 
@@ -755,4 +754,3 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
       psi1_f = psi1_f + psi1_spin_f 
     # return results
     return phi_f, psi1_f, psi2_f, t_max_phi
-
