@@ -747,7 +747,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     phi_f['j'] = log2_T
 
     # compute the support size allowing to pad without boundary errors
-    # at the finest resolution
+    # at the finest resolution #TODO
     t_max_phi = compute_temporal_support(
         phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
     if spinned:
