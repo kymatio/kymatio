@@ -252,3 +252,22 @@ def test_fft(backend, device):
     print(z_2.shape)
     assert not z_2.shape[-1] == 2
     assert torch.allclose(x_r, z_2)
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_transpose_1d(device, backend, random_state=42):
+    """
+    Tests the correctness and differentiability of pad_1d
+    """
+    shape = (10, 20, 3, 5)
+    shape_T = (10, 20, 5, 3)
+
+    x = torch.ones(shape)
+    x_T = backend.transpose(x)
+    assert tuple(x_T.shape) == shape_T
+
+    x_T_T = backend.transpose(x_T)
+    assert tuple(x_T_T.shape) == shape
+    assert x_T_T.shape == x.shape
+
