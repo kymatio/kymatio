@@ -273,7 +273,7 @@ def test_transpose_1d(device, backend, random_state=42):
 
     with pytest.raises(TypeError) as record:
         x = torch.ones(shape + (4,))
-        y = backend.ifft(x)
+        y = backend.transpose(x)
     assert 'should be complex' in record.value.args[0]
 
 
