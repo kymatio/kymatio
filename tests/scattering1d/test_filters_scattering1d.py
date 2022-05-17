@@ -259,7 +259,7 @@ def test_filter_bank_sum():
     assert lwp_spinned[probe_frequency] > .8 
 
 
-def test_spinned_xi_signs():
+def test_filter_bank_xi_signs():
     N = 2**13
     J = 5
     T = 2**J
