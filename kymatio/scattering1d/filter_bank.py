@@ -688,9 +688,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         N = 2**J_support
 
         psi_f = {}
-        psi_f[0] = morlet_1d(
-            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-            eps=eps)
+        psi_f[0] = morlet_1d(N, xi2[n2], sigma2[n2], 
+                             normalize=normalize, P_max=P_max,eps=eps)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -703,15 +702,13 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         N = 2**J_support
-        this_psi1_f = morlet_1d(N, xi1[n1], sigma1[n1], normalize=normalize,
-            P_max=P_max, eps=eps)
+        this_psi1_f = morlet_1d(N, xi1[n1], sigma1[n1], 
+                                normalize=normalize, P_max=P_max, eps=eps)
+        psi1_f.append({0: this_psi1_f})
         if spinned:
             this_psi1_conj_f = this_psi1_f.copy()
             this_psi1_conj_f[1:] = np.flip(this_psi1_conj_f[1:])
-            psi1_spin_f.append({0: this_psi1_conj_f, "spin": -1})
-            psi1_f.append({0: this_psi1_f, "spin": 1})
-        else:
-            psi1_f.append({0: this_psi1_f})
+            psi1_spin_f.append({0: this_psi1_conj_f})
           
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
