@@ -259,4 +259,19 @@ def test_filter_bank_sum():
     assert lwp_spinned[probe_frequency] > .8 
 
 
+def test_filter_bank_signs():
+    N = 2**13
+    J = 5
+    T = 2**J
+    Q = 8
+    
+    _, psi1_f_spinned, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=True)
 
+    num_filters_per_spin = len(psi1_f_spinned) // 2
+    xi_pos = np.asarray([psi1_f['xi'] 
+                         for psi1_f in psi1_f_spinned[:num_filters_per_spin]])
+    xi_neg = np.asarray([psi1_f['xi'] 
+                         for psi1_f in psi1_f_spinned[num_filters_per_spin:]])
+
+    assert np.all(xi_pos > 0)
+    assert np.all(xi_neg < 0)
