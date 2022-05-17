@@ -231,7 +231,7 @@ def test_compute_temporal_support():
     assert "too small to avoid border effects" in record[0].message.args[0]
 
 
-def test_filter_bank_length():
+def test_filter_bank():
     N = 2**13
     J = 5
     T = 2**J
@@ -239,33 +239,6 @@ def test_filter_bank_length():
     _, psi1_f, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=False)
     _, psi1_f_spinned, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=True)
     assert len(psi1_f)*2 == len(psi1_f_spinned)
-
-
-def test_filter_bank_sum():
-    N = 2**13
-    J = 5
-    T = 2**J
-    Q = 8
-    
-    _, psi1_f, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=False)
-    _, psi1_f_spinned, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=True)
-    probe_frequency = int((7/8)*psi1_f[0][0].shape[0])
-    psi1_f = np.asarray([psi_f[0] for psi_f in psi1_f])
-    psi1_spinned_f = np.asarray([psi_f[0] for psi_f in psi1_f_spinned])
-    
-    lwp = np.sum(np.power(psi1_f, 2), 0)
-    assert lwp[probe_frequency] < 1e-9
-    lwp_spinned = np.sum(np.power(psi1_spinned_f, 2), 0)
-    assert lwp_spinned[probe_frequency] > .8 
-
-
-def test_filter_bank_xi_signs():
-    N = 2**13
-    J = 5
-    T = 2**J
-    Q = 8
-    
-    _, psi1_f_spinned, _, _ = scattering_filter_factory(np.log2(N), J, Q, T, spinned=True)
 
     num_filters_per_spin = len(psi1_f_spinned) // 2
     xi_pos = np.asarray([psi1_f['xi'] 
@@ -276,3 +249,11 @@ def test_filter_bank_xi_signs():
     assert np.all(xi_pos > 0)
     assert np.all(xi_neg < 0)
     assert np.all(xi_pos == -xi_neg)
+    probe_frequency = int((7/8)*psi1_f[0][0].shape[0])
+    psi1_f = np.asarray([psi_f[0] for psi_f in psi1_f])
+    psi1_spinned_f = np.asarray([psi_f[0] for psi_f in psi1_f_spinned])
+    
+    lwp = np.sum(np.power(psi1_f, 2), 0)
+    assert lwp[probe_frequency] < 1e-9
+    lwp_spinned = np.sum(np.power(psi1_spinned_f, 2), 0)
+    assert lwp_spinned[probe_frequency] > .8 
