@@ -97,7 +97,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.signal.ifft(x, name='ifft1d')
 
     @classmethod
-    def transpose(cls, x):
+    def swap_time_frequency(cls, x):
         cls.complex_check(x)
 
         return tf.linalg.matrix_transpose(x)

@@ -117,7 +117,7 @@ def test_fft():
     assert np.allclose(x_r, z_2)
 
 
-def test_transpose_1d():
+def test_swap_time_frequency_1d():
     """
     Tests the correctness and differentiability of pad_1d
     """
@@ -125,16 +125,16 @@ def test_transpose_1d():
     shape_T = (10, 20, 5, 3)
 
     x = np.ones(shape) * 1j
-    x_T = backend.transpose(x)
+    x_T = backend.swap_time_frequency(x)
     assert tuple(x_T.shape) == shape_T
 
-    x_T_T = backend.transpose(x_T)
+    x_T_T = backend.swap_time_frequency(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
 
     with pytest.raises(TypeError) as record:
         x = np.ones(shape + (4,))
-        y = backend.transpose(x)
+        y = backend.swap_time_frequency(x)
     assert 'should be complex' in record.value.args[0]
 
 
