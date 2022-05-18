@@ -258,7 +258,7 @@ def test_fft(backend, device):
 @pytest.mark.parametrize("backend", backends)
 def test_swap_time_frequency_1d(device, backend, random_state=42):
     """
-    Tests the correctness and differentiability of pad_1d
+    Tests the correctness of swap_time_frequency
     """
     shape = (10, 20, 3, 5, 2)
     shape_T = (10, 20, 5, 3, 2)

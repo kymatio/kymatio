@@ -119,7 +119,7 @@ def test_fft():
 
 def test_swap_time_frequency_1d():
     """
-    Tests the correctness and differentiability of pad_1d
+    Tests the correctness of swap_time_frequency
     """
     shape = (10, 20, 3, 5)
     shape_T = (10, 20, 5, 3)
