@@ -256,7 +256,7 @@ def test_fft(backend, device):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_transpose_1d(device, backend, random_state=42):
+def test_swap_time_frequency_1d(device, backend, random_state=42):
     """
     Tests the correctness and differentiability of pad_1d
     """
