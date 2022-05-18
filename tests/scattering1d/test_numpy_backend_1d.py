@@ -124,7 +124,7 @@ def test_swap_time_frequency_1d():
     shape = (10, 20, 3, 5)
     shape_T = (10, 20, 5, 3)
 
-    x = np.ones(shape) * 1j
+    x = np.arange(np.prod(shape)).reshape(shape) * 1j
     x_T = backend.swap_time_frequency(x)
     assert tuple(x_T.shape) == shape_T
 
