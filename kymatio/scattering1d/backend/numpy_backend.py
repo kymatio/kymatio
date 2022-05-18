@@ -99,7 +99,7 @@ class NumpyBackend1D(NumpyBackend):
         return cls._fft.ifft(x)
 
     @classmethod
-    def transpose(cls, x):
+    def swap_time_frequency(cls, x):
         cls.complex_check(x)
 
         return cls._np.moveaxis(x, source=(-1, -2), destination=(-2, -1))

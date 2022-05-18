@@ -256,24 +256,25 @@ def test_fft(backend, device):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_transpose_1d(device, backend, random_state=42):
+def test_swap_time_frequency_1d(device, backend, random_state=42):
     """
-    Tests the correctness and differentiability of pad_1d
+    Tests the correctness of swap_time_frequency
     """
     shape = (10, 20, 3, 5, 2)
     shape_T = (10, 20, 5, 3, 2)
 
-    x = torch.ones(shape)
-    x_T = backend.transpose(x)
+    x = torch.arange(np.prod(shape)).reshape(shape)
+    x_T = backend.swap_time_frequency(x)
     assert tuple(x_T.shape) == shape_T
 
-    x_T_T = backend.transpose(x_T)
+    x_T_T = backend.swap_time_frequency(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
+    assert torch.all(x == x_T_T)
 
     with pytest.raises(TypeError) as record:
         x = torch.ones(shape + (4,))
-        y = backend.transpose(x)
+        y = backend.swap_time_frequency(x)
     assert 'should be complex' in record.value.args[0]
 
 
