@@ -131,6 +131,7 @@ def test_swap_time_frequency_1d():
     x_T_T = backend.swap_time_frequency(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
+    assert np.all(x == x_T_T)
 
     with pytest.raises(TypeError) as record:
         x = np.ones(shape + (4,))
