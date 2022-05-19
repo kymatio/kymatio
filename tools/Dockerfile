@@ -9,6 +9,7 @@ RUN apt-get update && \
       python3-pytest-cov \
       python3-pip \
       python3-venv \
+      curl \
       && \
     apt-get autoremove --purge -y && \
     apt-get autoclean -y && \
