@@ -19,7 +19,7 @@ RUN apt-get update && \
     apt-get autoclean -y && \
     rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
-RUN pip3 install \
+RUN pip3 install --upgrade \
       numpy \
       scipy \
       configparser \
