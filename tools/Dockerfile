@@ -7,7 +7,6 @@ RUN apt-get update && \
       libcudnn8 \
       python3-appdirs \
       python3-mako \
-      python3-numpy \
       python3-pytest \
       python3-pytest-cov \
       python3-pytools \
@@ -21,6 +20,7 @@ RUN apt-get update && \
     rm -rf /var/cache/apt/* /var/lib/apt/lists/*
 
 RUN pip3 install \
+      numpy \
       scipy \
       configparser \
       torchvision \
