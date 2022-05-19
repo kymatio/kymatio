@@ -103,5 +103,4 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.linalg.matrix_transpose(x)
 
 
-
 backend = TensorFlowBackend1D
