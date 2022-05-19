@@ -129,6 +129,18 @@ class TorchBackend1D(TorchBackend):
 
     @classmethod
     def swap_time_frequency(cls, x):
+        """Swap time and frequency dimensions of a tensor
+
+        Parameters
+        ----------
+        x : tensor
+            four-dimensional input with the last axis containing
+            real and imaginary parts
+        Returns
+        -------
+        output : tensor
+            The tensor with time and frequency dimensions transposed
+        """
         cls.complex_check(x)
 
         return torch.transpose(x, dim0=-2, dim1=-3)
