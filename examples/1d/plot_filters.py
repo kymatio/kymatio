@@ -8,6 +8,7 @@ Original file is located at
 """
 
 # Commented out IPython magic to ensure Python compatibility.
+!pip install git+https://github.com/kymatio/kymatio.git@dev 
 # %matplotlib inline
 
 """# Plot the 1D wavelet filters
@@ -73,7 +74,7 @@ first-order wavelet filters (`psi1_f`), and the second-order filters
 
 """
 
-phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(T), J, Q)
+phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(T), J, Q, T= 2**J)
 
 """The `phi_f` output is a dictionary where each integer key corresponds points
 to the instantiation of the filter at a certain resolution. In other words,
@@ -140,4 +141,3 @@ plt.title('First-order filter - Time domain (Q = {})'.format(Q), fontsize=12)
 plt.legend(["Real part","Imaginary part"])
 
 plt.show()
-
