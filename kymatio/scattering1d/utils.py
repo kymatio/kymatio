@@ -171,7 +171,7 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
         the number of coefficients in each order.
     """
     sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-        calibrate_scattering_filters(J, Q, T)
+        calibrate_scattering_filters(J, Q, T, alpha=5.)
 
     size_order0 = 1
     size_order1 = len(xi1)
@@ -239,7 +239,7 @@ def compute_meta_scattering(J, Q, T, max_order=2):
             in the non-vectorized output.
     """
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
-        calibrate_scattering_filters(J, Q, T)
+        calibrate_scattering_filters(J, Q, T, alpha=5.)
 
     meta = {}
 
