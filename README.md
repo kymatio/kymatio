@@ -17,15 +17,6 @@ Use Kymatio if you need a library that:
 * runs seamlessly on CPU and GPU hardware, with major deep learning APIs, such
   as PyTorch and TensorFlow.
 
-# Kymatio’22: Deep Learning meets Wavelet Theory
-
-Kymatio’22 is the first workshop on wavelet scattering in Python (https://kymat.io/workshop2022/). Researchers from a diverse range of disciplines will convene for two days of talks, discussions, tutorials and a hackathon. 
-
-May 19-20 2022 at LS2N, Centrale Nantes Campus, Nantes, France.
-
-[To register and for more information.](https://kymat.io/workshop2022/)
-
-
 # The Kymatio environment
 
 ## Flexibility
