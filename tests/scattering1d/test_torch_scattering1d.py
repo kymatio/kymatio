@@ -417,15 +417,14 @@ def test_T(device, backend):
     scattering1 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='torch'
                                ).to(device)
 
-
-    if backend.name == 'torch_skcuda' and device == 'cpu':
-        with pytest.raises(TypeError) as ve:
-            for scattering in (scattering0, scattering1):
+    if backend.name.endswith('_skcuda') and device == 'cpu':
+        for scattering in (scattering0, scattering1):
+            with pytest.raises(TypeError) as ve:
                 _ = scattering(x)
-        assert "CPU" in ve.value.args[0]
+            assert "CUDA" in ve.value.args[0]
         return
 
     Sg0 = scattering0(x)
     Sg1 = scattering1(x)
-    assert np.allclose(Sg0, Sx0)
+    assert torch.allclose(Sg0, Sx0)
     assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
