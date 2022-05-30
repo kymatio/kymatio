@@ -65,11 +65,6 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
-
-    # S is simply a dictionary if we do not perform the averaging...
-    batch_size = x.shape[0]
-    klog2_T = max(log2_T - oversampling, 0)
-    temporal_size = ind_end[klog2_T] - ind_start[klog2_T]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
