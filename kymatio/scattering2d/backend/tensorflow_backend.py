@@ -16,11 +16,29 @@ class Pad(object):
                 size of the original signal
         """
         self.pad_size = pad_size
+        self.input_size = input_size
 
     def __call__(self, x):
+        pad_size_tmp = list(self.pad_size)
+        # This handles the case where the padding is equal to the image size
+        if pad_size_tmp[0] == self.input_size[0]:
+            pad_size_tmp[0] -= 1
+            pad_size_tmp[1] -= 1
+        if pad_size_tmp[2] == self.input_size[1]:
+            pad_size_tmp[2] -= 1
+            pad_size_tmp[3] -= 1
+
         paddings = [[0, 0]] * len(x.shape[:-2])
-        paddings += [[self.pad_size[0], self.pad_size[1]], [self.pad_size[2], self.pad_size[3]]]
-        return tf.pad(x, paddings, mode="REFLECT")
+        paddings += [[pad_size_tmp[0], pad_size_tmp[1]], [pad_size_tmp[2], pad_size_tmp[3]]]
+
+        x_padded = tf.pad(x, paddings, mode="REFLECT")
+
+        pad_size_tmp = list(self.pad_size)
+        if pad_size_tmp[0] == self.input_size[0]:
+            x_padded = tf.concat([tf.expand_dims(x_padded[..., 1, :], axis=-2), x_padded, tf.expand_dims(x_padded[..., x_padded.shape[-2] -2, :], axis=-2)], axis=-2)
+        if pad_size_tmp[2] == self.input_size[1]:
+            x_padded = tf.concat([tf.expand_dims(x_padded[..., :, 1], axis=-1), x_padded, tf.expand_dims(x_padded[..., :,  x_padded.shape[-1]-2], axis=-1)], axis=-1)
+        return x_padded
 
 
 class TensorFlowBackend2D(TensorFlowBackend):
