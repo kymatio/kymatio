@@ -43,3 +43,5 @@ jobs:
               run: conda run -n ${CONDA_ENV} python3 setup.py develop
             - name: Test
               run: conda run -n ${CONDA_ENV} pytest --cov=kymatio
+            - name: Clean up
+              run: conda env remove --name ${CONDA_ENV}
