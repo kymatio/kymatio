@@ -310,7 +310,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     return N
 
 
-def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
+def get_max_dyadic_subsampling(xi, sigma, alpha):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
     filter of frequency xi and width sigma
@@ -333,7 +333,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
         frequential width of the filter
     alpha : float, optional
         parameter controlling the error done in the aliasing.
-        The larger alpha, the smaller the error. Defaults to 5.
+        The larger alpha, the smaller the error.
 
     Returns
     -------
@@ -347,7 +347,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
     return j
 
 
-def move_one_dyadic_step(cv, Q, alpha=5.):
+def _move_one_dyadic_step(cv, Q, alpha):
     """
     Computes the parameters of the next wavelet on the low frequency side,
     based on the parameters of the current wavelet.
@@ -374,7 +374,7 @@ def move_one_dyadic_step(cv, Q, alpha=5.):
         the frequency and width of the current wavelet and the next wavelet.
     alpha : float, optional
         tolerance parameter for the aliasing. The larger alpha,
-        the more conservative the algorithm is. Defaults to 5.
+        the more conservative the algorithm is.
 
     Returns
     -------
@@ -409,7 +409,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
+def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
@@ -431,14 +431,14 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
         invariants over shorter time scales than longest band-pass filter.
     Q : int
         number of wavelets per octave.
+    alpha : float, optional
+        tolerance factor for the aliasing after subsampling.
+        The larger alpha, the more conservative the value of maximal
+        subsampling is.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
         Defaults to sqrt(0.5).
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
 
     Returns
     -------
@@ -471,7 +471,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
             xi.append(current['xi'])
             sigma.append(current['sigma'])
             j.append(current['j'])
-            current = move_one_dyadic_step(current, Q, alpha=alpha)
+            current = _move_one_dyadic_step(current, Q, alpha=alpha)
         # get the last key
         last_xi = xi[-1]
     # fill num_interm wavelets between last_xi and 0, both excluded
@@ -487,8 +487,7 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
     return xi, sigma, j
 
 
-def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
-                                 alpha=5.):
+def calibrate_scattering_filters(J, Q, T, alpha, r_psi=math.sqrt(0.5), sigma0=0.1):
     """
     Calibrates the parameters of the filters used at the 1st and 2nd orders
     of the scattering transform.
@@ -511,6 +510,10 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
+    alpha : float, optional
+        tolerance factor for the aliasing after subsampling.
+        The larger alpha, the more conservative the value of maximal
+        subsampling is.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -519,10 +522,6 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
         frequential width of the low-pass filter at scale J=0
         (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
         Defaults to 1e-1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
 
     Returns
     -------
@@ -548,10 +547,8 @@ def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
     # for default T = 2**(J), this coincides with sigma_low
     sigma_min = sigma0 / math.pow(2, J)
 
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q, r_psi=r_psi,
-                                            alpha=alpha)
-    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, 1, r_psi=r_psi,
-                                            alpha=alpha)
+    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q, alpha=alpha, r_psi=r_psi)
+    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, 1, alpha=alpha, r_psi=r_psi)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
@@ -658,8 +655,8 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
-        J_scattering, Q, T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(J_scattering, Q, T, alpha=alpha,
+                                                                                 r_psi=r_psi, sigma0=sigma0)
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
