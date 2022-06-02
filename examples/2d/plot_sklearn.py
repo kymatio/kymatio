@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
 
 ###############################################################################
 # Import the scikit-learn `Scattering2D` frontend.
@@ -56,10 +57,10 @@ S = Scattering2D(shape=(8, 8), J=1)
 
 ###############################################################################
 # We then plug this into a scikit-learn pipeline which takes the scattering
-# features and provides them to a `LogisticRegression` classifier.
+# features, scales them, then provides them to a `LogisticRegression` classifier.
 
 classifier = LogisticRegression()
-estimators = [('scatter', S), ('clf', classifier)]
+estimators = [('scatter', S), ('scaler', StandardScaler()), ('clf', classifier)]
 pipeline = Pipeline(estimators)
 
 ###############################################################################
