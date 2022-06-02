@@ -59,7 +59,7 @@ S = Scattering2D(shape=(8, 8), J=1)
 # We then plug this into a scikit-learn pipeline which takes the scattering
 # features, scales them, then provides them to a `LogisticRegression` classifier.
 
-classifier = LogisticRegression()
+classifier = LogisticRegression(max_iter=150)
 estimators = [('scatter', S), ('scaler', StandardScaler()), ('clf', classifier)]
 pipeline = Pipeline(estimators)
 
