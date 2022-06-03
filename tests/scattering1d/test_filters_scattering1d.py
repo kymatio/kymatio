@@ -106,18 +106,6 @@ def test_morlet_1d():
                 xi_emp = float(k_max) / float(N)
                 assert np.abs(xi_emp - xi) / xi < 1e-2
 
-    Q = 1
-    xi = compute_xi_max(Q)
-    sigma = compute_sigma_psi(xi, Q)
-
-    with pytest.raises(ValueError) as ve:
-        morlet_1d(size_signal[0], xi, sigma, P_max=5.1)
-    assert "should be an int" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        morlet_1d(size_signal[0], xi, sigma, P_max=-5)
-    assert "should be non-negative" in ve.value.args[0]
-
 
 def test_gauss_1d():
     """
@@ -138,18 +126,6 @@ def test_gauss_1d():
         phi = np.fft.ifft(g_f)
         assert np.min(phi) > - tol
         assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
-
-    Q = 1
-    xi = compute_xi_max(Q)
-    sigma = compute_sigma_psi(xi, Q)
-
-    with pytest.raises(ValueError) as ve:
-        gauss_1d(N, xi, sigma, P_max=5.1)
-    assert "should be an int" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        gauss_1d(N, xi, sigma, P_max=-5)
-    assert "should be non-negative" in ve.value.args[0]
 
 
 def test_calibrate_scattering_filters():
