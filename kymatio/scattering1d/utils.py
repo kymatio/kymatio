@@ -70,10 +70,7 @@ def compute_padding(J_pad, N):
     return pad_left, pad_right
 
 def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
-                                       normalize='l1', r_psi=math.sqrt(0.5),
-                                       sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):
-
-
+                                   r_psi=math.sqrt(0.5), sigma0=1e-1, alpha=5.):
     """
     Computes the support to pad given the input size and the parameters of the
     scattering transform.
@@ -89,10 +86,6 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    normalize : string, optional
-        normalization type for the wavelets.
-        Only `'l2'` or `'l1'` normalizations are supported.
-        Defaults to `'l1'`
     criterion_amplitude: float `>0` and `<1`, optional
         Represents the numerical error which is allowed to be lost after
         convolution and padding.
@@ -113,15 +106,6 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
         The larger the alpha, the more conservative the value of maximal
         subsampling is.
         Defaults to `5`.
-    P_max : int, optional
-        maximal number of periods to use to make sure that the Fourier
-        transform of the filters is periodic.
-        `P_max = 5` is more than enough for double precision.
-        Defaults to `5`.
-    eps : float, optional
-        required machine precision for the periodization (single
-        floating point is enough for deep learning applications).
-        Defaults to `1e-7`.
 
     Returns
     -------
@@ -130,10 +114,9 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
         boundary error.
     """
     J_tentative = int(np.ceil(np.log2(N)))
-    _, _, _, t_max_phi = scattering_filter_factory(
-        J_tentative, J, Q, T, normalize=normalize, to_torch=False,
-        max_subsampling=0, criterion_amplitude=criterion_amplitude,
-        r_psi=r_psi, sigma0=sigma0, alpha=alpha, P_max=P_max, eps=eps)
+    _, _, _, t_max_phi = scattering_filter_factory(J_tentative, J, Q, T,
+        max_subsampling=0, criterion_amplitude=criterion_amplitude, r_psi=r_psi,
+        sigma0=sigma0, alpha=alpha)
     min_to_pad = 3 * t_max_phi
     return min_to_pad
 

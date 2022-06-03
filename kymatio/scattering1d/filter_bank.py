@@ -71,49 +71,32 @@ def periodize_filter_fourier(h_f, nperiods=1):
     return v_f
 
 
-def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
+def morlet_1d(N, xi, sigma):
     """
-    Computes the Fourier transform of a Morlet filter.
-
+    Computes the Fourier transform of a Morlet or Gauss filter.
     A Morlet filter is the sum of a Gabor filter and a low-pass filter
     to ensure that the sum has exactly zero mean in the temporal domain.
     It is defined by the following formula in time:
-    psi(t) = g_{sigma}(t) (e^{i xi t} - beta)
-    where g_{sigma} is a Gaussian envelope, xi is a frequency and beta is
-    the cancelling parameter.
-
+    psi(t) = g_{sigma}(t) (e^{i xi t} - kappa)
+    where g_{sigma} is a Gaussian envelope, xi is a frequency and kappa is
+    a corrective term which ensures that psi has a null average.
+    If xi is None, the definition becomes: phi(t) = g_{sigma}(t)
     Parameters
     ----------
     N : int
         size of the temporal support
-    xi : float
-        central frequency (in [0, 1])
+    xi : float or None
+        center frequency in (0, 1]
     sigma : float
         bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'.
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max: int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float
-        required machine precision (to choose the adequate P)
-
     Returns
     -------
-    morlet_f : array_like
+    filter_f : array_like
         numpy array of size (N,) containing the Fourier transform of the Morlet
         filter at the frequencies given by np.fft.fftfreq(N).
     """
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
-    # Find the adequate value of P
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
+    # Find the adequate value of P<=5
+    P = min(adaptive_choice_P(sigma), 5)
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
     if P == 1:
@@ -122,98 +105,24 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         freqs_low = np.fft.fftfreq(N)
     elif P > 1:
         freqs_low = freqs
-    # define the gabor at freq xi and the low-pass, both of width sigma
-    gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
-    # discretize in signal <=> periodize in Fourier
-    gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
     low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
-    # find the summation factor to ensure that morlet_f[0] = 0.
-    kappa = gabor_f[0] / low_pass_f[0]
-    morlet_f = gabor_f - kappa * low_pass_f
-    # normalize the Morlet if necessary
-    morlet_f *= get_normalizing_factor(morlet_f, normalize=normalize)
-    return morlet_f
-
-
-def get_normalizing_factor(h_f, normalize='l1'):
-    """
-    Computes the desired normalization factor for a filter defined in Fourier.
-
-    Parameters
-    ----------
-    h_f : array_like
-        numpy vector containing the Fourier transform of a filter
-    normalized : string, optional
-        desired normalization type, either 'l1' or 'l2'. Defaults to 'l1'.
-
-    Returns
-    -------
-    norm_factor : float
-        such that h_f * norm_factor is the adequately normalized vector.
-    """
-    h_real = ifft(h_f)
-    if np.abs(h_real).sum() < 1e-7:
-        raise ValueError('Zero division error is very likely to occur, ' +
-                         'aborting computations now.')
-    if normalize == 'l1':
-        norm_factor = 1. / (np.abs(h_real).sum())
-    elif normalize == 'l2':
-        norm_factor = 1. / np.sqrt((np.abs(h_real)**2).sum())
+    if xi:
+        # define the gabor at freq xi and the low-pass, both of width sigma
+        gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+        # discretize in signal <=> periodize in Fourier
+        gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+        # find the summation factor to ensure that morlet_f[0] = 0.
+        kappa = gabor_f[0] / low_pass_f[0]
+        filter_f = gabor_f - kappa * low_pass_f # psi (band-pass) case
     else:
-        raise ValueError("Supported normalizations only include 'l1' and 'l2'")
-    return norm_factor
+        filter_f = low_pass_f # phi (low-pass) case
+    filter_f /= np.abs(ifft(filter_f)).sum()
+    return filter_f
 
 
-def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
-    """
-    Computes the Fourier transform of a low pass gaussian window.
-
-    \\hat g_{\\sigma}(\\omega) = e^{-\\omega^2 / 2 \\sigma^2}
-
-    Parameters
-    ----------
-    N : int
-        size of the temporal support
-    sigma : float
-        bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max : int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float, optional
-        required machine precision (to choose the adequate P)
-
-    Returns
-    -------
-    g_f : array_like
-        numpy array of size (N,) containing the Fourier transform of the
-        filter (with the frequencies in the np.fft.fftfreq convention).
-    """
-    # Find the adequate value of P
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
-    # switch cases
-    if P == 1:
-        freqs_low = np.fft.fftfreq(N)
-    elif P > 1:
-        freqs_low = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
-    # define the low pass
-    g_f = np.exp(-freqs_low**2 / (2 * sigma**2))
-    # periodize it
-    g_f = periodize_filter_fourier(g_f, nperiods=2 * P - 1)
-    # normalize the signal
-    g_f *= get_normalizing_factor(g_f, normalize=normalize)
-    # return the Fourier transform
-    return g_f
+def gauss_1d(N, sigma):
+    return morlet_1d(N, xi=None, sigma=sigma)
 
 
 def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
@@ -556,9 +465,8 @@ def calibrate_scattering_filters(J, Q, T, alpha, r_psi=math.sqrt(0.5), sigma0=0.
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
-                              criterion_amplitude=1e-3, normalize='l1',
-                              max_subsampling=None, sigma0=0.1, alpha=5.,
-                              P_max=5, eps=1e-7, **kwargs):
+                              criterion_amplitude=1e-3, max_subsampling=None,
+                              sigma0=0.1, alpha=5., **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -592,10 +500,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     criterion_amplitude : float, optional
         Represents the numerical error which is allowed to be lost after
         convolution and padding. Defaults to 1e-3.
-    normalize : string, optional
-        Normalization convention for the filters (in the
-        temporal domain). Supported values include 'l1' and 'l2'; a ValueError
-        is raised otherwise. Defaults to 'l1'.
     max_subsampling: int or None, optional
         maximal dyadic subsampling to compute, in order
         to save computation time if it is not required. Defaults to None, in
@@ -608,14 +512,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
-    P_max : int, optional
-        maximal number of periods to use to make sure that the Fourier
-        transform of the filters is periodic. P_max = 5 is more than enough for
-        double precision. Defaults to 5. Should be >= 1
-    eps : float, optional
-        required machine precision for the periodization (single
-        floating point is enough for deep learning applications).
-        Defaults to 1e-7
 
     Returns
     -------
@@ -681,9 +577,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         N = 2**J_support
 
         psi_f = {}
-        psi_f[0] = morlet_1d(
-            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-            eps=eps)
+        psi_f[0] = morlet_1d(N, xi2[n2], sigma2[n2])
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for subsampling in range(1, max_sub_psi2 + 1):
@@ -696,9 +590,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         N = 2**J_support
-        psi1_f.append({0: morlet_1d(
-            N, xi1[n1], sigma1[n1], normalize=normalize,
-            P_max=P_max, eps=eps)})
+        psi1_f.append({0: morlet_1d(N, xi1[n1], sigma1[n1])})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
@@ -713,7 +605,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    phi_f[0] = gauss_1d(N, sigma_low)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter
