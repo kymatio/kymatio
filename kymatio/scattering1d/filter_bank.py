@@ -95,8 +95,8 @@ def morlet_1d(N, xi, sigma):
         numpy array of size (N,) containing the Fourier transform of the Morlet
         filter at the frequencies given by np.fft.fftfreq(N).
     """
-    # Find the adequate value of P, with Pmax=5
-    P = min(adaptive_choice_P(sigma, eps=1e-7), 5)
+    # Find the adequate value of P, with P_max=5
+    P = min(adaptive_choice_P(sigma), 5)
 
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
@@ -117,7 +117,7 @@ def morlet_1d(N, xi, sigma):
     else:
         filter_f = low_pass_f # phi
 
-    filter_f *= get_normalizing_factor(filter_f, normalize='l1')
+    filter_f *= get_normalizing_factor(filter_f)
     return filter_f
 
 
@@ -495,9 +495,9 @@ def calibrate_scattering_filters(J, Q, T, alpha, r_psi=math.sqrt(0.5), sigma0=0.
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
-                              criterion_amplitude=1e-3, normalize='l1',
+                              criterion_amplitude=1e-3,
                               max_subsampling=None, sigma0=0.1, alpha=5.,
-                              P_max=5, eps=1e-7, **kwargs):
+                              **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -531,10 +531,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     criterion_amplitude : float, optional
         Represents the numerical error which is allowed to be lost after
         convolution and padding. Defaults to 1e-3.
-    normalize : string, optional
-        Normalization convention for the filters (in the
-        temporal domain). Supported values include 'l1' and 'l2'; a ValueError
-        is raised otherwise. Defaults to 'l1'.
     max_subsampling: int or None, optional
         maximal dyadic subsampling to compute, in order
         to save computation time if it is not required. Defaults to None, in
@@ -547,14 +543,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
-    P_max : int, optional
-        maximal number of periods to use to make sure that the Fourier
-        transform of the filters is periodic. P_max = 5 is more than enough for
-        double precision. Defaults to 5. Should be >= 1
-    eps : float, optional
-        required machine precision for the periodization (single
-        floating point is enough for deep learning applications).
-        Defaults to 1e-7
 
     Returns
     -------
@@ -649,7 +637,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
+    phi_f[0] = gauss_1d(N, sigma_low)
     for subsampling in range(1, max_sub_phi + 1):
         factor_subsampling = 2**subsampling
         # compute the low_pass filter
