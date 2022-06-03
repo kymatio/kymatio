@@ -36,10 +36,7 @@ class ScatteringBase1D(ScatteringBase):
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
-        self.P_max = 5
-        self.eps = 1e-7
         self.criterion_amplitude = 1e-3
-        self.normalize = 'l1'
 
         # check the shape
         if isinstance(self.shape, numbers.Integral):
@@ -64,8 +61,7 @@ class ScatteringBase1D(ScatteringBase):
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, self.T, r_psi=self.r_psi, sigma0=self.sigma0,
-            alpha=self.alpha, P_max=self.P_max, eps=self.eps,
-            criterion_amplitude=self.criterion_amplitude,
+            alpha=self.alpha, criterion_amplitude=self.criterion_amplitude,
             normalize=self.normalize)
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
@@ -81,10 +77,9 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, self.T, normalize=self.normalize,
+            self.J_pad, self.J, self.Q, self.T,
             criterion_amplitude=self.criterion_amplitude,
-            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
-            P_max=self.P_max, eps=self.eps)
+            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
 
     def meta(self):
         """Get meta information on the transform
