@@ -73,18 +73,19 @@ def periodize_filter_fourier(h_f, nperiods=1):
 
 def morlet_1d(N, xi, sigma):
     """
-    Computes the Fourier transform of a Morlet filter.
+    Computes the Fourier transform of a Morlet or Gauss filter.
     A Morlet filter is the sum of a Gabor filter and a low-pass filter
     to ensure that the sum has exactly zero mean in the temporal domain.
     It is defined by the following formula in time:
     psi(t) = g_{sigma}(t) (e^{i xi t} - kappa)
     where g_{sigma} is a Gaussian envelope, xi is a frequency and kappa is
     a corrective term which ensures that psi has a null average.
+    If xi is None, the definition becomes: phi(t) = g_{sigma}(t)
     Parameters
     ----------
     N : int
         size of the temporal support
-    xi : float
+    xi : float or None
         center frequency in (0, 1]
     sigma : float
         bandwidth parameter
@@ -112,12 +113,12 @@ def morlet_1d(N, xi, sigma):
         gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
         gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
         kappa = gabor_f[0] / low_pass_f[0]
-        psi_f = gabor_f - kappa * low_pass_f
+        filter_f = gabor_f - kappa * low_pass_f # psi
     else:
-        psi_f = low_pass_f
+        filter_f = low_pass_f # phi
 
-    psi_f *= get_normalizing_factor(psi_f, normalize='l1')
-    return psi_f
+    filter_f *= get_normalizing_factor(filter_f, normalize='l1')
+    return filter_f
 
 
 def get_normalizing_factor(h_f, normalize='l1'):
@@ -150,7 +151,7 @@ def get_normalizing_factor(h_f, normalize='l1'):
 
 
 
-def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
+def gauss_1d(N, sigma):
     return morlet_1d(N, xi=None, sigma=sigma)
 
 
@@ -633,7 +634,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
         N = 2**J_support
-        psi1_f.append({0: psi1_f.append({0: morlet_1d(T, xi1[n1], sigma1[n1])})})
+        psi1_f.append({0: morlet_1d(T, xi1[n1], sigma1[n1])})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
