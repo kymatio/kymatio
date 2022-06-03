@@ -61,8 +61,7 @@ class ScatteringBase1D(ScatteringBase):
         # Compute the minimum support to pad (ideally)
         min_to_pad = compute_minimum_support_to_pad(
             self.N, self.J, self.Q, self.T, r_psi=self.r_psi, sigma0=self.sigma0,
-            alpha=self.alpha, criterion_amplitude=self.criterion_amplitude,
-            normalize=self.normalize)
+            alpha=self.alpha, criterion_amplitude=self.criterion_amplitude)
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
         J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
