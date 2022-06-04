@@ -40,7 +40,7 @@ channels, height, width = src_img.shape
 #  Main loop
 # ----------
 for order in [1]:
-    for J in [2, 4]:
+    for J in [2]:
 
         # Compute scattering coefficients
         scattering = Scattering2D(J=J, shape=(height, width), max_order=order)
