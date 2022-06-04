@@ -32,7 +32,7 @@ plt.imshow(src_img)
 plt.title("Original image")
 
 src_img = np.moveaxis(src_img, -1, 0)  # HWC to CHW
-max_iter = 15 # number of steps for the GD
+max_iter = 50 # number of steps for the GD
 print("Image shape: ", src_img.shape)
 channels, height, width = src_img.shape
 
