@@ -151,8 +151,8 @@ def scattering1D_filter_factory_T():
               default_str = ' (default)'
           else: 
               default_str = ''
-          phi_f, psi1_f, psi2_f, _ = scattering_filter_factory(np.log2(N), J, Q, T)
           msg = 'J=' + str(J) + ', T=' +str(T) + default_str + ': LP-filter width $\sigma_{low}$=' + str(phi_f['sigma']) + ' (=0.1/T)'                
+          phi_f, psi1_f, psi2_f = scattering_filter_factory(np.log2(N), J, Q, T)
           print(msg)
           assert(phi_f['sigma']==0.1/T)
 
