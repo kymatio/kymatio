@@ -1,3 +1,4 @@
+from collections import Counter
 import pytest
 import torch
 from kymatio import Scattering1D
@@ -135,7 +136,7 @@ def test_computation_Ux(backend, device, random_state=42):
         for k in range(len(scattering.psi1_f)):
             assert (k,) in s.keys()
         for k in s.keys():
-            if k is not ():
+            if k != ():
                 assert k[0] < len(scattering.psi1_f)
             else:
                 assert True
@@ -263,24 +264,9 @@ def test_precompute_size_scattering(device, backend, random_state=42):
     scattering.to(device)
     x = x.to(device)
     if not backend.name.endswith('_skcuda') or device != 'cpu':
-        for max_order in [1, 2]:
-            scattering.max_order = max_order
-            s_dico = scattering(x)
-            # get the size of scattering
-            size = scattering.output_size()
-            num_orders = {0: 0, 1: 0, 2: 0}
-            for k in s_dico.keys():
-                if k is ():
-                    num_orders[0] += 1
-                else:
-                    if len(k) == 1:  # order1
-                        num_orders[1] += 1
-                    elif len(k) == 2:
-                        num_orders[2] += 1
-            todo = 2 if max_order == 2 else 1
-            for i in range(todo):
-                assert num_orders[i] == size[i]
-                # check that the orders are completely equal
+        ctr = Counter(map(len, scattering(x)))
+        assert scattering.output_size() == (ctr[0], ctr[1], ctr[2])
+        assert scattering.num_coefficients == sum(ctr.values())
 
 
 @pytest.mark.parametrize("device", devices)
