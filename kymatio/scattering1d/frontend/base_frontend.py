@@ -86,6 +86,7 @@ class ScatteringBase1D(ScatteringBase):
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
 
+    @property
     def meta(self):
         """Get meta information on the transform
 
@@ -99,7 +100,7 @@ class ScatteringBase1D(ScatteringBase):
         """
         return compute_meta_scattering(self.J, self.Q, self.T, max_order=self.max_order)
 
-    def output_size(self, detail=False):
+    def output_size(self):
         """Get size of the scattering transform
 
         Calls the static method `precompute_size_scattering()` with the
@@ -113,12 +114,16 @@ class ScatteringBase1D(ScatteringBase):
 
         Returns
         ------
-        size : int or tuple
-            See the documentation for `precompute_size_scattering()`.
+        size : tuple
+            Returns a tuple of size `1+max_order` containing the number of
+            coefficients in each order.
         """
+        return precompute_size_scattering(self.J, self.Q, self.T, self.max_order)
 
-        return precompute_size_scattering(
-            self.J, self.Q, self.T, max_order=self.max_order, detail=detail)
+    @property
+    def num_coefficients(self):
+        """Get total number of scattering coefficients across all orders"""
+        return sum(self.output_size())
 
     _doc_shape = 'N'
 

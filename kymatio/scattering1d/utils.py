@@ -138,8 +138,8 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     return min_to_pad
 
 
-def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
-    """Get size of the scattering transform
+def precompute_size_scattering(J, Q, T, max_order):
+    """Get size of the scattering transform per order.
 
     The number of scattering coefficients depends on the filter
     configuration and so can be calculated using a few of the scattering
@@ -158,38 +158,19 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
         time-shift invariance and maximum subsampling
     max_order : int, optional
         The maximum order of scattering coefficients to compute.
-        Must be either equal to `1` or `2`. Defaults to `2`.
-    detail : boolean, optional
-        Specifies whether to provide a detailed size (number of coefficient
-        per order) or an aggregate size (total number of coefficients).
+        Must be either equal to `1` or `2`.
 
     Returns
     -------
-    size : int or tuple
-        If `detail` is `False`, returns the number of coefficients as an
-        integer. If `True`, returns a tuple of size `max_order` containing
-        the number of coefficients in each order.
+    size : tuple
+        Returns a tuple of size `1+max_order` containing the number of
+        coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-        calibrate_scattering_filters(J, Q, T, alpha=5.)
-
-    size_order0 = 1
-    size_order1 = len(xi1)
-    size_order2 = 0
-    for n1 in range(len(xi1)):
-        for n2 in range(len(xi2)):
-            if j2[n2] > j1[n1]:
-                size_order2 += 1
-    if detail:
-        if max_order == 2:
-            return size_order0, size_order1, size_order2
-        else:
-            return size_order0, size_order1
-    else:
-        if max_order == 2:
-            return size_order0 + size_order1 + size_order2
-        else:
-            return size_order0 + size_order1
+    _, _, _, j1s, _, _, j2s = calibrate_scattering_filters(J, Q, T, alpha=5.)
+    size = [1, len(j1s)]
+    if max_order == 2:
+        size.append(sum((j2 > j1) for j1 in j1s for j2 in j2s))
+    return tuple(size)
 
 
 def compute_meta_scattering(J, Q, T, max_order=2):

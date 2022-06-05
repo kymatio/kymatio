@@ -21,7 +21,7 @@ class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
 
     def compute_output_shape(self, input_shape):
         input_shape = tensor_shape.TensorShape(input_shape).as_list()
-        nc = self.S.output_size()
+        nc = self.S.num_coefficients
         k0 = max(self.J - self.oversampling, 0)
         ln = self.S.ind_end[k0] - self.S.ind_start[k0]
         output_shape = [input_shape[0], nc, ln]

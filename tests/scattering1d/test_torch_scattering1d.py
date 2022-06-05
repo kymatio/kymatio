@@ -266,25 +266,21 @@ def test_precompute_size_scattering(device, backend, random_state=42):
         for max_order in [1, 2]:
             scattering.max_order = max_order
             s_dico = scattering(x)
-            for detail in [True, False]:
-                # get the size of scattering
-                size = scattering.output_size(detail=detail)
-                if detail:
-                    num_orders = {0: 0, 1: 0, 2: 0}
-                    for k in s_dico.keys():
-                        if k is ():
-                            num_orders[0] += 1
-                        else:
-                            if len(k) == 1:  # order1
-                                num_orders[1] += 1
-                            elif len(k) == 2:
-                                num_orders[2] += 1
-                    todo = 2 if max_order == 2 else 1
-                    for i in range(todo):
-                        assert num_orders[i] == size[i]
-                        # check that the orders are completely equal
+            # get the size of scattering
+            size = scattering.output_size()
+            num_orders = {0: 0, 1: 0, 2: 0}
+            for k in s_dico.keys():
+                if k is ():
+                    num_orders[0] += 1
                 else:
-                    assert len(s_dico) == size
+                    if len(k) == 1:  # order1
+                        num_orders[1] += 1
+                    elif len(k) == 2:
+                        num_orders[2] += 1
+            todo = 2 if max_order == 2 else 1
+            for i in range(todo):
+                assert num_orders[i] == size[i]
+                # check that the orders are completely equal
 
 
 @pytest.mark.parametrize("device", devices)
