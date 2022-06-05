@@ -105,12 +105,6 @@ class ScatteringBase1D(ScatteringBase):
         Calls the static method `precompute_size_scattering()` with the
         parameters of the transform object.
 
-        Parameters
-        ----------
-        detail : boolean, optional
-            Specifies whether to provide a detailed size (number of coefficient
-            per order) or an aggregate size (total number of coefficients).
-
         Returns
         ------
         size : tuple
