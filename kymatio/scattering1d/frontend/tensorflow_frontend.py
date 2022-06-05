@@ -44,14 +44,6 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 
         x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
 
-        # get the arguments before calling the scattering
-        # treat the arguments
-        if self.vectorize:
-            size_scattering = precompute_size_scattering(
-                self.J, self.Q, self.T, max_order=self.max_order)
-        else:
-            size_scattering = 0
-
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
