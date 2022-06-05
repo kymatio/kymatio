@@ -86,7 +86,6 @@ class ScatteringBase1D(ScatteringBase):
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
             P_max=self.P_max, eps=self.eps)
 
-    @property
     def meta(self):
         """Get meta information on the transform
 
