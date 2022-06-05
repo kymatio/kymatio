@@ -55,9 +55,11 @@ def test_border_indices(random_state=42):
 
 # Check that the default frontend is numpy and that errors are correctly launched.
 def test_scattering1d_frontend():
-    scattering = Scattering1D(2, shape=(10, ))
+    scattering = Scattering1D(2, shape=(16, ))
     assert isinstance(scattering, ScatteringTorch1D), 'could not be correctly imported'
 
     with pytest.raises(RuntimeError) as ve:
         scattering = Scattering1D(2, shape=(10,), frontend='doesnotexist')
     assert "is not valid" in ve.value.args[0]
+
+    assert scattering.num_coefficients == sum(scattering.output_size())
