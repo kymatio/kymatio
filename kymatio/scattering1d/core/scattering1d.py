@@ -1,8 +1,7 @@
 
 def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        max_order=2, average=True, vectorize=False, out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -50,12 +49,8 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         Whether to compute the 2nd order or not. Defaults to `False`.
     average_U1 : boolean, optional
         whether to average the first order vector. Defaults to `True`
-    size_scattering : tuple
-        Contains the number of channels of the scattering, precomputed for
-        speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
-
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
@@ -88,9 +83,7 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S_0.append({'coef': S_0,
-                    'j': (),
-                    'n': ()})
+    out_S_0.append({'coef': S_0, 'j': (), 'n': ()})
 
     # First order:
     for n1 in range(len(psi1)):
@@ -122,9 +115,7 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
-        out_S_1.append({'coef': S_1,
-                        'j': (j1,),
-                        'n': (n1,)})
+        out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
 
         if max_order == 2:
             # 2nd order
@@ -160,9 +151,7 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
-                    out_S_2.append({'coef': S_2,
-                                    'j': (j1, j2),
-                                    'n': (n1, n2)})
+                    out_S_2.append({'coef': S_2, 'j': (j1, j2), 'n': (n1, n2)})
 
     out_S = []
     out_S.extend(out_S_0)

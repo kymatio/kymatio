@@ -3,7 +3,6 @@ import warnings
 
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
-from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
 
@@ -99,28 +98,13 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 
         self.load_filters()
 
-        # get the arguments before calling the scattering
-        # treat the arguments
-        if self.vectorize:
-            size_scattering = precompute_size_scattering(
-                self.J, self.Q, self.T, max_order=self.max_order, detail=True)
-        else:
-            size_scattering = 0
-
-
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f, self.phi_f,\
-                         max_order=self.max_order, average=self.average,
-                       pad_left=self.pad_left, pad_right=self.pad_right,
-                       ind_start=self.ind_start, ind_end=self.ind_end,
-                       oversampling=self.oversampling,
-                       vectorize=self.vectorize,
-                       size_scattering=size_scattering,
-                       out_type=self.out_type)
+                         max_order=self.max_order, average=self.average, pad_left=self.pad_left, pad_right=self.pad_right,
+                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling, vectorize=self.vectorize, out_type=self.out_type)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = S.shape[-2:]
             new_shape = batch_shape + scattering_shape
-
             S = S.reshape(new_shape)
         elif self.out_type == 'array' and not self.vectorize:
             for k, v in S.items():
@@ -128,13 +112,11 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 # average == False.
                 scattering_shape = v.shape[-2:]
                 new_shape = batch_shape + scattering_shape
-
                 S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':
             for x in S:
                 scattering_shape = x['coef'].shape[-1:]
                 new_shape = batch_shape + scattering_shape
-
                 x['coef'] = x['coef'].reshape(new_shape)
 
         return S
