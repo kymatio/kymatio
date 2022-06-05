@@ -83,7 +83,9 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S_0.append({'coef': S_0, 'j': (), 'n': ()})
+    out_S_0.append({'coef': S_0,
+                    'j': (),
+                    'n': ()})
 
     # First order:
     for n1 in range(len(psi1)):
@@ -115,7 +117,9 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
-        out_S_1.append({'coef': S_1, 'j': (j1,), 'n': (n1,)})
+        out_S_1.append({'coef': S_1,
+                        'j': (j1,),
+                        'n': (n1,)})
 
         if max_order == 2:
             # 2nd order
@@ -151,7 +155,9 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
-                    out_S_2.append({'coef': S_2, 'j': (j1, j2), 'n': (n1, n2)})
+                    out_S_2.append({'coef': S_2,
+                                    'j': (j1, j2),
+                                    'n': (n1, n2)})
 
     out_S = []
     out_S.extend(out_S_0)
