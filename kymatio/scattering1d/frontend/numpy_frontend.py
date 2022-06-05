@@ -2,7 +2,6 @@ import warnings
 
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
-from ..utils import precompute_size_scattering
 from .base_frontend import ScatteringBase1D
 
 
@@ -42,21 +41,10 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 
         x = x.reshape((-1, 1) + signal_shape)
 
-        # get the arguments before calling the scattering
-        # treat the arguments
-        if self.vectorize:
-            size_scattering = precompute_size_scattering(
-                self.J, self.Q, self.T, max_order=self.max_order, detail=True)
-        else:
-            size_scattering = 0
-
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
-                         oversampling=self.oversampling,
-                         vectorize=self.vectorize,
-                         size_scattering=size_scattering,
-                         out_type=self.out_type)
+                         oversampling=self.oversampling, vectorize=self.vectorize, out_type=self.out_type)
 
         if self.out_type == 'array' and self.vectorize:
             scattering_shape = S.shape[-2:]

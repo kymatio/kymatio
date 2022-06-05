@@ -1,8 +1,7 @@
 
 def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, size_scattering=(0, 0, 0),
-        vectorize=False, out_type='array'):
+        max_order=2, average=True, vectorize=False, out_type='array'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -50,12 +49,8 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         Whether to compute the 2nd order or not. Defaults to `False`.
     average_U1 : boolean, optional
         whether to average the first order vector. Defaults to `True`
-    size_scattering : tuple
-        Contains the number of channels of the scattering, precomputed for
-        speed-up. Defaults to `(0, 0, 0)`.
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
-
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
