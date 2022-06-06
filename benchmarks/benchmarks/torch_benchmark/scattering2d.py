@@ -87,6 +87,6 @@ class BenchmarkScattering2D:
         if device == 'cuda':
             torch.cuda.synchronize()
         for i in range(sc_params["n_iter"]):
-            y =self.scattering(self.x)
+            y = self.scattering(self.x)
         if device == 'cuda':
             torch.cuda.synchronize()
