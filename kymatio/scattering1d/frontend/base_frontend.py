@@ -40,6 +40,10 @@ class ScatteringBase1D(ScatteringBase):
         if self.Q < 1:
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
 
+        # check the number of filters per octave
+        if self.Q < 1:
+            raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
+
         # check the shape
         if isinstance(self.shape, numbers.Integral):
             self.N = self.shape
