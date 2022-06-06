@@ -540,8 +540,6 @@ def calibrate_scattering_filters(J, Q, T, alpha, r_psi=math.sqrt(0.5), sigma0=0.
         dictionary containing the frequential width of the second order
         filters. See above for a description of the keys.
     """
-    if Q < 1:
-        raise ValueError('Q should always be >= 1, got {}'.format(Q))
 
     # lower bound of band-pass filter frequential widths:
     # for default T = 2**(J), this coincides with sigma_low
