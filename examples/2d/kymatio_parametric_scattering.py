@@ -336,6 +336,8 @@ class ParametricScattering2D(Scattering2D):
 # the Littlewood Paley diagram. Dekha means "Look! See!" in Punjabi. 
 
 def littlewood_paley_dekha(S, display=True):
+    """Plots each wavelet in Fourier space, creating a 
+    comprehensive view of the scattering filterbank."""
     wavelets = morlets(S.grid, S.params_filters[0], 
                                       S.params_filters[1], S.params_filters[2], 
                                         S.params_filters[3]).detach().numpy()
