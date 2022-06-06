@@ -181,10 +181,6 @@ def test_calibrate_scattering_filters():
             for sig in sigma2:
                 assert sig >= sigma_low
 
-    with pytest.raises(ValueError) as ve:
-        calibrate_scattering_filters(J_range[0], 0.9, 2 ** J_range[0], alpha=5.)
-    assert "should always be >= 1" in ve.value.args[0]
-
 
 def test_compute_xi_max():
     """
