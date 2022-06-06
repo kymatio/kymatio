@@ -653,8 +653,13 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(J_scattering, Q, T, alpha=alpha,
-                                                                                 r_psi=r_psi, sigma0=sigma0)
+    sigma_min = sigma0 / math.pow(2, J)
+
+    xi1, sigma1, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
+    xi2, sigma2, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
+
+    # width of the low-pass filter
+    sigma_low = sigma0 / T
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
