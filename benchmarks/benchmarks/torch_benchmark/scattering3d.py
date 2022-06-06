@@ -35,7 +35,7 @@ backends.append(backend)
 
 
 class BenchmarkHarmonicScattering3D:
-    param_names = ["sc_params", "backend", "devices"]
+    param_names = ["sc_params", "backend", "device"]
     timeout = 400  # in seconds
 
     params = [
