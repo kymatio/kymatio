@@ -1,3 +1,4 @@
+from itertools import repeat
 import numpy as np
 import math
 import warnings
@@ -404,25 +405,25 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 
     if sigma_max <= sigma_min:
-        xis, sigmas, js = [], [], []
+        xis = []
+        sigmas = []
         elbow_xi = sigma_max
     else:
-        xis, sigmas, js =  [xi_max], [sigma_max], [0]
+        xis =  [xi_max]
+        sigmas = [sigma_max]
 
         # High-frequency (constant-Q) region: geometric progression of xi
         while sigmas[-1] > (sigma_min * math.pow(2, 1/Q)):
             xis.append(xis[-1] / math.pow(2, 1/Q))
             sigmas.append(sigmas[-1] / math.pow(2, 1/Q))
-            js.append(get_max_dyadic_subsampling(xis[-1], sigmas[-1], alpha))
-
         elbow_xi = xis[-1]
 
     # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
-    for q in range(Q-1):
-        xis.append(elbow_xi - (1+q)/(1+Q) * elbow_xi)
+    for q in range(1, Q):
+        xis.append(elbow_xi - q/Q * elbow_xi)
         sigmas.append(sigma_min)
-        js.append(get_max_dyadic_subsampling(xis[-1], sigmas[-1], alpha))
 
+    js = list(map(get_max_dyadic_subsampling, xis, sigmas, repeat(alpha)))
     return xis, sigmas, js
 
 
