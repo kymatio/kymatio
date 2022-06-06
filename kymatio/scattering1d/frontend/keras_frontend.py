@@ -10,7 +10,7 @@ class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
     def __init__(self, J, Q=1, T=None, max_order=2, oversampling=0):
         ScatteringKeras.__init__(self)
         ScatteringBase1D.__init__(self, J, None, Q, T, max_order, True,
-                oversampling, True, 'array', None)
+                oversampling, 'array', None)
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])

@@ -235,8 +235,7 @@ def compute_meta_scattering(J, Q, T, max_order=2):
             A Tensor of size `(C, max_order)`, specifying the indices of
             the filters used at each order (padded with NaNs).
         - `'key'` : list
-            The tuples indexing the corresponding scattering coefficient
-            in the non-vectorized output.
+            The tuples indexing the corresponding scattering coefficient.
     """
     sigma_low, xi1s, sigma1s, j1s, xi2s, sigma2s, j2s = \
         calibrate_scattering_filters(J, Q, T, alpha=5.)

@@ -1,7 +1,7 @@
 
 def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, vectorize=False, out_type='array'):
+        max_order=2, average=True, out_type='dict'):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -47,10 +47,10 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         tensor along time. Defaults to `0`
     order2 : boolean, optional
         Whether to compute the 2nd order or not. Defaults to `False`.
-    average_U1 : boolean, optional
-        whether to average the first order vector. Defaults to `True`
-    vectorize : boolean, optional
-        whether to return a dictionary or a tensor. Defaults to False.
+    average : boolean, optional
+        whether to average along the time axis. Defaults to `True`
+    out_type : string
+        either "dict" (default), "array", or "list"
     """
     subsample_fourier = backend.subsample_fourier
     modulus = backend.modulus
@@ -60,6 +60,11 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
+    if out_type not in ['array', 'dict', 'list']:
+        raise RuntimeError("'out_type' must either be 'array', 'dict', or 'list'.")
+
+    if out_type=="array" and not average:
+        raise RuntimeError("out_type=='array' and average are mutually incompatible.")
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
@@ -164,12 +169,11 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
 
-    if out_type == 'array' and vectorize:
+    if out_type == 'array':
         out_S = concatenate([x['coef'] for x in out_S])
-    elif out_type == 'array' and not vectorize:
+    elif out_type == 'dict':
         out_S = {x['n']: x['coef'] for x in out_S}
     elif out_type == 'list':
-        # NOTE: This overrides the vectorize flag.
         for x in out_S:
             x.pop('n')
 

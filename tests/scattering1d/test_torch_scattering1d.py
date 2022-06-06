@@ -123,8 +123,8 @@ def test_computation_Ux(backend, device, random_state=42):
     J = 6
     Q = 8
     T = 2**12
-    scattering = Scattering1D(J, T, Q, average=False,
-                              max_order=1, vectorize=False, frontend='torch', backend=backend).to(device)
+    scattering = Scattering1D(J, T, Q, average=False, out_type="dict",
+                              max_order=1, frontend='torch', backend=backend).to(device)
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float().to(device)
 
@@ -154,11 +154,6 @@ def test_computation_Ux(backend, device, random_state=42):
                     count += 1
 
         assert count == len(s)
-
-        with pytest.raises(ValueError) as ve:
-            scattering.vectorize = True
-            scattering(x)
-        assert "mutually incompatible" in ve.value.args[0]
 
 
 # Technical tests
@@ -212,9 +207,7 @@ def test_coordinates(device, backend, random_state=42):
 
     for max_order in [1, 2]:
         scattering.max_order = max_order
-
-        scattering.vectorize = False
-
+        scattering.out_type = "dict"
         if backend.name.endswith('skcuda') and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_dico = scattering(x)
@@ -222,8 +215,8 @@ def test_coordinates(device, backend, random_state=42):
         else:
             s_dico = scattering(x)
             s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-        scattering.vectorize = True
 
+        scattering.out_type = "array"
         if backend.name.endswith('_skcuda') and device == 'cpu':
             with pytest.raises(TypeError) as ve:
                 s_vec = scattering(x)
@@ -256,7 +249,8 @@ def test_precompute_size_scattering(device, backend, random_state=42):
     Q = 8
     N = 2**12
 
-    scattering = Scattering1D(J, N, Q, vectorize=False, backend=backend, frontend='torch')
+    scattering = Scattering1D(
+        J, N, Q, out_type="dict", backend=backend, frontend='torch')
 
     x = torch.randn(2, N)
 
@@ -357,7 +351,6 @@ def test_batch_shape_agnostic(device, backend):
         return
 
     Sx = S(x)
-
     assert Sx.dim() == 2
     assert Sx.shape[-1] == length_ds
 
@@ -368,7 +361,7 @@ def test_batch_shape_agnostic(device, backend):
     for test_shape in test_shapes:
         x = torch.zeros(test_shape).to(device)
 
-        S.vectorize = True
+        S.out_type = "array"
         Sx = S(x)
 
         assert Sx.dim() == len(test_shape)+1
@@ -376,7 +369,7 @@ def test_batch_shape_agnostic(device, backend):
         assert Sx.shape[-2] == n_coeffs
         assert Sx.shape[:-2] == test_shape[:-1]
 
-        S.vectorize = False
+        S.out_type = "dict"
         Sx = S(x)
 
         assert len(Sx) == n_coeffs

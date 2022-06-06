@@ -8,10 +8,10 @@ from .base_frontend import ScatteringBase1D
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend='torch'):
+            oversampling=0, out_type='array', backend='torch'):
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
-                oversampling, vectorize, out_type, backend)
+                oversampling, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
@@ -76,37 +76,19 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
-        if not self.out_type in ('array', 'list'):
-            raise RuntimeError("The out_type must be one of 'array' or 'list'.")
-
-        if not self.average and self.out_type == 'array' and self.vectorize:
-            raise ValueError("Options average=False, out_type='array' and "
-                             "vectorize=True are mutually incompatible. "
-                             "Please set out_type to 'list' or vectorize to "
-                             "False.")
-
-        if not self.vectorize:
-            warnings.warn("The vectorize option is deprecated and will be "
-                          "removed in version 0.3. Please set "
-                          "out_type='list' for equivalent functionality.",
-                          DeprecationWarning)
-
         batch_shape = x.shape[:-1]
         signal_shape = x.shape[-1:]
-
         x = x.reshape((-1, 1) + signal_shape)
-
         self.load_filters()
-
         S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average, pad_left=self.pad_left, pad_right=self.pad_right,
-                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling, vectorize=self.vectorize, out_type=self.out_type)
+                         ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling, out_type=self.out_type)
 
-        if self.out_type == 'array' and self.vectorize:
+        if self.out_type == 'array':
             scattering_shape = S.shape[-2:]
             new_shape = batch_shape + scattering_shape
             S = S.reshape(new_shape)
-        elif self.out_type == 'array' and not self.vectorize:
+        elif self.out_type == 'dict':
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.

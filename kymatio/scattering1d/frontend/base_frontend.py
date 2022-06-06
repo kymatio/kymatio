@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -20,7 +20,6 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
 
@@ -165,20 +164,12 @@ class ScatteringBase1D(ScatteringBase):
     r"""average : boolean
             Controls whether the output should be averaged (the standard
             scattering transform) or not (resulting in wavelet modulus
-            coefficients). Note that to obtain unaveraged output, the
-            `vectorize` flag must be set to `False` or `out_type` must be set
-            to `'list'`.
+            coefficients). If `average` is set to `False`, `out_type` must be
+            set to `'list'`.
      """
 
-    _doc_param_vectorize = \
-    r"""vectorize : boolean, optional
-            Determines wheter to return a vectorized scattering transform
-            (that is, a large array containing the output) or a dictionary
-            (where each entry corresponds to a separate scattering
-            coefficient). This parameter may be modified after object
-            creation. Deprecated in favor of `out_type` (see below). Defaults
-            to True.
-        out_type : str, optional
+    _doc_param_out_type = \
+    r"""out_type : str, optional
             The format of the output of a scattering transform. If set to
             `'list'`, then the output is a list containing each individual
             scattering coefficient with meta information. Otherwise, if set to
@@ -187,13 +178,8 @@ class ScatteringBase1D(ScatteringBase):
             `'array'`.
         """
 
-    _doc_attr_vectorize = \
-    r"""vectorize : boolean
-            Controls whether the output should be vectorized into a single
-            Tensor or collected into a dictionary. Deprecated in favor of
-            `out_type`. For more details, see the documentation for
-            `scattering`.
-        out_type : str
+    _doc_attr_out_type = \
+    r"""out_type : str
             Specifices the output format of the transform, which is currently
             one of `'array'` or `'list`'. If `'array'`, the output is a large
             array containing the scattering coefficients. If `'list`', the
@@ -289,7 +275,7 @@ class ScatteringBase1D(ScatteringBase):
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
             may be modified after object creation. Defaults to `0`.
-        {param_vectorize}
+        {param_out_type}
         Attributes
         ----------
         J : int
@@ -306,7 +292,7 @@ class ScatteringBase1D(ScatteringBase):
         {attr_average}oversampling : int
             The number of powers of two to oversample the output compared to
             the default subsampling rate determined from the filters.
-        {attr_vectorize}"""
+        {attr_out_type}"""
 
     _doc_scattering = \
     """Apply the scattering transform
@@ -314,26 +300,16 @@ class ScatteringBase1D(ScatteringBase):
        Given an input `{array}` of size `(B, N)`, where `B` is the batch
        size (it can be potentially an integer or a shape) and `N` is the length
        of the individual signals, this function computes its scattering
-       transform. If the `vectorize` flag is set to `True` (or if it is not
+       transform. If `out_type` is set to `"array"` (or if it is not
        available in this frontend), the output is in the form of a `{array}`
        or size `(B, C, N1)`, where `N1` is the signal length after subsampling
        to the scale :math:`2^J` (with the appropriate oversampling factor to
        reduce aliasing), and `C` is the number of scattering coefficients. If
-       `vectorize` is set `False`, however, the output is a dictionary
-       containing `C` keys, each a tuple whose length corresponds to the
-       scattering order and whose elements are the sequence of filter indices
-       used.
-
-       Note that the `vectorize` flag has been deprecated in favor of the
-       `out_type` parameter. If this is set to `'array'` (the default), the
-       `vectorize` flag is still respected, but if not, `out_type` takes
-       precedence. The two current output types are `'array'` and `'list'`.
-       The former gives the type of output described above. If set to
-       `'list'`, however, the output is a list of dictionaries, each
-       dictionary corresponding to a scattering coefficient and its associated
-       meta information. The coefficient is stored under the `'coef'` key,
-       while other keys contain additional information, such as `'j'` (the
-       scale of the filter used) and `'n`' (the filter index).
+       `out_type` is set to `'list'`, however, the output is a list of
+       dictionaries, each dictionary corresponding to a scattering coefficient
+       and its associated meta information. The coefficient is stored under th
+       `'coef'` key, while other keys contain additional information, such as
+       `'j'` (the scale of the filter used) and `'n`' (the filter index).
 
        Furthermore, if the `average` flag is set to `False`, these outputs
        are not averaged, but are simply the wavelet modulus coefficients of
@@ -347,10 +323,8 @@ class ScatteringBase1D(ScatteringBase):
        Returns
        -------
        S : tensor or dictionary
-           If `out_type` is `'array'` and the `vectorize` flag is `True`, the
-           output is a{n} `{array}` containing the scattering coefficients,
-           while if `vectorize` is `False`, it is a dictionary indexed by
-           tuples of filter indices. If `out_type` is `'list'`, the output is
+           If `out_type` is `'array'`, the output is a{n} `{array}` containing
+           the scattering coefficients. If `out_type` is `'list'`, the output is
            a list of dictionaries as described above.
     """
 
@@ -362,8 +336,8 @@ class ScatteringBase1D(ScatteringBase):
 
         param_average = cls._doc_param_average if cls._doc_has_out_type else ''
         attr_average = cls._doc_attr_average if cls._doc_has_out_type else ''
-        param_vectorize = cls._doc_param_vectorize if cls._doc_has_out_type else ''
-        attr_vectorize = cls._doc_attr_vectorize if cls._doc_has_out_type else ''
+        param_out_type = cls._doc_param_out_type if cls._doc_has_out_type else ''
+        attr_out_type = cls._doc_attr_out_type if cls._doc_has_out_type else ''
 
         cls.__doc__ = ScatteringBase1D._doc_class.format(
             array=cls._doc_array,
@@ -375,8 +349,8 @@ class ScatteringBase1D(ScatteringBase):
             attrs_shape=attrs_shape,
             param_average=param_average,
             attr_average=attr_average,
-            param_vectorize=param_vectorize,
-            attr_vectorize=attr_vectorize,
+            param_out_type=param_out_type,
+            attr_out_type=attr_out_type,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
         cls.scattering.__doc__ = ScatteringBase1D._doc_scattering.format(
