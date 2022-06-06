@@ -101,7 +101,8 @@ class ScatteringBase1D(ScatteringBase):
         meta : dictionary
             See the documentation for `compute_meta_scattering()`.
         """
-        return compute_meta_scattering(self.J, self.Q, self.T, max_order=self.max_order)
+        return compute_meta_scattering(
+            self.J, self.Q, self.T, self.max_order, self.r_psi, self.sigma0, self.alpha)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
@@ -121,8 +122,8 @@ class ScatteringBase1D(ScatteringBase):
             See the documentation for `precompute_size_scattering()`.
         """
 
-        return precompute_size_scattering(
-            self.J, self.Q, self.T, max_order=self.max_order, detail=detail)
+        return precompute_size_scattering(self.J, self.Q, self.T,
+            self.max_order, detail=detail)
 
     _doc_shape = 'N'
 
