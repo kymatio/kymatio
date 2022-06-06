@@ -653,7 +653,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_min = sigma0 / math.pow(2, J)
+    sigma_min = sigma0 / math.pow(2, J_scattering)
 
     xi1, sigma1, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
     xi2, sigma2, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
