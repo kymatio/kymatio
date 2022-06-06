@@ -71,11 +71,7 @@ class BenchmarkHarmonicScattering3D:
         self.x = x.to(device)
 
     def time_constructor(self, sc_params,  backend, device):
-        if device == 'cuda':
-            torch.cuda.synchronize()
         HarmonicScattering3D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], L=sc_params["L"])
-        if device == 'cuda':
-            torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
         if device=='cuda':

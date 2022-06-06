@@ -83,11 +83,7 @@ class BenchmarkScattering1D:
         # can take some time
 
     def time_constructor(self, sc_params,  backend, device):
-        if device == 'cuda':
-            torch.cuda.synchronize()
         Scattering1D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
-        if device == 'cuda':
-            torch.cuda.synchronize()
 
     def time_forward(self, sc_params, backend, device):
         if device=='cuda':
