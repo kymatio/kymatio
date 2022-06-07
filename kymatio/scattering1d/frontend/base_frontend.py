@@ -121,9 +121,8 @@ class ScatteringBase1D(ScatteringBase):
         size : int or tuple
             See the documentation for `precompute_size_scattering()`.
         """
-
         return precompute_size_scattering(self.J, self.Q, self.T,
-            self.max_order, detail=detail)
+            self.max_order, self.r_psi, self.sigma0, self.alpha, detail=detail)
 
     _doc_shape = 'N'
 

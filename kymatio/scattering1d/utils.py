@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from .filter_bank import scattering_filter_factory, calibrate_scattering_filters, compute_params_filterbank
+from .filter_bank import scattering_filter_factory, compute_params_filterbank
 
 def compute_border_indices(log2_T, J, i0, i1):
     """
@@ -138,7 +138,8 @@ def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
     return min_to_pad
 
 
-def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
+def precompute_size_scattering(
+        J, Q, T, max_order, r_psi, sigma0, alpha, detail=False):
     """Get size of the scattering transform
 
     The number of scattering coefficients depends on the filter
@@ -156,9 +157,20 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    max_order : int, optional
+    max_order : int
         The maximum order of scattering coefficients to compute.
-        Must be either equal to `1` or `2`. Defaults to `2`.
+        Must be either equal to `1` or `2`.
+    r_psi : float, optional
+        Should be >0 and <1. Controls the redundancy of the filters
+        (the larger r_psi, the larger the overlap between adjacent wavelets).
+    sigma0 : float
+        parameter controlling the frequential width of the
+        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
+        is equal to sigma0 / 2**J_scattering.
+    alpha : float, optional
+        tolerance factor for the aliasing after subsampling.
+        The larger alpha, the more conservative the value of maximal
+        subsampling is.
     detail : boolean, optional
         Specifies whether to provide a detailed size (number of coefficient
         per order) or an aggregate size (total number of coefficients).
@@ -170,15 +182,16 @@ def precompute_size_scattering(J, Q, T, max_order=2, detail=False):
         integer. If `True`, returns a tuple of size `max_order` containing
         the number of coefficients in each order.
     """
-    sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-        calibrate_scattering_filters(J, Q, T, alpha=5.)
+    sigma_min = sigma0 / math.pow(2, J)
+    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
+    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
 
     size_order0 = 1
-    size_order1 = len(xi1)
+    size_order1 = len(xi1s)
     size_order2 = 0
-    for n1 in range(len(xi1)):
-        for n2 in range(len(xi2)):
-            if j2[n2] > j1[n1]:
+    for n1 in range(len(xi1s)):
+        for n2 in range(len(xi2s)):
+            if j2s[n2] > j1s[n1]:
                 size_order2 += 1
     if detail:
         if max_order == 2:
