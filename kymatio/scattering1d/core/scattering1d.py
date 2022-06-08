@@ -1,4 +1,4 @@
-from ..utils import compute_border_indices, compute_padding_
+from ..utils import compute_border_indices, compute_padding
 from operator import itemgetter
 
 def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
