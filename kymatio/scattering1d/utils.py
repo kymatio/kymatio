@@ -69,6 +69,35 @@ def compute_padding(J_pad, N):
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
 
+def compute_padding_(N, N_pad):
+    """
+    Computes the padding to be added on the left and on the right
+    of the signal.
+
+    It should hold that N_pad >= N
+
+    Parameters
+    ----------
+    N : int
+        original signal support size
+    N_pad : int
+        support of the padded signal
+    
+    Returns
+    -------
+    pad_left: amount to pad on the left ("beginning" of the support)
+    pad_right: amount to pad on the right ("end" of the support)
+    """
+    if N_pad < N:
+        raise ValueError('Padding support should be larger than the original' +
+                         'signal size!')
+    to_add = N_pad - N
+    pad_left = to_add // 2
+    pad_right = to_add - pad_left
+    if max(pad_left, pad_right) >= N:
+        raise ValueError('Too large padding value, will lead to NaN errors')
+    return pad_left, pad_right
+
 def compute_minimum_support_to_pad(N, J, Q, T, criterion_amplitude=1e-3,
                                        normalize='l1', r_psi=math.sqrt(0.5),
                                        sigma0=1e-1, alpha=5., P_max=5, eps=1e-7):

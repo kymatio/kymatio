@@ -1,5 +1,7 @@
+from ..utils import compute_border_indices, compute_padding_
+from operator import itemgetter
 
-def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
+def scattering1d(x, pad_, unpad_, backend, log2_T, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, vectorize=False, out_type='array'):
     """
@@ -59,7 +61,18 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
     irfft = backend.irfft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
+    pad = backend.pad
+    unpad = backend.unpad
 
+    # compute the signal length
+    N = x.shape[-1]
+    N_pad = phi[0].shape[-1]
+    # compute the padding quantities:
+    pad_left, pad_right = compute_padding_(N, N_pad)
+    # compute start and end indices
+    log2_T = phi["j"]
+    J = max(max(map(itemgetter("j"), psi1)), max(map(itemgetter("j"), psi2)))
+    ind_start, ind_end = compute_border_indices(log2_T, J, pad_left, pad_left+N)
 
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
