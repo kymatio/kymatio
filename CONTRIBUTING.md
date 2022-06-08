@@ -4,9 +4,59 @@ Contributing code
 
 This document is a 'getting started' summary for contributing code, documentation, testing, and filing issues.
 
+
+
+Feature requests/bugs: filing issues
+------------------------------------
+We use Github issues to track all bugs and feature requests. Feel free to
+open an issue if you have found a bug or want to implement feature.
+
+It is recommended to check that your issue complies with the
+following rules before submitting:
+
+-  Verify that your issue is not being currently addressed by other
+   [issues](https://github.com/kymatio/kymatio/issues?)
+   or [pull requests](https://github.com/kymatio/kymatio/pulls).
+
+-  Please ensure all code snippets and error messages are formatted in
+   appropriate code blocks.
+   See [Creating and highlighting code blocks](https://help.github.com/articles/creating-and-highlighting-code-blocks).
+
+-  Please include your operating system type and version number, as well
+   as your Python, NumPy, SciPy, PyTorch, and Kymatio versions. This information
+   can be found by running the following code snippet:
+
+  ```python
+  import platform; print(platform.platform())
+  import sys; print("Python", sys.version)
+  import numpy; print("NumPy", numpy.__version__)
+  import scipy; print("SciPy", scipy.__version__)
+  import torch; print("PyTorch", torch.__version__)
+  import kymatio; print("Kymatio", kymatio.__version__)
+  ```
+
+- If your issue is related to GPU acceleration, please copy-paste the output
+  from the [environment collection script](https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py)
+  of PyTorch.
+  You can get the script and run it with:
+  ```python
+  wget https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py
+  # For security purposes, please check the contents of collect_env.py before running it.
+  python collect_env.py
+  ```
+
+- If discussing a feature request, the community should collectively decide
+whether the contribution is within the scope of the project and feasible. 
+- The goal is to reach a consensus on the roadmap for the feature and its 
+implementation.
+- The community will decide on a series of pull requests (PRs) towards merging the 
+feature. In order to make the reviewing process manageable, a decision will be 
+made on how to split a large feature into multiple smaller PRs.
+- Once a consensus is reached, the implementation can begin.
+
+
 How to contribute
 -----------------
-
 The preferred way to contribute to Kymatio is to fork the
 [main repository](http://github.com/kymatio/kymatio/) on
 GitHub:
@@ -62,47 +112,6 @@ review. This will send an email to the moderators.
 
 For further details on using Git for version control, we recommend you look
 up its [documentation](http://git-scm.com/documentation).
-
-
-
-Filing bugs
------------
-We use Github issues to track all bugs and feature requests. Feel free to
-open an issue if you have found a bug or wish to see a feature implemented.
-
-It is recommended to check that your issue complies with the
-following rules before submitting:
-
--  Verify that your issue is not being currently addressed by other
-   [issues](https://github.com/kymatio/kymatio/issues?)
-   or [pull requests](https://github.com/kymatio/kymatio/pulls).
-
--  Please ensure all code snippets and error messages are formatted in
-   appropriate code blocks.
-   See [Creating and highlighting code blocks](https://help.github.com/articles/creating-and-highlighting-code-blocks).
-
--  Please include your operating system type and version number, as well
-   as your Python, NumPy, SciPy, PyTorch, and Kymatio versions. This information
-   can be found by running the following code snippet:
-
-  ```python
-  import platform; print(platform.platform())
-  import sys; print("Python", sys.version)
-  import numpy; print("NumPy", numpy.__version__)
-  import scipy; print("SciPy", scipy.__version__)
-  import torch; print("PyTorch", torch.__version__)
-  import kymatio; print("Kymatio", kymatio.__version__)
-  ```
-
-- If your issue is related to GPU acceleration, please copy-paste the output
-  from the [environment collection script](https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py)
-  of PyTorch.
-  You can get the script and run it with:
-  ```python
-  wget https://raw.githubusercontent.com/pytorch/pytorch/master/torch/utils/collect_env.py
-  # For security purposes, please check the contents of collect_env.py before running it.
-  python collect_env.py
-  ```
 
 
 
