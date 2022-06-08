@@ -55,7 +55,7 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
     # Prepare for padding/unpadding
     N = x.shape[-1]
     N_pad = len(phi[0])
-    pad_left, pad_right = compute_padding_(N, N_pad)
+    pad_left, pad_right = compute_padding(N, N_pad)
     log2_T = phi["j"]
     J = max(max(map(itemgetter("j"), psi1)), max(map(itemgetter("j"), psi2)))
     ind_start, ind_end = compute_border_indices(log2_T, J, pad_left, pad_left+N)
@@ -76,7 +76,9 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S = [{'coef': S_0, 'j': (), 'n': ()}]
+    out_S = [{'coef': S_0,
+              'j': (),
+              'n': ()}]
 
     # First order:
     for n1 in range(len(psi1)):
@@ -109,8 +111,8 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
         out_S.append({'coef': S_1,
-                        'j': (j1,),
-                        'n': (n1,)})
+                      'j': (j1,),
+                      'n': (n1,)})
 
         if max_order == 2:
             # 2nd order
@@ -147,8 +149,8 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
                     out_S.append({'coef': S_2,
-                                    'j': (j1, j2),
-                                    'n': (n1, n2)})
+                                  'j': (j1, j2),
+                                  'n': (n1, n2)})
 
     if out_type == 'array' and vectorize:
         out_S = concatenate([x['coef'] for x in out_S])
