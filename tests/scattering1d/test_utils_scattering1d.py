@@ -10,15 +10,15 @@ def test_compute_padding():
     Test the compute_padding function
     """
 
-    pad_left, pad_right = compute_padding_(16, 32)
+    pad_left, pad_right = compute_padding(16, 32)
     assert pad_left == 8 and pad_right == 8
 
     with pytest.raises(ValueError) as ve:
-        _, _ = compute_padding_(16, 8)
+        _, _ = compute_padding(16, 8)
     assert "should be larger" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        _, _ = compute_padding_(16, 64)
+        _, _ = compute_padding(16, 64)
     assert "Too large padding value" in ve.value.args[0]
 
 
