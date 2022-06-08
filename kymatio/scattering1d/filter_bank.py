@@ -1,4 +1,3 @@
-from itertools import repeat
 import numpy as np
 import math
 import warnings
@@ -423,7 +422,9 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
         xis.append(elbow_xi - q/Q * elbow_xi)
         sigmas.append(sigma_min)
 
-    js = list(map(get_max_dyadic_subsampling, xis, sigmas, repeat(alpha)))
+    js = [
+        get_max_dyadic_subsampling(xi, sigma, alpha) for xi, sigma in zip(xis, sigmas)
+    ]
     return xis, sigmas, js
 
 
