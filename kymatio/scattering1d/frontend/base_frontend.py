@@ -71,11 +71,6 @@ class ScatteringBase1D(ScatteringBase):
         J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
         self.J_pad = min(int(np.ceil(np.log2(self.N + 2 * min_to_pad))),
                          J_max_support)
-        # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
-        # compute start and end indices
-        self.ind_start, self.ind_end = compute_border_indices(
-            self.log2_T, self.J, self.pad_left, self.pad_left + self.N)
 
     def create_filters(self):
         # Create the filters

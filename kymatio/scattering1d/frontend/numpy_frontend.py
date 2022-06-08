@@ -41,9 +41,8 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 
         x = x.reshape((-1, 1) + signal_shape)
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f,
-                         self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
-                         pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
+        S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f,
+                         self.phi_f, max_order=self.max_order, average=self.average,
                          oversampling=self.oversampling, vectorize=self.vectorize, out_type=self.out_type)
 
         if self.out_type == 'array' and self.vectorize:

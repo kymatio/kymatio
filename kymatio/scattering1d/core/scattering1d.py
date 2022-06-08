@@ -1,16 +1,17 @@
 from ..utils import compute_border_indices, compute_padding_
 from operator import itemgetter
 
-def scattering1d(x, pad_, unpad_, backend, log2_T, psi1, psi2, phi, pad_left=0,
-        pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, vectorize=False, out_type='array'):
+def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
+    average=True, vectorize=False, out_type='array'):
     """
-    Main function implementing the 1-D scattering transform.
+    Backend-agnostic implementation of the 1-D scattering transform.
 
     Parameters
     ----------
-    x : Tensor
-        a torch Tensor of size `(B, 1, N)` where `N` is the temporal size
+    x : array
+        input signal
+    backend : Python module
+        as returned by self._instantiate_backend
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
         `j` corresponds to the downsampling factor for
@@ -30,27 +31,14 @@ def scattering1d(x, pad_, unpad_, backend, log2_T, psi1, psi2, phi, pad_left=0,
         The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
-    log2_T : int
-        (log2 of) temporal support of low-pass filter, controlling amount of
-        imposed time-shift invariance and maximum subsampling
-    pad_left : int, optional
-        how much to pad the signal on the left. Defaults to `0`
-    pad_right : int, optional
-        how much to pad the signal on the right. Defaults to `0`
-    ind_start : dictionary of ints, optional
-        indices to truncate the signal to recover only the
-        parts which correspond to the actual signal after padding and
-        downsampling. Defaults to None
-    ind_end : dictionary of ints, optional
-        See description of ind_start
     oversampling : int, optional
         how much to oversample the scattering (with respect to :math:`2^J`):
         the higher, the larger the resulting scattering
         tensor along time. Defaults to `0`
-    order2 : boolean, optional
-        Whether to compute the 2nd order or not. Defaults to `False`.
-    average_U1 : boolean, optional
-        whether to average the first order vector. Defaults to `True`
+    max_order : int, optional
+        Order of the scattering transform. Either `1` or `2` (default).
+    average : boolean, optional
+        whether to average the scattering representation. Defaults to `True`
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
     """
