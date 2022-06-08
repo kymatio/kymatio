@@ -30,7 +30,7 @@ from torchvision import datasets, transforms
 
 ###############################################################################
 # Implementation of parametric scattering - wavelet generation
-# ---------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # We wish to develop a version of the scattering transform where the wavelet
 # parameters can be optimized. Currently, in Kymatio, the filter generation 
 # is defined using Numpy. Numpy does not give us differentiablity, so we 
@@ -135,7 +135,7 @@ def raw_morlets(grid_or_shape, wave_vectors, gaussian_bases, morlet=True, ifftsh
 
 ###############################################################################
 # Implementation of parametric scattering - Updating dictionaires
-# ---------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Kymatio utilizes dictionaries to store wavelets. These dictionaries are fed into 
 # the core scattering algorithm, where the wavelets and meta information are used 
 # to compute scattering coefficents. 
@@ -245,7 +245,7 @@ def update_wavelets_psi(J, L, psi, shape, params_filters):
 
 ###############################################################################
 # Implementation of parametric scattering - Parametric scattering module
-# ---------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # We have four considerations to take into account 
 #
 # 1. We already have code that we can re-use; i.e. the core scattering algorithm, 
@@ -366,7 +366,7 @@ littlewood_paley_dekha(LS)
 
 ###############################################################################
 # Training the Parametric Scattering
-# ---------------------------------------------------------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # We train the parametric scattering on MNSIT digits and then evaluate. 
 
 def train(model, device, train_loader, optimizer):
