@@ -89,7 +89,7 @@ def compute_padding_(N, N_pad):
     pad_right: amount to pad on the right ("end" of the support)
     """
     if N_pad < N:
-        raise ValueError('Padding support should be larger than the original' +
+        raise ValueError('Padding support should be larger than the original ' +
                          'signal size!')
     to_add = N_pad - N
     pad_left = to_add // 2

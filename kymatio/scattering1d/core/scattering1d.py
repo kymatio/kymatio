@@ -66,7 +66,7 @@ def scattering1d(x, pad_, unpad_, backend, log2_T, psi1, psi2, phi, pad_left=0,
 
     # compute the signal length
     N = x.shape[-1]
-    N_pad = phi[0].shape[-1]
+    N_pad = len(phi[0])
     # compute the padding quantities:
     pad_left, pad_right = compute_padding_(N, N_pad)
     # compute start and end indices
