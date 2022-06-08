@@ -1,4 +1,4 @@
-from ..utils import compute_border_indices, compute_padding_
+from ..utils import compute_border_indices, compute_padding
 from operator import itemgetter
 
 def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
@@ -52,28 +52,20 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
     pad = backend.pad
     unpad = backend.unpad
 
-    # compute the signal length
+    # Prepare for padding/unpadding
     N = x.shape[-1]
     N_pad = len(phi[0])
-    # compute the padding quantities:
-    pad_left, pad_right = compute_padding_(N, N_pad)
-    # compute start and end indices
+    pad_left, pad_right = compute_padding(N, N_pad)
     log2_T = phi["j"]
     J = max(max(map(itemgetter("j"), psi1)), max(map(itemgetter("j"), psi2)))
     ind_start, ind_end = compute_border_indices(log2_T, J, pad_left, pad_left+N)
-
-    # S is simply a dictionary if we do not perform the averaging...
-    batch_size = x.shape[0]
-    klog2_T = max(log2_T - oversampling, 0)
-    temporal_size = ind_end[klog2_T] - ind_start[klog2_T]
-    out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
     U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
-    # Get S0
+    # Zeroth order
     k0 = max(log2_T - oversampling, 0)
 
     if average:
@@ -84,9 +76,9 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
         S_0 = x
-    out_S_0.append({'coef': S_0,
-                    'j': (),
-                    'n': ()})
+    out_S = [{'coef': S_0,
+              'j': (),
+              'n': ()}]
 
     # First order:
     for n1 in range(len(psi1)):
@@ -118,9 +110,9 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
         else:
             S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
-        out_S_1.append({'coef': S_1,
-                        'j': (j1,),
-                        'n': (n1,)})
+        out_S.append({'coef': S_1,
+                      'j': (j1,),
+                      'n': (n1,)})
 
         if max_order == 2:
             # 2nd order
@@ -156,14 +148,9 @@ def scattering1d(x, backend, psi1, psi2, phi, oversampling=0, max_order=2,
                     else:
                         S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
-                    out_S_2.append({'coef': S_2,
-                                    'j': (j1, j2),
-                                    'n': (n1, n2)})
-
-    out_S = []
-    out_S.extend(out_S_0)
-    out_S.extend(out_S_1)
-    out_S.extend(out_S_2)
+                    out_S.append({'coef': S_2,
+                                  'j': (j1, j2),
+                                  'n': (n1, n2)})
 
     if out_type == 'array' and vectorize:
         out_S = concatenate([x['coef'] for x in out_S])
