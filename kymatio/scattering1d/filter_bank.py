@@ -556,7 +556,7 @@ def calibrate_scattering_filters(J, Q, T, alpha, r_psi=math.sqrt(0.5), sigma0=0.
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
-                              criterion_amplitude=1e-3, normalize='l1',
+                              normalize='l1',
                               max_subsampling=None, sigma0=0.1, alpha=5.,
                               P_max=5, eps=1e-7, **kwargs):
     """
@@ -589,9 +589,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
         Defaults to sqrt(0.5).
-    criterion_amplitude : float, optional
-        Represents the numerical error which is allowed to be lost after
-        convolution and padding. Defaults to 1e-3.
     normalize : string, optional
         Normalization convention for the filters (in the
         temporal domain). Supported values include 'l1' and 'l2'; a ValueError
@@ -643,10 +640,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         The keys of this dictionary are of th etype (j, n) where n is an
         integer counting the filters and j is the maximal dyadic subsampling
         which can be performed on top of this filter without aliasing.
-    t_max_phi : int
-        temporal size to use to pad the signal on the right and on the
-        left by making at most criterion_amplitude error. Assumes that the
-        temporal support of the low-pass filter is larger than all filters.
 
     Refs
     ----
@@ -733,10 +726,5 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     phi_f['sigma'] = sigma_low
     phi_f['j'] = log2_T
 
-    # compute the support size allowing to pad without boundary errors
-    # at the finest resolution  # TODO
-    t_max_phi = compute_temporal_support(
-        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
-
     # return results
-    return phi_f, psi1_f, psi2_f, t_max_phi
+    return phi_f, psi1_f, psi2_f
