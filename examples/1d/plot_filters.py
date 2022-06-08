@@ -69,7 +69,6 @@ def scattering1D_filter_factory():
   # first-order wavelet filters (`psi1_f`), and the second-order filters
   # (`psi2_f`).
   
-  
   phi_f, psi1_f, psi2_f = scattering_filter_factory(np.log2(N), J, Q, T)
   ###############################################################################
   # The `phi_f` output is a dictionary where each integer key corresponds points
