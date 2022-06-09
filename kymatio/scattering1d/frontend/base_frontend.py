@@ -4,8 +4,8 @@ import numbers
 
 import numpy as np
 
-from ..filter_bank import scattering_filter_factory
-from ..utils import (compute_border_indices, compute_padding, compute_minimum_support_to_pad,
+from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
+from ..utils import (compute_border_indices, compute_padding,
 compute_meta_scattering, precompute_size_scattering)
 
 
@@ -36,7 +36,6 @@ class ScatteringBase1D(ScatteringBase):
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
-        self.criterion_amplitude = 1e-3
 
         # check the shape
         if isinstance(self.shape, numbers.Integral):
@@ -59,9 +58,11 @@ class ScatteringBase1D(ScatteringBase):
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        min_to_pad = compute_minimum_support_to_pad(
-            self.N, self.J, self.Q, self.T, r_psi=self.r_psi, sigma0=self.sigma0,
-            alpha=self.alpha, criterion_amplitude=self.criterion_amplitude)
+        phi_f = gauss_1d(
+            self.N, self.sigma0/self.T, self.normalize, self.P_max, self.eps)
+        min_to_pad = 3 * compute_temporal_support(
+            phi_f.reshape(1, -1), criterion_amplitude=1e-3)
+
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
         J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
@@ -77,7 +78,6 @@ class ScatteringBase1D(ScatteringBase):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f, _ = scattering_filter_factory(
             self.J_pad, self.J, self.Q, self.T,
-            criterion_amplitude=self.criterion_amplitude,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
 
     def meta(self):
