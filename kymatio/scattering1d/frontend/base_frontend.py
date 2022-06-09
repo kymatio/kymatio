@@ -20,6 +20,7 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
+        self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
 
