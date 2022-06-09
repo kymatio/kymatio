@@ -428,3 +428,15 @@ def test_T(device, backend):
     Sg1 = scattering1(x)
     assert torch.allclose(Sg0, Sx0)
     assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_Q(device, backend):
+    J = 3
+    length = 1024
+    shape = (length,)
+
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(
+            J, shape, Q=0.9, backend=backend, frontend='torch').to(device)
+    assert "Q should always be >= 1" in ve.value.args[0]
