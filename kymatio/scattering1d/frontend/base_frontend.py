@@ -127,7 +127,7 @@ class ScatteringBase1D(ScatteringBase):
         "Access the attribute N for the padded length (previously 2**J_pad) "
         "or the attribute shape (or shape[0]) for the unpadded length "
         "(previously N).", DeprecationWarning)
-        return np.log2(self.N)
+        return int(np.log2(self.N))
 
     _doc_shape = 'N'
 
