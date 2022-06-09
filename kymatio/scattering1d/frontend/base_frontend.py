@@ -58,8 +58,7 @@ class ScatteringBase1D(ScatteringBase):
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(
-            self.N, self.sigma0/self.T, self.normalize, self.P_max, self.eps)
+        phi_f = gauss_1d(self.N, self.sigma0/self.T)
         min_to_pad = 3 * compute_temporal_support(
             phi_f.reshape(1, -1), criterion_amplitude=1e-3)
 
