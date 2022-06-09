@@ -256,50 +256,6 @@ def get_max_dyadic_subsampling(xi, sigma, alpha):
     return j
 
 
-def _move_one_dyadic_step(cv, Q, alpha):
-    """
-    Computes the parameters of the next wavelet on the low frequency side,
-    based on the parameters of the current wavelet.
-
-    This function is used in the loop defining all the filters, starting
-    at the wavelet frequency and then going to the low frequencies by
-    dyadic steps. This makes the loop in compute_params_filterbank much
-    simpler to read.
-
-    The steps are defined as:
-    xi_{n+1} = 2^{-1/Q} xi_n
-    sigma_{n+1} = 2^{-1/Q} sigma_n
-
-    Parameters
-    ----------
-    cv : dictionary
-        stands for current_value. Is a dictionary with keys:
-        *'key': a tuple (j, n) where n is a counter and j is the maximal
-            dyadic subsampling accepted by this wavelet.
-        *'xi': central frequency of the wavelet
-        *'sigma': width of the wavelet
-    Q : int
-        number of wavelets per octave. Controls the relationship between
-        the frequency and width of the current wavelet and the next wavelet.
-    alpha : float, optional
-        tolerance parameter for the aliasing. The larger alpha,
-        the more conservative the algorithm is.
-
-    Returns
-    -------
-    new_cv : dictionary
-        a dictionary with the same keys as the ones listed for cv,
-        whose values are updated
-    """
-    factor = 1. / math.pow(2., 1. / Q)
-    n = cv['key']
-    new_cv = {'xi': cv['xi'] * factor, 'sigma': cv['sigma'] * factor}
-    # compute the new j
-    new_cv['j'] = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'], alpha=alpha)
-    new_cv['key'] = n + 1
-    return new_cv
-
-
 def compute_xi_max(Q):
     """
     Computes the maximal xi to use for the Morlet family, depending on Q.
@@ -327,11 +283,6 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
     are translated. sigma_min limits the smallest frequential width
     among all filters, while preserving the coverage of the whole frequency
     axis.
-
-    The keys of the dictionaries are tuples of integers (j, n) where n is a
-    counter (starting at 0 for the highest frequency filter) and j is the
-    maximal dyadic subsampling accepted by this filter.
-
     Parameters
     ----------
     sigma_min : float
@@ -348,120 +299,42 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
         Defaults to sqrt(0.5).
-
     Returns
     -------
-    xi : dictionary
-        dictionary containing the central frequencies of the wavelets.
-    sigma : dictionary
-        dictionary containing the frequential widths of the wavelets.
-
-    Refs
-    ----
-    Convolutional operators in the time-frequency domain, 2.1.3, V. Lostanlen,
-    PhD Thesis, 2017
-    https://tel.archives-ouvertes.fr/tel-01559667
+    xis : list
+        central frequencies of the filters.
+    sigmas : list
+        bandwidths of the filters.
+    js : list
+        maximal dyadic subsampling accepted by the filters.
+        j=0 stands for no subsampling, j=1 stands for half subsampling, etc.
     """
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 
-    xi = []
-    sigma = []
-    j = []
-
     if sigma_max <= sigma_min:
-        # in this exceptional case, we will not go through the loop, so
-        # we directly assign
-        last_xi = sigma_max
+        xis = []
+        sigmas = []
+        elbow_xi = sigma_max
     else:
-        # fill all the dyadic wavelets as long as possible
-        current = {'key': 0, 'j': 0, 'xi': xi_max, 'sigma': sigma_max}
-        while current['sigma'] > sigma_min:  # while we can attribute something
-            xi.append(current['xi'])
-            sigma.append(current['sigma'])
-            j.append(current['j'])
-            current = _move_one_dyadic_step(current, Q, alpha=alpha)
-        # get the last key
-        last_xi = xi[-1]
-    # fill num_interm wavelets between last_xi and 0, both excluded
-    num_intermediate = Q - 1
-    for q in range(1, num_intermediate + 1):
-        factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
-        new_xi = factor * last_xi
-        new_sigma = sigma_min
-        xi.append(new_xi)
-        sigma.append(new_sigma)
-        j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
-    # return results
-    return xi, sigma, j
+        xis =  [xi_max]
+        sigmas = [sigma_max]
 
+        # High-frequency (constant-Q) region: geometric progression of xi
+        while sigmas[-1] > (sigma_min * math.pow(2, 1/Q)):
+            xis.append(xis[-1] / math.pow(2, 1/Q))
+            sigmas.append(sigmas[-1] / math.pow(2, 1/Q))
+        elbow_xi = xis[-1]
 
-def calibrate_scattering_filters(J, Q, T, alpha, r_psi=math.sqrt(0.5), sigma0=0.1):
-    """
-    Calibrates the parameters of the filters used at the 1st and 2nd orders
-    of the scattering transform.
+    # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
+    for q in range(1, Q):
+        xis.append(elbow_xi - q/Q * elbow_xi)
+        sigmas.append(sigma_min)
 
-    These filterbanks share the same low-pass filterbank, but use a
-    different Q: Q_1 = Q and Q_2 = 1.
-
-    The dictionaries for the band-pass filters have keys which are 2-tuples
-    of the type (j, n), where n is an integer >=0 counting the filters (for
-    identification purposes) and j is an integer >= 0 denoting the maximal
-    subsampling 2**j which can be performed on a signal convolved with this
-    filter without aliasing.
-
-    Parameters
-    ----------
-    J : int
-        maximal scale of the scattering (controls the number of wavelets)
-    Q : int
-        number of wavelets per octave for the first order
-    T : int
-        temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and maximum subsampling
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is.
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5)
-    sigma0 : float, optional
-        frequential width of the low-pass filter at scale J=0
-        (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
-        Defaults to 1e-1
-
-    Returns
-    -------
-    sigma_low : float
-        frequential width of the low-pass filter
-    xi1 : dictionary
-        dictionary containing the center frequencies of the first order
-        filters. See above for a decsription of the keys.
-    sigma1 : dictionary
-        dictionary containing the frequential width of the first order
-        filters. See above for a description of the keys.
-    xi2 : dictionary
-        dictionary containing the center frequencies of the second order
-        filters. See above for a decsription of the keys.
-    sigma2 : dictionary
-        dictionary containing the frequential width of the second order
-        filters. See above for a description of the keys.
-    """
-    if Q < 1:
-        raise ValueError('Q should always be >= 1, got {}'.format(Q))
-
-    # lower bound of band-pass filter frequential widths:
-    # for default T = 2**(J), this coincides with sigma_low
-    sigma_min = sigma0 / math.pow(2, J)
-
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q, alpha=alpha, r_psi=r_psi)
-    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, 1, alpha=alpha, r_psi=r_psi)
-
-    # width of the low-pass filter
-    sigma_low = sigma0 / T
-    return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
+    js = [
+        get_max_dyadic_subsampling(xi, sigma, alpha) for xi, sigma in zip(xis, sigmas)
+    ]
+    return xis, sigmas, js
 
 
 def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
@@ -543,8 +416,12 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(J_scattering, Q, T, alpha=alpha,
-                                                                                 r_psi=r_psi, sigma0=sigma0)
+    sigma_min = sigma0 / math.pow(2, J_scattering)
+    xi1, sigma1, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
+    xi2, sigma2, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
+
+    # width of the low-pass filter
+    sigma_low = sigma0 / T
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}

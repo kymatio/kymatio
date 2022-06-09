@@ -1,8 +1,9 @@
 """
 Testing all functions in filters_bank
 """
+
 from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier,
-    compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d, calibrate_scattering_filters,
+    compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d,
     get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
 import math
@@ -98,36 +99,6 @@ def test_gauss_1d():
         phi = np.fft.ifft(g_f)
         assert np.min(phi) > - tol
         assert np.min(np.abs(phi)) / np.max(np.abs(phi)) < 1e-4
-
-
-def test_calibrate_scattering_filters():
-    """
-    Various tests on the central frequencies xi and spectral width sigma
-    computed for the scattering filterbank
-    - Checks that all widths are > 0
-    - Check that sigma_low is smaller than all sigma2
-    """
-    J_range = np.arange(2, 11)
-    Q_range = np.arange(1, 21, dtype=int)
-    for J in J_range:
-        for Q in Q_range:
-            sigma_low, xi1, sigma1, j1, xi2, sigma2, j2 = \
-                calibrate_scattering_filters(J, Q, 2 ** J, alpha=5.)
-            # Check that all sigmas are > 0
-            assert sigma_low > 0
-            for sig in sigma1:
-                assert sig > 0
-            for sig in sigma2:
-                assert sig > 0
-            # check that sigma_low is smaller than all sigma2
-            for sig in sigma1:
-                assert sig >= sigma_low
-            for sig in sigma2:
-                assert sig >= sigma_low
-
-    with pytest.raises(ValueError) as ve:
-        calibrate_scattering_filters(J_range[0], 0.9, 2 ** J_range[0], alpha=5.)
-    assert "should always be >= 1" in ve.value.args[0]
 
 
 def test_compute_xi_max():
