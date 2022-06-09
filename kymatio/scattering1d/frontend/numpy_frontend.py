@@ -10,7 +10,7 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
             oversampling=0, out_type='array', backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,
-                oversampling, vectorize, out_type, backend)
+                oversampling, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
