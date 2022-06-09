@@ -2,7 +2,7 @@ from ...frontend.base_frontend import ScatteringBase
 import math
 import numbers
 import numpy as np
-import warnings
+from warnings import warn
 
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
 from ..utils import (compute_border_indices, compute_padding,
@@ -41,7 +41,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
 
         # check the shape
-        N_input = self._get_input_length(self.shape)
+        N_input = ScatteringBase1D._get_input_length(self.shape)
 
         # check T or set default
         if self.T is None:
@@ -53,7 +53,7 @@ class ScatteringBase1D(ScatteringBase):
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(N, self.sigma0/self.T)
+        phi_f = gauss_1d(N_input, self.sigma0/self.T)
         min_to_pad = 3 * compute_temporal_support(
             phi_f.reshape(1, -1), criterion_amplitude=1e-3)
 
@@ -122,10 +122,10 @@ class ScatteringBase1D(ScatteringBase):
 
     @property
     def J_pad(self):
-        warnings.warn("The attribute J_pad is deprecated and will "
-        "be removed in v0.4. Access the attribute N for the padded length "
-        "(previously 2**J_pad) or the attribute shape (or shape[0]) for "
-        "the unpadded length (previously N).", warnings.DeprecationWarning)
+        warn("The attribute J_pad is deprecated and will be removed in v0.4. "
+        "Access the attribute N for the padded length (previously 2**J_pad) "
+        "or the attribute shape (or shape[0]) for the unpadded length "
+        "(previously N).", DeprecationWarning)
         return np.log2(self.N)
 
     _doc_shape = 'N'
