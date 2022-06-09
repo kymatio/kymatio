@@ -115,10 +115,10 @@ class ScatteringBase1D(ScatteringBase):
         if isinstance(shape, numbers.Integral):
             return shape
         elif isinstance(shape, tuple):
-            if len(self.shape) > 1:
+            if len(shape) > 1:
                 raise ValueError("If shape is specified as a tuple, it must "
                                  "have exactly one element")
-            return self.shape[0]
+            return shape[0]
         raise ValueError("shape must be an integer or a 1-tuple")
 
     @property
