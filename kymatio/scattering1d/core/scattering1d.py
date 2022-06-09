@@ -1,7 +1,7 @@
 
 def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, out_type='array'):
+        max_order=2, average=True):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -48,7 +48,6 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         whether to average the first order vector. Defaults to `True`
     """
     cdgmm = backend.cdgmm
-    concatenate = backend.concatenate
     ifft = backend.ifft
     irfft = backend.irfft
     modulus = backend.modulus
@@ -157,15 +156,6 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
     out_S.extend(out_S_0)
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
-
-    if out_type == 'array':
-        out_S = concatenate([x['coef'] for x in out_S])
-    elif out_type == 'dict':
-        out_S = {x['n']: x['coef'] for x in out_S}
-    elif out_type == 'list':
-        # NOTE: This overrides the vectorize flag.
-        for x in out_S:
-            x.pop('n')
 
     return out_S
 

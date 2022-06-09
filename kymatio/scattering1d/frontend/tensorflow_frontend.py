@@ -28,14 +28,16 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
-                         oversampling=self.oversampling, out_type=self.out_type)
+                         oversampling=self.oversampling)
 
         if self.out_type == 'array':
+            S = self.backend.concatenate([x['coef'] for x in S])
             scattering_shape = tf.shape(S)[-2:]
             new_shape = tf.concat((batch_shape, scattering_shape), 0)
 
             S = tf.reshape(S, new_shape)
         elif self.out_type == 'dict':
+            S = {x['n']: x['coef'] for x in S}
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.
@@ -45,6 +47,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                 S[k] = tf.reshape(v, new_shape)
         elif self.out_type == 'list':
             for x in S:
+                x.pop('n')
                 scattering_shape = tf.shape(x['coef'])[-1:]
                 new_shape = tf.concat((batch_shape, scattering_shape), 0)
 
