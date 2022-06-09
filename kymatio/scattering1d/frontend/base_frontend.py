@@ -1,8 +1,8 @@
 from ...frontend.base_frontend import ScatteringBase
 import math
 import numbers
-
 import numpy as np
+import warnings
 
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
 from ..utils import (compute_border_indices, compute_padding,
@@ -20,7 +20,6 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
 
@@ -42,40 +41,34 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
 
         # check the shape
-        if isinstance(self.shape, numbers.Integral):
-            self.N = self.shape
-        elif isinstance(self.shape, tuple):
-            self.N = self.shape[0]
-            if len(self.shape) > 1:
-                raise ValueError("If shape is specified as a tuple, it must "
-                                 "have exactly one element")
-        else:
-            raise ValueError("shape must be an integer or a 1-tuple")
+        N_input = self._get_input_length(self.shape)
 
         # check T or set default
         if self.T is None:
             self.T = 2**(self.J)
-        elif self.T > self.N:
+        elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
-                                 self.T, self.N))
+                                 self.T, N_input))
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(self.N, self.sigma0/self.T)
+        phi_f = gauss_1d(N, self.sigma0/self.T)
         min_to_pad = 3 * compute_temporal_support(
             phi_f.reshape(1, -1), criterion_amplitude=1e-3)
 
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
-        J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
-        self.J_pad = min(int(np.ceil(np.log2(self.N + 2 * min_to_pad))),
-                         J_max_support)
+        J_max_support = int(np.floor(np.log2(3 * N_input - 2)))
+        J_pad = min(int(np.ceil(np.log2(N_input + 2 * min_to_pad))),
+                    J_max_support)
+        self.N = 2**J_pad
+
         # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
+        self.pad_left, self.pad_right = compute_padding(self.N, N_input)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.log2_T, self.J, self.pad_left, self.pad_left + self.N)
+            self.log2_T, self.J, self.pad_left, self.pad_left + N_input)
 
     def create_filters(self):
         # Create the filters
@@ -116,6 +109,24 @@ class ScatteringBase1D(ScatteringBase):
         """
         return precompute_size_scattering(self.J, self.Q, self.T,
             self.max_order, self.r_psi, self.sigma0, self.alpha, detail=detail)
+
+    def _get_input_length(shape):
+        if isinstance(shape, numbers.Integral):
+            return shape
+        elif isinstance(shape, tuple):
+            if len(self.shape) > 1:
+                raise ValueError("If shape is specified as a tuple, it must "
+                                 "have exactly one element")
+            return self.shape[0]
+        raise ValueError("shape must be an integer or a 1-tuple")
+
+    @property
+    def J_pad(self):
+        warnings.warn("The attribute J_pad is deprecated and will "
+        "be removed in v0.4. Access the attribute N for the padded length "
+        "(previously 2**J_pad) or the attribute shape (or shape[0]) for "
+        "the unpadded length (previously N).", warnings.DeprecationWarning)
+        return np.log2(self.N)
 
     _doc_shape = 'N'
 

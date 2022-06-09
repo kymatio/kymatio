@@ -39,33 +39,32 @@ def compute_border_indices(log2_T, J, i0, i1):
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
 
-def compute_padding(J_pad, N):
+def compute_padding(N, N_input):
     """
     Computes the padding to be added on the left and on the right
     of the signal.
 
-    It should hold that 2**J_pad >= N
+    It should hold that N >= N_input
 
     Parameters
     ----------
-    J_pad : int
-        2**J_pad is the support of the padded signal
     N : int
-        original signal support size
+        support of the padded signal
+    N_input : int
+        support of the unpadded signal
 
     Returns
     -------
     pad_left: amount to pad on the left ("beginning" of the support)
     pad_right: amount to pad on the right ("end" of the support)
     """
-    N_pad = 2**J_pad
-    if N_pad < N:
+    if N < N_input:
         raise ValueError('Padding support should be larger than the original' +
                          'signal size!')
-    to_add = 2**J_pad - N
+    to_add = N - N_input
     pad_left = to_add // 2
     pad_right = to_add - pad_left
-    if max(pad_left, pad_right) >= N:
+    if max(pad_left, pad_right) >= N_input:
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
 
