@@ -3,10 +3,6 @@ import scipy.signal
 from kymatio.numpy import Scattering1D
 
 
-# set True to execute all test functions without pytest
-run_without_pytest = 0
-
-
 def test_T():
     """Test that `T` controls degree of invariance as intended."""
     # configure scattering & signal
