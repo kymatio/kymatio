@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
-            oversampling=0, vectorize=True, out_type='array', backend=None):
+            oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -20,7 +20,6 @@ class ScatteringBase1D(ScatteringBase):
         self.max_order = max_order
         self.average = average
         self.oversampling = oversampling
-        self.vectorize = vectorize
         self.out_type = out_type
         self.backend = backend
 
@@ -116,6 +115,21 @@ class ScatteringBase1D(ScatteringBase):
         """
         return precompute_size_scattering(self.J, self.Q, self.T,
             self.max_order, self.r_psi, self.sigma0, self.alpha, detail=detail)
+
+    def _check_runtime_args(self):
+        if not self.out_type in ('array', 'dict', 'list'):
+            raise RuntimeError("The out_type must be one of 'array', 'dict', or 'list'.")
+
+        if not self.average and self.out_type == 'array':
+            raise ValueError("Cannot convert to out_type='array' with "
+                             "average=False. Please set out_type to 'dict' or 'list'.")
+
+    def _check_input(self, x):
+        # basic checking, should be improved
+        if len(x.shape) < 1:
+            raise ValueError(
+                'Input tensor x should have at least one axis, got {}'.format(
+                    len(x.shape)))
 
     _doc_shape = 'N'
 
