@@ -60,12 +60,6 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
 
-    if out_type not in ['array', 'dict', 'list']:
-        raise RuntimeError("'out_type' must either be 'array', 'dict', or 'list'.")
-
-    if out_type=="array" and not average:
-        raise RuntimeError("out_type=='array' and average are mutually incompatible.")
-
     # S is simply a dictionary if we do not perform the averaging...
     batch_size = x.shape[0]
     klog2_T = max(log2_T - oversampling, 0)

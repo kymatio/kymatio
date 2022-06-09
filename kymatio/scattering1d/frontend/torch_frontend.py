@@ -4,7 +4,7 @@ import warnings
 from ...frontend.torch_frontend import ScatteringTorch
 from ..core.scattering1d import scattering1d
 from .base_frontend import ScatteringBase1D
-
+from ..utils import check_runtime_arguments
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
@@ -70,7 +70,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                     n += 1
 
     def scattering(self, x):
-        # basic checking, should be improved
+        check_runtime_arguments(self.average, self.out_type)
         if len(x.shape) < 1:
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(

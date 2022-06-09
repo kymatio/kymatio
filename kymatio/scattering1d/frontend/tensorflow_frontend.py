@@ -4,6 +4,7 @@ import warnings
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
 from ..core.scattering1d import scattering1d
 from .base_frontend import ScatteringBase1D
+from ..utils import check_runtime_arguments
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
@@ -17,7 +18,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         ScatteringBase1D.create_filters(self)
 
     def scattering(self, x):
-        # basic checking, should be improved
+        check_runtime_arguments(self.average, self.out_type)
         if len(x.shape) < 1:
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(

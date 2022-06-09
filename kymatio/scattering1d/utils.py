@@ -2,6 +2,14 @@ import numpy as np
 import math
 from .filter_bank import scattering_filter_factory, calibrate_scattering_filters
 
+def check_runtime_arguments(average, out_type):
+    if out_type not in ['array', 'dict', 'list']:
+        raise RuntimeError("'out_type' must either be 'array', 'dict', or 'list'.")
+
+    if out_type=="array" and not average:
+        raise RuntimeError("out_type=='array' and average are mutually incompatible.")
+
+
 def compute_border_indices(log2_T, J, i0, i1):
     """
     Computes border indices at all scales which correspond to the original
