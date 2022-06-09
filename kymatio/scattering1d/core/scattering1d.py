@@ -1,5 +1,5 @@
 
-def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
+def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
         max_order=2, average=True, vectorize=False, out_type='array'):
     """
@@ -28,9 +28,6 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
-    log2_T : int
-        (log2 of) temporal support of low-pass filter, controlling amount of
-        imposed time-shift invariance and maximum subsampling
     pad_left : int, optional
         how much to pad the signal on the left. Defaults to `0`
     pad_right : int, optional
@@ -47,24 +44,22 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
         tensor along time. Defaults to `0`
     order2 : boolean, optional
         Whether to compute the 2nd order or not. Defaults to `False`.
-    average_U1 : boolean, optional
+    average : boolean, optional
         whether to average the first order vector. Defaults to `True`
     vectorize : boolean, optional
         whether to return a dictionary or a tensor. Defaults to False.
     """
-    subsample_fourier = backend.subsample_fourier
-    modulus = backend.modulus
-    rfft = backend.rfft
-    ifft = backend.ifft
-    irfft = backend.irfft
     cdgmm = backend.cdgmm
     concatenate = backend.concatenate
-
+    ifft = backend.ifft
+    irfft = backend.irfft
+    modulus = backend.modulus
+    rfft = backend.rfft
+    pad = backend.pad
+    subsample_fourier = backend.subsample_fourier
+    unpad = backend.unpad
 
     # S is simply a dictionary if we do not perform the averaging...
-    batch_size = x.shape[0]
-    klog2_T = max(log2_T - oversampling, 0)
-    temporal_size = ind_end[klog2_T] - ind_start[klog2_T]
     out_S_0, out_S_1, out_S_2 = [], [], []
 
     # pad to a dyadic size and make it complex
@@ -73,6 +68,7 @@ def scattering1d(x, pad, unpad, backend, log2_T, psi1, psi2, phi, pad_left=0,
     U_0_hat = rfft(U_0)
 
     # Get S0
+    log2_T = phi["j"]
     k0 = max(log2_T - oversampling, 0)
 
     if average:
