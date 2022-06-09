@@ -36,9 +36,6 @@ class ScatteringBase1D(ScatteringBase):
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
-        self.P_max = 5
-        self.eps = 1e-7
-        self.normalize = 'l1'
 
         # check the number of filters per octave
         if self.Q < 1:
@@ -65,8 +62,7 @@ class ScatteringBase1D(ScatteringBase):
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(
-            self.N, self.sigma0/self.T, self.normalize, self.P_max, self.eps)
+        phi_f = gauss_1d(self.N, self.sigma0/self.T)
         min_to_pad = 3 * compute_temporal_support(
             phi_f.reshape(1, -1), criterion_amplitude=1e-3)
 
@@ -84,9 +80,8 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, self.T, normalize=self.normalize,
-            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha,
-            P_max=self.P_max, eps=self.eps)
+            self.J_pad, self.J, self.Q, self.T,
+            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
 
     def meta(self):
         """Get meta information on the transform
