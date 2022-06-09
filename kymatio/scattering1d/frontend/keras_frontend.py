@@ -9,8 +9,8 @@ from tensorflow.python.framework import tensor_shape
 class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
     def __init__(self, J, Q=1, T=None, max_order=2, oversampling=0):
         ScatteringKeras.__init__(self)
-        ScatteringBase1D.__init__(self, J, None, Q, T, max_order, True,
-                oversampling, True, 'array', None)
+        ScatteringBase1D.__init__(self, J, shape=None, Q=Q, T=T, max_order=max_order,
+                average=True, oversampling=oversampling, out_type='array', backend=None)
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
