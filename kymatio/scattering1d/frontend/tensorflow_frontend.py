@@ -44,7 +44,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 
         x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
 
-        S = scattering1d(x, self.backend.pad, self.backend.unpad, self.backend, self.log2_T, self.psi1_f, self.psi2_f,
+        S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling, vectorize=self.vectorize, out_type=self.out_type)
