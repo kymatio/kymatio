@@ -132,17 +132,17 @@ class ScatteringBase1D(ScatteringBase):
             if len(shape) > 1:
                 raise ValueError("Input should be 1-dimensional")
             return shape[0]
-        raise ValueError("shape must be an integer or a 1-tuple")
+        raise ValueError("shape must be an integer or a 1-tuple, got {}".format(type(shape)))
 
     def _get_shapes(self, x):
         self._check_input(x)
         batch_shape = x.shape[:-1]
-        N_x = x.shape[-1:]
-        N_input = _get_input_length(self.shape)
+        N_x = ScatteringBase1D._get_input_length(x.shape[-1:])
+        N_input = ScatteringBase1D._get_input_length(self.shape)
         if not (N_x == N_input):
             raise ValueError('Shape mismatch: expected {}, got {}'.format(
                 N_input, N_x))
-        return batch_shape, N_input
+        return batch_shape, x.shape[-1:]
 
     @property
     def J_pad(self):
