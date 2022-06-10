@@ -119,11 +119,11 @@ class ScatteringBase1D(ScatteringBase):
                              "average=False. Please set out_type to 'dict' or 'list'.")
 
     def _check_input(self, x):
-        N_x = ScatteringBase1D._get_input_length(x.shape)
-        N_input = ScatteringBase1D._get_input_length(self.shape)
-        if not (N_x == N_input):
-            raise ValueError('Shape mismatch: expected {}, got {}'.format(
-                self.N, N_x))
+        # basic checking, should be improved
+        if len(x.shape) < 1:
+            raise ValueError(
+                'Input tensor x should have at least one axis, got {}'.format(
+                    len(x.shape)))
 
     def _get_input_length(shape):
         if isinstance(shape, numbers.Integral):
@@ -133,6 +133,16 @@ class ScatteringBase1D(ScatteringBase):
                 raise ValueError("Input should be 1-dimensional")
             return shape[0]
         raise ValueError("shape must be an integer or a 1-tuple")
+
+    def _get_shapes(self, x):
+        self._check_input(x)
+        batch_shape = x.shape[:-1]
+        N_x = x.shape[-1:]
+        N_input = _get_input_length(self.shape)
+        if not (N_x == N_input):
+            raise ValueError('Shape mismatch: expected {}, got {}'.format(
+                N_input, N_x))
+        return batch_shape, N_input
 
     @property
     def J_pad(self):
