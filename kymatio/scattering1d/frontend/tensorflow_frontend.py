@@ -1,4 +1,5 @@
 import tensorflow as tf
+from tensorflow.python.framework import tensor_shape
 import warnings
 
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
@@ -19,7 +20,8 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
-        batch_shape, signal_shape = self._get_shapes(x)
+        shape_fn = lambda x: tuple(tensor_shape.TensorShape(x.shape).as_list())
+        batch_shape, signal_shape = self._get_shapes(x, shape_fn)
 
         x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
 
