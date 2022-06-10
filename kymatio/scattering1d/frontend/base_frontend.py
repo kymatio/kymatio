@@ -130,8 +130,7 @@ class ScatteringBase1D(ScatteringBase):
                 raise ValueError("{}".format(shape[0].__dict__))
         raise ValueError("shape must be an integer or a 1-tuple, got {}".format(type(shape)))
 
-    def _get_shapes(self, x, shape_fn=lambda x: x.shape):
-        self._check_input(x)
+    def _get_shapes(self, x, shape_fn=lambda x: x.shape):   
         x_shape = shape_fn(x)
         if len(x_shape) < 1:
             raise ValueError(
