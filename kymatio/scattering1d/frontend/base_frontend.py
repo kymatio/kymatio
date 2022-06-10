@@ -118,25 +118,25 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
 
-    def _check_input(self, x):
-        # basic checking, should be improved
-        if len(x.shape) < 1:
-            raise ValueError(
-                'Input tensor x should have at least one axis, got {}'.format(
-                    len(x.shape)))
-
     def _get_input_length(shape):
         if isinstance(shape, numbers.Integral):
             return shape
-        elif isinstance(shape, tuple):
+        elif hasattr(shape, "__getitem__"):
             if len(shape) > 1:
                 raise ValueError("Input should be 1-dimensional")
-            return shape[0]
+            elif isinstance(shape[0], numbers.Integral):
+                return shape[0]
+            else:
+                raise ValueError("{}".format(shape[0].__dict__))
         raise ValueError("shape must be an integer or a 1-tuple, got {}".format(type(shape)))
 
-    def _get_shapes(self, x, shape_fn):
+    def _get_shapes(self, x, shape_fn=lambda x: x.shape):
         self._check_input(x)
         x_shape = shape_fn(x)
+        if len(x_shape) < 1:
+            raise ValueError(
+                'Input tensor x should have at least one axis, got {}'.format(
+                    len(x.shape)))
         N_x = ScatteringBase1D._get_input_length(x_shape[-1:])
         N_input = ScatteringBase1D._get_input_length(self.shape)
         if not (N_x == N_input):

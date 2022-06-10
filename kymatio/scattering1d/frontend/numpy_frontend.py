@@ -3,6 +3,7 @@ import warnings
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from .base_frontend import ScatteringBase1D
+import numpy as np
 
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
@@ -17,7 +18,6 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
 
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
-        ScatteringBase1D._check_input(self, x)
         batch_shape, signal_shape = self._get_shapes(x)
 
         x = x.reshape((-1, 1) + signal_shape)
