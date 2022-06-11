@@ -20,10 +20,9 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
         ScatteringBase1D._check_input(self, x)
-        batch_shape = tf.shape(x)[:-1]
-        signal_shape = tf.shape(x)[-1:]
-
-        x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
+        x_shape = self.backend.shape(x)
+        batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+        x = self.backend.reshape_input(x, signal_shape, n_inserted_dims=1)
 
         S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
@@ -31,24 +30,14 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                          oversampling=self.oversampling, out_type=self.out_type)
 
         if self.out_type == 'array':
-            scattering_shape = tf.shape(S)[-2:]
-            new_shape = tf.concat((batch_shape, scattering_shape), 0)
-
-            S = tf.reshape(S, new_shape)
+            S = self.backend.reshape_output(S, batch_shape, n_kept_dims=2)
         elif self.out_type == 'dict':
             for k, v in S.items():
-                # NOTE: Have to get the shape for each one since we may have
-                # average == False.
-                scattering_shape = tf.shape(v)[-2:]
-                new_shape = tf.concat((batch_shape, scattering_shape), 0)
-
-                S[k] = tf.reshape(v, new_shape)
+                S[k] = self.backend.reshape_output(v, batch_shape, n_kept_dims=2)
         elif self.out_type == 'list':
-            for x in S:
-                scattering_shape = tf.shape(x['coef'])[-1:]
-                new_shape = tf.concat((batch_shape, scattering_shape), 0)
-
-                x['coef'] = tf.reshape(x['coef'], new_shape)
+            for path in S:
+                path['coef'] = self.backend.reshape_output(
+                    path['coef'], batch_shape, n_kept_dims=1)
 
         return S
 

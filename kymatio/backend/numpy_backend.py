@@ -89,5 +89,14 @@ class NumpyBackend:
         return A * B
 
     @staticmethod
-    def shape(cls, x):
+    def reshape_input(x, signal_shape, n_inserted_dims=0):
+        return x.reshape((-1,) + (1,)*n_inserted_dims + signal_shape)
+
+    @staticmethod
+    def reshape_output(S, batch_shape, n_kept_dims):
+        new_shape = batch_shape + S.shape[-n_kept_dims:]
+        return S.reshape(new_shape)
+
+    @staticmethod
+    def shape(x):
         return x.shape
