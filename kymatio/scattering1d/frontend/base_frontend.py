@@ -41,7 +41,15 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
 
         # check the shape
-        N_input = ScatteringBase1D._get_input_length(self.shape)
+        if isinstance(self.shape, numbers.Integral):
+            self.N = self.shape
+        elif isinstance(self.shape, tuple):
+            self.N = self.shape[0]
+            if len(self.shape) > 1:
+                raise ValueError("If shape is specified as a tuple, it must "
+                                 "have exactly one element")
+        else:
+            raise ValueError("shape must be an integer or a 1-tuple")
 
         # check T or set default
         if self.T is None:
@@ -118,30 +126,12 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
 
-    def _get_input_length(shape):
-        if isinstance(shape, numbers.Integral):
-            return shape
-        elif hasattr(shape, "__getitem__"):
-            if len(shape) > 1:
-                raise ValueError("Input should be 1-dimensional")
-            elif isinstance(shape[0], numbers.Integral):
-                return shape[0]
-            else:
-                raise ValueError("{}".format(shape[0].__dict__))
-        raise ValueError("shape must be an integer or a 1-tuple, got {}".format(type(shape)))
-
-    def _get_shapes(self, x, shape_fn=lambda x: x.shape):   
-        x_shape = shape_fn(x)
-        if len(x_shape) < 1:
+    def _check_input(self, x):
+        # basic checking, should be improved
+        if len(x.shape) < 1:
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
-        N_x = ScatteringBase1D._get_input_length(x_shape[-1:])
-        N_input = ScatteringBase1D._get_input_length(self.shape)
-        if not (N_x == N_input):
-            raise ValueError('Shape mismatch: expected {}, got {}'.format(
-                N_input, N_x))
-        return x_shape[:-1], x_shape[-1:]
 
     @property
     def J_pad(self):

@@ -20,9 +20,9 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
-        shape_fn = lambda x: tuple(tensor_shape.TensorShape(x.shape).as_list())
-        _ = self._get_shapes(x, shape_fn)
-        batch_shape, signal_shape = tf.shape(x)[:-1], tf.shape(x)[1:]
+        ScatteringBase1D._check_input(self, x)
+        batch_shape = tf.shape(x)[:-1]
+        signal_shape = tf.shape(x)[-1:]
 
         x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
 
