@@ -40,7 +40,7 @@ class ScatteringBase1D(ScatteringBase):
         if self.Q < 1:
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
 
-        # measure and check input length
+        # check input length
         if isinstance(self.shape, numbers.Integral):
             N_input = self.shape
         elif isinstance(self.shape, tuple):

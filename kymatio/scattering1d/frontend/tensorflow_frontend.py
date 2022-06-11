@@ -1,5 +1,4 @@
 import tensorflow as tf
-from tensorflow.python.framework import tensor_shape
 import warnings
 
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
