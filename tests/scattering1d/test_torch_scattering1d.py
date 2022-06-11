@@ -322,7 +322,7 @@ def test_scattering_shape_input(backend):
     with pytest.raises(ValueError) as ve:
         shape = 5, 6
         s = Scattering1D(J, shape, Q, backend=backend, frontend='torch')
-    assert "should be 1-dimensional" in ve.value.args[0]
+    assert "exactly one element" in ve.value.args[0]
 
 
     with pytest.raises(ValueError) as ve:
