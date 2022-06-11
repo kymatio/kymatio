@@ -34,7 +34,6 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
             S = self.backend.concatenate([x['coef'] for x in S])
             scattering_shape = tf.shape(S)[-2:]
             new_shape = tf.concat((batch_shape, scattering_shape), 0)
-
             S = tf.reshape(S, new_shape)
         elif self.out_type == 'dict':
             S = {x['n']: x['coef'] for x in S}
@@ -43,14 +42,12 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                 # average == False.
                 scattering_shape = tf.shape(v)[-2:]
                 new_shape = tf.concat((batch_shape, scattering_shape), 0)
-
                 S[k] = tf.reshape(v, new_shape)
         elif self.out_type == 'list':
             for x in S:
                 x.pop('n')
                 scattering_shape = tf.shape(x['coef'])[-1:]
                 new_shape = tf.concat((batch_shape, scattering_shape), 0)
-
                 x['coef'] = tf.reshape(x['coef'], new_shape)
 
         return S
