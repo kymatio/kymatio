@@ -217,3 +217,7 @@ class TorchBackend:
             C[..., 1].view(-1, B.nelement() // 2)[:] = A_r * B_i + A_i * B_r
 
             return C
+
+    @staticmethod
+    def shape(cls, x):
+        return x.shape

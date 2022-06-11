@@ -15,3 +15,6 @@ class TensorFlowBackend(NumpyBackend):
 
         return norm
 
+    @staticmethod
+    def shape(x):
+        return tf.shape(x)

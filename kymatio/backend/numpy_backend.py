@@ -87,3 +87,7 @@ class NumpyBackend:
             raise TypeError('The second input must be complex or real.')
 
         return A * B
+
+    @staticmethod
+    def shape(cls, x):
+        return x.shape
