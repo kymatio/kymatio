@@ -9,8 +9,9 @@ from .torch_backend import TorchBackend3D
 
 
 class TorchSkcudaBackend3D(TorchSkcudaBackend, TorchBackend3D):
-    pass
+    @classmethod
+    def cdgmm3d(cls, A, B):
+        return cls.cdgmm(A, B)
 
 
 backend = TorchSkcudaBackend3D
-backend.cdgmm3d = backend.cdgmm
