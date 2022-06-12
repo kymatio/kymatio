@@ -16,6 +16,7 @@ from kymatio.torch import Scattering1D
 
 from torch.autograd import backward
 import matplotlib.pyplot as plt
+device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
 ###############################################################################
 # Write a function that can generate a harmonic signal
@@ -58,16 +59,16 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
 # Let’s take a look at what such a signal could look like.
 
 T = 2 ** 13
-x = torch.from_numpy(generate_harmonic_signal(T))
+x = torch.from_numpy(generate_harmonic_signal(T)).to(device)
 plt.figure(figsize=(8, 2))
-plt.plot(x.numpy())
+plt.plot(x.cpu().numpy())
 plt.title("Original signal")
 
 ###############################################################################
 # Let’s take a look at the signal spectrogram.
 
 plt.figure(figsize=(8, 8))
-plt.specgram(x.numpy(), Fs=1024)
+plt.specgram(x.cpu().numpy(), Fs=1024)
 plt.title("Spectrogram of original signal")
 
 ###############################################################################
@@ -76,7 +77,7 @@ plt.title("Spectrogram of original signal")
 J = 6
 Q = 16
 
-scattering = Scattering1D(J, T, Q)
+scattering = Scattering1D(J, T, Q).to(device)
 
 Sx = scattering(x)
 
@@ -90,11 +91,11 @@ n_iterations = 200
 
 # Random guess to initialize.
 torch.manual_seed(0)
-y = torch.randn((T,), requires_grad=True)
+y = torch.randn((T,), requires_grad=True, device=device)
 Sy = scattering(y)
 
 history = []
-signal_update = torch.zeros_like(x)
+signal_update = torch.zeros_like(x, device=device)
 
 # Iterate to recontsruct random guess to be close to target.
 for k in range(n_iterations):
@@ -102,10 +103,10 @@ for k in range(n_iterations):
     err = torch.norm(Sx - Sy)
 
     if k % 10 == 0:
-        print('Iteration %3d, loss %.2f' % (k, err.detach().numpy()))
+        print('Iteration %3d, loss %.2f' % (k, err.detach().cpu().numpy()))
 
     # Measure the new loss.
-    history.append(err)
+    history.append(err.detach().cpu())
 
     backward(err)
 
@@ -131,11 +132,11 @@ plt.plot(history)
 plt.title("MSE error vs. iterations")
 
 plt.figure(figsize=(8, 2))
-plt.plot(y.detach().numpy())
+plt.plot(y.detach().cpu().numpy())
 plt.title("Reconstructed signal")
 
 plt.figure(figsize=(8, 8))
-plt.specgram(y.detach().numpy(), Fs=1024)
+plt.specgram(y.detach().cpu().numpy(), Fs=1024)
 plt.title("Spectrogram of reconstructed signal")
 
 plt.show()
