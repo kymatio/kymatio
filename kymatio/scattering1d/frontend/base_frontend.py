@@ -81,6 +81,7 @@ class ScatteringBase1D(ScatteringBase):
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
             self.J_pad, self.J, self.Q, self.T,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
+        ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
     def meta(self):
         """Get meta information on the transform
