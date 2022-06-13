@@ -223,8 +223,8 @@ class TorchBackend:
         return x.reshape((-1,) + (1,)*n_inserted_dims + signal_shape)
 
     @staticmethod
-    def reshape_output(S, batch_shape, n_inserted_dims, n_kept_dims):
-        new_shape = batch_shape + (1,)*n_inserted_dims + S.shape[-n_kept_dims:]
+    def reshape_output(S, batch_shape, n_kept_dims):
+        new_shape = batch_shape + S.shape[-n_kept_dims:]
         return S.reshape(new_shape)
 
     @staticmethod
