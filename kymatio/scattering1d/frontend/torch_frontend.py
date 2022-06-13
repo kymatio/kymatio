@@ -85,9 +85,9 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 
         if self.out_type=='array':
             return self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type == 'dict':
+        elif self.out_type=='dict':
             return {path['n']: path['coef'] for path in S}
-        elif self.out_type == 'list':
+        elif self.out_type=='list':
             return list(map(lambda path: path.pop('n')), S)
 
 
