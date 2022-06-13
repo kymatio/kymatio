@@ -35,6 +35,10 @@ class ScatteringBase2D(ScatteringBase):
         filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
         self.phi, self.psi = filters['phi'], filters['psi']
 
+    def scattering(self, x):
+        """ This function should call the functional scattering."""
+        raise NotImplementedError
+
     _doc_shape = 'M, N'
 
     _doc_instantiation_shape = {True: 'S = Scattering2D(J, (M, N))',
