@@ -78,18 +78,16 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                          max_order=self.max_order, average=self.average, pad_left=self.pad_left, pad_right=self.pad_right,
                         ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
 
-        if self.out_type == 'array':
-            S = self.backend.reshape_output(S, batch_shape, n_kept_dims=2)
-        elif self.out_type == 'dict':
-            S = {x['n']: x['coef'] for x in S}
-            for k, v in S.items():
-                S[k] = self.backend.reshape_output(v, batch_shape, n_kept_dims=2)
-        elif self.out_type == 'list':
-            for path in S:
-                path['coef'] = self.backend.reshape_output(
-                    path['coef'], batch_shape, n_kept_dims=1)
+        for n in range(len(S)):
+            S[n]['coef'] = self.backend.reshape_output(
+                S[n]['coef'], batch_shape, n_inserted_dims=1, n_kept_dims=1)
 
-        return S
+        if self.out_type=='array':
+            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
+        elif self.out_type == 'dict':
+            return {path['n']: path['coef'] for path in S}
+        elif self.out_type == 'list':
+            return S
 
 
 ScatteringTorch1D._document()

@@ -6,8 +6,8 @@ class TensorFlowBackend(NumpyBackend):
     name = 'tensorflow'
 
     @staticmethod
-    def concatenate(arrays):
-        return tf.stack(arrays, axis=1)
+    def concatenate(arrays, dim=1):
+        return tf.stack(arrays, axis=dim)
 
     @staticmethod
     def modulus(x):
@@ -21,8 +21,9 @@ class TensorFlowBackend(NumpyBackend):
         return tf.reshape(x, new_shape)
 
     @staticmethod
-    def reshape_output(S, batch_shape, n_kept_dims):
-        new_shape = tf.concat((batch_shape, S.shape[-n_kept_dims:]), 0)
+    def reshape_output(S, batch_shape, n_inserted_dims, n_kept_dims):
+        new_shape = tf.concat(
+            (batch_shape, (1,)*n_inserted_dims, S.shape[-n_kept_dims:]), 0)
         return tf.reshape(S, new_shape)
 
     @staticmethod
