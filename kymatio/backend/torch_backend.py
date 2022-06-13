@@ -228,5 +228,5 @@ class TorchBackend:
         return S.reshape(new_shape)
 
     @staticmethod
-    def shape(x, signal_dim):
-        return x.shape[:-signal_dim], x.shape[-signal_dim:]
+    def shape(x):
+        return x.shape

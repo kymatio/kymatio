@@ -27,5 +27,5 @@ class TensorFlowBackend(NumpyBackend):
         return tf.reshape(S, new_shape)
 
     @staticmethod
-    def shape(x, signal_dim):
-        return tf.shape(x)[-signal_dim:], tf.shape(x)[:-signal_dim]
+    def shape(x):
+        return tf.shape(x)
