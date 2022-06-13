@@ -33,7 +33,7 @@ class NumpyBackend:
 
     @classmethod
     def concatenate(cls, arrays, dim=1):
-        return cls._np.stack(arrays, axis=1)
+        return cls._np.stack(arrays, axis=dim)
 
     @classmethod
     def modulus(cls, x):
