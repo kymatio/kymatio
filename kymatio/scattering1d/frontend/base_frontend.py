@@ -106,6 +106,22 @@ class ScatteringBase1D(ScatteringBase):
         elif self.out_type=='list':
             return list(map(lambda path: path.pop('n')), S)
 
+    def auto_meta(self):
+        class DryBackend:
+            __getattr__ = lambda self, attr: (lambda *args: None)
+
+        S = scattering1d(x, DryBackend(), self.psi1_f, self.psi2_f, self.phi_f)
+        meta = dict(order=np.array([len(path["n"]) for path in S]))
+        meta['key'] = [path['n'] for path in S]
+        meta['n'] = np.stack([ScatteringBase1D._extract_n(path) for path in S])
+        for key in ['xi', 'sigma', 'j']:
+            meta[key] = meta['n'] * np.nan
+            for order, filterbank in enumerate((self.psi1_f, self.psi2_f)):
+                for n, psi in enumerate(filterbank):
+                    meta[key][meta['n'][:, order]==n] = psi[key][n]
+
+        return S
+
     def meta(self):
         """Get meta information on the transform
 
@@ -154,6 +170,9 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
+
+    def _extract_n(path, max_order):
+        return np.append(path['n'], (np.nan,)*(max_order-len(path["n"])))
 
     _doc_shape = 'N'
 
