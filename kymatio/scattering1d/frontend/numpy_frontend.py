@@ -25,11 +25,12 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
         S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
-                         oversampling=self.oversampling, out_type=self.out_type)
+                         oversampling=self.oversampling)
 
         if self.out_type == 'array':
             S = self.backend.reshape_output(S, batch_shape, n_kept_dims=2)
         elif self.out_type == 'dict':
+            S = {x['n']: x['coef'] for x in S}
             for k, v in S.items():
                 S[k] = self.backend.reshape_output(v, batch_shape, n_kept_dims=2)
         elif self.out_type == 'list':
