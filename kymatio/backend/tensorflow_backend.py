@@ -28,4 +28,4 @@ class TensorFlowBackend(NumpyBackend):
 
     @staticmethod
     def shape(x, signal_dim):
-        return tf.shape(x)[-signal_dim:], tf.shape(x)[:-signal_dim]
+        return tf.shape(x)[:-signal_dim], tf.shape(x)[-signal_dim:]
