@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True, 
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
                  oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
@@ -50,10 +50,10 @@ class ScatteringBase1D(ScatteringBase):
 
         if isinstance(self.Q, int):
             self.Q = (self.Q, 1)
-        elif isinstance(self.Q, tuple): 
+        elif isinstance(self.Q, tuple):
             if len(self.Q) == 1:
                 self.Q = self.Q + (1, )
-            elif len(self.Q) < 1 or len(self.Q) > 2: 
+            elif len(self.Q) < 1 or len(self.Q) > 2:
                 raise NotImplementedError("Q should be an integer, 1-tuple or "
                                           "2-tuple. Scattering transforms "
                                           "beyond order 2 are not implemented.")
@@ -80,18 +80,18 @@ class ScatteringBase1D(ScatteringBase):
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, N_input))
         elif self.T == 0:
-            if not self.average: 
+            if not self.average:
                 self.T = 2 ** self.J
                 self.average = False
             else:
-                raise ValueError("average must not be True if T=0 " 
-                                 "(got {})".format(self.average)) 
+                raise ValueError("average must not be True if T=0 "
+                                 "(got {})".format(self.average))
         elif self.T < 1:
             raise ValueError("T must be ==0 or >=1 (got {})".format(
                              self.T))
         else:
-            self.average = True if self.average is None else self.average 
-            if not self.average: 
+            self.average = True if self.average is None else self.average
+            if not self.average:
                 raise ValueError("average=False is not permitted when T>=1, "
                                  "(got {}). average is deprecated in v0.3 in "
                                  "favour of T and will "
@@ -128,7 +128,7 @@ class ScatteringBase1D(ScatteringBase):
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
         ScatteringBase1D._check_input(self, x)
-        
+
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
         x = self.backend.reshape_input(x, signal_shape)
@@ -263,8 +263,8 @@ class ScatteringBase1D(ScatteringBase):
             averaged output corresponds to the standard scattering transform,
             while the un-averaged output skips the last convolution by
             :math:`\phi_J(t)`.  This parameter may be modified after object
-            creation. Defaults to `True`. Deprecated in v0.3 in favour of `T` 
-            and will  be removed in v0.4. Replace `average=False` by `T=0` and 
+            creation. Defaults to `True`. Deprecated in v0.3 in favour of `T`
+            and will  be removed in v0.4. Replace `average=False` by `T=0` and
             set `T>1` or leave `T=None` for `average=True` (default).
         """
 
@@ -274,7 +274,7 @@ class ScatteringBase1D(ScatteringBase):
             scattering transform) or not (resulting in wavelet modulus
             coefficients). Note that to obtain unaveraged output, the
             `vectorize` flag must be set to `False` or `out_type` must be set
-            to `'list'`. Deprecated in favor of `T`. For more details, 
+            to `'list'`. Deprecated in favor of `T`. For more details,
             see the documentation for `scattering`.
      """
 
@@ -381,9 +381,9 @@ class ScatteringBase1D(ScatteringBase):
             the maximum scale is given by :math:`2^J`.
         {param_shape}Q : int or tuple
             By default, Q (int) is the number of wavelets per octave for the first
-            order and that for the second order has one wavelet per octave. This 
+            order and that for the second order has one wavelet per octave. This
             default value can be modified by passing Q as a tuple with two values,
-            i.e. Q = (Q1, Q2), where Q1 and Q2 are the number of wavelets per 
+            i.e. Q = (Q1, Q2), where Q1 and Q2 are the number of wavelets per
             octave for the first and second order, respectively.
         T : int
             temporal support of low-pass filter, controlling amount of imposed
