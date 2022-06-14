@@ -159,9 +159,7 @@ class ScatteringBase1D(ScatteringBase):
         """
 
     _doc_attrs_shape = \
-    r"""J_pad : int
-            The logarithm of the padded length of the signals.
-        pad_left : int
+    r"""pad_left : int
             The amount of padding to the left of the signal.
         pad_right : int
             The amount of padding to the right of the signal.
