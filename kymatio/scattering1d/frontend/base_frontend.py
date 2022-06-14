@@ -42,14 +42,13 @@ class ScatteringBase1D(ScatteringBase):
 
         # check input length
         if isinstance(self.shape, numbers.Integral):
-            N_input = self.shape
-        elif isinstance(self.shape, tuple):
-            N_input = self.shape[0]
-            if len(self.shape) > 1:
-                raise ValueError("If shape is specified as a tuple, it must "
-                                 "have exactly one element")
+            self.shape = (self.shape,)
+        elif isinstance(self.shape, tuple) and len(self.shape) > 1:
+            raise ValueError("If shape is specified as a tuple, it must "
+                             "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+        N_input = self.shape[0]
 
         # check T or set default
         if self.T is None:
