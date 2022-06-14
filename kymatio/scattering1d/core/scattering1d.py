@@ -1,6 +1,5 @@
 
-def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
-        oversampling=0, max_order=2, average=True):
+def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -25,22 +24,14 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
         a dictionary of filters of scale :math:`2^J` with keys (`j`)
         where :math:`2^j` is the downsampling factor.
         The array `phi[j]` is a real-valued filter.
-    J : int
-        scale of the scattering
-    ind_start : dictionary of ints, optional
-        indices to truncate the signal to recover only the
-        parts which correspond to the actual signal after padding and
-        downsampling. Defaults to None
-    ind_end : dictionary of ints, optional
-        See description of ind_start
     oversampling : int, optional
         how much to oversample the scattering (with respect to :math:`2^J`):
         the higher, the larger the resulting scattering
-        tensor along time. Defaults to `0`
+        tensor along time.
     max_order : int, optional
-        Number of orders in the scattering transform. Either 1 or 2 (default).
+        Number of orders in the scattering transform. Either 1 or 2.
     average : boolean, optional
-        whether to average the first order vector. Defaults to `True`
+        whether to average the first order vector.
     """
     cdgmm = backend.cdgmm
     ifft = backend.ifft
