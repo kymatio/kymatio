@@ -337,7 +337,7 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
     return xis, sigmas, js
 
 
-def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
+def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
                               max_subsampling=None, sigma0=0.1, alpha=5., **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
@@ -354,11 +354,12 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
 
     Parameters
     ----------
-    J_support : int
-        2**J_support is the desired support size of the filters
-    J_scattering : int
-        parameter for the scattering transform (2**J_scattering
-        corresponds to maximal temporal support of any filter)
+    N : int
+        Support size of the filters at the finest resolution (j=0).
+        Corresponds to self._N_padded in the Scattering1D object.
+    J : int
+        Scattering scale parameter. 2**J corresponds to maximal temporal
+        support of any filter.
     Q : int
         number of wavelets per octave at the first order. For audio signals,
         a value Q >= 12 is recommended in order to separate partials.
@@ -416,7 +417,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_min = sigma0 / math.pow(2, J_scattering)
+    sigma_min = sigma0 / math.pow(2, J)
     xi1, sigma1, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
     xi2, sigma2, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
 
@@ -434,8 +435,7 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         # compute the current value for the max_subsampling,
         # which depends on the input it can accept.
         if max_subsampling is None:
-            possible_subsamplings_after_order1 = [
-                j1 for j1 in j1s if j2 > j1]
+            possible_subsamplings_after_order1 = [j1 for j1 in j1s if j2 > j1]
             if len(possible_subsamplings_after_order1) > 0:
                 max_sub_psi2 = max(possible_subsamplings_after_order1)
             else:
@@ -443,7 +443,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         else:
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
-        N = 2**J_support
 
         psi_f = {}
         psi_f[0] = morlet_1d(N, xi2[n2], sigma2[n2])
@@ -458,7 +457,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
     for (n1, j1) in enumerate(j1s):
-        N = 2**J_support
         psi1_f.append({0: morlet_1d(N, xi1[n1], sigma1[n1])})
 
     # compute the low-pass filters phi
