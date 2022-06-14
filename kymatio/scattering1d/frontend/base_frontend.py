@@ -69,10 +69,10 @@ class ScatteringBase1D(ScatteringBase):
         J_max_support = int(np.floor(np.log2(3 * N_input - 2)))
         J_pad = min(int(np.ceil(np.log2(N_input + 2 * min_to_pad))),
                     J_max_support)
-        self.N = 2**J_pad
+        self._N_padded = 2**J_pad
 
         # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.N, N_input)
+        self.pad_left, self.pad_right = compute_padding(self._N_padded, N_input)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
             self.log2_T, self.J, self.pad_left, self.pad_left + N_input)
@@ -135,10 +135,18 @@ class ScatteringBase1D(ScatteringBase):
     @property
     def J_pad(self):
         warn("The attribute J_pad is deprecated and will be removed in v0.4. "
-        "Access the attribute N for the padded length (previously 2**J_pad) "
+        "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
         "or the attribute shape (or shape[0]) for the unpadded length "
         "(previously N).", DeprecationWarning)
-        return int(np.log2(self.N))
+        return int(np.log2(self._N_padded))
+
+    @property
+    def N(self):
+        warn("The attribute N is deprecated and will be removed in v0.4. "
+        "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
+        "or the attribute shape (or shape[0]) for the unpadded length "
+        "(previously N).", DeprecationWarning)
+        return int(shape[0])
 
     _doc_shape = 'N'
 
