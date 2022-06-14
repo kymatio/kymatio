@@ -1,12 +1,15 @@
 
-def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average):
+def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average=True):
     """
     Main function implementing the 1-D scattering transform.
 
     Parameters
     ----------
     U_0 : Tensor
-        a torch Tensor of size `(B, 1, N)` where `N` is the temporal size
+        an backend-compatible array of size `(B, 1, N)` where `B` is batch size
+        and `N` is the padded signal length.
+    backend : module
+        Kymatio module which matches the type of U_0.
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
         `j` corresponds to the downsampling factor for
@@ -31,7 +34,7 @@ def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average
     max_order : int, optional
         Number of orders in the scattering transform. Either 1 or 2.
     average : boolean, optional
-        whether to average the first order vector.
+        whether to average the result. Default to True.
     """
     cdgmm = backend.cdgmm
     ifft = backend.ifft
