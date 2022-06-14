@@ -31,7 +31,7 @@ class ScatteringTransformerMixin(BaseEstimator, TransformerMixin):
         extension, it can be included as part of a scikit-learn `Pipeline`.
         """
 
-    _doc_sample = 'np.random.randn((1, {shape}))'
+    _doc_sample = 'np.random.randn(1, np.prod({shape}))'
 
     _doc_has_shape = True
 
