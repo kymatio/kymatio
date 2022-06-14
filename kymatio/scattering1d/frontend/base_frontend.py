@@ -137,16 +137,14 @@ class ScatteringBase1D(ScatteringBase):
     def J_pad(self):
         warn("The attribute J_pad is deprecated and will be removed in v0.4. "
         "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
-        "or the attribute shape (or shape[0]) for the unpadded length "
-        "(previously N).", DeprecationWarning)
+        "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
         return int(np.log2(self._N_padded))
 
     @property
     def N(self):
-        warn("The attribute N is deprecated and will be removed in v0.4. "
+        warn("The attribute J_pad is deprecated and will be removed in v0.4. "
         "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
-        "or the attribute shape (or shape[0]) for the unpadded length "
-        "(previously N).", DeprecationWarning)
+        "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
         return int(self.shape[0])
 
     _doc_shape = 'N'
