@@ -59,16 +59,16 @@ def generate_harmonic_signal(T, num_intervals=4, gamma=0.9, random_state=42):
 # Let’s take a look at what such a signal could look like.
 
 T = 2 ** 13
-x = torch.from_numpy(generate_harmonic_signal(T)).to(device)
+x = torch.from_numpy(generate_harmonic_signal(T))
 plt.figure(figsize=(8, 2))
-plt.plot(x.cpu().numpy())
+plt.plot(x.numpy())
 plt.title("Original signal")
 
 ###############################################################################
 # Let’s take a look at the signal spectrogram.
 
 plt.figure(figsize=(8, 8))
-plt.specgram(x.cpu().numpy(), Fs=1024)
+plt.specgram(x.numpy(), Fs=1024)
 plt.title("Spectrogram of original signal")
 
 ###############################################################################
@@ -78,6 +78,7 @@ J = 6
 Q = 16
 
 scattering = Scattering1D(J, T, Q).to(device)
+x = x.to(device)
 
 Sx = scattering(x)
 
