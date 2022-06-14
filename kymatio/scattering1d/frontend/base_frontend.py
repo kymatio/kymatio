@@ -86,30 +86,44 @@ class ScatteringBase1D(ScatteringBase):
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
         ScatteringBase1D._check_input(self, x)
-        
+
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
         x = self.backend.reshape_input(x, signal_shape, n_inserted_dims=1)
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
-        S = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
+        S_gen = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average,
                         ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
 
-        n_kept_dims = 1 + (self.out_type=="dict")
-        for n, path in enumerate(S):
-            S[n]['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=n_kept_dims)
+        if self.out_type in ['array', 'list']:
+            S = list()
+        elif self.out_type == 'dict':
+            S = dict()
 
-        if self.out_type=='array':
-            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type=='dict':
-            return {path['n']: path['coef'] for path in S}
-        elif self.out_type=='list':
+        n_kept_dims = 1 + (self.out_type=='dict')
+        for path in S_gen:
+            path['coef'] = self.backend.reshape_output(
+                path['coef'], batch_shape, n_kept_dims=n_kept_dims)
+            path['order'] = len(path['n'])
+
+            if self.out_type in ['array', 'list']:
+                S.append(path)
+            elif self.out_type == 'dict':
+                S[path['n']] = path['coef']
+
+        if self.out_type == 'dict':
+            return S
+
+        S.sort(key=(lambda path: (path['order'], path['n'])))
+
+        if self.out_type == 'array':
+            S = self.backend.concatenate([path['coef'] for path in S], dim=-2)
+        elif self.out_type == 'list':
             for n in range(len(S)):
                 S[n].pop('n')
-            return S
+        return S
 
     def meta(self):
         """Get meta information on the transform

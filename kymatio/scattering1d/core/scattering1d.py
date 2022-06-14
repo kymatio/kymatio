@@ -50,9 +50,6 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
     subsample_fourier = backend.subsample_fourier
     unpad = backend.unpad
 
-    # S is simply a dictionary if we do not perform the averaging...
-    out_S_0, out_S_1, out_S_2 = [], [], []
-
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
@@ -65,12 +62,10 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
 
-        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
+        coef = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
-        S_0 = unpad(U_0, ind_start[0], ind_end[0])
-    out_S_0.append({'coef': S_0,
-                    'j': (),
-                    'n': ()})
+        coef = unpad(U_0, ind_start[0], ind_end[0])
+    yield {'coef': coef, 'j': (), 'n': ()}
 
     # First order:
     for n1 in range(len(psi1)):
@@ -98,13 +93,11 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
 
-            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            coef = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
         else:
-            S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
+            coef = unpad(U_1_m, ind_start[k1], ind_end[k1])
 
-        out_S_1.append({'coef': S_1,
-                        'j': (j1,),
-                        'n': (n1,)})
+        yield {'coef': coef, 'j': (j1,), 'n': (n1,)}
 
         if max_order == 2:
             # 2nd order
@@ -135,20 +128,11 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_log2_T)
                         S_2_r = irfft(S_2_hat)
 
-                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_log2_T],
+                        coef = unpad(S_2_r, ind_start[k1 + k2 + k2_log2_T],
                                     ind_end[k1 + k2 + k2_log2_T])
                     else:
-                        S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
+                        coef = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
 
-                    out_S_2.append({'coef': S_2,
-                                    'j': (j1, j2),
-                                    'n': (n1, n2)})
-
-    out_S = []
-    out_S.extend(out_S_0)
-    out_S.extend(out_S_1)
-    out_S.extend(out_S_2)
-
-    return out_S
+                    yield {'coef': coef, 'j': (j1, j2), 'n': (n1, n2)}
 
 __all__ = ['scattering1d']
