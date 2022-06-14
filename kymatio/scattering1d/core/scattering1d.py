@@ -1,13 +1,12 @@
 
-def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
-        pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True):
+def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
+        oversampling=0, max_order=2, average=True):
     """
     Main function implementing the 1-D scattering transform.
 
     Parameters
     ----------
-    x : Tensor
+    U_0 : Tensor
         a torch Tensor of size `(B, 1, N)` where `N` is the temporal size
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
@@ -28,10 +27,6 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         The array `phi[j]` is a real-valued filter.
     J : int
         scale of the scattering
-    pad_left : int, optional
-        how much to pad the signal on the left. Defaults to `0`
-    pad_right : int, optional
-        how much to pad the signal on the right. Defaults to `0`
     ind_start : dictionary of ints, optional
         indices to truncate the signal to recover only the
         parts which correspond to the actual signal after padding and
@@ -52,15 +47,12 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
     irfft = backend.irfft
     modulus = backend.modulus
     rfft = backend.rfft
-    pad = backend.pad
     subsample_fourier = backend.subsample_fourier
     unpad = backend.unpad
 
     # S is simply a dictionary if we do not perform the averaging...
     out_S_0, out_S_1, out_S_2 = [], [], []
 
-    # pad to a dyadic size and make it complex
-    U_0 = pad(x, pad_left=pad_left, pad_right=pad_right)
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
@@ -75,7 +67,7 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
 
         S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
     else:
-        S_0 = x
+        S_0 = unpad(U_0, ind_start[0], ind_end[0])
     out_S_0.append({'coef': S_0,
                     'j': (),
                     'n': ()})
