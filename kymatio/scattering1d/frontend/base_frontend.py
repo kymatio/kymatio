@@ -86,6 +86,7 @@ class ScatteringBase1D(ScatteringBase):
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
         ScatteringBase1D._check_input(self, x)
+        
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
         x = self.backend.reshape_input(x, signal_shape, n_inserted_dims=1)
