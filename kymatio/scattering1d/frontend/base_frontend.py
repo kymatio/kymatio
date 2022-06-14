@@ -93,9 +93,8 @@ class ScatteringBase1D(ScatteringBase):
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
-        S_gen = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
-                         max_order=self.max_order, average=self.average,
-                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
+        S_gen = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
+            self.oversampling, self.max_order, average=self.average)
 
         if self.out_type in ['array', 'list']:
             S = list()
