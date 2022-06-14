@@ -105,7 +105,9 @@ class ScatteringBase1D(ScatteringBase):
         elif self.out_type=='dict':
             return {path['n']: path['coef'] for path in S}
         elif self.out_type=='list':
-            return list(map(lambda path: path.pop('n')), S)
+            for n in range(len(S)):
+                S[n].pop('n')
+            return S
 
     def meta(self):
         """Get meta information on the transform
