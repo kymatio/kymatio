@@ -104,9 +104,17 @@ class ScatteringBase1D(ScatteringBase):
 
         n_kept_dims = 1 + (self.out_type=='dict')
         for path in S_gen:
+            path['order'] = len(path['n'])
+            if self.average:
+                res = self.log2_T
+            elif path['order']>0:
+                res = max(path['j'][-1] - self.oversampling, 0)
+            else:
+                res = 0
+            path['coef'] = self.backend.unpad(
+                path['coef'], self.ind_start[res], self.ind_end[res])
             path['coef'] = self.backend.reshape_output(
                 path['coef'], batch_shape, n_kept_dims=n_kept_dims)
-            path['order'] = len(path['n'])
 
             if self.out_type in ['array', 'list']:
                 S.append(path)

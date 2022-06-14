@@ -29,6 +29,7 @@ class TestScattering1DNumpy:
         N = x.shape[-1]
         scattering = Scattering1D(J, N, Q, backend=backend, frontend='numpy')
         Sx = scattering(x)
+        assert Sx.shape == Sx0.shape
         assert np.allclose(Sx, Sx0)
 
     def test_Scattering1D_T(self, backend):

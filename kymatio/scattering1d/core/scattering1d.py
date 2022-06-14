@@ -61,11 +61,9 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
         S_0_c = cdgmm(U_0_hat, phi[0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
-
-        coef = unpad(S_0_r, ind_start[k0], ind_end[k0])
+        yield {'coef': S_0_r, 'j': (), 'n': ()}
     else:
-        coef = unpad(U_0, ind_start[0], ind_end[0])
-    yield {'coef': coef, 'j': (), 'n': ()}
+        yield {'coef': U_0, 'j': (), 'n': ()}
 
     # First order:
     for n1 in range(len(psi1)):
@@ -92,12 +90,9 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
             S_1_c = cdgmm(U_1_hat, phi[k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
-
-            coef = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            yield {'coef': S_1_r, 'j': (j1,), 'n': (n1,)}
         else:
-            coef = unpad(U_1_m, ind_start[k1], ind_end[k1])
-
-        yield {'coef': coef, 'j': (j1,), 'n': (n1,)}
+            yield {'coef': U_1_m, 'j': (j1,), 'n': (n1,)}
 
         if max_order == 2:
             # 2nd order
@@ -128,11 +123,8 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_log2_T)
                         S_2_r = irfft(S_2_hat)
 
-                        coef = unpad(S_2_r, ind_start[k1 + k2 + k2_log2_T],
-                                    ind_end[k1 + k2 + k2_log2_T])
+                        yield {'coef': S_2_r, 'j': (j1, j2), 'n': (n1, n2)}
                     else:
-                        coef = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
-
-                    yield {'coef': coef, 'j': (j1, j2), 'n': (n1, n2)}
+                        yield {'coef': U_2_m, 'j': (j1, j2), 'n': (n1, n2)}
 
 __all__ = ['scattering1d']
