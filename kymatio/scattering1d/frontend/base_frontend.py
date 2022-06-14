@@ -146,7 +146,7 @@ class ScatteringBase1D(ScatteringBase):
         "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
         "or the attribute shape (or shape[0]) for the unpadded length "
         "(previously N).", DeprecationWarning)
-        return int(shape[0])
+        return int(self.shape[0])
 
     _doc_shape = 'N'
 
