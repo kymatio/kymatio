@@ -3,7 +3,6 @@ import warnings
 from ...frontend.numpy_frontend import ScatteringNumPy
 from ..core.scattering1d import scattering1d
 from .base_frontend import ScatteringBase1D
-import numpy as np
 
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
