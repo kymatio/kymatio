@@ -44,7 +44,7 @@ class ScatteringBase1D(ScatteringBase):
         if isinstance(self.shape, numbers.Integral):
             self.shape = (self.shape,)
         elif isinstance(self.shape, tuple):
-            if (len(self.shape)>1):
+            if len(self.shape) > 1:
                 raise ValueError("If shape is specified as a tuple, it must "
                                  "have exactly one element")
         else:
