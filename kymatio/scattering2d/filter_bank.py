@@ -36,8 +36,8 @@ def filter_bank(M, N, J, L=8):
                 3.0 / 4.0 * np.pi /2**j, 4.0/L)
             psi_signal_fourier = fft2(psi_signal)
             # drop the imaginary part, it is zero anyway
-            psi_levels = [np.real(psi_signal_fourier)]
-            for res in range(1, min(j + 1, max(J - 1, 1))):
+            psi_levels = []
+            for res in range(min(j + 1, max(J - 1, 1))):
                 psi_levels.append(periodize_filter_fft(psi_levels[0], res))
             psi['levels'] = psi_levels
             filters['psi'].append(psi)
@@ -45,8 +45,8 @@ def filter_bank(M, N, J, L=8):
     phi_signal = gabor_2d(M, N, 0.8 * 2**(J-1), 0, 0)
     phi_signal_fourier = fft2(phi_signal)
     # drop the imaginary part, it is zero anyway
-    filters['phi'] = {'levels': [np.real(phi_signal_fourier)], 'j': J}
-    for res in range(1, J):
+    filters['phi'] = {'levels': [], 'j': J}
+    for res in range(J):
         filters['phi']['levels'].append(
             periodize_filter_fft(filters['phi']['levels'][0], res))
 
