@@ -24,6 +24,11 @@ class ScatteringBase1D(ScatteringBase):
         self.out_type = out_type
         self.backend = backend
 
+        warnings.warn("The average option is deprecated and will be "
+                      "removed in version 0.4. Please set "
+                      "T=None for equivalent functionality to average=False.",
+                      DeprecationWarning)
+
     def build(self):
         """Set up padding and filters
 
