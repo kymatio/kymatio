@@ -440,3 +440,29 @@ def test_Q(device, backend):
         _ = Scattering1D(
             J, shape, Q=0.9, backend=backend, frontend='torch').to(device)
     assert "Q should always be >= 1" in ve.value.args[0]
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_check_runtime_args(device, backend):
+    J = 3
+    length = 1024
+    shape = (length,)
+    x = torch.zeros(shape)
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, backend=backend,
+                         out_type='doesnotexist', frontend='torch').to(device)
+        S(x)
+    assert "out_type must be one" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, backend=backend, average=False,
+                         out_type='array', frontend='torch').to(device)
+        S(x)
+    assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, oversampling=-1, backend=backend,
+                         frontend='torch').to(device)
+        S(x)
+    assert "nonnegative" in ve.value.args[0]
