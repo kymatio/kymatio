@@ -105,7 +105,7 @@ for k in range(n_iterations):
         print('Iteration %3d, loss %.2f' % (k, err.detach().numpy()))
 
     # Measure the new loss.
-    history.append(err)
+    history.append(err.detach())
 
     backward(err)
 

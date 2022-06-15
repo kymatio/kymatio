@@ -90,11 +90,11 @@ def scattering1D_filter_factory():
   # explanatory labels and title.
   
   plt.figure()
-  plt.plot(np.arange(N)/N, phi_f[0], 'r')
   
+  plt.plot(np.arange(N)/N, phi_f['levels'][0], 'r')
   for psi_f in psi1_f:
-      plt.plot(np.arange(N)/N, psi_f[0], 'b')
   
+      plt.plot(np.arange(N)/N, psi_f['levels'][0], 'b')
   plt.xlim(0, 0.5)
   
   plt.xlabel(r'$\omega$', fontsize=18)
@@ -108,7 +108,7 @@ def scattering1D_filter_factory():
   plt.figure()
   plt.plot(np.arange(N)/N, phi_f[0], 'r')
   for psi_f in psi2_f:
-      plt.plot(np.arange(N)/N, psi_f[0], 'b')
+      plt.plot(np.arange(N)/N, psi_f['levels'][0], 'b')
   plt.xlim(0, 0.5)
   plt.ylim(0, 1.2)
   plt.xlabel(r'$\omega$', fontsize=18)
@@ -121,9 +121,9 @@ def scattering1D_filter_factory():
 
 def scattering1D_filter_factory_T_plot(N, J, T, phi_f, psi1_f, msg):
   plt.figure()
-  plt.plot(np.arange(N)/N, phi_f[0], 'r', label=msg)
+  plt.plot(np.arange(N)/N, phi_f['levels'][0], 'r', label=msg)
   for psi_f in psi1_f:
-      plt.plot(np.arange(N)/N, psi_f[0], 'b')
+      plt.plot(np.arange(N)/N, psi_f['levels'][0], 'b')
   plt.xlim(0, 0.5)
   plt.xlabel(r'$\omega$', fontsize=18)
   plt.ylabel(r'$\hat\psi_j(\omega)$', fontsize=18)

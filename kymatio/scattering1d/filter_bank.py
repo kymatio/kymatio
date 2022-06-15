@@ -418,8 +418,8 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     """
     # compute the spectral parameters of the filters
     sigma_min = sigma0 / math.pow(2, J)
-    xi1, sigma1, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
-    xi2, sigma2, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
+    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
+    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
@@ -431,7 +431,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
-    for (n2, j2) in enumerate(j2s):
+    for (xi2, sigma2, j2) in zip(xi2s, sigma2s, j2s):
         # compute the current value for the max_subsampling,
         # which depends on the input it can accept.
         if max_subsampling is None:
@@ -444,20 +444,20 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
 
-        psi_f = {}
-        psi_f[0] = morlet_1d(N, xi2[n2], sigma2[n2])
+        psi_levels = [morlet_1d(N, xi2, sigma2)]
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
-        for subsampling in range(1, max_sub_psi2 + 1):
-            factor_subsampling = 2**subsampling
-            psi_f[subsampling] = periodize_filter_fourier(
-                psi_f[0], nperiods=factor_subsampling)
-        psi2_f.append(psi_f)
+        for level in range(1, max_sub_psi2 + 1):
+            nperiods = 2**level
+            psi_levels.append(periodize_filter_fourier(psi_levels[0], nperiods))
+        psi2_f.append({'levels': psi_levels, 'xi': xi2, 'sigma': sigma2, 'j': j2})
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
-    for (n1, j1) in enumerate(j1s):
-        psi1_f.append({0: morlet_1d(N, xi1[n1], sigma1[n1])})
+    for (xi1, sigma1, j1) in zip(xi1s, sigma1s, j1s):
+        N = 2**J_support
+        psi_levels = [morlet_1d(N, xi1, sigma1)]
+        psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
@@ -472,25 +472,11 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(N, sigma_low)
-    for subsampling in range(1, max_sub_phi + 1):
-        factor_subsampling = 2**subsampling
-        # compute the low_pass filter
-        phi_f[subsampling] = periodize_filter_fourier(
-            phi_f[0], nperiods=factor_subsampling)
-
-    # Embed the meta information within the filters
-    for (n1, j1) in enumerate(j1s):
-        psi1_f[n1]['xi'] = xi1[n1]
-        psi1_f[n1]['sigma'] = sigma1[n1]
-        psi1_f[n1]['j'] = j1
-    for (n2, j2) in enumerate(j2s):
-        psi2_f[n2]['xi'] = xi2[n2]
-        psi2_f[n2]['sigma'] = sigma2[n2]
-        psi2_f[n2]['j'] = j2
-    phi_f['xi'] = 0.
-    phi_f['sigma'] = sigma_low
-    phi_f['j'] = log2_T
+    phi_levels = [gauss_1d(N, sigma_low)]
+    for level in range(1, max_sub_phi + 1):
+        nperiods = 2**level
+        phi_levels.append(periodize_filter_fourier(phi_levels[0], nperiods))
+    phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
 
     # return results
     return phi_f, psi1_f, psi2_f
