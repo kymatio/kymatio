@@ -455,7 +455,6 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
     for (xi1, sigma1, j1) in zip(xi1s, sigma1s, j1s):
-        N = 2**J_support
         psi_levels = [morlet_1d(N, xi1, sigma1)]
         psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
 
