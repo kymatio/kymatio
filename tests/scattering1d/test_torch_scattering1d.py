@@ -135,10 +135,8 @@ def test_computation_Ux(backend, device, random_state=42):
         for k in range(len(scattering.psi1_f)):
             assert (k,) in s.keys()
         for k in s.keys():
-            if k is not ():
+            if k != ():
                 assert k[0] < len(scattering.psi1_f)
-            else:
-                assert True
 
         scattering.max_order = 2
 
