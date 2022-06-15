@@ -43,7 +43,7 @@ class ScatteringBase2D(ScatteringBase):
     def N(self):
         warn("The attribute N is deprecated and will be removed in v0.4. "
         "Replace by shape[1].", DeprecationWarning)
-        return int(self.shape[0])
+        return int(self.shape[1])
 
     _doc_shape = 'M, N'
 
