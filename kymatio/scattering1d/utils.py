@@ -70,8 +70,7 @@ def compute_padding(J_pad, N):
     return pad_left, pad_right
 
 
-def precompute_size_scattering(
-        J, Q, T, max_order, r_psi, sigma0, alpha, detail=False):
+def precompute_size_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
     """Get size of the scattering transform
 
     The number of scattering coefficients depends on the filter
@@ -103,38 +102,27 @@ def precompute_size_scattering(
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
         subsampling is.
-    detail : boolean, optional
-        Specifies whether to provide a detailed size (number of coefficient
-        per order) or an aggregate size (total number of coefficients).
 
     Returns
     -------
-    size : int or tuple
-        If `detail` is `False`, returns the number of coefficients as an
-        integer. If `True`, returns a tuple of size `max_order` containing
-        the number of coefficients in each order.
+    size : tuple
+        A tuple of size `1+max_order` containing the number of coefficients in
+        orders zero up to `max_order`, both included.
     """
     sigma_min = sigma0 / math.pow(2, J)
     xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
     xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
 
-    size_order0 = 1
-    size_order1 = len(xi1s)
+    sizes = [1, len(xi1s)]
     size_order2 = 0
     for n1 in range(len(xi1s)):
         for n2 in range(len(xi2s)):
             if j2s[n2] > j1s[n1]:
                 size_order2 += 1
-    if detail:
-        if max_order == 2:
-            return size_order0, size_order1, size_order2
-        else:
-            return size_order0, size_order1
-    else:
-        if max_order == 2:
-            return size_order0 + size_order1 + size_order2
-        else:
-            return size_order0 + size_order1
+
+    if max_order == 2:
+        sizes.append(size_order2)
+    return sizes
 
 
 def compute_meta_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
