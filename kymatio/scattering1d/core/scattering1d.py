@@ -1,7 +1,7 @@
 
 def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         pad_right=0, ind_start=None, ind_end=None, oversampling=0,
-        max_order=2, average=True, out_type='array'):
+        max_order=2, average=True):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -48,7 +48,6 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         whether to average the first order vector. Defaults to `True`
     """
     cdgmm = backend.cdgmm
-    concatenate = backend.concatenate
     ifft = backend.ifft
     irfft = backend.irfft
     modulus = backend.modulus
@@ -66,11 +65,11 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
     U_0_hat = rfft(U_0)
 
     # Get S0
-    log2_T = phi["j"]
+    log2_T = phi['j']
     k0 = max(log2_T - oversampling, 0)
 
     if average:
-        S_0_c = cdgmm(U_0_hat, phi[0])
+        S_0_c = cdgmm(U_0_hat, phi['levels'][0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
 
@@ -89,7 +88,7 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         sub1_adj = min(j1, log2_T) if average else j1
         k1 = max(sub1_adj - oversampling, 0)
 
-        U_1_c = cdgmm(U_0_hat, psi1[n1][0])
+        U_1_c = cdgmm(U_0_hat, psi1[n1]['levels'][0])
         U_1_hat = subsample_fourier(U_1_c, 2**k1)
         U_1_c = ifft(U_1_hat)
 
@@ -102,7 +101,7 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
         if average:
             # Convolve with phi_J
             k1_J = max(log2_T - k1 - oversampling, 0)
-            S_1_c = cdgmm(U_1_hat, phi[k1])
+            S_1_c = cdgmm(U_1_hat, phi['levels'][k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
 
@@ -124,7 +123,7 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
                     sub2_adj = min(j2, log2_T) if average else j2
                     k2 = max(sub2_adj - k1 - oversampling, 0)
 
-                    U_2_c = cdgmm(U_1_hat, psi2[n2][k1])
+                    U_2_c = cdgmm(U_1_hat, psi2[n2]['levels'][k1])
                     U_2_hat = subsample_fourier(U_2_c, 2**k2)
                     # take the modulus
                     U_2_c = ifft(U_2_hat)
@@ -137,7 +136,7 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
                         # Convolve with phi_J
                         k2_log2_T = max(log2_T - k2 - k1 - oversampling, 0)
 
-                        S_2_c = cdgmm(U_2_hat, phi[k1 + k2])
+                        S_2_c = cdgmm(U_2_hat, phi['levels'][k1 + k2])
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_log2_T)
                         S_2_r = irfft(S_2_hat)
 
@@ -154,15 +153,6 @@ def scattering1d(x, backend, psi1, psi2, phi, pad_left=0,
     out_S.extend(out_S_0)
     out_S.extend(out_S_1)
     out_S.extend(out_S_2)
-
-    if out_type == 'array':
-        out_S = concatenate([x['coef'] for x in out_S])
-    elif out_type == 'dict':
-        out_S = {x['n']: x['coef'] for x in out_S}
-    elif out_type == 'list':
-        # NOTE: This overrides the vectorize flag.
-        for x in out_S:
-            x.pop('n')
 
     return out_S
 

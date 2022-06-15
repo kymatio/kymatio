@@ -23,48 +23,42 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         saves those arrays as module's buffers."""
         n = 0
         # prepare for pytorch
-        for k in self.phi_f.keys():
-            if type(k) != str:
-                self.phi_f[k] = torch.from_numpy(
-                    self.phi_f[k]).float().view(-1, 1)
-                self.register_buffer('tensor' + str(n), self.phi_f[k])
-                n += 1
+        for level in range(len(self.phi_f['levels'])):
+            self.phi_f['levels'][level] = torch.from_numpy(
+                self.phi_f['levels'][level]).float().view(-1, 1)
+            self.register_buffer('tensor' + str(n), self.phi_f['levels'][level])
+            n += 1
         for psi_f in self.psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
-                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = torch.from_numpy(
+                    psi_f['levels'][level]).float().view(-1, 1)
+                self.register_buffer('tensor' + str(n), psi_f['levels'][level])
+                n += 1
         for psi_f in self.psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
-                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = torch.from_numpy(
+                    psi_f['levels'][level]).float().view(-1, 1)
+                self.register_buffer('tensor' + str(n), psi_f['levels'][level])
+                n += 1
 
     def load_filters(self):
         """This function loads filters from the module's buffer """
         buffer_dict = dict(self.named_buffers())
         n = 0
 
-        for k in self.phi_f.keys():
-            if type(k) != str:
-                self.phi_f[k] = buffer_dict['tensor' + str(n)]
-                n += 1
+        for level in range(len(self.phi_f['levels'])):
+            self.phi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+            n += 1
 
         for psi_f in self.psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+                n += 1
 
         for psi_f in self.psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+                n += 1
 
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
@@ -79,13 +73,15 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 
         S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average, pad_left=self.pad_left, pad_right=self.pad_right,
-                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling, out_type=self.out_type)
+                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
 
         if self.out_type == 'array':
+            S = self.backend.concatenate([x['coef'] for x in S])
             scattering_shape = S.shape[-2:]
             new_shape = batch_shape + scattering_shape
             S = S.reshape(new_shape)
         elif self.out_type == 'dict':
+            S = {x['n']: x['coef'] for x in S}
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.
@@ -94,6 +90,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                 S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':
             for x in S:
+                x.pop('n')
                 scattering_shape = x['coef'].shape[-1:]
                 new_shape = batch_shape + scattering_shape
                 x['coef'] = x['coef'].reshape(new_shape)

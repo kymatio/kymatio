@@ -120,8 +120,8 @@ plt.title('First-order scattering')
 plt.subplot(3, 1, 3)
 plt.imshow(Sx[order2], aspect='auto')
 plt.title('Second-order scattering')
-
 ###############################################################################
 # Display the plots!
 
+plt.tight_layout()
 plt.show()
