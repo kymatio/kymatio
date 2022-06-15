@@ -26,7 +26,7 @@ class ScatteringBase1D(ScatteringBase):
 
         warnings.warn("The average option is deprecated and will be "
                       "removed in version 0.4. Please set "
-                      "T=None for equivalent functionality to average=False.",
+                      "T appropriately for equivalent functionality.",
                       DeprecationWarning)
 
     def build(self):
