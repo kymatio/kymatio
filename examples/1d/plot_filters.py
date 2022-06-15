@@ -119,11 +119,11 @@ plt.title('Frequency response of second-order filters (Q = 1)', fontsize=12)
 
 plt.figure()
 
-p = psi1_f[-1][0]
-pr = np.real(np.fft.ifft(p))
-pi = np.imag(np.fft.ifft(p))
-plt.plot(np.concatenate((pr[-2**8:],pr[:2**8])),'b')
-plt.plot(np.concatenate((pi[-2**8:],pi[:2**8])),'r')
+psi_time = np.fft.ifft(psi1_f[-1][0])
+psi_real = np.real(psi_time)
+psi_imag = np.imag(psi_time)
+plt.plot(np.concatenate((psi_real[-2**8:],psi_real[:2**8])),'b')
+plt.plot(np.concatenate((psi_imag[-2**8:],psi_imag[:2**8])),'r')
 
 
 plt.xlabel(r'$t$', fontsize=18)
