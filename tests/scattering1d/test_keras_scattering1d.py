@@ -5,6 +5,7 @@ from tensorflow.keras.models import Model
 import os
 import numpy as np
 import io
+import sys
 
 def test_Scattering1D():
     """
@@ -39,5 +40,10 @@ def test_Scattering1D():
                   metrics=['accuracy'])
     Sg1 = model1.predict(x)
     assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
-    
+
+    save_stdout = sys.stdout
+    result = io.StringIO()
+    sys.stdout = result
     model1.summary()
+    sys.stdout = save_stdout
+    assert 'scattering1d' in result.getvalue()
