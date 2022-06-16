@@ -198,6 +198,7 @@ def test_against_standard_computations(device, backend):
 
     assert order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
     assert orders_1_and_2_diff_cpu < 1e-6, "CPU : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
+    assert orders_1_and_2.dtype == np.dtype(np.float32)
 
 
 @pytest.mark.parametrize("device", devices)
