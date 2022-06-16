@@ -37,3 +37,4 @@ def test_Scattering2D():
     assert np.allclose(Sg, S)
     assert config["J"] == J
     assert Scattering2D.from_config(config).J == J
+    model.summary()
