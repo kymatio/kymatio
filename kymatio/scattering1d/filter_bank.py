@@ -359,9 +359,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     J_scattering : int
         parameter for the scattering transform (2**J_scattering
         corresponds to maximal temporal support of any filter)
-    Q : int
-        number of wavelets per octave at the first order. For audio signals,
-        a value Q >= 12 is recommended in order to separate partials.
+    Q : tuple
+        number of wavelets per octave at the first and second order 
+        Q = (Q1, Q2). Q1 and Q2 are both int >= 1.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
@@ -417,8 +417,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     """
     # compute the spectral parameters of the filters
     sigma_min = sigma0 / math.pow(2, J_scattering)
-    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
-    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
+    Q1, Q2 = Q
+    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q1, alpha, r_psi)
+    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, Q2, alpha, r_psi)
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
