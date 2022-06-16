@@ -39,8 +39,6 @@ class ScatteringBase1D(ScatteringBase):
         # check the number of filters per octave
         if np.any(np.array(self.Q) < 1):
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
-        elif not isinstance(self.Q, (int, tuple)):
-            raise ValueError("Q must be an integer or a tuple")
 
         if isinstance(self.Q, int):
             self.Q = (self.Q, 1)
