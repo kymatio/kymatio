@@ -3,7 +3,7 @@ from .numpy_frontend import HarmonicScatteringNumPy3D
 from .base_frontend import ScatteringBase3D
 
 
-class HarmonicScatteringJax3D(ScatteringJax, HarmonicScatteringNumPy3D, ScatteringBase3D):
+class HarmonicScatteringJax3D(ScatteringJax, HarmonicScatteringNumPy3D):
     # This class inherits the attribute "frontend" from ScatteringJax
     # It overrides the __init__ function present in ScatteringNumPy3D 
     # in order to add the default argument for backend and call the

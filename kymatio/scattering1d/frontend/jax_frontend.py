@@ -2,7 +2,7 @@ from ...frontend.jax_frontend import ScatteringJax
 from .numpy_frontend import ScatteringNumPy1D
 from .base_frontend import ScatteringBase1D
 
-class ScatteringJax1D(ScatteringJax, ScatteringNumPy1D, ScatteringBase1D):
+class ScatteringJax1D(ScatteringJax, ScatteringNumPy1D):
     # This class inherits the attribute "frontend" from ScatteringJax
     # It overrides the __init__ function present in ScatteringNumPy1D 
     # in order to add the default argument for backend and call the
