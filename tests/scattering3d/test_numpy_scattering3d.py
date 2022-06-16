@@ -57,13 +57,12 @@ def test_against_standard_computations(backend):
     orders_1_and_2_ref = scattering_ref[:, start:end]
 
     order_0_diff_cpu = relative_difference(order_0_ref, order_0)
-    print(orders_1_and_2_ref.shape)
-    print(orders_1_and_2.shape)
     orders_1_and_2_diff_cpu = relative_difference(
         orders_1_and_2_ref, orders_1_and_2)
 
     assert order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
     assert orders_1_and_2_diff_cpu < 1e-6, "CPU : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
+    assert orders_1_and_2.dtype == np.dtype(np.float32)
 
 
 @pytest.mark.parametrize("backend", backends)
@@ -82,6 +81,7 @@ def test_scattering_batch_shape_agnostic(backend):
     Sx = S(x)
 
     assert len(Sx.shape) == 3
+    assert Sx.dtype == np.dtype(np.float32)
 
     coeffs_shape = Sx.shape[-3:]
 
@@ -97,3 +97,5 @@ def test_scattering_batch_shape_agnostic(backend):
         assert len(Sx.shape) == len(test_shape)
         assert Sx.shape[-3:] == coeffs_shape
         assert Sx.shape[:-3] == test_shape[:-3]
+        assert Sx.dtype == np.dtype(np.float32)
+
