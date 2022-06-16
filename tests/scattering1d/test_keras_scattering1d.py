@@ -40,3 +40,4 @@ def test_Scattering1D():
   Sg1 = model1.predict(x)
   assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
   
+  model1.summary()
