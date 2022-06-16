@@ -20,7 +20,7 @@ class HarmonicScatteringNumPy3D(ScatteringNumPy, ScatteringBase3D):
         ScatteringBase3D.create_filters(self)
 
     def scattering(self, input_array):
-        self.backend.input_checks(input)
+        self.backend.input_checks(input_array)
 
         if input_array.ndim < 3:
             raise RuntimeError('Input tensor must have at least three '
