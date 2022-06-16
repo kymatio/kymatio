@@ -4,7 +4,7 @@ import os
 import io
 import numpy as np
 import pytest
-from kymatio import HarmonicScattering3D
+from kymatio.torch import HarmonicScattering3D
 from kymatio.scattering3d.utils import generate_weighted_sum_of_gaussians
 
 backends = []
@@ -171,7 +171,7 @@ def test_against_standard_computations(device, backend):
 
     scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,
             sigma_0=sigma, method='integral',
-            integral_powers=integral_powers, max_order=2, backend=backend, frontend='torch')
+            integral_powers=integral_powers, max_order=2, backend=backend)
 
     scattering.to(device)
     x = x.to(device)
@@ -219,8 +219,8 @@ def test_solid_harmonic_scattering(device, backend):
     x = torch.from_numpy(generate_weighted_sum_of_gaussians(grid, centers,
         weights, sigma_gaussian)).to(device).float()
     scattering = HarmonicScattering3D(J=J, shape=(M, N, O), L=L,
-            sigma_0=sigma_0_wavelet,max_order=1, method='integral',
-            integral_powers=[1], frontend='torch',backend=backend).to(device)
+            sigma_0=sigma_0_wavelet, max_order=1, method='integral',
+            integral_powers=[1], backend=backend).to(device)
 
     scattering.max_order = 1
     scattering.method = 'integral'
@@ -249,7 +249,7 @@ def test_larger_scales(device, backend):
     x = torch.randn((1,) + shape).to(device)
 
     for J in range(3, 4+1):
-        scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0, frontend='torch', backend=backend).to(device)
+        scattering = HarmonicScattering3D(J=J, shape=shape, L=L, sigma_0=sigma_0, backend=backend).to(device)
         scattering.method = 'integral'
         Sx = scattering(x)
 
@@ -263,7 +263,7 @@ def test_scattering_batch_shape_agnostic(device, backend):
     J = 2
     shape = (16, 16, 16)
 
-    S = HarmonicScattering3D(J=J, shape=shape)
+    S = HarmonicScattering3D(J=J, shape=shape, backend=backend)
 
     for k in range(3):
         with pytest.raises(RuntimeError) as ve:
