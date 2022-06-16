@@ -445,13 +445,13 @@ def test_Q(device, backend):
             J, shape, Q=[8], backend=backend, frontend='torch')
     assert "Q must be an integer or a tuple" in ve.value.args[0]
 
-    Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='torch').to(device)
-    Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='torch').to(device)
+    Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='torch')
+    Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='torch')
 
     assert Sc_int.Q == Sc_tuple.Q
 
     # test dummy input
-    x = torch.zeros(shape).to(device)
+    x = torch.zeros(shape)
     Sc_int_out = Sc_int(x)
     Sc_tuple_out = Sc_tuple(x)
 
