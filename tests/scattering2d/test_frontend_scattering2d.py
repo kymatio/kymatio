@@ -6,7 +6,7 @@ from kymatio.scattering2d.frontend.numpy_frontend import ScatteringNumPy2D
 # Check that the default frontend is Numpy and that errors are correctly launched.
 def test_scattering2d_frontend():
     scattering = Scattering2D(2, shape=(10, 10))
-    assert isinstance(scattering, ScatteringNumPy2D), 'Numpy frontend is not selected by default'
+    assert isinstance(scattering, ScatteringNumPy2D), 'NumPy frontend is not selected by default'
 
     with pytest.raises(RuntimeError) as ve:
         scattering = Scattering2D(2, shape=(10, 10), frontend='doesnotexist')
