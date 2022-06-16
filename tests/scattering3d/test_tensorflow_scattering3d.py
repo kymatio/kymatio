@@ -52,6 +52,7 @@ def test_against_standard_computations():
 
     orders_1_and_2_diff_cpu = relative_difference(orders_1_and_2_ref, orders_1_and_2)
     assert orders_1_and_2_diff_cpu < 5e-7, "Tensorflow : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
+    assert orders_1_and_2.dtype == np.dtype(np.float32)
 
 def test_scattering_batch_shape_agnostic():
     J = 2
@@ -69,6 +70,7 @@ def test_scattering_batch_shape_agnostic():
     Sx = S(x)
 
     assert len(Sx.shape) == 3
+    assert S(x).dtype == np.dtype(np.float32)
 
     coeffs_shape = Sx.shape[-3:]
 
@@ -82,3 +84,4 @@ def test_scattering_batch_shape_agnostic():
         assert len(Sx.shape) == len(test_shape)
         assert Sx.shape[-3:] == coeffs_shape
         assert Sx.shape[:-3] == test_shape[:-3]
+        assert S(x).dtype == np.dtype(np.float32)
