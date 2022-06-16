@@ -46,9 +46,11 @@ class ScatteringBase1D(ScatteringBase):
             if len(self.Q) == 1:
                 self.Q = self.Q + (1, )
             elif len(self.Q) < 1 or len(self.Q) > 2: 
-                raise NotImplementedError("Q should be an integer, 1-tuple or "
-                                          "2-tuple. Scattering transforms " 
-                                          "beyond order 2 are not implemented.")
+                raise NotImplementedError("Q should be a 1-tuple or 2-tuple. "
+                                          "Scattering transforms beyond "
+                                          "order 2 are not implemented.")
+        else:
+            raise ValueError("Q must be an integer or a tuple")
 
         # check the shape
         if isinstance(self.shape, numbers.Integral):
