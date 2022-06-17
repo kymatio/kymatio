@@ -50,7 +50,7 @@ class NumpyBackend3D(NumpyBackend):
         integrals = []
         for i_q, q in enumerate(integral_powers):
             integrals.append((input_array ** q).reshape((input_array.shape[0], -1)).sum(axis=1))
-        integrals = cls._np.stack(integrals, axis=-1)
+        integrals = cls._np.float32(cls._np.stack(integrals, axis=-1))
         return integrals
 
     @classmethod
