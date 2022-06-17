@@ -287,7 +287,7 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
     ----------
     sigma_min : float
         This acts as a lower bound on the frequential widths of the band-pass
-        filters. The low-pass filter may be wider (if T < 2**J_scattering), making
+        filters. The low-pass filter may be wider (if T < _N_padded), making
         invariants over shorter time scales than longest band-pass filter.
     Q : int
         number of wavelets per octave.
@@ -375,9 +375,8 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         to save computation time if it is not required. Defaults to None, in
         which case this value is dynamically adjusted depending on the filters.
     sigma0 : float, optional
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering. Defaults to 1e-1
+        parameter controlling the frequential width of the low-pass filter at
+        j=0; at a an absolute J, it is equal to sigma0 / 2**J. Defaults to 0.1
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal

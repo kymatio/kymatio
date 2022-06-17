@@ -95,9 +95,8 @@ def precompute_size_scattering(
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
     sigma0 : float
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering.
+        parameter controlling the frequential width of the low-pass filter at
+        j=0; at a an absolute J, it is equal to sigma0 / 2**J.
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
@@ -160,9 +159,8 @@ def compute_meta_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
     sigma0 : float
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering.
+        parameter controlling the frequential width of the low-pass filter at
+        j=0; at a an absolute J, it is equal to sigma0 / 2**J.
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
