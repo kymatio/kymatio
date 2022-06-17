@@ -445,11 +445,6 @@ def test_Q(device, backend):
             J, shape, Q=[8], backend=backend, frontend='torch')
     assert "Q must be an integer or a tuple" in ve.value.args[0]
 
-    if backend.name.endswith('_skcuda') and device == 'cpu':
-        with pytest.raises(TypeError) as ve:
-            Sx = S(x)
-        assert "CUDA" in ve.value.args[0]
-        return
 
     Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='torch').to(device)
     Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='torch').to(device)
@@ -458,6 +453,14 @@ def test_Q(device, backend):
 
     # test dummy input
     x = torch.zeros(shape).to(device)
+
+    if backend.name.endswith('_skcuda') and device == 'cpu':
+        for scattering in (Sc_int, Sc_tuple):
+            with pytest.raises(TypeError) as ve:
+                _ = scattering(x)
+            assert "CUDA" in ve.value.args[0]
+        return
+
     Sc_int_out = Sc_int(x)
     Sc_tuple_out = Sc_tuple(x)
 
