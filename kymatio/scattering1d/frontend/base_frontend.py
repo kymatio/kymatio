@@ -37,8 +37,20 @@ class ScatteringBase1D(ScatteringBase):
         self.alpha = 5.
 
         # check the number of filters per octave
-        if self.Q < 1:
+        if np.any(np.array(self.Q) < 1):
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
+
+        if isinstance(self.Q, int):
+            self.Q = (self.Q, 1)
+        elif isinstance(self.Q, tuple): 
+            if len(self.Q) == 1:
+                self.Q = self.Q + (1, )
+            elif len(self.Q) < 1 or len(self.Q) > 2: 
+                raise NotImplementedError("Q should be an integer, 1-tuple or "
+                                          "2-tuple. Scattering transforms "
+                                          "beyond order 2 are not implemented.")
+        else:
+            raise ValueError("Q must be an integer or a tuple")
 
         # check the shape
         if isinstance(self.shape, numbers.Integral):
@@ -286,9 +298,12 @@ class ScatteringBase1D(ScatteringBase):
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by :math:`2^J`.
-        {param_shape}Q : int >= 1
-            The number of first-order wavelets per octave (second-order
-            wavelets are fixed to one wavelet per octave). Defaults to `1`.
+        {param_shape}Q : int or tuple
+            By default, Q (int) is the number of wavelets per octave for the first
+            order and that for the second order has one wavelet per octave. This 
+            default value can be modified by passing Q as a tuple with two values,
+            i.e. Q = (Q1, Q2), where Q1 and Q2 are the number of wavelets per 
+            octave for the first and second order, respectively.
         T : int
             temporal support of low-pass filter, controlling amount of imposed
             time-shift invariance and maximum subsampling

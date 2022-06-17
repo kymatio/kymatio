@@ -92,8 +92,8 @@ def test_sample_scattering(device, backend):
 
 
     x = torch.from_numpy(data['x']).to(device)
-    J = data['J']
-    Q = data['Q']
+    J = int(data['J'])
+    Q = int(data['Q'])
     Sx0 = torch.from_numpy(data['Sx']).to(device)
 
     T = x.shape[-1]
@@ -399,8 +399,8 @@ def test_T(device, backend):
 
 
     x = torch.from_numpy(data['x']).to(device)
-    J = data['J']
-    Q = data['Q']
+    J = int(data['J'])
+    Q = int(data['Q'])
     Sx0 = torch.from_numpy(data['Sx']).to(device)
 
     # default
@@ -434,7 +434,35 @@ def test_Q(device, backend):
     length = 1024
     shape = (length,)
 
+    # test different cases for Q
     with pytest.raises(ValueError) as ve:
         _ = Scattering1D(
-            J, shape, Q=0.9, backend=backend, frontend='torch').to(device)
+            J, shape, Q=0.9, backend=backend, frontend='torch')
     assert "Q should always be >= 1" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(
+            J, shape, Q=[8], backend=backend, frontend='torch')
+    assert "Q must be an integer or a tuple" in ve.value.args[0]
+
+
+    Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='torch').to(device)
+    Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='torch').to(device)
+
+    assert Sc_int.Q == Sc_tuple.Q
+
+    # test dummy input
+    x = torch.zeros(shape).to(device)
+
+    if backend.name.endswith('_skcuda') and device == 'cpu':
+        for scattering in (Sc_int, Sc_tuple):
+            with pytest.raises(TypeError) as ve:
+                _ = scattering(x)
+            assert "CUDA" in ve.value.args[0]
+        return
+
+    Sc_int_out = Sc_int(x)
+    Sc_tuple_out = Sc_tuple(x)
+
+    assert torch.allclose(Sc_int_out, Sc_tuple_out)
+    assert Sc_int_out.shape == Sc_tuple_out.shape
