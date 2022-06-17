@@ -46,7 +46,7 @@ from kymatio.torch import HarmonicScattering3D
 # to import `compute_integrals` to do this manually.
 
 from kymatio.scattering3d.backend.torch_backend \
-    import compute_integrals
+    import TorchBackend3D
 
 ###############################################################################
 # To generate the input 3D maps, we need to calculate sums of Gaussians, so we
@@ -200,7 +200,7 @@ for i in range(n_batches):
 
     # Compute zeroth-order, first-order, and second-order scattering
     # coefficients of the nuclear charges.
-    full_order_0 = compute_integrals(full_density_batch,
+    full_order_0 = TorchBackend3D.compute_integrals(full_density_batch,
                                      integral_powers)
     full_scattering = scattering(full_density_batch)
 
@@ -211,7 +211,7 @@ for i in range(n_batches):
     val_density_batch = val_density_batch.to(device).float()
 
     # Compute scattering coefficients for the valence charges.
-    val_order_0 = compute_integrals(val_density_batch,
+    val_order_0 = TorchBackend3D.compute_integrals(val_density_batch,
                                     integral_powers)
     val_scattering = scattering(val_density_batch)
 
@@ -219,7 +219,7 @@ for i in range(n_batches):
     # compute the corresponding scattering coefficients.
     core_density_batch = full_density_batch - val_density_batch
 
-    core_order_0 = compute_integrals(core_density_batch,
+    core_order_0 = TorchBackend3D.compute_integrals(core_density_batch,
                                      integral_powers)
     core_scattering = scattering(core_density_batch)
 
