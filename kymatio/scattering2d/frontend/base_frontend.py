@@ -35,11 +35,13 @@ class ScatteringBase2D(ScatteringBase):
         filters = filter_bank(self._M_padded, self._N_padded, self.J, self.L)
         self.phi, self.psi = filters['phi'], filters['psi']
 
+    @property
     def M(self):
         warn("The attribute M is deprecated and will be removed in v0.4. "
         "Replace by shape[0].", DeprecationWarning)
         return int(self.shape[0])
 
+    @property
     def N(self):
         warn("The attribute N is deprecated and will be removed in v0.4. "
         "Replace by shape[1].", DeprecationWarning)
