@@ -82,9 +82,9 @@ def precompute_size_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
     J : int
         The maximum log-scale of the scattering transform.
         In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1
-        The number of first-order wavelets per octave.
-        Second-order wavelets are fixed to one wavelet per octave.
+    Q : tuple
+        number of wavelets per octave at the first and second order 
+        Q = (Q1, Q2). Q1 and Q2 are both int >= 1.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
@@ -110,8 +110,9 @@ def precompute_size_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
         orders zero up to `max_order`, both included.
     """
     sigma_min = sigma0 / math.pow(2, J)
-    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
-    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
+    Q1, Q2 = Q
+    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q1, alpha, r_psi)
+    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, Q2, alpha, r_psi)
 
     sizes = [1, len(xi1s)]
     size_order2 = 0
@@ -136,9 +137,9 @@ def compute_meta_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
     J : int
         The maximum log-scale of the scattering transform.
         In other words, the maximum scale is given by `2**J`.
-    Q : int >= 1
-        The number of first-order wavelets per octave.
-        Second-order wavelets are fixed to one wavelet per octave.
+    Q : tuple
+        number of wavelets per octave at the first and second order 
+        Q = (Q1, Q2). Q1 and Q2 are both int >= 1.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
@@ -182,8 +183,9 @@ def compute_meta_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
             in the non-vectorized output.
     """
     sigma_min = sigma0 / math.pow(2, J)
-    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q, alpha, r_psi)
-    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, 1, alpha, r_psi)
+    Q1, Q2 = Q
+    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q1, alpha, r_psi)
+    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, Q2, alpha, r_psi)
 
     meta = {}
 
