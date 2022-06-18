@@ -141,8 +141,12 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
 
-        if self.oversampling<0:
+        if self.oversampling < 0:
             raise ValueError("oversampling must be nonnegative. Got: {}".format(
+                self.oversampling))
+
+        if not isinstance(self.oversampling, numbers.Integral):
+            raise ValueError("oversampling must be integer. Got: {}".format(
                 self.oversampling))
 
     def _check_input(self, x):
