@@ -27,16 +27,16 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling)
 
-        n_kept_dims = 1 + (self.out_type=="dict")
+        n_kept_dims = 1 + (self.out_type == "dict")
         for n, path in enumerate(S):
             S[n]['coef'] = self.backend.reshape_output(
                 path['coef'], batch_shape, n_kept_dims=n_kept_dims)
 
-        if self.out_type=='array':
+        if self.out_type == 'array':
             return self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type=='dict':
+        elif self.out_type == 'dict':
             return {path['n']: path['coef'] for path in S}
-        elif self.out_type=='list':
+        elif self.out_type == 'list':
             return list(map(lambda path: path.pop('n')), S)
 
 
