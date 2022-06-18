@@ -23,8 +23,8 @@ class TestScattering1DNumpy:
             buffer = io.BytesIO(f.read())
             data = np.load(buffer)
         x = data['x']
-        J = data['J']
-        Q = data['Q']
+        J = int(data['J'])
+        Q = int(data['Q'])
         Sx0 = data['Sx']
         N = x.shape[-1]
         scattering = Scattering1D(J, N, Q, backend=backend, frontend='numpy')
@@ -41,8 +41,8 @@ class TestScattering1DNumpy:
             buffer = io.BytesIO(f.read())
             data = np.load(buffer)
         x = data['x']
-        J = data['J']
-        Q = data['Q']
+        J = int(data['J'])
+        Q = int(data['Q'])
         Sx0 = data['Sx']
         N = x.shape[-1]
         # default
@@ -84,7 +84,7 @@ class TestScattering1DNumpy:
         temporal extent of the low-pass sigma_log filter
         """
         N = 2**13
-        Q = 1
+        Q = (1, 1)
         sigma_low_scale_factor = [0, 5]
         Js = [5]
 
@@ -96,5 +96,36 @@ class TestScattering1DNumpy:
                     default_str = ' (default)'
                 else:
                     default_str = ''
-                phi_f, psi1_f, psi2_f = scattering_filter_factory(np.log2(N), J, Q, T)
+                phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T)
                 assert(phi_f['sigma']==0.1/T)
+
+frontends = ['numpy', 'sklearn']
+@pytest.mark.parametrize("backend", backends)
+@pytest.mark.parametrize("frontend", frontends)
+
+def test_Q(backend, frontend):
+    J = 3
+    length = 1024
+    shape = (length,)
+
+    # test different cases for Q
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(J, shape, Q=0.9, backend=backend, frontend=frontend)
+    assert "Q should always be >= 1" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(J, shape, Q=[8], backend=backend, frontend=frontend)
+    assert "Q must be an integer or a tuple" in ve.value.args[0] 
+
+    Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend=frontend)
+    Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend=frontend)
+
+    assert Sc_int.Q == Sc_tuple.Q
+
+    # test dummy input
+    x = np.zeros(length)
+    Sc_int_out = Sc_int.scattering(x)
+    Sc_tuple_out = Sc_tuple.scattering(x)
+
+    assert np.allclose(Sc_int_out, Sc_tuple_out)
+    assert Sc_int_out.shape == Sc_tuple_out.shape

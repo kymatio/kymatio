@@ -47,3 +47,39 @@ def test_Scattering1D():
     model1.summary()
     sys.stdout = save_stdout
     assert 'scattering1d' in result.getvalue()
+  
+def test_Q():
+    J = 3
+    length = 1024
+    inputs = Input(shape=(length,))
+
+    # test different cases for Q
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(J=J, Q=0.9)(inputs)
+    assert "Q should always be >= 1" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(J=J, Q=[8])(inputs)
+    assert "Q must be an integer or a tuple" in ve.value.args[0]
+
+    Sc_int = Scattering1D(J=J, Q=(8, ))(inputs)
+    Sc_tuple = Scattering1D(J=J, Q=(8, 1))(inputs)
+
+    assert Sc_int.shape[1] == Sc_tuple.shape[1]
+
+    # test dummy input
+    x = np.zeros(length)
+    model0 = Model(inputs, Sc_int)
+    model0.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    Sc_int_out = model0.predict(x)
+
+    model1 = Model(inputs, Sc_tuple)
+    model1.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    Sc_tuple_out = model1.predict(x)
+
+    assert Sc_int_out.shape == (Sc_tuple_out.shape[0], Sc_tuple_out.shape[1], Sc_tuple_out.shape[2])
+    assert np.allclose(Sc_int_out, Sc_tuple_out)
