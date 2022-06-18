@@ -445,7 +445,6 @@ def test_Q(device, backend):
             J, shape, Q=[8], backend=backend, frontend='torch')
     assert "Q must be an integer or a tuple" in ve.value.args[0]
 
-
     Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='torch').to(device)
     Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='torch').to(device)
 
@@ -466,3 +465,30 @@ def test_Q(device, backend):
 
     assert torch.allclose(Sc_int_out, Sc_tuple_out)
     assert Sc_int_out.shape == Sc_tuple_out.shape
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_check_runtime_args(device, backend):
+    J = 3
+    length = 1024
+    shape = (length,)
+    x = torch.zeros(shape)
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, backend=backend,
+                         out_type='doesnotexist', frontend='torch').to(device)
+        S(x)
+    assert "out_type must be one" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, backend=backend, average=False,
+                         out_type='array', frontend='torch').to(device)
+        S(x)
+    assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, oversampling=-1, backend=backend,
+                         frontend='torch').to(device)
+        S(x)
+    assert "nonnegative" in ve.value.args[0]

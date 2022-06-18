@@ -137,11 +137,20 @@ class ScatteringBase1D(ScatteringBase):
 
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):
-            raise RuntimeError("The out_type must be one of 'array', 'dict', or 'list'.")
+            raise ValueError("The out_type must be one of 'array', 'dict'"
+                             ", or 'list'. Got: {}".format(self.out_type))
 
         if not self.average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
+
+        if self.oversampling < 0:
+            raise ValueError("oversampling must be nonnegative. Got: {}".format(
+                self.oversampling))
+
+        if not isinstance(self.oversampling, numbers.Integral):
+            raise ValueError("oversampling must be integer. Got: {}".format(
+                self.oversampling))
 
     def _check_input(self, x):
         # basic checking, should be improved
