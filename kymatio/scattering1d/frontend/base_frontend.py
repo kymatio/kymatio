@@ -1,8 +1,8 @@
 from ...frontend.base_frontend import ScatteringBase
 import math
 import numbers
-
 import numpy as np
+from warnings import warn
 
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
 from ..utils import (compute_border_indices, compute_padding,
@@ -52,46 +52,48 @@ class ScatteringBase1D(ScatteringBase):
         else:
             raise ValueError("Q must be an integer or a tuple")
 
-        # check the shape
+        # check input length
         if isinstance(self.shape, numbers.Integral):
-            self.N = self.shape
+            self.shape = (self.shape,)
         elif isinstance(self.shape, tuple):
-            self.N = self.shape[0]
             if len(self.shape) > 1:
                 raise ValueError("If shape is specified as a tuple, it must "
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+        N_input = self.shape[0]
 
         # check T or set default
         if self.T is None:
             self.T = 2**(self.J)
-        elif self.T > self.N:
+        elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
-                                 self.T, self.N))
+                                 self.T, N_input))
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(self.N, self.sigma0/self.T)
+        phi_f = gauss_1d(N_input, self.sigma0/self.T)
         min_to_pad = 3 * compute_temporal_support(
             phi_f.reshape(1, -1), criterion_amplitude=1e-3)
 
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
-        J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
-        self.J_pad = min(int(np.ceil(np.log2(self.N + 2 * min_to_pad))),
-                         J_max_support)
+        J_max_support = int(np.floor(np.log2(3 * N_input - 2)))
+        J_pad = min(int(np.ceil(np.log2(N_input + 2 * min_to_pad))),
+                    J_max_support)
+        self._N_padded = 2**J_pad
+
         # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
+        self.pad_left, self.pad_right = compute_padding(self._N_padded, N_input)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.log2_T, self.J, self.pad_left, self.pad_left + self.N)
+            self.log2_T, self.J, self.pad_left, self.pad_left + N_input)
 
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, self.T,
+            self._N_padded, self.J, self.Q, self.T,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
 
     def meta(self):
@@ -147,6 +149,20 @@ class ScatteringBase1D(ScatteringBase):
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
 
+    @property
+    def J_pad(self):
+        warn("The attribute J_pad is deprecated and will be removed in v0.4. "
+        "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
+        "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
+        return int(np.log2(self._N_padded))
+
+    @property
+    def N(self):
+        warn("The attribute N is deprecated and will be removed in v0.4. "
+        "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
+        "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
+        return int(self.shape[0])
+
     _doc_shape = 'N'
 
     _doc_instantiation_shape = {True: 'S = Scattering1D(J, N, Q)',
@@ -158,9 +174,7 @@ class ScatteringBase1D(ScatteringBase):
         """
 
     _doc_attrs_shape = \
-    r"""J_pad : int
-            The logarithm of the padded length of the signals.
-        pad_left : int
+    r"""pad_left : int
             The amount of padding to the left of the signal.
         pad_right : int
             The amount of padding to the right of the signal.

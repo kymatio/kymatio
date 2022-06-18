@@ -39,33 +39,32 @@ def compute_border_indices(log2_T, J, i0, i1):
         ind_end[j] = (ind_end[j - 1] // 2) + (ind_end[j - 1] % 2)
     return ind_start, ind_end
 
-def compute_padding(J_pad, N):
+def compute_padding(N, N_input):
     """
     Computes the padding to be added on the left and on the right
     of the signal.
 
-    It should hold that 2**J_pad >= N
+    It should hold that N >= N_input
 
     Parameters
     ----------
-    J_pad : int
-        2**J_pad is the support of the padded signal
     N : int
-        original signal support size
+        support of the padded signal
+    N_input : int
+        support of the unpadded signal
 
     Returns
     -------
     pad_left: amount to pad on the left ("beginning" of the support)
     pad_right: amount to pad on the right ("end" of the support)
     """
-    N_pad = 2**J_pad
-    if N_pad < N:
+    if N < N_input:
         raise ValueError('Padding support should be larger than the original' +
                          'signal size!')
-    to_add = 2**J_pad - N
+    to_add = N - N_input
     pad_left = to_add // 2
     pad_right = to_add - pad_left
-    if max(pad_left, pad_right) >= N:
+    if max(pad_left, pad_right) >= N_input:
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
 
@@ -95,9 +94,8 @@ def precompute_size_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
     sigma0 : float
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering.
+        parameter controlling the frequential width of the low-pass filter at
+        j=0; at a an absolute J, it is equal to sigma0 / 2**J.
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
@@ -150,9 +148,8 @@ def compute_meta_scattering(J, Q, T, max_order, r_psi, sigma0, alpha):
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
     sigma0 : float
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering.
+        parameter controlling the frequential width of the low-pass filter at
+        j=0; at a an absolute J, it is equal to sigma0 / 2**J.
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal

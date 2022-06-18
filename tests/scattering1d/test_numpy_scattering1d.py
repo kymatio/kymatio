@@ -96,7 +96,7 @@ class TestScattering1DNumpy:
                     default_str = ' (default)'
                 else:
                     default_str = ''
-                phi_f, psi1_f, psi2_f = scattering_filter_factory(np.log2(N), J, Q, T)
+                phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T)
                 assert(phi_f['sigma']==0.1/T)
 
 frontends = ['numpy', 'sklearn']
