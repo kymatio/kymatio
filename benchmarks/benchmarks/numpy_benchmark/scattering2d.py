@@ -50,4 +50,4 @@ class BenchmarkScattering2D:
 
     def time_forward(self, sc_params):
         for i in range(sc_params["n_iter"]):
-            y =self.scattering(self.x)
+            y = self.scattering(self.x)

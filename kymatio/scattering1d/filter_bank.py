@@ -71,49 +71,32 @@ def periodize_filter_fourier(h_f, nperiods=1):
     return v_f
 
 
-def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
+def morlet_1d(N, xi, sigma):
     """
-    Computes the Fourier transform of a Morlet filter.
-
+    Computes the Fourier transform of a Morlet or Gauss filter.
     A Morlet filter is the sum of a Gabor filter and a low-pass filter
     to ensure that the sum has exactly zero mean in the temporal domain.
     It is defined by the following formula in time:
-    psi(t) = g_{sigma}(t) (e^{i xi t} - beta)
-    where g_{sigma} is a Gaussian envelope, xi is a frequency and beta is
-    the cancelling parameter.
-
+    psi(t) = g_{sigma}(t) (e^{i xi t} - kappa)
+    where g_{sigma} is a Gaussian envelope, xi is a frequency and kappa is
+    a corrective term which ensures that psi has a null average.
+    If xi is None, the definition becomes: phi(t) = g_{sigma}(t)
     Parameters
     ----------
     N : int
         size of the temporal support
-    xi : float
-        central frequency (in [0, 1])
+    xi : float or None
+        center frequency in (0, 1]
     sigma : float
         bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'.
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max: int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float
-        required machine precision (to choose the adequate P)
-
     Returns
     -------
-    morlet_f : array_like
+    filter_f : array_like
         numpy array of size (N,) containing the Fourier transform of the Morlet
         filter at the frequencies given by np.fft.fftfreq(N).
     """
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
-    # Find the adequate value of P
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
+    # Find the adequate value of P<=5
+    P = min(adaptive_choice_P(sigma), 5)
     # Define the frequencies over [1-P, P[
     freqs = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
     if P == 1:
@@ -122,98 +105,24 @@ def morlet_1d(N, xi, sigma, normalize='l1', P_max=5, eps=1e-7):
         freqs_low = np.fft.fftfreq(N)
     elif P > 1:
         freqs_low = freqs
-    # define the gabor at freq xi and the low-pass, both of width sigma
-    gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
-    # discretize in signal <=> periodize in Fourier
-    gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
     low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
-    # find the summation factor to ensure that morlet_f[0] = 0.
-    kappa = gabor_f[0] / low_pass_f[0]
-    morlet_f = gabor_f - kappa * low_pass_f
-    # normalize the Morlet if necessary
-    morlet_f *= get_normalizing_factor(morlet_f, normalize=normalize)
-    return morlet_f
-
-
-def get_normalizing_factor(h_f, normalize='l1'):
-    """
-    Computes the desired normalization factor for a filter defined in Fourier.
-
-    Parameters
-    ----------
-    h_f : array_like
-        numpy vector containing the Fourier transform of a filter
-    normalized : string, optional
-        desired normalization type, either 'l1' or 'l2'. Defaults to 'l1'.
-
-    Returns
-    -------
-    norm_factor : float
-        such that h_f * norm_factor is the adequately normalized vector.
-    """
-    h_real = ifft(h_f)
-    if np.abs(h_real).sum() < 1e-7:
-        raise ValueError('Zero division error is very likely to occur, ' +
-                         'aborting computations now.')
-    if normalize == 'l1':
-        norm_factor = 1. / (np.abs(h_real).sum())
-    elif normalize == 'l2':
-        norm_factor = 1. / np.sqrt((np.abs(h_real)**2).sum())
+    if xi:
+        # define the gabor at freq xi and the low-pass, both of width sigma
+        gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
+        # discretize in signal <=> periodize in Fourier
+        gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+        # find the summation factor to ensure that morlet_f[0] = 0.
+        kappa = gabor_f[0] / low_pass_f[0]
+        filter_f = gabor_f - kappa * low_pass_f # psi (band-pass) case
     else:
-        raise ValueError("Supported normalizations only include 'l1' and 'l2'")
-    return norm_factor
+        filter_f = low_pass_f # phi (low-pass) case
+    filter_f /= np.abs(ifft(filter_f)).sum()
+    return filter_f
 
 
-def gauss_1d(N, sigma, normalize='l1', P_max=5, eps=1e-7):
-    """
-    Computes the Fourier transform of a low pass gaussian window.
-
-    \\hat g_{\\sigma}(\\omega) = e^{-\\omega^2 / 2 \\sigma^2}
-
-    Parameters
-    ----------
-    N : int
-        size of the temporal support
-    sigma : float
-        bandwidth parameter
-    normalize : string, optional
-        normalization types for the filters. Defaults to 'l1'
-        Supported normalizations are 'l1' and 'l2' (understood in time domain).
-    P_max : int, optional
-        integer controlling the maximal number of periods to use to ensure
-        the periodicity of the Fourier transform. (At most 2*P_max - 1 periods
-        are used, to ensure an equal distribution around 0.5). Defaults to 5
-        Should be >= 1
-    eps : float, optional
-        required machine precision (to choose the adequate P)
-
-    Returns
-    -------
-    g_f : array_like
-        numpy array of size (N,) containing the Fourier transform of the
-        filter (with the frequencies in the np.fft.fftfreq convention).
-    """
-    # Find the adequate value of P
-    if type(P_max) != int:
-        raise ValueError('P_max should be an int, got {}'.format(type(P_max)))
-    if P_max < 1:
-        raise ValueError('P_max should be non-negative, got {}'.format(P_max))
-    P = min(adaptive_choice_P(sigma, eps=eps), P_max)
-    assert P >= 1
-    # switch cases
-    if P == 1:
-        freqs_low = np.fft.fftfreq(N)
-    elif P > 1:
-        freqs_low = np.arange((1 - P) * N, P * N, dtype=float) / float(N)
-    # define the low pass
-    g_f = np.exp(-freqs_low**2 / (2 * sigma**2))
-    # periodize it
-    g_f = periodize_filter_fourier(g_f, nperiods=2 * P - 1)
-    # normalize the signal
-    g_f *= get_normalizing_factor(g_f, normalize=normalize)
-    # return the Fourier transform
-    return g_f
+def gauss_1d(N, sigma):
+    return morlet_1d(N, xi=None, sigma=sigma)
 
 
 def compute_sigma_psi(xi, Q, r=math.sqrt(0.5)):
@@ -310,7 +219,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     return N
 
 
-def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
+def get_max_dyadic_subsampling(xi, sigma, alpha):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
     filter of frequency xi and width sigma
@@ -333,7 +242,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
         frequential width of the filter
     alpha : float, optional
         parameter controlling the error done in the aliasing.
-        The larger alpha, the smaller the error. Defaults to 5.
+        The larger alpha, the smaller the error.
 
     Returns
     -------
@@ -345,50 +254,6 @@ def get_max_dyadic_subsampling(xi, sigma, alpha=5.):
     j = math.floor(-math.log2(upper_bound)) - 1
     j = int(j)
     return j
-
-
-def move_one_dyadic_step(cv, Q, alpha=5.):
-    """
-    Computes the parameters of the next wavelet on the low frequency side,
-    based on the parameters of the current wavelet.
-
-    This function is used in the loop defining all the filters, starting
-    at the wavelet frequency and then going to the low frequencies by
-    dyadic steps. This makes the loop in compute_params_filterbank much
-    simpler to read.
-
-    The steps are defined as:
-    xi_{n+1} = 2^{-1/Q} xi_n
-    sigma_{n+1} = 2^{-1/Q} sigma_n
-
-    Parameters
-    ----------
-    cv : dictionary
-        stands for current_value. Is a dictionary with keys:
-        *'key': a tuple (j, n) where n is a counter and j is the maximal
-            dyadic subsampling accepted by this wavelet.
-        *'xi': central frequency of the wavelet
-        *'sigma': width of the wavelet
-    Q : int
-        number of wavelets per octave. Controls the relationship between
-        the frequency and width of the current wavelet and the next wavelet.
-    alpha : float, optional
-        tolerance parameter for the aliasing. The larger alpha,
-        the more conservative the algorithm is. Defaults to 5.
-
-    Returns
-    -------
-    new_cv : dictionary
-        a dictionary with the same keys as the ones listed for cv,
-        whose values are updated
-    """
-    factor = 1. / math.pow(2., 1. / Q)
-    n = cv['key']
-    new_cv = {'xi': cv['xi'] * factor, 'sigma': cv['sigma'] * factor}
-    # compute the new j
-    new_cv['j'] = get_max_dyadic_subsampling(new_cv['xi'], new_cv['sigma'], alpha=alpha)
-    new_cv['key'] = n + 1
-    return new_cv
 
 
 def compute_xi_max(Q):
@@ -409,7 +274,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
+def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
@@ -418,150 +283,62 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5), alpha=5.):
     are translated. sigma_min limits the smallest frequential width
     among all filters, while preserving the coverage of the whole frequency
     axis.
-
-    The keys of the dictionaries are tuples of integers (j, n) where n is a
-    counter (starting at 0 for the highest frequency filter) and j is the
-    maximal dyadic subsampling accepted by this filter.
-
     Parameters
     ----------
     sigma_min : float
         This acts as a lower bound on the frequential widths of the band-pass
-        filters. The low-pass filter may be wider (if T < 2**J_scattering), making
+        filters. The low-pass filter may be wider (if T < _N_padded), making
         invariants over shorter time scales than longest band-pass filter.
     Q : int
         number of wavelets per octave.
+    alpha : float, optional
+        tolerance factor for the aliasing after subsampling.
+        The larger alpha, the more conservative the value of maximal
+        subsampling is.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
         Defaults to sqrt(0.5).
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
-
     Returns
     -------
-    xi : dictionary
-        dictionary containing the central frequencies of the wavelets.
-    sigma : dictionary
-        dictionary containing the frequential widths of the wavelets.
-
-    Refs
-    ----
-    Convolutional operators in the time-frequency domain, 2.1.3, V. Lostanlen,
-    PhD Thesis, 2017
-    https://tel.archives-ouvertes.fr/tel-01559667
+    xis : list
+        central frequencies of the filters.
+    sigmas : list
+        bandwidths of the filters.
+    js : list
+        maximal dyadic subsampling accepted by the filters.
+        j=0 stands for no subsampling, j=1 stands for half subsampling, etc.
     """
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
 
-    xi = []
-    sigma = []
-    j = []
-
     if sigma_max <= sigma_min:
-        # in this exceptional case, we will not go through the loop, so
-        # we directly assign
-        last_xi = sigma_max
+        xis = []
+        sigmas = []
+        elbow_xi = sigma_max
     else:
-        # fill all the dyadic wavelets as long as possible
-        current = {'key': 0, 'j': 0, 'xi': xi_max, 'sigma': sigma_max}
-        while current['sigma'] > sigma_min:  # while we can attribute something
-            xi.append(current['xi'])
-            sigma.append(current['sigma'])
-            j.append(current['j'])
-            current = move_one_dyadic_step(current, Q, alpha=alpha)
-        # get the last key
-        last_xi = xi[-1]
-    # fill num_interm wavelets between last_xi and 0, both excluded
-    num_intermediate = Q - 1
-    for q in range(1, num_intermediate + 1):
-        factor = (num_intermediate + 1. - q) / (num_intermediate + 1.)
-        new_xi = factor * last_xi
-        new_sigma = sigma_min
-        xi.append(new_xi)
-        sigma.append(new_sigma)
-        j.append(get_max_dyadic_subsampling(new_xi, new_sigma, alpha=alpha))
-    # return results
-    return xi, sigma, j
+        xis =  [xi_max]
+        sigmas = [sigma_max]
+
+        # High-frequency (constant-Q) region: geometric progression of xi
+        while sigmas[-1] > (sigma_min * math.pow(2, 1/Q)):
+            xis.append(xis[-1] / math.pow(2, 1/Q))
+            sigmas.append(sigmas[-1] / math.pow(2, 1/Q))
+        elbow_xi = xis[-1]
+
+    # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
+    for q in range(1, Q):
+        xis.append(elbow_xi - q/Q * elbow_xi)
+        sigmas.append(sigma_min)
+
+    js = [
+        get_max_dyadic_subsampling(xi, sigma, alpha) for xi, sigma in zip(xis, sigmas)
+    ]
+    return xis, sigmas, js
 
 
-def calibrate_scattering_filters(J, Q, T, r_psi=math.sqrt(0.5), sigma0=0.1,
-                                 alpha=5.):
-    """
-    Calibrates the parameters of the filters used at the 1st and 2nd orders
-    of the scattering transform.
-
-    These filterbanks share the same low-pass filterbank, but use a
-    different Q: Q_1 = Q and Q_2 = 1.
-
-    The dictionaries for the band-pass filters have keys which are 2-tuples
-    of the type (j, n), where n is an integer >=0 counting the filters (for
-    identification purposes) and j is an integer >= 0 denoting the maximal
-    subsampling 2**j which can be performed on a signal convolved with this
-    filter without aliasing.
-
-    Parameters
-    ----------
-    J : int
-        maximal scale of the scattering (controls the number of wavelets)
-    Q : int
-        number of wavelets per octave for the first order
-    T : int
-        temporal support of low-pass filter, controlling amount of imposed
-        time-shift invariance and maximum subsampling
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5)
-    sigma0 : float, optional
-        frequential width of the low-pass filter at scale J=0
-        (the subsequent widths are defined by sigma_J = sigma0 / 2^J).
-        Defaults to 1e-1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
-
-    Returns
-    -------
-    sigma_low : float
-        frequential width of the low-pass filter
-    xi1 : dictionary
-        dictionary containing the center frequencies of the first order
-        filters. See above for a decsription of the keys.
-    sigma1 : dictionary
-        dictionary containing the frequential width of the first order
-        filters. See above for a description of the keys.
-    xi2 : dictionary
-        dictionary containing the center frequencies of the second order
-        filters. See above for a decsription of the keys.
-    sigma2 : dictionary
-        dictionary containing the frequential width of the second order
-        filters. See above for a description of the keys.
-    """
-    if Q < 1:
-        raise ValueError('Q should always be >= 1, got {}'.format(Q))
-
-    # lower bound of band-pass filter frequential widths:
-    # for default T = 2**(J), this coincides with sigma_low
-    sigma_min = sigma0 / math.pow(2, J)
-
-    xi1, sigma1, j1 = compute_params_filterbank(sigma_min, Q, r_psi=r_psi,
-                                            alpha=alpha)
-    xi2, sigma2, j2 = compute_params_filterbank(sigma_min, 1, r_psi=r_psi,
-                                            alpha=alpha)
-
-    # width of the low-pass filter
-    sigma_low = sigma0 / T
-    return sigma_low, xi1, sigma1, j1, xi2, sigma2, j2
-
-
-def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5),
-                              criterion_amplitude=1e-3, normalize='l1',
-                              max_subsampling=None, sigma0=0.1, alpha=5.,
-                              P_max=5, eps=1e-7, **kwargs):
+def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
+                              max_subsampling=None, sigma0=0.1, alpha=5., **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -577,14 +354,9 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
 
     Parameters
     ----------
-    J_support : int
-        2**J_support is the desired support size of the filters
-    J_scattering : int
-        parameter for the scattering transform (2**J_scattering
-        corresponds to maximal temporal support of any filter)
-    Q : int
-        number of wavelets per octave at the first order. For audio signals,
-        a value Q >= 12 is recommended in order to separate partials.
+    Q : tuple
+        number of wavelets per octave at the first and second order 
+        Q = (Q1, Q2). Q1 and Q2 are both int >= 1.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
@@ -592,33 +364,17 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
         Defaults to sqrt(0.5).
-    criterion_amplitude : float, optional
-        Represents the numerical error which is allowed to be lost after
-        convolution and padding. Defaults to 1e-3.
-    normalize : string, optional
-        Normalization convention for the filters (in the
-        temporal domain). Supported values include 'l1' and 'l2'; a ValueError
-        is raised otherwise. Defaults to 'l1'.
     max_subsampling: int or None, optional
         maximal dyadic subsampling to compute, in order
         to save computation time if it is not required. Defaults to None, in
         which case this value is dynamically adjusted depending on the filters.
     sigma0 : float, optional
-        parameter controlling the frequential width of the
-        low-pass filter at J_scattering=0; at a an absolute J_scattering, it
-        is equal to sigma0 / 2**J_scattering. Defaults to 1e-1
+        parameter controlling the frequential width of the low-pass filter at
+        j=0; at a an absolute J, it is equal to sigma0 / 2**J. Defaults to 0.1
     alpha : float, optional
         tolerance factor for the aliasing after subsampling.
         The larger alpha, the more conservative the value of maximal
         subsampling is. Defaults to 5.
-    P_max : int, optional
-        maximal number of periods to use to make sure that the Fourier
-        transform of the filters is periodic. P_max = 5 is more than enough for
-        double precision. Defaults to 5. Should be >= 1
-    eps : float, optional
-        required machine precision for the periodization (single
-        floating point is enough for deep learning applications).
-        Defaults to 1e-7
 
     Returns
     -------
@@ -646,10 +402,6 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         The keys of this dictionary are of th etype (j, n) where n is an
         integer counting the filters and j is the maximal dyadic subsampling
         which can be performed on top of this filter without aliasing.
-    t_max_phi : int
-        temporal size to use to pad the signal on the right and on the
-        left by making at most criterion_amplitude error. Assumes that the
-        temporal support of the low-pass filter is larger than all filters.
 
     Refs
     ----
@@ -658,8 +410,13 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     # compute the spectral parameters of the filters
-    sigma_low, xi1, sigma1, j1s, xi2, sigma2, j2s = calibrate_scattering_filters(
-        J_scattering, Q, T, r_psi=r_psi, sigma0=sigma0, alpha=alpha)
+    sigma_min = sigma0 / math.pow(2, J)
+    Q1, Q2 = Q
+    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q1, alpha, r_psi)
+    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, Q2, alpha, r_psi)
+
+    # width of the low-pass filter
+    sigma_low = sigma0 / T
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
@@ -668,12 +425,11 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
-    for (n2, j2) in enumerate(j2s):
+    for (xi2, sigma2, j2) in zip(xi2s, sigma2s, j2s):
         # compute the current value for the max_subsampling,
         # which depends on the input it can accept.
         if max_subsampling is None:
-            possible_subsamplings_after_order1 = [
-                j1 for j1 in j1s if j2 > j1]
+            possible_subsamplings_after_order1 = [j1 for j1 in j1s if j2 > j1]
             if len(possible_subsamplings_after_order1) > 0:
                 max_sub_psi2 = max(possible_subsamplings_after_order1)
             else:
@@ -681,27 +437,20 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         else:
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
-        N = 2**J_support
 
-        psi_f = {}
-        psi_f[0] = morlet_1d(
-            N, xi2[n2], sigma2[n2], normalize=normalize, P_max=P_max,
-            eps=eps)
+        psi_levels = [morlet_1d(N, xi2, sigma2)]
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
-        for subsampling in range(1, max_sub_psi2 + 1):
-            factor_subsampling = 2**subsampling
-            psi_f[subsampling] = periodize_filter_fourier(
-                psi_f[0], nperiods=factor_subsampling)
-        psi2_f.append(psi_f)
+        for level in range(1, max_sub_psi2 + 1):
+            nperiods = 2**level
+            psi_levels.append(periodize_filter_fourier(psi_levels[0], nperiods))
+        psi2_f.append({'levels': psi_levels, 'xi': xi2, 'sigma': sigma2, 'j': j2})
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
-    for (n1, j1) in enumerate(j1s):
-        N = 2**J_support
-        psi1_f.append({0: morlet_1d(
-            N, xi1[n1], sigma1[n1], normalize=normalize,
-            P_max=P_max, eps=eps)})
+    for (xi1, sigma1, j1) in zip(xi1s, sigma1s, j1s):
+        psi_levels = [morlet_1d(N, xi1, sigma1)]
+        psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
 
     # compute the low-pass filters phi
     # Determine the maximal subsampling for phi, which depends on the
@@ -716,30 +465,11 @@ def scattering_filter_factory(J_support, J_scattering, Q, T, r_psi=math.sqrt(0.5
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_f[0] = gauss_1d(N, sigma_low, P_max=P_max, eps=eps)
-    for subsampling in range(1, max_sub_phi + 1):
-        factor_subsampling = 2**subsampling
-        # compute the low_pass filter
-        phi_f[subsampling] = periodize_filter_fourier(
-            phi_f[0], nperiods=factor_subsampling)
-
-    # Embed the meta information within the filters
-    for (n1, j1) in enumerate(j1s):
-        psi1_f[n1]['xi'] = xi1[n1]
-        psi1_f[n1]['sigma'] = sigma1[n1]
-        psi1_f[n1]['j'] = j1
-    for (n2, j2) in enumerate(j2s):
-        psi2_f[n2]['xi'] = xi2[n2]
-        psi2_f[n2]['sigma'] = sigma2[n2]
-        psi2_f[n2]['j'] = j2
-    phi_f['xi'] = 0.
-    phi_f['sigma'] = sigma_low
-    phi_f['j'] = log2_T
-
-    # compute the support size allowing to pad without boundary errors
-    # at the finest resolution  # TODO
-    t_max_phi = compute_temporal_support(
-        phi_f[0].reshape(1, -1), criterion_amplitude=criterion_amplitude)
+    phi_levels = [gauss_1d(N, sigma_low)]
+    for level in range(1, max_sub_phi + 1):
+        nperiods = 2**level
+        phi_levels.append(periodize_filter_fourier(phi_levels[0], nperiods))
+    phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
 
     # return results
-    return phi_f, psi1_f, psi2_f, t_max_phi
+    return phi_f, psi1_f, psi2_f

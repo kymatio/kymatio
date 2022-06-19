@@ -25,8 +25,8 @@ class TestScattering1DTensorFlow:
             data = np.load(buffer)
 
         x = data['x']
-        J = data['J']
-        Q = data['Q']
+        J = int(data['J'])
+        Q = int(data['Q'])
         Sx0 = data['Sx']
 
         T = x.shape[-1]
@@ -35,3 +35,33 @@ class TestScattering1DTensorFlow:
 
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0, atol=1e-6, rtol =1e-7)
+
+@pytest.mark.parametrize("backend", backends)
+def test_Q(backend):
+    J = 3
+    length = 1024
+    shape = (length,)
+
+    # test different cases for Q
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(
+            J, shape, Q=0.9, backend=backend, frontend='tensorflow')
+    assert "Q should always be >= 1" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(
+            J, shape, Q=[8], backend=backend, frontend='tensorflow')
+    assert "Q must be an integer or a tuple" in ve.value.args[0]
+
+    Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='tensorflow')
+    Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='tensorflow')
+
+    assert Sc_int.Q == Sc_tuple.Q
+
+    # test dummy input
+    x = np.zeros(length)
+    Sc_int_out = Sc_int.scattering(x)
+    Sc_tuple_out = Sc_tuple.scattering(x)
+
+    assert np.allclose(Sc_int_out, Sc_tuple_out)
+    assert Sc_int_out.shape == Sc_tuple_out.shape

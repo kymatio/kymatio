@@ -61,13 +61,13 @@ Q = 8
 # first-order wavelet filters (`psi1_f`), and the second-order filters
 # (`psi2_f`).
 
-phi_f, psi1_f, psi2_f,  = scattering_filter_factory(np.log2(T), J, Q, T)
+phi_f, psi1_f, psi2_f = scattering_filter_factory(np.log2(T), J, Q, T)
 
 ###############################################################################
 # The `phi_f` output is a dictionary where each integer key corresponds points
-# to the instantiation of the filter at a certain resolution. In other words,
-# `phi_f[0]` corresponds to the lowpass filter at resolution `T`, while
-# `phi_f[1]` corresponds to the filter at resolution `T/2`, and so on.
+# to the instantiation of the filter at a certain resolution. Specifically,
+# `phi_f['levels'][0]` corresponds to the lowpass filter at resolution `T`, while
+# `phi_f['levels'][1]` corresponds to the filter at resolution `T/2`, and so on.
 #
 # While `phi_f` only contains a single filter (at different resolutions),
 # the `psi1_f` and `psi2_f` outputs are lists of filters, one for each wavelet
@@ -83,10 +83,10 @@ phi_f, psi1_f, psi2_f,  = scattering_filter_factory(np.log2(T), J, Q, T)
 # $[0, 0.5]$.
 
 plt.figure()
-plt.plot(np.arange(T)/T, phi_f[0], 'r')
+plt.plot(np.arange(T)/T, phi_f['levels'][0], 'r')
 
 for psi_f in psi1_f:
-    plt.plot(np.arange(T)/T, psi_f[0], 'b')
+    plt.plot(np.arange(T)/T, psi_f['levels'][0], 'b')
 
 plt.xlim(0, 0.5)
 
@@ -100,9 +100,9 @@ plt.title('Frequency response of first-order filters (Q = {})'.format(Q),
 # we obtain wavelets that have higher frequency bandwidth.
 
 plt.figure()
-plt.plot(np.arange(T)/T, phi_f[0], 'r')
+plt.plot(np.arange(T)/T, phi_f['levels'][0], 'r')
 for psi_f in psi2_f:
-    plt.plot(np.arange(T)/T, psi_f[0], 'b')
+    plt.plot(np.arange(T)/T, psi_f['levels'][0], 'b')
 plt.xlim(0, 0.5)
 plt.ylim(0, 1.2)
 plt.xlabel(r'$\omega$', fontsize=18)
@@ -119,7 +119,7 @@ plt.title('Frequency response of second-order filters (Q = 1)', fontsize=12)
 
 plt.figure()
 
-psi_time = np.fft.ifft(psi1_f[-1][0])
+psi_time = np.fft.ifft(psi1_f[-1]['levels'][0])
 psi_real = np.real(psi_time)
 psi_imag = np.imag(psi_time)
 plt.plot(np.concatenate((psi_real[-2**8:],psi_real[:2**8])),'b')

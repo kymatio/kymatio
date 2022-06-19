@@ -92,8 +92,8 @@ def test_sample_scattering(device, backend):
 
 
     x = torch.from_numpy(data['x']).to(device)
-    J = data['J']
-    Q = data['Q']
+    J = int(data['J'])
+    Q = int(data['Q'])
     Sx0 = torch.from_numpy(data['Sx']).to(device)
 
     T = x.shape[-1]
@@ -124,7 +124,7 @@ def test_computation_Ux(backend, device, random_state=42):
     Q = 8
     T = 2**12
     scattering = Scattering1D(J, T, Q, average=False,
-                              max_order=1, vectorize=False, frontend='torch', backend=backend).to(device)
+                              max_order=1, out_type="dict", frontend='torch', backend=backend).to(device)
     # random signal
     x = torch.from_numpy(rng.randn(1, T)).float().to(device)
 
@@ -135,10 +135,8 @@ def test_computation_Ux(backend, device, random_state=42):
         for k in range(len(scattering.psi1_f)):
             assert (k,) in s.keys()
         for k in s.keys():
-            if k is not ():
+            if k != ():
                 assert k[0] < len(scattering.psi1_f)
-            else:
-                assert True
 
         scattering.max_order = 2
 
@@ -156,9 +154,9 @@ def test_computation_Ux(backend, device, random_state=42):
         assert count == len(s)
 
         with pytest.raises(ValueError) as ve:
-            scattering.vectorize = True
+            scattering.out_type = "array"
             scattering(x)
-        assert "mutually incompatible" in ve.value.args[0]
+        assert "Please set out_type to" in ve.value.args[0]
 
 
 # Technical tests
@@ -213,7 +211,7 @@ def test_coordinates(device, backend, random_state=42):
     for max_order in [1, 2]:
         scattering.max_order = max_order
 
-        scattering.vectorize = False
+        scattering.out_type = "dict"
 
         if backend.name.endswith('skcuda') and device == 'cpu':
             with pytest.raises(TypeError) as ve:
@@ -222,7 +220,7 @@ def test_coordinates(device, backend, random_state=42):
         else:
             s_dico = scattering(x)
             s_dico = {k: s_dico[k].data for k in s_dico.keys()}
-        scattering.vectorize = True
+        scattering.out_type = "array"
 
         if backend.name.endswith('_skcuda') and device == 'cpu':
             with pytest.raises(TypeError) as ve:
@@ -256,7 +254,7 @@ def test_precompute_size_scattering(device, backend, random_state=42):
     Q = 8
     N = 2**12
 
-    scattering = Scattering1D(J, N, Q, vectorize=False, backend=backend, frontend='torch')
+    scattering = Scattering1D(J, N, Q, out_type="dict", backend=backend, frontend='torch')
 
     x = torch.randn(2, N)
 
@@ -368,7 +366,7 @@ def test_batch_shape_agnostic(device, backend):
     for test_shape in test_shapes:
         x = torch.zeros(test_shape).to(device)
 
-        S.vectorize = True
+        S.out_type = "array"
         Sx = S(x)
 
         assert Sx.dim() == len(test_shape)+1
@@ -376,7 +374,7 @@ def test_batch_shape_agnostic(device, backend):
         assert Sx.shape[-2] == n_coeffs
         assert Sx.shape[:-2] == test_shape[:-1]
 
-        S.vectorize = False
+        S.out_type = "dict"
         Sx = S(x)
 
         assert len(Sx) == n_coeffs
@@ -401,8 +399,8 @@ def test_T(device, backend):
 
 
     x = torch.from_numpy(data['x']).to(device)
-    J = data['J']
-    Q = data['Q']
+    J = int(data['J'])
+    Q = int(data['Q'])
     Sx0 = torch.from_numpy(data['Sx']).to(device)
 
     # default
@@ -417,15 +415,80 @@ def test_T(device, backend):
     scattering1 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='torch'
                                ).to(device)
 
-
-    if backend.name == 'torch_skcuda' and device == 'cpu':
-        with pytest.raises(TypeError) as ve:
-            for scattering in (scattering0, scattering1):
+    if backend.name.endswith('_skcuda') and device == 'cpu':
+        for scattering in (scattering0, scattering1):
+            with pytest.raises(TypeError) as ve:
                 _ = scattering(x)
-        assert "CPU" in ve.value.args[0]
+            assert "CUDA" in ve.value.args[0]
         return
 
     Sg0 = scattering0(x)
     Sg1 = scattering1(x)
-    assert np.allclose(Sg0, Sx0)
+    assert torch.allclose(Sg0, Sx0)
     assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_Q(device, backend):
+    J = 3
+    length = 1024
+    shape = (length,)
+
+    # test different cases for Q
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(
+            J, shape, Q=0.9, backend=backend, frontend='torch')
+    assert "Q should always be >= 1" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        _ = Scattering1D(
+            J, shape, Q=[8], backend=backend, frontend='torch')
+    assert "Q must be an integer or a tuple" in ve.value.args[0]
+
+    Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend='torch').to(device)
+    Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend='torch').to(device)
+
+    assert Sc_int.Q == Sc_tuple.Q
+
+    # test dummy input
+    x = torch.zeros(shape).to(device)
+
+    if backend.name.endswith('_skcuda') and device == 'cpu':
+        for scattering in (Sc_int, Sc_tuple):
+            with pytest.raises(TypeError) as ve:
+                _ = scattering(x)
+            assert "CUDA" in ve.value.args[0]
+        return
+
+    Sc_int_out = Sc_int(x)
+    Sc_tuple_out = Sc_tuple(x)
+
+    assert torch.allclose(Sc_int_out, Sc_tuple_out)
+    assert Sc_int_out.shape == Sc_tuple_out.shape
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_check_runtime_args(device, backend):
+    J = 3
+    length = 1024
+    shape = (length,)
+    x = torch.zeros(shape)
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, backend=backend,
+                         out_type='doesnotexist', frontend='torch').to(device)
+        S(x)
+    assert "out_type must be one" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, backend=backend, average=False,
+                         out_type='array', frontend='torch').to(device)
+        S(x)
+    assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, oversampling=-1, backend=backend,
+                         frontend='torch').to(device)
+        S(x)
+    assert "nonnegative" in ve.value.args[0]
