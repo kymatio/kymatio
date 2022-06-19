@@ -10,7 +10,7 @@ jobs:
 
         strategy:
             matrix:
-                python-version: ['3.6', '3.10']
+                python-version: ['3.6', '3.9']
                 pytorch-version: ['1.7', '1.9', '1.11']
 
         env:
