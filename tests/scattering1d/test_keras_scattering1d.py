@@ -18,7 +18,7 @@ def test_Scattering1D():
         data = np.load(buffer)
     x = data['x']
     J = data['J']
-    Q = data['Q']
+    Q = int(data['Q'])
     Sx0 = data['Sx']
     # default
     inputs0 = Input(shape=(x.shape[-1]))
@@ -68,7 +68,7 @@ def test_Q():
     assert Sc_int.shape[1] == Sc_tuple.shape[1]
 
     # test dummy input
-    x = np.zeros(length)
+    x = np.zeros((1, length))
     model0 = Model(inputs, Sc_int)
     model0.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
