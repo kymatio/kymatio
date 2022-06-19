@@ -192,7 +192,7 @@ class TestScatteringTorch2D:
                 S = scattering(x)
                 scattering = Scattering2D(J, shape=(N, N), pre_pad=True,
                                           backend=backend, frontend='torch')
-                x = torch.zeros(3, 3, scattering.M_padded, scattering.N_padded)
+                x = torch.zeros(3, 3, scattering._M_padded, scattering._N_padded)
 
                 x = x.to(device)
                 scattering.to(device)

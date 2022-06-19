@@ -1,8 +1,8 @@
 from ...frontend.base_frontend import ScatteringBase
 import math
 import numbers
-
 import numpy as np
+from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
@@ -38,50 +38,65 @@ class ScatteringBase1D(ScatteringBase):
         self.alpha = 5.
 
         # check the number of filters per octave
-        if self.Q < 1:
+        if np.any(np.array(self.Q) < 1):
             raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
 
-        # check the shape
+        if isinstance(self.Q, int):
+            self.Q = (self.Q, 1)
+        elif isinstance(self.Q, tuple): 
+            if len(self.Q) == 1:
+                self.Q = self.Q + (1, )
+            elif len(self.Q) < 1 or len(self.Q) > 2: 
+                raise NotImplementedError("Q should be an integer, 1-tuple or "
+                                          "2-tuple. Scattering transforms "
+                                          "beyond order 2 are not implemented.")
+        else:
+            raise ValueError("Q must be an integer or a tuple")
+
+        # check input length
         if isinstance(self.shape, numbers.Integral):
-            self.N = self.shape
+            self.shape = (self.shape,)
         elif isinstance(self.shape, tuple):
-            self.N = self.shape[0]
             if len(self.shape) > 1:
                 raise ValueError("If shape is specified as a tuple, it must "
                                  "have exactly one element")
         else:
             raise ValueError("shape must be an integer or a 1-tuple")
+        N_input = self.shape[0]
 
         # check T or set default
         if self.T is None:
             self.T = 2**(self.J)
-        elif self.T > self.N:
+        elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
-                                 self.T, self.N))
+                                 self.T, N_input))
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(self.N, self.sigma0/self.T)
+        phi_f = gauss_1d(N_input, self.sigma0/self.T)
         min_to_pad = 3 * compute_temporal_support(
             phi_f.reshape(1, -1), criterion_amplitude=1e-3)
 
         # to avoid padding more than N - 1 on the left and on the right,
         # since otherwise torch sends nans
-        J_max_support = int(np.floor(np.log2(3 * self.N - 2)))
-        self.J_pad = min(int(np.ceil(np.log2(self.N + 2 * min_to_pad))),
-                         J_max_support)
+        J_max_support = int(np.floor(np.log2(3 * N_input - 2)))
+        J_pad = min(int(np.ceil(np.log2(N_input + 2 * min_to_pad))),
+                    J_max_support)
+        self._N_padded = 2**J_pad
+
         # compute the padding quantities:
-        self.pad_left, self.pad_right = compute_padding(self.J_pad, self.N)
+        self.pad_left, self.pad_right = compute_padding(self._N_padded, N_input)
         # compute start and end indices
         self.ind_start, self.ind_end = compute_border_indices(
-            self.log2_T, self.J, self.pad_left, self.pad_left + self.N)
+            self.log2_T, self.J, self.pad_left, self.pad_left + N_input)
 
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
-            self.J_pad, self.J, self.Q, self.T,
+            self._N_padded, self.J, self.Q, self.T,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
+        ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
@@ -163,16 +178,29 @@ class ScatteringBase1D(ScatteringBase):
         size : int or tuple
             See the documentation for `precompute_size_scattering()`.
         """
-        return precompute_size_scattering(self.J, self.Q, self.T,
-            self.max_order, self.r_psi, self.sigma0, self.alpha, detail=detail)
+        size = precompute_size_scattering(self.J, self.Q, self.T,
+            self.max_order, self.r_psi, self.sigma0, self.alpha)
+        if not detail:
+            size = sum(size)
+        return size
+
 
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):
-            raise RuntimeError("The out_type must be one of 'array', 'dict', or 'list'.")
+            raise ValueError("The out_type must be one of 'array', 'dict'"
+                             ", or 'list'. Got: {}".format(self.out_type))
 
         if not self.average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
+
+        if self.oversampling < 0:
+            raise ValueError("oversampling must be nonnegative. Got: {}".format(
+                self.oversampling))
+
+        if not isinstance(self.oversampling, numbers.Integral):
+            raise ValueError("oversampling must be integer. Got: {}".format(
+                self.oversampling))
 
     def _check_input(self, x):
         # basic checking, should be improved
@@ -180,6 +208,20 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
+
+    @property
+    def J_pad(self):
+        warn("The attribute J_pad is deprecated and will be removed in v0.4. "
+        "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
+        "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
+        return int(np.log2(self._N_padded))
+
+    @property
+    def N(self):
+        warn("The attribute N is deprecated and will be removed in v0.4. "
+        "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
+        "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
+        return int(self.shape[0])
 
     _doc_shape = 'N'
 
@@ -192,9 +234,7 @@ class ScatteringBase1D(ScatteringBase):
         """
 
     _doc_attrs_shape = \
-    r"""J_pad : int
-            The logarithm of the padded length of the signals.
-        pad_left : int
+    r"""pad_left : int
             The amount of padding to the left of the signal.
         pad_right : int
             The amount of padding to the right of the signal.
@@ -332,9 +372,12 @@ class ScatteringBase1D(ScatteringBase):
         J : int
             The maximum log-scale of the scattering transform. In other words,
             the maximum scale is given by :math:`2^J`.
-        {param_shape}Q : int >= 1
-            The number of first-order wavelets per octave (second-order
-            wavelets are fixed to one wavelet per octave). Defaults to `1`.
+        {param_shape}Q : int or tuple
+            By default, Q (int) is the number of wavelets per octave for the first
+            order and that for the second order has one wavelet per octave. This 
+            default value can be modified by passing Q as a tuple with two values,
+            i.e. Q = (Q1, Q2), where Q1 and Q2 are the number of wavelets per 
+            octave for the first and second order, respectively.
         T : int
             temporal support of low-pass filter, controlling amount of imposed
             time-shift invariance and maximum subsampling

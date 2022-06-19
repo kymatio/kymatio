@@ -23,48 +23,42 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         saves those arrays as module's buffers."""
         n = 0
         # prepare for pytorch
-        for k in self.phi_f.keys():
-            if type(k) != str:
-                self.phi_f[k] = torch.from_numpy(
-                    self.phi_f[k]).float().view(-1, 1)
-                self.register_buffer('tensor' + str(n), self.phi_f[k])
-                n += 1
+        for level in range(len(self.phi_f['levels'])):
+            self.phi_f['levels'][level] = torch.from_numpy(
+                self.phi_f['levels'][level]).float().view(-1, 1)
+            self.register_buffer('tensor' + str(n), self.phi_f['levels'][level])
+            n += 1
         for psi_f in self.psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
-                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = torch.from_numpy(
+                    psi_f['levels'][level]).float().view(-1, 1)
+                self.register_buffer('tensor' + str(n), psi_f['levels'][level])
+                n += 1
         for psi_f in self.psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = torch.from_numpy(
-                        psi_f[sub_k]).float().view(-1, 1)
-                    self.register_buffer('tensor' + str(n), psi_f[sub_k])
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = torch.from_numpy(
+                    psi_f['levels'][level]).float().view(-1, 1)
+                self.register_buffer('tensor' + str(n), psi_f['levels'][level])
+                n += 1
 
     def load_filters(self):
         """This function loads filters from the module's buffer """
         buffer_dict = dict(self.named_buffers())
         n = 0
 
-        for k in self.phi_f.keys():
-            if type(k) != str:
-                self.phi_f[k] = buffer_dict['tensor' + str(n)]
-                n += 1
+        for level in range(len(self.phi_f['levels'])):
+            self.phi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+            n += 1
 
         for psi_f in self.psi1_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+                n += 1
 
         for psi_f in self.psi2_f:
-            for sub_k in psi_f.keys():
-                if type(sub_k) != str:
-                    psi_f[sub_k] = buffer_dict['tensor' + str(n)]
-                    n += 1
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+                n += 1
 
     def scattering(self, x):
         self.load_filters()

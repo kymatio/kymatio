@@ -35,7 +35,7 @@ backends.append(backend)
 
 
 class BenchmarkScattering1D:
-    param_names = ["sc_params", "backend", "devices"]
+    param_names = ["sc_params", "backend", "device"]
     timeout = 400  # in seconds
 
     params = [
@@ -83,16 +83,13 @@ class BenchmarkScattering1D:
         # can take some time
 
     def time_constructor(self, sc_params,  backend, device):
-        if device == 'cuda':
-            torch.cuda.synchronize()
         Scattering1D(backend=backend, J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
-        if device == 'cuda':
-            torch.cuda.synchronize()
 
+    @torch.no_grad()
     def time_forward(self, sc_params, backend, device):
-        if device=='cuda':
+        if device == 'cuda':
             torch.cuda.synchronize()
         for i in range(sc_params["n_iter"]):
-            y =self.scattering(self.x)
+            y = self.scattering(self.x)
         if device == 'cuda':
             torch.cuda.synchronize()

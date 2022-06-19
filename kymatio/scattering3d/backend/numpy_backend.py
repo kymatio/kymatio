@@ -48,7 +48,7 @@ class NumpyBackend3D(NumpyBackend):
                 to the powers p (l_p norms).
         """
         integrals = cls._np.zeros((input_array.shape[0], len(integral_powers)),
-                dtype=cls._np.complex64)
+                dtype=cls._np.float32)
         for i_q, q in enumerate(integral_powers):
             integrals[:, i_q] = (input_array ** q).reshape((input_array.shape[0], -1)).sum(axis=1)
         return integrals
