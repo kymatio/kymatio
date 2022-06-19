@@ -30,30 +30,25 @@ def filter_bank(M, N, J, L=8):
 
     for j in range(J):
         for theta in range(L):
-            psi = {}
-            psi['j'] = j
-            psi['theta'] = theta
+            psi = {'levels': [], 'j': j, 'theta': theta}
             psi_signal = morlet_2d(M, N, 0.8 * 2**j,
                 (int(L-L/2-1)-theta) * np.pi / L,
                 3.0 / 4.0 * np.pi /2**j, 4.0/L)
-            psi_signal_fourier = fft2(psi_signal)
+            psi_signal_fourier = np.real(fft2(psi_signal))
             # drop the imaginary part, it is zero anyway
-            psi_signal_fourier = np.real(psi_signal_fourier)
+            psi_levels = []
             for res in range(min(j + 1, max(J - 1, 1))):
-                psi_signal_fourier_res = periodize_filter_fft(
-                    psi_signal_fourier, res)
-                psi[res] = psi_signal_fourier_res
+                psi_levels.append(periodize_filter_fft(psi_signal_fourier, res))
+            psi['levels'] = psi_levels
             filters['psi'].append(psi)
 
-    filters['phi'] = {}
     phi_signal = gabor_2d(M, N, 0.8 * 2**(J-1), 0, 0)
-    phi_signal_fourier = fft2(phi_signal)
+    phi_signal_fourier = np.real(fft2(phi_signal))
     # drop the imaginary part, it is zero anyway
-    phi_signal_fourier = np.real(phi_signal_fourier)
-    filters['phi']['j'] = J
+    filters['phi'] = {'levels': [], 'j': J}
     for res in range(J):
-        phi_signal_fourier_res = periodize_filter_fft(phi_signal_fourier, res)
-        filters['phi'][res] = phi_signal_fourier_res
+        filters['phi']['levels'].append(
+            periodize_filter_fft(phi_signal_fourier, res))
 
     return filters
 

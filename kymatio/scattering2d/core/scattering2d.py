@@ -16,7 +16,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
     U_0_c = rfft(U_r)
 
     # First low pass filter
-    U_1_c = cdgmm(U_0_c, phi[0])
+    U_1_c = cdgmm(U_0_c, phi['levels'][0])
     U_1_c = subsample_fourier(U_1_c, k=2 ** J)
 
     S_0 = irfft(U_1_c)
@@ -30,7 +30,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
         j1 = psi[n1]['j']
         theta1 = psi[n1]['theta']
 
-        U_1_c = cdgmm(U_0_c, psi[n1][0])
+        U_1_c = cdgmm(U_0_c, psi[n1]['levels'][0])
         if j1 > 0:
             U_1_c = subsample_fourier(U_1_c, k=2 ** j1)
         U_1_c = ifft(U_1_c)
@@ -38,7 +38,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
         U_1_c = rfft(U_1_c)
 
         # Second low pass filter
-        S_1_c = cdgmm(U_1_c, phi[j1])
+        S_1_c = cdgmm(U_1_c, phi['levels'][j1])
         S_1_c = subsample_fourier(S_1_c, k=2 ** (J - j1))
 
         S_1_r = irfft(S_1_c)
@@ -57,14 +57,14 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
             if j2 <= j1:
                 continue
 
-            U_2_c = cdgmm(U_1_c, psi[n2][j1])
+            U_2_c = cdgmm(U_1_c, psi[n2]['levels'][j1])
             U_2_c = subsample_fourier(U_2_c, k=2 ** (j2 - j1))
             U_2_c = ifft(U_2_c)
             U_2_c = modulus(U_2_c)
             U_2_c = rfft(U_2_c)
 
             # Third low pass filter
-            S_2_c = cdgmm(U_2_c, phi[j2])
+            S_2_c = cdgmm(U_2_c, phi['levels'][j2])
             S_2_c = subsample_fourier(S_2_c, k=2 ** (J - j2))
 
             S_2_r = irfft(S_2_c)
