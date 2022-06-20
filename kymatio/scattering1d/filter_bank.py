@@ -274,7 +274,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
+def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5)):
     """
     Computes the parameters of a Morlet wavelet filterbank.
 
@@ -291,10 +291,6 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
         invariants over shorter time scales than longest band-pass filter.
     Q : int
         number of wavelets per octave.
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is.
     r_psi : float, optional
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
@@ -305,9 +301,6 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
         central frequencies of the filters.
     sigmas : list
         bandwidths of the filters.
-    js : list
-        maximal dyadic subsampling accepted by the filters.
-        j=0 stands for no subsampling, j=1 stands for half subsampling, etc.
     """
     xi_max = compute_xi_max(Q)
     sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
@@ -331,10 +324,7 @@ def compute_params_filterbank(sigma_min, Q, alpha, r_psi=math.sqrt(0.5)):
         xis.append(elbow_xi - q/Q * elbow_xi)
         sigmas.append(sigma_min)
 
-    js = [
-        get_max_dyadic_subsampling(xi, sigma, alpha) for xi, sigma in zip(xis, sigmas)
-    ]
-    return xis, sigmas, js
+    return xis, sigmas
 
 
 def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
@@ -412,8 +402,12 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     # compute the spectral parameters of the filters
     sigma_min = sigma0 / math.pow(2, J)
     Q1, Q2 = Q
-    xi1s, sigma1s, j1s = compute_params_filterbank(sigma_min, Q1, alpha, r_psi)
-    xi2s, sigma2s, j2s = compute_params_filterbank(sigma_min, Q2, alpha, r_psi)
+    xi1s, sigma1s = compute_params_filterbank(sigma_min, Q1, r_psi)
+    j1s = [get_max_dyadic_subsampling(xi1, sigma1, alpha)
+        for xi1, sigma1 in zip(xi1s, sigma1s)]
+    xi2s, sigma2s = compute_params_filterbank(sigma_min, Q2, r_psi)
+    j2s = [get_max_dyadic_subsampling(xi2, sigma2, alpha)
+        for xi2, sigma2 in zip(xi2s, sigma2s)]
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
