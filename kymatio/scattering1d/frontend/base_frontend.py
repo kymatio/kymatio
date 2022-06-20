@@ -174,12 +174,41 @@ class ScatteringBase1D(ScatteringBase):
         return S
 
     def meta(self):
+        """Get metadata on the transform.
+
+        This information specifies the content of each scattering coefficient,
+        which order, which frequencies, which filters were used, and so on.
+
+        Returns
+        -------
+        meta : dictionary
+            A dictionary with the following keys:
+
+            - `'order`' : tensor
+                A Tensor of length `C`, the total number of scattering
+                coefficients, specifying the scattering order.
+            - `'xi'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the center
+                frequency of the filter used at each order (padded with NaNs).
+            - `'sigma'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the frequency
+                bandwidth of the filter used at each order (padded with NaNs).
+            - `'j'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the dyadic scale
+                of the filter used at each order (padded with NaNs).
+            - `'n'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the indices of
+                the filters used at each order (padded with NaNs).
+            - `'key'` : list
+                The tuples indexing the corresponding scattering coefficient
+                in the non-vectorized output.
+        """
         class DryBackend:
             __getattr__ = lambda self, attr: (lambda *args: None)
 
-        S = [path for path in scattering1d(None, DryBackend(), self.psi1_f,
-            self.psi2_f, self.phi_f, self.oversampling, self.max_order)]
-        S = sorted(S, key=lambda path: (len(path['n']), path['n']))
+        S = scattering1d(None, DryBackend(), self.psi1_f, self.psi2_f,
+            self.phi_f, self.oversampling, self.max_order)
+        S = sorted(list(S), key=lambda path: (len(path['n']), path['n']))
         meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
         meta['n'] = np.stack([np.append(
@@ -190,7 +219,6 @@ class ScatteringBase1D(ScatteringBase):
             for order, filterbank in enumerate(filterbanks):
                 for n, psi in enumerate(filterbank):
                     meta[key][meta['n'][:, order]==n, order] = psi[key]
-
         return meta
 
     def meta_(self):
