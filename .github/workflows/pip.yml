@@ -34,6 +34,11 @@ jobs:
                                   torchvision==0.10.1+cpu \
                                   torchaudio==0.9.1 -f \
                                   https://download.pytorch.org/whl/torch_stable.html
+                  elif [ ${{ matrix.pytorch-version }} == '1.10' ]; then
+                      pip install torch==1.10.1+cpu \
+                                  torchvision==0.11.2+cpu \
+                                  torchaudio==0.10.1 -f \
+                                  https://download.pytorch.org/whl/torch_stable.html
                   elif [ ${{ matrix.pytorch-version }} == '1.11' ]; then
                       pip install torch==1.11.0+cpu \
                                   torchaudio-0.11.0 \
