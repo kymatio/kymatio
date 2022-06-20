@@ -176,11 +176,11 @@ class ScatteringBase1D(ScatteringBase):
     @property
     def average(self):
         warn("The average option is deprecated and will be "
-             "removed in v0.4. Please set "
-             "T=None for equivalent functionality to average=False.",
-             "T appropriately for equivalent functionality.",
+             "removed in v0.4. Please replace "
+             "Replace `average=False` by `T=0` and set `T>1` or leave `T=None`" 
+             "for `average=True` (default)",
              DeprecationWarning)
-        return self.T != 0
+        return self.T != 0 
 
     _doc_shape = 'N'
 
@@ -218,7 +218,9 @@ class ScatteringBase1D(ScatteringBase):
             averaged output corresponds to the standard scattering transform,
             while the un-averaged output skips the last convolution by
             :math:`\phi_J(t)`.  This parameter may be modified after object
-            creation. Defaults to `True`.
+            creation. Defaults to `True`. Deprecated in favour of `T` and will 
+            be removed in v0.4. Replace `average=False` by `T=0` and set `T>1` 
+            or leave `T=None` for `average=True` (default).
         """
 
     _doc_attr_average = \
@@ -227,7 +229,8 @@ class ScatteringBase1D(ScatteringBase):
             scattering transform) or not (resulting in wavelet modulus
             coefficients). Note that to obtain unaveraged output, the
             `vectorize` flag must be set to `False` or `out_type` must be set
-            to `'list'`.
+            to `'list'`. Deprecated in favor of `T`. For more details, 
+            see the documentation for `scattering`.
      """
 
     _doc_param_vectorize = \
