@@ -126,6 +126,7 @@ class TestFFT:
         # have to relax the tolerances a little here (default rtol is 1e-5).
         rtol = 1e-4
 
+        np.random.seed(9161341)
         x = np.random.randn(2, 2)
 
         y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
