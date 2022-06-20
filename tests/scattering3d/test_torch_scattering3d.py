@@ -129,9 +129,9 @@ def test_cdgmm3d(device, backend):
     if backend.name.endswith('_skcuda'):
         x = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
         y = torch.randn((3, 3, 3, 2), device=torch.device('cpu'))
-        with pytest.raises(RuntimeError) as record:
+        with pytest.raises(TypeError) as record:
             backend.cdgmm3d(x, y)
-        assert "for CPU tensors" in record.value.args[0]
+        assert "must be CUDA" in record.value.args[0]
 
 
 @pytest.mark.parametrize("device", devices)
