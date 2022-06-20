@@ -72,7 +72,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         ScatteringBase1D._check_input(self, x)
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
-        x = self.backend.reshape_input(x, signal_shape, n_inserted_dims=1)
+        x = self.backend.reshape_input(x, signal_shape)
 
         S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
                          max_order=self.max_order, average=self.average, pad_left=self.pad_left, pad_right=self.pad_right,
