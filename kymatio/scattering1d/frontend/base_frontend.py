@@ -1,4 +1,5 @@
 from ...frontend.base_frontend import ScatteringBase
+from collections import Counter
 import math
 import numbers
 import numpy as np
@@ -6,7 +7,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
-from ..utils import compute_border_indices, compute_padding, precompute_size_scattering
+from ..utils import compute_border_indices, compute_padding
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -221,27 +222,23 @@ class ScatteringBase1D(ScatteringBase):
         return meta
 
     def output_size(self, detail=False):
-        """Get size of the scattering transform
-
-        Calls the static method `precompute_size_scattering()` with the
-        parameters of the transform object.
+        """Number of scattering coefficients.
 
         Parameters
         ----------
         detail : boolean, optional
-            Specifies whether to provide a detailed size (number of coefficient
-            per order) or an aggregate size (total number of coefficients).
+            Whether to aggregate the count (detail=False, default) across
+            orders or to break it down by scattering depth (layers 0, 1, and 2).
 
         Returns
         ------
         size : int or tuple
-            See the documentation for `precompute_size_scattering()`.
+            If `detail=False` (default), total number of scattering coefficients.
+            Else, number of coefficients at zeroth, first, and second order.
         """
-        size = precompute_size_scattering(self.J, self.Q, self.T,
-            self.max_order, self.r_psi, self.sigma0, self.alpha)
-        if not detail:
-            size = sum(size)
-        return size
+        if detail:
+            return tuple(Counter(self.meta()['order']).values())
+        return len(self.meta()['key'])
 
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):
