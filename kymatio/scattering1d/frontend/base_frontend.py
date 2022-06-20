@@ -43,10 +43,10 @@ class ScatteringBase1D(ScatteringBase):
 
         if isinstance(self.Q, int):
             self.Q = (self.Q, 1)
-        elif isinstance(self.Q, tuple): 
+        elif isinstance(self.Q, tuple):
             if len(self.Q) == 1:
                 self.Q = self.Q + (1, )
-            elif len(self.Q) < 1 or len(self.Q) > 2: 
+            elif len(self.Q) < 1 or len(self.Q) > 2:
                 raise NotImplementedError("Q should be an integer, 1-tuple or "
                                           "2-tuple. Scattering transforms "
                                           "beyond order 2 are not implemented.")
@@ -163,7 +163,7 @@ class ScatteringBase1D(ScatteringBase):
             meta[key] = meta['n'] * np.nan
             for order, filterbank in enumerate(filterbanks):
                 for n, psi in enumerate(filterbank):
-                    meta[key][meta['n'][:, order]==n] = psi[key]
+                    meta[key][meta['n'][:, order]==n, order] = psi[key]
 
         return meta
 
