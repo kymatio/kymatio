@@ -173,23 +173,27 @@ class ScatteringBase1D(ScatteringBase):
                 S[n].pop('n')
         return S
 
-    def auto_meta(self):
+    def meta(self):
         class DryBackend:
             __getattr__ = lambda self, attr: (lambda *args: None)
 
-        S = scattering1d(x, DryBackend(), self.psi1_f, self.psi2_f, self.phi_f)
-        meta = dict(order=np.array([len(path["n"]) for path in S]))
+        S = [path for path in scattering1d(None, DryBackend(), self.psi1_f,
+            self.psi2_f, self.phi_f, self.oversampling, self.max_order)]
+        S = sorted(S, key=lambda path: (len(path['n']), path['n']))
+        meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
-        meta['n'] = np.stack([ScatteringBase1D._extract_n(path) for path in S])
+        meta['n'] = np.stack([np.append(
+            path['n'], (np.nan,)*(self.max_order-len(path['n']))) for path in S])
+        filterbanks = (self.psi1_f, self.psi2_f)[:self.max_order]
         for key in ['xi', 'sigma', 'j']:
             meta[key] = meta['n'] * np.nan
-            for order, filterbank in enumerate((self.psi1_f, self.psi2_f)):
+            for order, filterbank in enumerate(filterbanks):
                 for n, psi in enumerate(filterbank):
-                    meta[key][meta['n'][:, order]==n] = psi[key][n]
+                    meta[key][meta['n'][:, order]==n] = psi[key]
 
-        return S
+        return meta
 
-    def meta(self):
+    def meta_(self):
         """Get meta information on the transform
 
         Calls the static method `compute_meta_scattering()` with the
@@ -249,9 +253,6 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError(
                 'Input tensor x should have at least one axis, got {}'.format(
                     len(x.shape)))
-            
-    def _extract_n(path, max_order):
-        return np.append(path['n'], (np.nan,)*(max_order-len(path["n"])))
 
     @property
     def J_pad(self):
