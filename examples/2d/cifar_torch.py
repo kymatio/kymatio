@@ -130,8 +130,7 @@ if __name__ == '__main__':
     else:
         scattering = Scattering2D(J=2, shape=(32, 32))
         K = 81*3
-    if use_cuda:
-        scattering = scattering.cuda()
+    scattering = scattering.to(device)
 
 
 
@@ -139,11 +138,10 @@ if __name__ == '__main__':
     model = Scattering2dCNN(K,args.classifier).to(device)
 
     # DataLoaders
+    num_workers = 4
     if use_cuda:
-        num_workers = 4
         pin_memory = True
     else:
-        num_workers = None
         pin_memory = False
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
