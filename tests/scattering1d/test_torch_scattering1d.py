@@ -382,8 +382,7 @@ def test_batch_shape_agnostic(device, backend):
         assert len(Sx) == n_coeffs
         for k, v in Sx.items():
             assert v.shape[-1] == length_ds
-            assert v.shape[-2] == 1
-            assert v.shape[:-2] == test_shape[:-1]
+            assert v.shape[:-1] == test_shape[:-1]
 
 
 @pytest.mark.parametrize("device", devices)

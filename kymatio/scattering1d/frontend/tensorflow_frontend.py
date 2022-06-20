@@ -29,10 +29,9 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling)
 
-        n_kept_dims = 1 + (self.out_type == "dict")
         for n, path in enumerate(S):
             S[n]['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=n_kept_dims)
+                path['coef'], batch_shape, n_kept_dims=1)
 
         if self.out_type == 'array':
             return self.backend.concatenate([path['coef'] for path in S], dim=-2)
