@@ -111,7 +111,7 @@ to :math:`1 + J Q + J (J-1) Q / 2`.
 ---
 
 Let us assume that :math:`x` is a tensor of size :math:`(B,C,N_1,N_2)`. Then the
-output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` angles will have
+output :math:`Sx` via a Scattering Transform with scale :math:`J` and :math:`L` angles and :math:`m` order 2 will have
 size:
 
 
@@ -122,9 +122,9 @@ size:
 
 For an input array of shape $(B, C, N_1, N_2, N_3)$, a solid harmonic scattering with $J$
 scales and $L$ angular frequencies, which applies $P$ different types of $\mathcal L_p$ 
-spatial averaging will result in an output of shape
+spatial averaging, and $m$ order 2 will result in an output of shape
 
-.. math:: (B, C, L, J + J(J - 1) / 2, P)\,.
+.. math:: (B, C, 1+J+\frac{J(J + 1)}{2}, 1+L, P)\,.
 
 The current configuration of Solid Harmonic Scattering reflects the one in :cite:`eickenberg2017solid`
 in that second order coefficients are obtained for the same angular frequency only
