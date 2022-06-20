@@ -112,3 +112,24 @@ def legacy_compute_meta_scattering(J, Q, max_order, r_psi, sigma0, alpha):
         for (n2, (xi2, sigma2, j2)) in enumerate(zip(xi2s, sigma2s, j2s)):
             if j2 > j1:
                 meta['order'][2].append(2)
+                meta['xi'][2].append((xi1, xi2))
+                meta['sigma'][2].append((sigma1, sigma2))
+                meta['j'][2].append((j1, j2))
+                meta['n'][2].append((n1, n2))
+                meta['key'][2].append((n1, n2))
+
+    for field, value in meta.items():
+        meta[field] = value[0] + value[1] + value[2]
+
+    pad_fields = ['xi', 'sigma', 'j', 'n']
+    pad_len = max_order
+
+    for field in pad_fields:
+        meta[field] = [x + (math.nan,) * (pad_len - len(x)) for x in meta[field]]
+
+    array_fields = ['order', 'xi', 'sigma', 'j', 'n']
+
+    for field in array_fields:
+        meta[field] = np.array(meta[field])
+
+    return meta
