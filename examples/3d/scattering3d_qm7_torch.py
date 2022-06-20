@@ -136,12 +136,8 @@ scattering = HarmonicScattering3D(J=J, shape=(M, N, O),
 ###############################################################################
 # We then check whether a GPU is available, in which case we transfer our
 # scattering object there.
-
-if torch.cuda.is_available():
-    device = 'cuda'
-else:
-    device = 'cpu'
-
+use_cuda = torch.cuda.is_available()
+device = torch.device("cuda" if use_cuda else "cpu")
 scattering.to(device)
 
 ###############################################################################
@@ -164,7 +160,7 @@ n_batches = int(np.ceil(n_molecules / batch_size))
 order_0, orders_1_and_2 = [], []
 print('Computing solid harmonic scattering coefficients of '
       '{} molecules from the QM7 database on {}'.format(
-        n_molecules, {'cuda': 'GPU', 'cpu': 'CPU'}[device]))
+        n_molecules,   "GPU" if use_cuda else "CPU"))
 print('sigma: {}, L: {}, J: {}, integral powers: {}'.format(
         sigma, L, J, integral_powers))
 

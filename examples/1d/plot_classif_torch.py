@@ -87,6 +87,7 @@ log_eps = 1e-6
 # If a GPU is available, let's use it!
 
 use_cuda = torch.cuda.is_available()
+device = torch.device("cuda" if use_cuda else "cpu")
 
 ###############################################################################
 # For reproducibility, we fix the seed of the random number generator.
@@ -112,9 +113,9 @@ path_dataset = info_data['path_dataset']
 # Set up Tensors to hold the audio signals (`x_all`), the labels (`y_all`), and
 # whether the signal is in the train or test set (`subset`).
 
-x_all = torch.zeros(len(files), T, dtype=torch.float32)
-y_all = torch.zeros(len(files), dtype=torch.int64)
-subset = torch.zeros(len(files), dtype=torch.int64)
+x_all = torch.zeros(len(files), T, dtype=torch.float32, device=device)
+y_all = torch.zeros(len(files), dtype=torch.int64, device=device)
+subset = torch.zeros(len(files), dtype=torch.int64, device=device)
 
 ###############################################################################
 # For each file in the dataset, we extract its label `y` and its index from the
@@ -142,7 +143,7 @@ for k, f in enumerate(files):
     x /= np.max(np.abs(x))
 
     # Convert from NumPy array to PyTorch Tensor.
-    x = torch.from_numpy(x)
+    x = torch.from_numpy(x).to(device)
 
     # If it's too long, truncate it.
     if x.numel() > T:
@@ -160,16 +161,8 @@ for k, f in enumerate(files):
 # We now create the `Scattering1D` object that will be used to calculate the
 # scattering coefficients.
 
-scattering = Scattering1D(J, T, Q)
+scattering = Scattering1D(J, T, Q).to(device)
 
-###############################################################################
-# If we are using CUDA, the scattering transform object must be transferred to
-# the GPU by calling its `cuda()` method. The data is similarly transferred.
-
-if use_cuda:
-    scattering.cuda()
-    x_all = x_all.cuda()
-    y_all = y_all.cuda()
 
 ###############################################################################
 # Compute the scattering transform for all signals in the dataset.
@@ -228,12 +221,10 @@ optimizer = Adam(model.parameters())
 criterion = NLLLoss()
 
 ###############################################################################
-# As before, if we're on a GPU, transfer the model and the loss function onto
-# the device.
+# If we're on a GPU, transfer the model and the loss function onto the device.
 
-if use_cuda:
-    model = model.cuda()
-    criterion = criterion.cuda()
+model = model.to(device)
+criterion = criterion.to(device)
 
 ###############################################################################
 # Before training the model, we set some parameters for the optimization
@@ -258,9 +249,7 @@ nbatches = nsamples // batch_size
 for e in range(num_epochs):
     # Randomly permute the data. If necessary, transfer the permutation to the
     # GPU.
-    perm = torch.randperm(nsamples)
-    if use_cuda:
-        perm = perm.cuda()
+    perm = torch.randperm(nsamples, device=device)
 
     # For each batch, calculate the gradient with respect to the loss and take
     # one step.
