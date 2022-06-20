@@ -173,6 +173,15 @@ class ScatteringBase1D(ScatteringBase):
         "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
         return int(self.shape[0])
 
+    @property
+    def average(self):
+        warn("The average option is deprecated and will be "
+             "removed in v0.4. Please set "
+             "T=None for equivalent functionality to average=False.",
+             "T appropriately for equivalent functionality.",
+             DeprecationWarning)
+        return self.T != 0
+
     _doc_shape = 'N'
 
     _doc_instantiation_shape = {True: 'S = Scattering1D(J, N, Q)',
