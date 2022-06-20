@@ -189,7 +189,7 @@ class ScatteringBase1D(ScatteringBase):
             meta[key] = meta['n'] * np.nan
             for order, filterbank in enumerate(filterbanks):
                 for n, psi in enumerate(filterbank):
-                    meta[key][meta['n'][:, order]==n] = psi[key]
+                    meta[key][meta['n'][:, order]==n, order] = psi[key]
 
         return meta
 
