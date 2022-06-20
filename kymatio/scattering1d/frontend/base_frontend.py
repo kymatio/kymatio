@@ -6,8 +6,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
-from ..utils import (compute_border_indices, compute_padding,
-compute_meta_scattering, precompute_size_scattering)
+from ..utils import compute_border_indices, compute_padding, precompute_size_scattering
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -220,20 +219,6 @@ class ScatteringBase1D(ScatteringBase):
                 for n, psi in enumerate(filterbank):
                     meta[key][meta['n'][:, order]==n, order] = psi[key]
         return meta
-
-    def meta_(self):
-        """Get meta information on the transform
-
-        Calls the static method `compute_meta_scattering()` with the
-        parameters of the transform object.
-
-        Returns
-        ------
-        meta : dictionary
-            See the documentation for `compute_meta_scattering()`.
-        """
-        return compute_meta_scattering(
-            self.J, self.Q, self.T, self.max_order, self.r_psi, self.sigma0, self.alpha)
 
     def output_size(self, detail=False):
         """Get size of the scattering transform
