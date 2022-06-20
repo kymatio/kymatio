@@ -11,7 +11,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 class ScatteringBase1D(ScatteringBase):
     def __init__(self, J, shape, Q=1, T=None, max_order=2, oversampling=0, 
-                 out_type='array', backend=None):
+                 out_type='array', backend=None, average=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -21,6 +21,11 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.out_type = out_type
         self.backend = backend
+
+        if average is not None:
+            warn("`average` is deprecated v0.3 and will be removed in v0.4."
+                 "Replace `average=False` by `T=0` and set `T>1` or leave" 
+                 "`T=None` for `average=True` (default)", DeprecationWarning)
 
     def build(self):
         """Set up padding and filters
@@ -223,9 +228,9 @@ class ScatteringBase1D(ScatteringBase):
             averaged output corresponds to the standard scattering transform,
             while the un-averaged output skips the last convolution by
             :math:`\phi_J(t)`.  This parameter may be modified after object
-            creation. Defaults to `True`. Deprecated in favour of `T` and will 
-            be removed in v0.4. Replace `average=False` by `T=0` and set `T>1` 
-            or leave `T=None` for `average=True` (default).
+            creation. Defaults to `True`. Deprecated in v0.3 in favour of `T` 
+            and will  be removed in v0.4. Replace `average=False` by `T=0` and 
+            set `T>1` or leave `T=None` for `average=True` (default).
         """
 
     _doc_attr_average = \
