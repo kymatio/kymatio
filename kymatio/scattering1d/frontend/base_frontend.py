@@ -69,17 +69,19 @@ class ScatteringBase1D(ScatteringBase):
 
         # check T or set default
         if self.T is None:
-            self.average = True
+            self._average = True
             self.T = 2 ** self.J
         elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, N_input))
-        elif self.T < 0 or (self.T > 0 and self.T < 1):
+        elif self.T < 0:
             raise ValueError("T must be a nonnegative integer (got {})".format(
-                                self.T))
+                             self.T))
         else: 
-            self.average = self.T != 0
+            self._average = self.T != 0 
+
+            self.T = self.T if self._average else 2 ** self.J
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
@@ -150,7 +152,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The out_type must be one of 'array', 'dict'"
                              ", or 'list'. Got: {}".format(self.out_type))
 
-        if not self.average and self.out_type == 'array':
+        if not self._average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
 
@@ -190,7 +192,7 @@ class ScatteringBase1D(ScatteringBase):
              "Replace `average=False` by `T=0` and set `T>1` or leave `T=None`" 
              "for `average=True` (default)",
              DeprecationWarning)
-        return self.T != 0 
+        return self._average
 
     _doc_shape = 'N'
 

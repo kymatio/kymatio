@@ -123,11 +123,12 @@ def test_computation_Ux(backend, device, random_state=42):
     J = 6
     Q = 8
     T = 0
-    scattering = Scattering1D(J, T, Q,
+    shape = 2**J
+    scattering = Scattering1D(J, shape, Q, T=T,
                               max_order=1, out_type="dict", frontend='torch', 
                               backend=backend).to(device)
     # random signal
-    x = torch.from_numpy(rng.randn(1, T)).float().to(device)
+    x = torch.from_numpy(rng.randn(1, shape)).float().to(device)
 
     if not backend.name.endswith('skcuda') or device != 'cpu':
         s = scattering(x)
