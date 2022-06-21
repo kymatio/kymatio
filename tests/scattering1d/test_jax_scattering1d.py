@@ -28,7 +28,7 @@ def test_Scattering1D():
     Sx0 = device_put(np.asarray(data['Sx']))
 
     T = x.shape[-1]
-    scattering = Scattering1D(J, T, Q, backend=backend, frontend='jax')
+    scattering = Scattering1D(J, T, (Q, 1), backend=backend, frontend='jax')
 
 
     Sx = scattering(x) 
