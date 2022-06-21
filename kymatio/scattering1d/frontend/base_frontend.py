@@ -10,8 +10,8 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, oversampling=0, 
-                 out_type='array', backend=None, average=None):
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=None, 
+                 oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -75,11 +75,11 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, N_input))
-        elif type(self.T) is not int or self.T < 0:
+        elif self.T < 0 or (self.T > 0 and self.T < 1):
             raise ValueError("T must be a nonnegative integer (got {})".format(
                                 self.T))
         else: 
-            self.average = T != 0
+            self.average = self.T != 0
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
