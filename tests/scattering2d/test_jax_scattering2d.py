@@ -107,6 +107,7 @@ def test_cdgmm_exceptions():
 
 
 def test_fft():
+    np.random.seed(9161341)
     x = np.random.randn(2, 2) + 1J * np.random.randn(2, 2)
 
     y = np.array([[x[0, 0] + x[0, 1] + x[1, 0] + x[1, 1],
