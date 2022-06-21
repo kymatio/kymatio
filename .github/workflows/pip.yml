@@ -26,7 +26,7 @@ jobs:
 
                   if [ ${{ matrix.pytorch-version }} == '1.10' ]; then
                       pip install torch==1.10.2+cpu \
-                                  torchvision==0.11.2+cpu \
+                                  torchvision \
                                   -f https://download.pytorch.org/whl/torch_stable.html
                   elif [ ${{ matrix.pytorch-version }} == '1.11' ]; then
                       pip install torch==1.11.0+cpu \
