@@ -33,7 +33,7 @@ Each algorithm comes packaged with a frontend and backend. The frontend takes ca
 interfacing with the user. The backend defines functions necessary for
 computation of the scattering transform.
 
-Currently, there are eight available frontend–backend pairs, NumPy (CPU), scikit-learn (CPU), pure PyTorch (CPU and GPU), PyTorch<=1.7 (CPU and GPU), PyTorch+scikit-cuda (GPU), PyTorch<=1.7+scikit-cuda (GPU), TensorFlow (CPU and GPU), and Keras (CPU and GPU).
+Currently, there are eight available frontend–backend pairs, NumPy (CPU), scikit-learn (CPU), pure PyTorch (CPU and GPU), PyTorch>=1.10 (CPU and GPU), PyTorch+scikit-cuda (GPU), PyTorch>=1.10+scikit-cuda (GPU), TensorFlow (CPU and GPU), and Keras (CPU and GPU).
 
 ## Scalability
 
@@ -58,7 +58,7 @@ Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zar
 
 Kymatio requires:
 
-* Python (>= 3.5)
+* Python (>= 3.7)
 * SciPy (>= 0.13)
 
 
