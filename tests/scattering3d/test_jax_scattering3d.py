@@ -61,35 +61,3 @@ def test_against_standard_computations():
 
     assert order_0_diff_cpu < 1e-6, "CPU : order 0 do not match, diff={}".format(order_0_diff_cpu)
     assert orders_1_and_2_diff_cpu < 1e-6, "CPU : orders 1 and 2 do not match, diff={}".format(orders_1_and_2_diff_cpu)
-
-
-def test_scattering_batch_shape_agnostic():
-    J = 2
-    shape = (16, 16, 16)
-
-    S = HarmonicScattering3D(J=J, shape=shape, frontend='jax', backend=backend)
-    for k in range(3):
-        with pytest.raises(RuntimeError) as ve:
-            S(np.zeros(shape[:k]))
-        assert 'at least three' in ve.value.args[0]
-
-    x = jnp.zeros(shape=shape)
-
-    Sx = S(x)
-
-    assert len(Sx.shape) == 3
-
-    coeffs_shape = Sx.shape[-3:]
-
-    test_shapes = ((1,) + shape, (2,) + shape, (2, 2) + shape,
-                   (2, 2, 2) + shape)
-
-    for test_shape in test_shapes:
-        x = np.zeros(shape=test_shape)
-        x = x
-
-        Sx = S(x)
-
-        assert len(Sx.shape) == len(test_shape)
-        assert Sx.shape[-3:] == coeffs_shape
-        assert Sx.shape[:-3] == test_shape[:-3]
