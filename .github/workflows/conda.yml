@@ -38,7 +38,6 @@ jobs:
                   conda run -n ${CONDA_ENV} python3 -m pip install scikit-learn
 
                   conda run -n ${CONDA_ENV} python3 -m pip install jaxlib jax
-                  conda run -n ${CONDA_ENV} python3 -m pip install jax
 
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt

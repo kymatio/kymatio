@@ -40,7 +40,6 @@ jobs:
                   python3 -m pip install scikit-learn
 
                   python3 -m pip install jaxlib jax
-                  python3 -m pip install jax
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt
