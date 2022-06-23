@@ -28,6 +28,8 @@ RUN python3 -m pip install \
       configparser \
       'torchvision==0.8.2' \
       torch \
+      jaxlib \
+      jax \
       scikit-cuda \
       cupy \
       'tensorflow-gpu>=2.0.0a0' \

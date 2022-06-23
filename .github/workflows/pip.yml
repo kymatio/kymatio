@@ -39,6 +39,8 @@ jobs:
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
 
+                  python3 -m pip install jaxlib jax
+
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt
             - name: Set up Kymatio

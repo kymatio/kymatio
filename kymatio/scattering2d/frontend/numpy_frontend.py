@@ -14,8 +14,7 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
         ScatteringBase2D.create_filters(self)
 
     def scattering(self, input):
-        if not type(input) is np.ndarray:
-            raise TypeError('The input should be a NumPy array.')
+        self.backend.input_checks(input)
 
         if len(input.shape) < 2:
             raise RuntimeError('Input array must have at least two dimensions.')
