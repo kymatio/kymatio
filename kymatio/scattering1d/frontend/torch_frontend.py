@@ -85,7 +85,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.
-                scattering_shape = v.shape[-2:]
+                scattering_shape = v.shape[-1:]
                 new_shape = batch_shape + scattering_shape
                 S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':

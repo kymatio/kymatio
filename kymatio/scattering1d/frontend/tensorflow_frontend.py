@@ -40,7 +40,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.
-                scattering_shape = tf.shape(v)[-2:]
+                scattering_shape = tf.shape(v)[-1:]
                 new_shape = tf.concat((batch_shape, scattering_shape), 0)
                 S[k] = tf.reshape(v, new_shape)
         elif self.out_type == 'list':
