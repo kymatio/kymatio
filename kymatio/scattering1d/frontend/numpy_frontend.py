@@ -44,7 +44,6 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
                 S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':
             for x in S:
-                x.pop('n')
                 scattering_shape = x['coef'].shape[-1:]
                 new_shape = batch_shape + scattering_shape
                 x['coef'] = x['coef'].reshape(new_shape)
