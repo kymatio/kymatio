@@ -39,12 +39,11 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
             for k, v in S.items():
                 # NOTE: Have to get the shape for each one since we may have
                 # average == False.
-                scattering_shape = v.shape[-2:]
+                scattering_shape = v.shape[-1:]
                 new_shape = batch_shape + scattering_shape
                 S[k] = v.reshape(new_shape)
         elif self.out_type == 'list':
             for x in S:
-                x.pop('n')
                 scattering_shape = x['coef'].shape[-1:]
                 new_shape = batch_shape + scattering_shape
                 x['coef'] = x['coef'].reshape(new_shape)
