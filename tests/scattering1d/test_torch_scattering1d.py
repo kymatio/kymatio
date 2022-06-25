@@ -122,7 +122,7 @@ def test_computation_Ux(backend, device, random_state=42):
     rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
-    shape = 2**J
+    shape = 2**12
     scattering = Scattering1D(J, shape, Q, average=False,
                               max_order=1, out_type="dict", frontend='torch', 
                               backend=backend).to(device)

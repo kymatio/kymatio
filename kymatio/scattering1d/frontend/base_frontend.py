@@ -23,7 +23,7 @@ class ScatteringBase1D(ScatteringBase):
         self.out_type = out_type
         self.backend = backend
 
-        if not average:
+        if average is not None:
             warn("The average option is deprecated and will be "
                  "removed in v0.4."
                  "For average=True, set T=None for default averaging,"
@@ -74,6 +74,7 @@ class ScatteringBase1D(ScatteringBase):
         # check T or set default
         if self.T is None:
             self.T = 2 ** self.J
+            self.average = True if self.average is None else self.average
         elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
@@ -84,9 +85,13 @@ class ScatteringBase1D(ScatteringBase):
         elif self.T == 0:
             if not self.average: 
                 self.T = 2 ** self.J
+                self.average = False
             else:
-                raise ValueError("average must be False if T=0 (got {})".format(
-                                 self.average)) 
+                raise ValueError("average must not be True if T=0 " 
+                                 "(got {})".format(self.average)) 
+        else:
+            self.average = True if self.average is None else self.average 
+
 
         self.log2_T = math.floor(math.log2(self.T))
 
