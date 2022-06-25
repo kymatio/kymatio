@@ -122,9 +122,8 @@ def test_computation_Ux(backend, device, random_state=42):
     rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
-    T = 0
     shape = 2**J
-    scattering = Scattering1D(J, shape, Q, T=T,
+    scattering = Scattering1D(J, shape, Q, average=False,
                               max_order=1, out_type="dict", frontend='torch', 
                               backend=backend).to(device)
     # random signal
@@ -485,7 +484,7 @@ def test_check_runtime_args(device, backend):
     assert "out_type must be one" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        S = Scattering1D(J, shape, backend=backend, T=0,
+        S = Scattering1D(J, shape, backend=backend, T=0, average=False,
                          out_type='array', frontend='torch').to(device)
         S(x)
     assert "Cannot convert" in ve.value.args[0]

@@ -10,7 +10,7 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=None, 
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True, 
                  oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
@@ -18,14 +18,17 @@ class ScatteringBase1D(ScatteringBase):
         self.Q = Q
         self.T = T
         self.max_order = max_order
+        self.average = average
         self.oversampling = oversampling
         self.out_type = out_type
         self.backend = backend
 
-        if average is not None:
-            warn("`average` is deprecated v0.3 and will be removed in v0.4."
-                 "Replace `average=False` by `T=0` and set `T>1` or leave" 
-                 "`T=None` for `average=True` (default)", DeprecationWarning)
+        if not average:
+            warn("The average option is deprecated and will be "
+                 "removed in v0.4."
+                 "Set T>1 or leave T=None for average=True (default)."
+                 "T=0 and average=False will not average.",
+                 DeprecationWarning)
 
     def build(self):
         """Set up padding and filters
@@ -69,7 +72,6 @@ class ScatteringBase1D(ScatteringBase):
 
         # check T or set default
         if self.T is None:
-            self._average = True
             self.T = 2 ** self.J
         elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
@@ -78,10 +80,13 @@ class ScatteringBase1D(ScatteringBase):
         elif self.T < 0:
             raise ValueError("T must be a nonnegative integer (got {})".format(
                              self.T))
-        else: 
-            self._average = self.T != 0 
+        elif self.T == 0:
+            if not self.average: 
+                self.T = 2 ** self.J
+            else:
+                raise ValueError("average must be False if T=0 (got {})".format(
+                                 self.average)) 
 
-            self.T = self.T if self._average else 2 ** self.J
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
@@ -152,7 +157,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The out_type must be one of 'array', 'dict'"
                              ", or 'list'. Got: {}".format(self.out_type))
 
-        if not self._average and self.out_type == 'array':
+        if not self.average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
                              "average=False. Please set out_type to 'dict' or 'list'.")
 
@@ -184,15 +189,6 @@ class ScatteringBase1D(ScatteringBase):
         "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
         "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
         return int(self.shape[0])
-
-    @property
-    def average(self):
-        warn("The average option is deprecated and will be "
-             "removed in v0.4. Please replace "
-             "Replace `average=False` by `T=0` and set `T>1` or leave `T=None`" 
-             "for `average=True` (default)",
-             DeprecationWarning)
-        return self._average
 
     _doc_shape = 'N'
 
