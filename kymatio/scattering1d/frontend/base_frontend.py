@@ -77,7 +77,7 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, N_input))
-        elif self.T < 0:
+        elif self.T < 0 or not float(self.T).is_integer():
             raise ValueError("T must be a nonnegative integer (got {})".format(
                              self.T))
         elif self.T == 0:
