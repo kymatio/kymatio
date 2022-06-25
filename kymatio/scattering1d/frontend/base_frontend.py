@@ -26,8 +26,9 @@ class ScatteringBase1D(ScatteringBase):
         if not average:
             warn("The average option is deprecated and will be "
                  "removed in v0.4."
-                 "Set T>1 or leave T=None for average=True (default)."
-                 "T=0 and average=False will not average.",
+                 "For average=True, set T=None for default averaging,"
+                 "or T>1 (positive integer) for custom averaging."
+                 "T=0 with average=False will not average.",
                  DeprecationWarning)
 
     def build(self):
