@@ -25,9 +25,9 @@ class ScatteringBase1D(ScatteringBase):
 
         if average is not None:
             warn("The average option is deprecated and will be removed in v0.4."
-                 "For average=True, set T=None for default averaging,"
-                 "or T>1 (positive integer) for custom averaging."
-                 "T=0 with average=False will not average.",
+                 " For average=True, set T=None for default averaging,"
+                 " or T>1 (positive integer) for custom averaging."
+                 " T=0 with average=False will not average.",
                  DeprecationWarning)
 
     def build(self):
@@ -91,8 +91,10 @@ class ScatteringBase1D(ScatteringBase):
         else:
             self.average = True if self.average is None else self.average 
             if not self.average: 
-                raise ValueError("T must be None or 0 when average=False"
-                                 "(got {})".format(self.T))
+                raise ValueError("average=False is not permitted when T>=1, "
+                                 "(got {}). average is deprecated in v0.3 in "
+                                 "favour of T and will "
+                                 "be removed in v0.4.".format(self.T))
 
 
         self.log2_T = math.floor(math.log2(self.T))
