@@ -86,7 +86,7 @@ class ScatteringBase1D(ScatteringBase):
                 raise ValueError("average must not be True if T=0 " 
                                  "(got {})".format(self.average)) 
         elif self.T < 1:
-            raise ValueError("T must be nonnegative (got {})".format(
+            raise ValueError("T must be ==0 or >=1 (got {})".format(
                              self.T))
         else:
             self.average = True if self.average is None else self.average 
