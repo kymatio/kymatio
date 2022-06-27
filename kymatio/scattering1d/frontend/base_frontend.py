@@ -24,8 +24,7 @@ class ScatteringBase1D(ScatteringBase):
         self.backend = backend
 
         if average is not None:
-            warn("The average option is deprecated and will be "
-                 "removed in v0.4."
+            warn("The average option is deprecated and will be removed in v0.4."
                  "For average=True, set T=None for default averaging,"
                  "or T>1 (positive integer) for custom averaging."
                  "T=0 with average=False will not average.",
