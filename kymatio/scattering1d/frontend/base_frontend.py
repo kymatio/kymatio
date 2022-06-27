@@ -156,7 +156,6 @@ class ScatteringBase1D(ScatteringBase):
             size = sum(size)
         return size
 
-
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):
             raise ValueError("The out_type must be one of 'array', 'dict'"
