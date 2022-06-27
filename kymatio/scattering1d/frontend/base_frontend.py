@@ -10,8 +10,8 @@ compute_meta_scattering, precompute_size_scattering)
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
-            oversampling=0, out_type='array', backend=None):
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True, 
+                 oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
@@ -22,6 +22,13 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.out_type = out_type
         self.backend = backend
+
+        if average is not None:
+            warn("The average option is deprecated and will be removed in v0.4."
+                 " For average=True, set T=None for default averaging"
+                 " or T>=1 for custom averaging."
+                 " For average=False set T=0.",
+                 DeprecationWarning)
 
     def build(self):
         """Set up padding and filters
@@ -65,11 +72,31 @@ class ScatteringBase1D(ScatteringBase):
 
         # check T or set default
         if self.T is None:
-            self.T = 2**(self.J)
+            self.T = 2 ** self.J
+            self.average = True if self.average is None else self.average
         elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, N_input))
+        elif self.T == 0:
+            if not self.average: 
+                self.T = 2 ** self.J
+                self.average = False
+            else:
+                raise ValueError("average must not be True if T=0 " 
+                                 "(got {})".format(self.average)) 
+        elif self.T < 1:
+            raise ValueError("T must be ==0 or >=1 (got {})".format(
+                             self.T))
+        else:
+            self.average = True if self.average is None else self.average 
+            if not self.average: 
+                raise ValueError("average=False is not permitted when T>=1, "
+                                 "(got {}). average is deprecated in v0.3 in "
+                                 "favour of T and will "
+                                 "be removed in v0.4.".format(self.T))
+
+
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)
@@ -133,7 +160,6 @@ class ScatteringBase1D(ScatteringBase):
         if not detail:
             size = sum(size)
         return size
-
 
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):
@@ -209,7 +235,9 @@ class ScatteringBase1D(ScatteringBase):
             averaged output corresponds to the standard scattering transform,
             while the un-averaged output skips the last convolution by
             :math:`\phi_J(t)`.  This parameter may be modified after object
-            creation. Defaults to `True`.
+            creation. Defaults to `True`. Deprecated in v0.3 in favour of `T` 
+            and will  be removed in v0.4. Replace `average=False` by `T=0` and 
+            set `T>1` or leave `T=None` for `average=True` (default).
         """
 
     _doc_attr_average = \
@@ -218,7 +246,8 @@ class ScatteringBase1D(ScatteringBase):
             scattering transform) or not (resulting in wavelet modulus
             coefficients). Note that to obtain unaveraged output, the
             `vectorize` flag must be set to `False` or `out_type` must be set
-            to `'list'`.
+            to `'list'`. Deprecated in favor of `T`. For more details, 
+            see the documentation for `scattering`.
      """
 
     _doc_param_vectorize = \

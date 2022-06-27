@@ -31,7 +31,7 @@ def test_Scattering1D():
     assert np.allclose(Sg0, Sx0, atol=1e-07)
     # adjust T
     sigma_low_scale_factor = 2
-    T=2**(J-sigma_low_scale_factor)
+    T = 2**(J-sigma_low_scale_factor)
     inputs1 = Input(shape=(x.shape[-1]))
     scat1 = Scattering1D(J=J, Q=Q, T=T)(inputs1)
     model1 = Model(inputs1, scat1)
