@@ -78,9 +78,6 @@ class ScatteringBase1D(ScatteringBase):
             raise ValueError("The temporal support T of the low-pass filter "
                              "cannot exceed input length (got {} > {})".format(
                                  self.T, N_input))
-        elif self.T < 0 or not float(self.T).is_integer():
-            raise ValueError("T must be a nonnegative integer (got {})".format(
-                             self.T))
         elif self.T == 0:
             if not self.average: 
                 self.T = 2 ** self.J
@@ -88,8 +85,14 @@ class ScatteringBase1D(ScatteringBase):
             else:
                 raise ValueError("average must not be True if T=0 " 
                                  "(got {})".format(self.average)) 
+        elif self.T < 1:
+            raise ValueError("T must be nonnegative (got {})".format(
+                             self.T))
         else:
             self.average = True if self.average is None else self.average 
+            if not self.average: 
+                raise ValueError("T must be None or 0 when average=False"
+                                 "(got {})".format(self.T))
 
 
         self.log2_T = math.floor(math.log2(self.T))
