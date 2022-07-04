@@ -5,9 +5,10 @@ Content of this website:
 
 .. toctree::
 
-   userguide 
+   userguide
    developerguide
    codereference
-   gallery_1d/index 
-   gallery_2d/index 
+   gallery_1d/index
+   gallery_2d/index
    gallery_3d/index
+   whats_new
