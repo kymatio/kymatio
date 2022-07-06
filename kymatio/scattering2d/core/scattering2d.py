@@ -83,7 +83,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
     out_S.extend(out_S_2)
 
     if out_type == 'array':
-        out_S = concatenate([x['coef'] for x in out_S])
+        out_S = concatenate([x['coef'] for x in out_S], axis=-3)
 
     return out_S
 

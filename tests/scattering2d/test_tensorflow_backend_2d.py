@@ -170,7 +170,7 @@ class TestBackendUtils:
         y = np.random.randn(3, 6, 6) + 1J * np.random.randn(3, 6, 6)
         z = np.random.randn(3, 6, 6) + 1J * np.random.randn(3, 6, 6)
 
-        w = backend.concatenate((x, y, z))
+        w = backend.concatenate((x, y, z), axis=-3)
 
         assert w.shape == (x.shape[0],) + (3,) + (x.shape[-2:])
         assert np.allclose(w[:, 0, ...], x)
