@@ -34,7 +34,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
                 path['coef'], batch_shape, n_kept_dims=1)
 
         if self.out_type == 'array':
-            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
+            return self.backend.concatenate([path['coef'] for path in S], axis=-2)
         elif self.out_type == 'dict':
             return {path['n']: path['coef'] for path in S}
         elif self.out_type == 'list':

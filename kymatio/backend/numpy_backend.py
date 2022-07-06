@@ -38,8 +38,8 @@ class NumpyBackend:
         return (x.dtype == cls._np.float32) or (x.dtype == cls._np.float64)
 
     @classmethod
-    def concatenate(cls, arrays, dim=1):
-        return cls._np.stack(arrays, axis=dim)
+    def concatenate(cls, arrays, axis):
+        return cls._np.stack(arrays, axis=axis)
 
     @classmethod
     def modulus(cls, x):
