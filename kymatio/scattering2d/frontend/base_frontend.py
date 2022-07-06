@@ -17,23 +17,35 @@ class ScatteringBase2D(ScatteringBase):
         self.out_type = out_type
 
     def build(self):
-        self.M, self.N = self.shape
+        M, N = self.shape
 
-        if 2 ** self.J > self.M or 2 ** self.J > self.N:
+        if 2 ** self.J > M or 2 ** self.J > N:
             raise RuntimeError('The smallest dimension should be larger than 2^J.')
-        self.M_padded, self.N_padded = compute_padding(self.M, self.N, self.J)
+        self._M_padded, self._N_padded = compute_padding(M, N, self.J)
         # pads equally on a given side if the amount of padding to add is an even number of pixels, otherwise it adds an extra pixel
         if not self.pre_pad:
-            self.pad = self.backend.Pad([(self.M_padded - self.M) // 2, (self.M_padded - self.M+1) // 2, (self.N_padded - self.N) // 2,
-                                (self.N_padded - self.N + 1) // 2], [self.M, self.N])
+            self.pad = self.backend.Pad([(self._M_padded - M) // 2, (self._M_padded - M+1) // 2, (self._N_padded - N) // 2,
+                                (self._N_padded - N + 1) // 2], [M, N])
         else:
             self.pad = lambda x: x
 
         self.unpad = self.backend.unpad
 
     def create_filters(self):
-        filters = filter_bank(self.M_padded, self.N_padded, self.J, self.L)
+        filters = filter_bank(self._M_padded, self._N_padded, self.J, self.L)
         self.phi, self.psi = filters['phi'], filters['psi']
+
+    @property
+    def M(self):
+        warn("The attribute M is deprecated and will be removed in v0.4. "
+        "Replace by shape[0].", DeprecationWarning)
+        return int(self.shape[0])
+
+    @property
+    def N(self):
+        warn("The attribute N is deprecated and will be removed in v0.4. "
+        "Replace by shape[1].", DeprecationWarning)
+        return int(self.shape[1])
 
     _doc_shape = 'M, N'
 

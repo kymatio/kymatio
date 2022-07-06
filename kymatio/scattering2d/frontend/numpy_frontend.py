@@ -14,17 +14,16 @@ class ScatteringNumPy2D(ScatteringNumPy, ScatteringBase2D):
         ScatteringBase2D.create_filters(self)
 
     def scattering(self, input):
-        if not type(input) is np.ndarray:
-            raise TypeError('The input should be a NumPy array.')
+        self.backend.input_checks(input)
 
         if len(input.shape) < 2:
             raise RuntimeError('Input array must have at least two dimensions.')
 
-        if (input.shape[-1] != self.N or input.shape[-2] != self.M) and not self.pre_pad:
-            raise RuntimeError('NumPy array must be of spatial size (%i,%i).' % (self.M, self.N))
+        if (input.shape[-1] != self.shape[-1] or input.shape[-2] != self.shape[-2]) and not self.pre_pad:
+            raise RuntimeError('NumPy array must be of spatial size (%i,%i).' % (self.shape[0], self.shape[1]))
 
-        if (input.shape[-1] != self.N_padded or input.shape[-2] != self.M_padded) and self.pre_pad:
-            raise RuntimeError('Padded array must be of spatial size (%i,%i).' % (self.M_padded, self.N_padded))
+        if (input.shape[-1] != self._N_padded or input.shape[-2] != self._M_padded) and self.pre_pad:
+            raise RuntimeError('Padded array must be of spatial size (%i,%i).' % (self._M_padded, self._N_padded))
 
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")

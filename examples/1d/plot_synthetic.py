@@ -1,7 +1,6 @@
 """
 Compute the scattering transform of a synthetic signal
 ======================================================
-
 In this example we generate a harmonic signal of a few different frequencies
 and analyze it with the 1D scattering transform.
 """
@@ -94,5 +93,5 @@ plt.title('First-order scattering')
 plt.subplot(3, 1, 3)
 plt.imshow(Sx[order2], aspect='auto')
 plt.title('Second-order scattering')
-
+plt.tight_layout()
 plt.show()

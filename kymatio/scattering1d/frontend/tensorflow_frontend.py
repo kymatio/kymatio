@@ -38,7 +38,7 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         elif self.out_type == 'dict':
             return {path['n']: path['coef'] for path in S}
         elif self.out_type == 'list':
-            return list(map(lambda path: path.pop('n')), S)
+            return S
 
 
 ScatteringTensorFlow1D._document()

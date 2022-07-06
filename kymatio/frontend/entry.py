@@ -13,13 +13,12 @@ class ScatteringEntry(object):
         frontend_suffixes = {'torch' : 'Torch',
                              'numpy' : 'NumPy',
                              'tensorflow' : 'TensorFlow',
+                             'jax' : 'Jax',
                              'keras': 'Keras',
                              'sklearn': 'Transformer'}
 
         if 'frontend' not in kwargs:
-            warnings.warn("Torch frontend is currently the default, but NumPy will become the default in the next"
-                          " version.", DeprecationWarning)
-            frontend = 'torch'
+            frontend = 'numpy'
         else:
             frontend = kwargs['frontend'].lower()
             kwargs.pop('frontend')

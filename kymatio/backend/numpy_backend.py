@@ -13,6 +13,12 @@ class NumpyBackend:
         if x is None:
             raise TypeError('The input should be not empty.')
 
+        #want to make sure that we have either a numpy or numpy-like arrays.
+        #since each numpy-like implements its own distinct ndarray, we need to
+        #check if numpy
+        if (not isinstance(x, numpy.ndarray)) and (not isinstance(x, _np.ndarray)):
+            raise TypeError(f'The input should be a numpy array, got type {type(x)}')
+
     @classmethod
     def complex_check(cls, x):
         if not cls._is_complex(x):
