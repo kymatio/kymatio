@@ -47,10 +47,6 @@ class ScatteringBase2D(ScatteringBase):
         "Replace by shape[1].", DeprecationWarning)
         return int(self.shape[1])
 
-    def scattering(self, x):
-        """ This function should call the functional scattering."""
-        raise NotImplementedError
-
     _doc_shape = 'M, N'
 
     _doc_instantiation_shape = {True: 'S = Scattering2D(J, (M, N))',
