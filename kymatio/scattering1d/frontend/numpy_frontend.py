@@ -14,7 +14,6 @@ class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
 
-
 ScatteringNumPy1D._document()
 
 

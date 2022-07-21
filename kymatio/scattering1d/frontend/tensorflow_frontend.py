@@ -17,7 +17,6 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
         ScatteringBase1D.build(self)
         ScatteringBase1D.create_filters(self)
 
-
 ScatteringTensorFlow1D._document()
 
 

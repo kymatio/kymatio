@@ -7,8 +7,6 @@ class ScatteringNumPy:
     def __call__(self, x):
         """This method is an alias for `scattering`."""
 
-        self.backend.input_checks(x)
-
         return self.scattering(x)
 
     _doc_array = 'np.ndarray'

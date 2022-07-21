@@ -10,11 +10,11 @@ jobs:
 
         strategy:
             matrix:
-                python-version: [3.6, 3.7]
-                pytorch-version: [1.7, 1.8]
+                python-version: ['3.7', '3.8', '3.9']
+                pytorch-version: ['1.10', '1.11']
                 include:
-                    - python-version: 3.5
-                      pytorch-version: 1.5
+                    - python-version: '3.10'
+                      pytorch-version: '1.11'
 
         steps:
             - uses: actions/checkout@v1
@@ -27,23 +27,19 @@ jobs:
                   python3 -m pip install --upgrade pip
                   python3 -m pip install pytest pytest-cov
 
-                  if [ ${{ matrix.pytorch-version }} == '1.5' ]; then
-                      pip install torch==1.5.1+cpu \
-                                  torchvision==0.6.1+cpu \
+                  if [ ${{ matrix.pytorch-version }} == '1.10' ]; then
+                      pip install torch==1.10.1+cpu \
+                                  torchvision==0.11.2+cpu \
                                   -f https://download.pytorch.org/whl/torch_stable.html
-                  elif [ ${{ matrix.pytorch-version }} == '1.7' ]; then
-                      pip install torch==1.7.1+cpu \
-                                  torchvision==0.8.2+cpu \
-                                  torchaudio==0.7.2 \
-                                  -f https://download.pytorch.org/whl/torch_stable.html
-                  elif [ ${{ matrix.pytorch-version }} == '1.8' ]; then
-                      pip install torch==1.8.0+cpu \
-                                  torchvision==0.9.0+cpu \
-                                  torchaudio==0.8.0 \
+                  elif [ ${{ matrix.pytorch-version }} == '1.11' ]; then
+                      pip install torch==1.11.0+cpu \
+                                  torchvision==0.12.0+cpu \
                                   -f https://download.pytorch.org/whl/torch_stable.html
                   fi
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
+
+                  python3 -m pip install jaxlib jax
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt

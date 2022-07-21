@@ -43,7 +43,6 @@
         "scipy": [],
         "pytorch": [],
         "torchvision" :[],
-        "torchaudio":[],
     },
 
     // The directory (relative to the current directory) that benchmarks are
