@@ -38,8 +38,8 @@ class NumpyBackend:
         return (x.dtype == cls._np.float32) or (x.dtype == cls._np.float64)
 
     @classmethod
-    def concatenate(cls, arrays):
-        return cls._np.stack(arrays, axis=1)
+    def concatenate(cls, arrays, dim=1):
+        return cls._np.stack(arrays, axis=dim)
 
     @classmethod
     def modulus(cls, x):
@@ -93,3 +93,16 @@ class NumpyBackend:
             raise TypeError('The second input must be complex or real.')
 
         return A * B
+
+    @staticmethod
+    def reshape_input(x, signal_shape):
+        return x.reshape((-1, 1) + signal_shape)
+
+    @staticmethod
+    def reshape_output(S, batch_shape, n_kept_dims):
+        new_shape = batch_shape + S.shape[-n_kept_dims:]
+        return S.reshape(new_shape)
+
+    @staticmethod
+    def shape(x):
+        return x.shape
