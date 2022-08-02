@@ -20,25 +20,36 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
     def scattering(self, x):
         ScatteringBase1D._check_runtime_args(self)
         ScatteringBase1D._check_input(self, x)
-        x_shape = self.backend.shape(x)
-        batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
-        x = self.backend.reshape_input(x, signal_shape)
+        batch_shape = tf.shape(x)[:-1]
+        signal_shape = tf.shape(x)[-1:]
+
+        x = tf.reshape(x, tf.concat(((-1, 1), signal_shape), 0))
 
         S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f,
                          self.phi_f, max_order=self.max_order, average=self.average, pad_left=self.pad_left,
                          pad_right=self.pad_right, ind_start=self.ind_start, ind_end=self.ind_end,
                          oversampling=self.oversampling)
 
-        for n, path in enumerate(S):
-            S[n]['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=1)
-
         if self.out_type == 'array':
-            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
+            S = self.backend.concatenate([x['coef'] for x in S])
+            scattering_shape = tf.shape(S)[-2:]
+            new_shape = tf.concat((batch_shape, scattering_shape), 0)
+            S = tf.reshape(S, new_shape)
         elif self.out_type == 'dict':
-            return {path['n']: path['coef'] for path in S}
+            S = {x['n']: x['coef'] for x in S}
+            for k, v in S.items():
+                # NOTE: Have to get the shape for each one since we may have
+                # average == False.
+                scattering_shape = tf.shape(v)[-1:]
+                new_shape = tf.concat((batch_shape, scattering_shape), 0)
+                S[k] = tf.reshape(v, new_shape)
         elif self.out_type == 'list':
-            return S
+            for x in S:
+                scattering_shape = tf.shape(x['coef'])[-1:]
+                new_shape = tf.concat((batch_shape, scattering_shape), 0)
+                x['coef'] = tf.reshape(x['coef'], new_shape)
+
+        return S
 
 
 ScatteringTensorFlow1D._document()
