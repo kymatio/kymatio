@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 from kymatio import Scattering1D
-from kymatio.scattering1d.frontend.torch_frontend import ScatteringTorch1D
+from kymatio.scattering1d.frontend.numpy_frontend import ScatteringNumPy1D
 from kymatio.scattering1d.utils import compute_border_indices, compute_padding
 
 
@@ -10,15 +10,15 @@ def test_compute_padding():
     Test the compute_padding function
     """
 
-    pad_left, pad_right = compute_padding(5, 16)
+    pad_left, pad_right = compute_padding(32, 16)
     assert pad_left == 8 and pad_right == 8
 
     with pytest.raises(ValueError) as ve:
-        _, _ = compute_padding(3, 16)
+        _, _ = compute_padding(8, 16)
     assert "should be larger" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        _, _ = compute_padding(6, 16)
+        _, _ = compute_padding(64, 16)
     assert "Too large padding value" in ve.value.args[0]
 
 
@@ -56,7 +56,7 @@ def test_border_indices(random_state=42):
 # Check that the default frontend is numpy and that errors are correctly launched.
 def test_scattering1d_frontend():
     scattering = Scattering1D(2, shape=(10, ))
-    assert isinstance(scattering, ScatteringTorch1D), 'could not be correctly imported'
+    assert isinstance(scattering, ScatteringNumPy1D), 'could not be correctly imported'
 
     with pytest.raises(RuntimeError) as ve:
         scattering = Scattering1D(2, shape=(10,), frontend='doesnotexist')

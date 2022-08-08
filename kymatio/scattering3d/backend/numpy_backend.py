@@ -47,10 +47,10 @@ class NumpyBackend3D(NumpyBackend):
                 Tensor of size (B, P) containing the integrals of the input_array
                 to the powers p (l_p norms).
         """
-        integrals = cls._np.zeros((input_array.shape[0], len(integral_powers)),
-                dtype=cls._np.complex64)
+        integrals = []
         for i_q, q in enumerate(integral_powers):
-            integrals[:, i_q] = (input_array ** q).reshape((input_array.shape[0], -1)).sum(axis=1)
+            integrals.append((input_array ** q).reshape((input_array.shape[0], -1)).sum(axis=1))
+        integrals = cls._np.float32(cls._np.stack(integrals, axis=-1))
         return integrals
 
     @classmethod

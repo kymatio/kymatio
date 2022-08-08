@@ -33,19 +33,13 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         n = 0
 
-        for c, phi in self.phi.items():
-            if not isinstance(c, int):
-                continue
-
-            self.register_single_filter(phi, n)
+        for phi_level in self.phi['levels']:
+            self.register_single_filter(phi_level, n)
             n = n + 1
 
-        for j in range(len(self.psi)):
-            for k, v in self.psi[j].items():
-                if not isinstance(k, int):
-                    continue
-
-                self.register_single_filter(v, n)
+        for psi in self.psi:
+            for psi_level in psi['levels']:
+                self.register_single_filter(psi_level, n)
                 n = n + 1
 
     def load_single_filter(self, n, buffer_dict):
@@ -59,24 +53,19 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
 
         n = 0
 
-        phis = {}
-        for c, phi in self.phi.items():
-            if not isinstance(c, int):
-                phis[c] = self.phi[c]
-
-            else:
-                phis[c] = self.load_single_filter(n, buffer_dict)
-                n = n + 1
+        phis = {k: v for k, v in self.phi.items() if k!='levels'}
+        phis['levels'] = []
+        for phi_level in self.phi['levels']:
+            phis['levels'].append(self.load_single_filter(n, buffer_dict))
+            n = n + 1
 
         psis = [{} for _ in range(len(self.psi))]
         for j in range(len(self.psi)):
-            for k, v in self.psi[j].items():
-                if not isinstance(k, int):
-                    psis[j][k] = v
-
-                else:
-                    psis[j][k] = self.load_single_filter(n, buffer_dict)
-                    n = n + 1
+            psis[j] = {k: v for k, v in self.psi[j].items() if k!='levels'}
+            psis[j]['levels'] = []
+            for psi_level in self.psi[j]['levels']:
+                psis[j]['levels'].append(self.load_single_filter(n, buffer_dict))
+                n = n + 1
 
         return phis, psis
 
@@ -90,11 +79,11 @@ class ScatteringTorch2D(ScatteringTorch, ScatteringBase2D):
         if not input.is_contiguous():
             raise RuntimeError('Tensor must be contiguous.')
 
-        if (input.shape[-1] != self.N or input.shape[-2] != self.M) and not self.pre_pad:
-            raise RuntimeError('Tensor must be of spatial size (%i,%i).' % (self.M, self.N))
+        if (input.shape[-1] != self.shape[-1] or input.shape[-2] != self.shape[-2]) and not self.pre_pad:
+            raise RuntimeError('Tensor must be of spatial size (%i,%i).' % (self.shape[0], self.shape[1]))
 
-        if (input.shape[-1] != self.N_padded or input.shape[-2] != self.M_padded) and self.pre_pad:
-            raise RuntimeError('Padded tensor must be of spatial size (%i,%i).' % (self.M_padded, self.N_padded))
+        if (input.shape[-1] != self._N_padded or input.shape[-2] != self._M_padded) and self.pre_pad:
+            raise RuntimeError('Padded tensor must be of spatial size (%i,%i).' % (self._M_padded, self._N_padded))
 
         if not self.out_type in ('array', 'list'):
             raise RuntimeError("The out_type must be one of 'array' or 'list'.")

@@ -12,12 +12,11 @@ class TensorFlowBackend(NumpyBackend):
     @staticmethod
     def modulus(x):
         norm = tf.abs(x)
-
         return norm
 
     @staticmethod
-    def reshape_input(x, signal_shape, n_inserted_dims=0):
-        new_shape = tf.concat(((-1,) + (1,)*n_inserted_dims, signal_shape), 0)
+    def reshape_input(x, signal_shape):
+        new_shape = tf.concat(((-1, 1,), signal_shape), 0)
         return tf.reshape(x, new_shape)
 
     @staticmethod

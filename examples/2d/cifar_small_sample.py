@@ -180,19 +180,17 @@ def main():
         scattering = Scattering2D(J=2, shape=(32, 32))
         K = 81*3
         model = Scattering2dResNet(K, args.width).to(device)
-        if use_cuda:
-            scattering = scattering.cuda()
+        scattering = scattering.to(device)
     else:
         model = Scattering2dResNet(8, args.width,standard=True).to(device)
         scattering = Identity()
 
 
     # DataLoaders
+    num_workers = 4
     if use_cuda:
-        num_workers = 4
         pin_memory = True
     else:
-        num_workers = 0
         pin_memory = False
 
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],

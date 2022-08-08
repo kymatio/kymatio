@@ -35,6 +35,7 @@ class BenchmarkScattering1D:
             },
         ],
     ]
+
     def setup(self, sc_params):
         n_channels = 1
         scattering = Scattering1D(J=sc_params["J"], shape=sc_params["shape"], Q=sc_params["Q"])
