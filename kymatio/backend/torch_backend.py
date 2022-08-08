@@ -217,3 +217,16 @@ class TorchBackend:
             C[..., 1].view(-1, B.nelement() // 2)[:] = A_r * B_i + A_i * B_r
 
             return C
+
+    @staticmethod
+    def reshape_input(x, signal_shape):
+        return x.reshape((-1, 1) + signal_shape)
+
+    @staticmethod
+    def reshape_output(S, batch_shape, n_kept_dims):
+        new_shape = batch_shape + S.shape[-n_kept_dims:]
+        return S.reshape(new_shape)
+
+    @staticmethod
+    def shape(x):
+        return x.shape
