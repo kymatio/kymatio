@@ -4,6 +4,7 @@ from tensorflow.keras.layers import Input, Flatten, Dense
 from kymatio.keras import Scattering2D
 import os, io
 import numpy as np
+import sys
 
 def test_Scattering2D():
     test_data_dir = os.path.dirname(__file__)
@@ -37,3 +38,10 @@ def test_Scattering2D():
     assert np.allclose(Sg, S)
     assert config["J"] == J
     assert Scattering2D.from_config(config).J == J
+
+    save_stdout = sys.stdout
+    result = io.StringIO()
+    sys.stdout = result
+    model.summary()
+    sys.stdout = save_stdout
+    assert 'scattering2d' in result.getvalue()

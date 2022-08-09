@@ -10,8 +10,8 @@ jobs:
 
         strategy:
             matrix:
-                python-version: [3.6, 3.7]
-                pytorch-version: [1.7, 1.8]
+                python-version: ['3.7', '3.8', '3.9', '3.10']
+                pytorch-version: ['1.10', '1.11']
 
         env:
             CONDA_ENV: test-env-py${{ matrix.python-version }}-torch${{ matrix.pytorch-version }}
@@ -36,6 +36,8 @@ jobs:
 
                   conda run -n ${CONDA_ENV} python3 -m pip install "tensorflow>=2.0.0a"
                   conda run -n ${CONDA_ENV} python3 -m pip install scikit-learn
+
+                  conda run -n ${CONDA_ENV} python3 -m pip install jaxlib jax
 
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt

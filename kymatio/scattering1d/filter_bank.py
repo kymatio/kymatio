@@ -344,6 +344,12 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
 
     Parameters
     ----------
+    N : int
+        padded length of the input signal. Corresponds to self._N_padded for the
+        scattering object.
+    J : int
+        log-scale of the scattering transform, such that wavelets of both
+        filterbanks have a maximal support that is proportional to 2**J.
     Q : tuple
         number of wavelets per octave at the first and second order 
         Q = (Q1, Q2). Q1 and Q2 are both int >= 1.

@@ -43,7 +43,6 @@
         "scipy": [],
         "pytorch": [],
         "torchvision" :[],
-        "torchaudio":[],
         "cudatoolkit":["10.2"],
         "pip+scikit-cuda":[],
         "pip+cupy-cuda102":[],

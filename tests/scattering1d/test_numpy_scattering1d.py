@@ -55,7 +55,7 @@ class TestScattering1DNumpy:
         order2_1 = np.where(meta1['order'] == 2)
         # adjust T
         sigma_low_scale_factor = 2
-        T=2**(J-sigma_low_scale_factor)
+        T = 2**(J-sigma_low_scale_factor)
         scattering2 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='numpy')
         Sx2 = scattering2(x)
         assert Sx2.shape == (Sx1.shape[0], Sx1.shape[1], Sx1.shape[2]*2**(sigma_low_scale_factor))        
@@ -100,10 +100,10 @@ class TestScattering1DNumpy:
                 phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T)
                 assert(phi_f['sigma']==0.1/T)
 
+
 frontends = ['numpy', 'sklearn']
 @pytest.mark.parametrize("backend", backends)
 @pytest.mark.parametrize("frontend", frontends)
-
 def test_Q(backend, frontend):
     J = 3
     length = 1024

@@ -16,6 +16,7 @@ from kymatio.torch import Scattering1D
 
 from torch.autograd import backward
 import matplotlib.pyplot as plt
+device = torch.device("cuda" if torch.cuda.is_available else "cpu")
 
 ###############################################################################
 # Write a function that can generate a harmonic signal
@@ -76,7 +77,8 @@ plt.title("Spectrogram of original signal")
 J = 6
 Q = 16
 
-scattering = Scattering1D(J, T, Q)
+scattering = Scattering1D(J, T, Q).to(device)
+x = x.to(device)
 
 Sx = scattering(x)
 
@@ -90,11 +92,11 @@ n_iterations = 200
 
 # Random guess to initialize.
 torch.manual_seed(0)
-y = torch.randn((T,), requires_grad=True)
+y = torch.randn((T,), requires_grad=True, device=device)
 Sy = scattering(y)
 
 history = []
-signal_update = torch.zeros_like(x)
+signal_update = torch.zeros_like(x, device=device)
 
 # Iterate to recontsruct random guess to be close to target.
 for k in range(n_iterations):
@@ -102,10 +104,10 @@ for k in range(n_iterations):
     err = torch.norm(Sx - Sy)
 
     if k % 10 == 0:
-        print('Iteration %3d, loss %.2f' % (k, err.detach().numpy()))
+        print('Iteration %3d, loss %.2f' % (k, err.detach().cpu().numpy()))
 
     # Measure the new loss.
-    history.append(err.detach())
+    history.append(err.detach().cpu())
 
     backward(err)
 
@@ -131,11 +133,11 @@ plt.plot(history)
 plt.title("MSE error vs. iterations")
 
 plt.figure(figsize=(8, 2))
-plt.plot(y.detach().numpy())
+plt.plot(y.detach().cpu().numpy())
 plt.title("Reconstructed signal")
 
 plt.figure(figsize=(8, 8))
-plt.specgram(y.detach().numpy(), Fs=1024)
+plt.specgram(y.detach().cpu().numpy(), Fs=1024)
 plt.title("Spectrogram of reconstructed signal")
 
 plt.show()

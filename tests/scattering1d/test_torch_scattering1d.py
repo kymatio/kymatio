@@ -121,11 +121,12 @@ def test_computation_Ux(backend, device, random_state=42):
     rng = np.random.RandomState(random_state)
     J = 6
     Q = 8
-    T = 2**12
-    scattering = Scattering1D(J, T, Q, average=False,
-                              max_order=1, out_type="dict", frontend='torch', backend=backend).to(device)
+    shape = 2**12
+    scattering = Scattering1D(J, shape, Q, average=False,
+                              max_order=1, out_type="dict", frontend='torch', 
+                              backend=backend).to(device)
     # random signal
-    x = torch.from_numpy(rng.randn(1, T)).float().to(device)
+    x = torch.from_numpy(rng.randn(1, shape)).float().to(device)
 
     if not backend.name.endswith('skcuda') or device != 'cpu':
         s = scattering(x)
@@ -378,8 +379,7 @@ def test_batch_shape_agnostic(device, backend):
         assert len(Sx) == n_coeffs
         for k, v in Sx.items():
             assert v.shape[-1] == length_ds
-            assert v.shape[-2] == 1
-            assert v.shape[:-2] == test_shape[:-1]
+            assert v.shape[:-1] == test_shape[:-1]
 
 
 @pytest.mark.parametrize("device", devices)
@@ -424,6 +424,7 @@ def test_T(device, backend):
     Sg1 = scattering1(x)
     assert torch.allclose(Sg0, Sx0)
     assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
@@ -480,7 +481,7 @@ def test_check_runtime_args(device, backend):
     assert "out_type must be one" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        S = Scattering1D(J, shape, backend=backend, average=False,
+        S = Scattering1D(J, shape, backend=backend, T=0, average=False,
                          out_type='array', frontend='torch').to(device)
         S(x)
     assert "Cannot convert" in ve.value.args[0]

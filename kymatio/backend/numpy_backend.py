@@ -13,6 +13,12 @@ class NumpyBackend:
         if x is None:
             raise TypeError('The input should be not empty.')
 
+        #want to make sure that we have either a numpy or numpy-like arrays.
+        #since each numpy-like implements its own distinct ndarray, we need to
+        #check if numpy
+        if (not isinstance(x, numpy.ndarray)) and (not isinstance(x, _np.ndarray)):
+            raise TypeError(f'The input should be a numpy array, got type {type(x)}')
+
     @classmethod
     def complex_check(cls, x):
         if not cls._is_complex(x):
@@ -89,8 +95,8 @@ class NumpyBackend:
         return A * B
 
     @staticmethod
-    def reshape_input(x, signal_shape, n_inserted_dims=0):
-        return x.reshape((-1,) + (1,)*n_inserted_dims + signal_shape)
+    def reshape_input(x, signal_shape):
+        return x.reshape((-1, 1) + signal_shape)
 
     @staticmethod
     def reshape_output(S, batch_shape, n_kept_dims):

@@ -24,6 +24,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
 
     out_S_0.append({'coef': S_0,
                     'j': (),
+                    'n': (),
                     'theta': ()})
 
     for n1 in range(len(psi)):
@@ -46,6 +47,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
 
         out_S_1.append({'coef': S_1_r,
                         'j': (j1,),
+                        'n': (n1,),
                         'theta': (theta1,)})
 
         if max_order < 2:
@@ -72,6 +74,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
 
             out_S_2.append({'coef': S_2_r,
                             'j': (j1, j2),
+                            'n': (n1, n2),
                             'theta': (theta1, theta2)})
 
     out_S = []

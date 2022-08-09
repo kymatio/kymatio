@@ -27,11 +27,10 @@ prng = RandomState(42)
 from torchvision import datasets, transforms
 import kymatio.datasets as scattering_datasets
 
+num_workers = 4
 if use_cuda:
-    num_workers = 4
     pin_memory = True
 else:
-    num_workers = 0
     pin_memory = False
 
 train_data = datasets.MNIST(
@@ -107,11 +106,9 @@ import math
 
 
 # Evaluate linear model on top of scattering
-scattering = Scattering2D(shape = (28, 28), J=2)
+scattering = Scattering2D(shape = (28, 28), J=2).to(device)
 K = 81 #Number of output coefficients for each spatial postiion
 
-if use_cuda:
-    scattering = scattering.cuda()
 
 model = nn.Sequential(
     View(K, 7, 7),
