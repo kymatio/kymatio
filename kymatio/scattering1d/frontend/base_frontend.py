@@ -135,9 +135,9 @@ class ScatteringBase1D(ScatteringBase):
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
-        S = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
-                         max_order=self.max_order, average=self.average,
-                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
+        S = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
+            max_order=self.max_order, average=self.average,
+            ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
 
         for n, path in enumerate(S):
             S[n]['coef'] = self.backend.reshape_output(
