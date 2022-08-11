@@ -135,22 +135,43 @@ class ScatteringBase1D(ScatteringBase):
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
-        S = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
-            max_order=self.max_order, average=self.average,
-            ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
+        S_gen = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
+            self.oversampling, self.max_order, average=self.average)
 
-        for n, path in enumerate(S):
-            S[n]['coef'] = self.backend.reshape_output(
+        if self.out_type in ['array', 'list']:
+            S = list()
+        elif self.out_type == 'dict':
+            S = dict()
+
+        for path in S_gen:
+            path['order'] = len(path['n'])
+            if self.average:
+                res = self.log2_T
+            elif path['order']>0:
+                res = max(path['j'][-1] - self.oversampling, 0)
+            else:
+                res = 0
+            path['coef'] = self.backend.unpad(
+                path['coef'], self.ind_start[res], self.ind_end[res])
+            path['coef'] = self.backend.reshape_output(
                 path['coef'], batch_shape, n_kept_dims=1)
 
-        if self.out_type=='array':
-            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type=='dict':
-            return {path['n']: path['coef'] for path in S}
-        elif self.out_type=='list':
+            if self.out_type in ['array', 'list']:
+                S.append(path)
+            elif self.out_type == 'dict':
+                S[path['n']] = path['coef']
+
+        if self.out_type == 'dict':
+            return S
+
+        S.sort(key=(lambda path: (path['order'], path['n'])))
+
+        if self.out_type == 'array':
+            S = self.backend.concatenate([path['coef'] for path in S], dim=-2)
+        elif self.out_type == 'list':
             for n in range(len(S)):
                 S[n].pop('n')
-            return S
+        return S
 
     def meta(self):
         """Get meta information on the transform
