@@ -29,6 +29,10 @@ class ScatteringBase3D(ScatteringBase):
         self.gaussian_filters = gaussian_filter_bank(
             self.M, self.N, self.O, self.J + 1, self.sigma_0)
 
+    def scattering(self, x):
+        """ This function should call the functional scattering."""
+        raise NotImplementedError
+
     _doc_shape = 'M, N, O'
 
     _doc_class = \

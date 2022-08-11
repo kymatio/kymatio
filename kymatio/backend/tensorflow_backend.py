@@ -12,7 +12,6 @@ class TensorFlowBackend(NumpyBackend):
     @staticmethod
     def modulus(x):
         norm = tf.abs(x)
-
         return norm
 
     @staticmethod

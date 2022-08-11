@@ -35,6 +35,10 @@ class ScatteringBase2D(ScatteringBase):
         filters = filter_bank(self._M_padded, self._N_padded, self.J, self.L)
         self.phi, self.psi = filters['phi'], filters['psi']
 
+    def scattering(self, x):
+        """ This function should call the functional scattering."""
+        raise NotImplementedError
+
     @property
     def M(self):
         warn("The attribute M is deprecated and will be removed in v0.4. "

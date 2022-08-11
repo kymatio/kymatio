@@ -5,10 +5,6 @@ class ScatteringTensorFlow(tf.Module):
         super(ScatteringTensorFlow, self).__init__(name=name)
         self.frontend_name = 'tensorflow'
 
-    def scattering(self, x):
-        """ This function should call the functional scattering."""
-        raise NotImplementedError
-
     @tf.Module.with_name_scope
     def __call__(self, x):
         """This method is an alias for `scattering`."""
