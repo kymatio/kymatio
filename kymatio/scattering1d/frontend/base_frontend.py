@@ -4,6 +4,7 @@ import numbers
 import numpy as np
 from warnings import warn
 
+from ..core.scattering1d import scattering1d
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
 from ..utils import (compute_border_indices, compute_padding,
 compute_meta_scattering, precompute_size_scattering)
@@ -123,6 +124,31 @@ class ScatteringBase1D(ScatteringBase):
             self._N_padded, self.J, self.Q, self.T,
             r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
         ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
+
+    def scattering(self, x):
+        ScatteringBase1D._check_runtime_args(self)
+        ScatteringBase1D._check_input(self, x)
+        
+        x_shape = self.backend.shape(x)
+        batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+        x = self.backend.reshape_input(x, signal_shape)
+
+        S = scattering1d(x, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
+                         max_order=self.max_order, average=self.average, pad_left=self.pad_left, pad_right=self.pad_right,
+                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
+
+        for n, path in enumerate(S):
+            S[n]['coef'] = self.backend.reshape_output(
+                path['coef'], batch_shape, n_kept_dims=1)
+
+        if self.out_type=='array':
+            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
+        elif self.out_type=='dict':
+            return {path['n']: path['coef'] for path in S}
+        elif self.out_type=='list':
+            for n in range(len(S)):
+                S[n].pop('n')
+            return S
 
     def meta(self):
         """Get meta information on the transform
