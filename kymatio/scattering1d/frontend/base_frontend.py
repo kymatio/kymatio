@@ -131,7 +131,7 @@ class ScatteringBase1D(ScatteringBase):
         
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
-        x = self.backend.reshape_input(x, signal_shape, n_inserted_dims=1)
+        x = self.backend.reshape_input(x, signal_shape)
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
