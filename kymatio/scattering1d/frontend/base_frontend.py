@@ -135,14 +135,13 @@ class ScatteringBase1D(ScatteringBase):
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
-        S = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,\
-                         max_order=self.max_order, average=self.average,
-                        ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
+        S = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
+            max_order=self.max_order, average=self.average,
+            ind_start=self.ind_start, ind_end=self.ind_end, oversampling=self.oversampling)
 
-        n_kept_dims = 1 + (self.out_type=="dict")
         for n, path in enumerate(S):
             S[n]['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=n_kept_dims)
+                path['coef'], batch_shape, n_kept_dims=1)
 
         if self.out_type=='array':
             return self.backend.concatenate([path['coef'] for path in S], dim=-2)
