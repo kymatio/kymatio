@@ -48,29 +48,6 @@ def adaptive_choice_P(sigma, eps=1e-7):
     return P
 
 
-def periodize_filter_fourier(h_f, nperiods=1):
-    """
-    Computes a periodization of a filter provided in the Fourier domain.
-
-    Parameters
-    ----------
-    h_f : array_like
-        complex numpy array of shape (N*n_periods,)
-    n_periods: int, optional
-        Number of periods which should be used to periodize
-
-    Returns
-    -------
-    v_f : array_like
-        complex numpy array of size (N,), which is a periodization of
-        h_f as described in the formula:
-        v_f[k] = sum_{i=0}^{n_periods - 1} h_f[i * N + k]
-    """
-    N = h_f.shape[0] // nperiods
-    v_f = h_f.reshape(nperiods, N).mean(axis=0)
-    return v_f
-
-
 def morlet_1d(N, xi, sigma):
     """
     Computes the Fourier transform of a Morlet or Gauss filter.
@@ -106,12 +83,12 @@ def morlet_1d(N, xi, sigma):
     elif P > 1:
         freqs_low = freqs
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
-    low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
+    low_pass_f = low_pass_f.reshape(2 * P - 1, -1).mean(axis=0)
     if xi:
         # define the gabor at freq xi and the low-pass, both of width sigma
         gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
         # discretize in signal <=> periodize in Fourier
-        gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+        gabor_f = gabor_f.reshape(2 * P - 1, -1).mean(axis=0)
         # find the summation factor to ensure that morlet_f[0] = 0.
         kappa = gabor_f[0] / low_pass_f[0]
         filter_f = gabor_f - kappa * low_pass_f # psi (band-pass) case
@@ -358,7 +335,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         log-scale of the scattering transform, such that wavelets of both
         filterbanks have a maximal support that is proportional to 2**J.
     Q : tuple
-        number of wavelets per octave at the first and second order 
+        number of wavelets per octave at the first and second order
         Q = (Q1, Q2). Q1 and Q2 are both int >= 1.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
