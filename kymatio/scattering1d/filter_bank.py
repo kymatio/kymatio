@@ -416,12 +416,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     wavelet_kwargs = {}
 
     # compute the spectral parameters of the filters
-    sigma_min = sigma0 / math.pow(2, J)
     Q1, Q2 = Q
-    j1s = [get_max_dyadic_subsampling(xi1, sigma1, alpha)
-        for xi1, sigma1 in scatnet_generator(J, Q1, r_psi, sigma0)]
-    j2s = [get_max_dyadic_subsampling(xi2, sigma2, alpha)
-        for xi2, sigma2 in scatnet_generator(J, Q2, r_psi, sigma0)]
     max_j = 0
 
     # instantiate the dictionaries which will contain the filters
