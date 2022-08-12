@@ -381,8 +381,9 @@ def scatnet_generator(J, Q, r_psi, sigma0):
             yield xi, sigma
 
     # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
-    for q in range(Q):
-        xi -= 1/Q
+    elbow_xi = xi
+    for q in range(Q-1):
+        xi -= 1/Q * elbow_xi
         yield xi, sigma_min
 
 
