@@ -467,12 +467,10 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     # compute the spectral parameters of the filters
     sigma_min = sigma0 / math.pow(2, J)
     Q1, Q2 = Q
-    xi1s, sigma1s = compute_params_filterbank(sigma_min, Q1, r_psi)
     j1s = [get_max_dyadic_subsampling(xi1, sigma1, alpha)
-        for xi1, sigma1 in zip(xi1s, sigma1s)]
-    xi2s, sigma2s = compute_params_filterbank(sigma_min, Q2, r_psi)
+        for xi1, sigma1 in scatnet_generator(J, Q1, r_psi, sigma0)]
     j2s = [get_max_dyadic_subsampling(xi2, sigma2, alpha)
-        for xi2, sigma2 in zip(xi2s, sigma2s)]
+        for xi2, sigma2 in scatnet_generator(J, Q2, r_psi, sigma0)]
 
     # width of the low-pass filter
     sigma_low = sigma0 / T
@@ -484,7 +482,8 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
-    for (xi2, sigma2, j2) in zip(xi2s, sigma2s, j2s):
+    for xi2, sigma2 in scatnet_generator(J, Q2, r_psi, sigma0):
+        j2 = get_max_dyadic_subsampling(xi2, sigma2, alpha)
         # compute the current value for the max_subsampling,
         # which depends on the input it can accept.
         if max_subsampling is None:
@@ -507,8 +506,9 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
-    for (xi1, sigma1, j1) in zip(xi1s, sigma1s, j1s):
+    for xi1, sigma1 in scatnet_generator(J, Q1, r_psi, sigma0):
         psi_levels = [morlet_1d(N, xi1, sigma1)]
+        j1 = get_max_dyadic_subsampling(xi1, sigma1, alpha)
         psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
 
     # compute the low-pass filters phi
