@@ -10,27 +10,30 @@ def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average
         and `N` is the padded signal length.
     backend : module
         Kymatio module which matches the type of U_0.
-    psi1 : dictionary
-        a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
-        `j` corresponds to the downsampling factor for
-        :math:`x \\ast psi1[(j, q)]``, and `q` corresponds to a pitch class
-        (chroma).
-        * psi1[(j, n)] is itself a dictionary, with keys corresponding to the
-        dilation factors: psi1[(j, n)][j2] corresponds to a support of size
-        :math:`2^{J_\\text{max} - j_2}`, where :math:`J_\\text{max}` has been
-        defined a priori (`J_max = size` of the padding support of the input)
-        * psi1[(j, n)] only has real values;
-        the tensors are complex so that broadcasting applies
+    psi1 : list
+        a list of dictionaries, expressing wavelet band-pass filters in the
+        Fourier domain for the first layer of the scattering transform.
+        Each `psi1[n1]` is a dictionary with keys:
+            * `j`: int, subsampling factor
+            * `xi`: float, center frequency
+            * `sigma`: float, bandwidth
+            * `levels`: list, values taken by the wavelet in the Fourier domain
+                        at different levels of detail.
+        Each psi1[n]['levels'][level] is an array with size N/2**level.
     psi2 : dictionary
-        a dictionary of filters, with keys (j2, n2). Same remarks as for psi1
+        Same as psi1, but for the second layer of the scattering transform.
     phi : dictionary
-        a dictionary of filters of scale :math:`2^J` with keys (`j`)
-        where :math:`2^j` is the downsampling factor.
-        The array `phi[j]` is a real-valued filter.
+        a dictionary expressing the low-pass filter in the Fourier domain.
+        Keys:
+        * `j`: int, subsampling factor (also known as log_T)
+        * `xi`: float, center frequency (=0 by convention)
+        * `sigma`: float, bandwidth
+        * 'levels': list, values taken by the lowpass in the Fourier domain
+                    at different levels of detail.
     oversampling : int, optional
-        how much to oversample the scattering (with respect to :math:`2^J`):
+        how much to oversample the scattering (with respect to `log2_T`):
         the higher, the larger the resulting scattering
-        tensor along time.
+        tensor along time. Must be nonnegative (`oversampling>=0     ).
     max_order : int, optional
         Number of orders in the scattering transform. Either 1 or 2.
     average : boolean, optional

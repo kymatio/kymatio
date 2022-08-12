@@ -1,4 +1,5 @@
 from ...frontend.base_frontend import ScatteringBase
+from collections import Counter
 import math
 import numbers
 import numpy as np
@@ -6,8 +7,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
-from ..utils import (compute_border_indices, compute_padding,
-compute_meta_scattering, precompute_size_scattering)
+from ..utils import compute_border_indices, compute_padding
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -168,47 +168,75 @@ class ScatteringBase1D(ScatteringBase):
 
         if self.out_type == 'array':
             S = self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type == 'list':
-            for n in range(len(S)):
-                S[n].pop('n')
+
         return S
 
     def meta(self):
-        """Get meta information on the transform
+        """Get metadata on the transform.
 
-        Calls the static method `compute_meta_scattering()` with the
-        parameters of the transform object.
+        This information specifies the content of each scattering coefficient,
+        which order, which frequencies, which filters were used, and so on.
 
         Returns
-        ------
+        -------
         meta : dictionary
-            See the documentation for `compute_meta_scattering()`.
+            A dictionary with the following keys:
+
+            - `'order`' : tensor
+                A Tensor of length `C`, the total number of scattering
+                coefficients, specifying the scattering order.
+            - `'xi'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the center
+                frequency of the filter used at each order (padded with NaNs).
+            - `'sigma'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the frequency
+                bandwidth of the filter used at each order (padded with NaNs).
+            - `'j'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the dyadic scale
+                of the filter used at each order (padded with NaNs).
+            - `'n'` : tensor
+                A Tensor of size `(C, max_order)`, specifying the indices of
+                the filters used at each order (padded with NaNs).
+            - `'key'` : list
+                The tuples indexing the corresponding scattering coefficient
+                in the non-vectorized output.
         """
-        return compute_meta_scattering(
-            self.J, self.Q, self.T, self.max_order, self.r_psi, self.sigma0, self.alpha)
+        class DryBackend:
+            __getattr__ = lambda self, attr: (lambda *args: None)
+
+        S = scattering1d(None, DryBackend(), self.psi1_f, self.psi2_f,
+            self.phi_f, self.oversampling, self.max_order)
+        S = sorted(list(S), key=lambda path: (len(path['n']), path['n']))
+        meta = dict(order=np.array([len(path['n']) for path in S]))
+        meta['key'] = [path['n'] for path in S]
+        meta['n'] = np.stack([np.append(
+            path['n'], (np.nan,)*(self.max_order-len(path['n']))) for path in S])
+        filterbanks = (self.psi1_f, self.psi2_f)[:self.max_order]
+        for key in ['xi', 'sigma', 'j']:
+            meta[key] = meta['n'] * np.nan
+            for order, filterbank in enumerate(filterbanks):
+                for n, psi in enumerate(filterbank):
+                    meta[key][meta['n'][:, order]==n, order] = psi[key]
+        return meta
 
     def output_size(self, detail=False):
-        """Get size of the scattering transform
-
-        Calls the static method `precompute_size_scattering()` with the
-        parameters of the transform object.
+        """Number of scattering coefficients.
 
         Parameters
         ----------
         detail : boolean, optional
-            Specifies whether to provide a detailed size (number of coefficient
-            per order) or an aggregate size (total number of coefficients).
+            Whether to aggregate the count (detail=False, default) across
+            orders or to break it down by scattering depth (layers 0, 1, and 2).
 
         Returns
         ------
         size : int or tuple
-            See the documentation for `precompute_size_scattering()`.
+            If `detail=False` (default), total number of scattering coefficients.
+            Else, number of coefficients at zeroth, first, and second order.
         """
-        size = precompute_size_scattering(self.J, self.Q, self.T,
-            self.max_order, self.r_psi, self.sigma0, self.alpha)
-        if not detail:
-            size = sum(size)
-        return size
+        if detail:
+            return tuple(Counter(self.meta()['order']).values())
+        return len(self.meta()['key'])
 
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):

@@ -243,10 +243,9 @@ def test_coordinates(device, backend, random_state=42):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
-def test_precompute_size_scattering(device, backend, random_state=42):
+def test_output_size(device, backend, random_state=42):
     """
-    Tests that precompute_size_scattering computes a size which corresponds
-    to the actual scattering computed
+    Tests that S.output_size() returns the same size as S.scattering(x)
     """
     torch.manual_seed(random_state)
 
