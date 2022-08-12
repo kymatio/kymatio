@@ -251,7 +251,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def scatnet_generator(J, Q, r_psi, sigma0):
+def scatnet_generator(J, Q, sigma0, r_psi):
     """
     Yields the center frequencies and bandwidths of a filterbank, in compliance
     with the ScatNet package. Center frequencies follow a geometric progression
@@ -386,33 +386,24 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     filterbank_fn = scatnet_generator
-    filterbank_kwargs = {"r_psi": r_psi, "sigma0": sigma0}
-    lowpass_fn = gauss_1d
-    lowpass_kwargs = {}
-    wavelet_fn = morlet_1d
-    wavelet_kwargs = {}
-
-    # compute the spectral parameters of the filters
-    Q1, Q2 = Q
-    max_j = 0
-
-    # instantiate the dictionaries which will contain the filters
-    psi1_f = []
-    psi2_f = []
+    filterbank_kwargs = {"r_psi": r_psi}
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
-    for xi1, sigma1 in filterbank_fn(J, Q1, **filterbank_kwargs):
-        psi_levels = [wavelet_fn(N, xi1, sigma1, **wavelet_kwargs)]
+    max_j = 0
+    psi1_f = []
+    for xi1, sigma1 in filterbank_fn(J, Q[0], sigma0, **filterbank_kwargs):
+        psi_levels = [morlet_1d(N, xi1, sigma1)]
         j1 = get_max_dyadic_subsampling(xi1, sigma1, alpha)
         psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
         max_j = max(max_j, j1)
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
-    for xi2, sigma2 in filterbank_fn(J, Q2, **filterbank_kwargs):
+    psi2_f = []
+    for xi2, sigma2 in filterbank_fn(J, Q[1], sigma0, **filterbank_kwargs):
         # We first compute the filter without subsampling
-        psi_levels = [wavelet_fn(N, xi2, sigma2, **wavelet_kwargs)]
+        psi_levels = [morlet_1d(N, xi2, sigma2)]
         j2 = get_max_dyadic_subsampling(xi2, sigma2, alpha)
         max_sub_psi2 = max(max_j, j2 - 1)
         # compute the filter after subsampling at all other subsamplings
@@ -431,7 +422,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
 
     # compute the filters at all possible subsamplings
     sigma_low = sigma0 / T
-    phi_levels = [lowpass_fn(N, sigma_low, **lowpass_kwargs)]
+    phi_levels = [gauss_1d(N, sigma_low)]
     for level in range(1, max_sub_phi + 1):
         phi_level = phi_levels[0].reshape(2**level, -1).mean(axis=0)
         phi_levels.append(phi_level)
