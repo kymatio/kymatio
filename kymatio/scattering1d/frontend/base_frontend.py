@@ -168,9 +168,7 @@ class ScatteringBase1D(ScatteringBase):
 
         if self.out_type == 'array':
             S = self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type == 'list':
-            for n in range(len(S)):
-                S[n].pop('n')
+
         return S
 
     def meta(self):
