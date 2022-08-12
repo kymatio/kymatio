@@ -327,6 +327,65 @@ def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5)):
     return xis, sigmas
 
 
+def scatnet_generator(J, Q, r_psi, sigma0):
+    """
+    Yields the center frequencies and bandwidths of a filterbank, in compliance
+    with the ScatNet package. Center frequencies follow a geometric progression
+    of common factor 2**(1/Q) above a certain "elbow frequency" xi_elbow and
+    an arithmetic progression of common difference (1/Q) below xi_elbow.
+
+    The corresponding bandwidth sigma is proportional to center frequencies
+    for xi>=xi_elbow and are constant (sigma=sigma_min) for xi<xi_elbow.
+
+    The formula for xi_elbow is quite complicated and involves four hyperparameters
+    J, Q, r_psi, and sigma0:
+
+    xi_elbow = compute_xi_max(Q) * (sigma0/2**J)/compute_sigma_psi(xi, Q, r_psi)
+
+    where compute_xi_max and compute_sigma_psi are defined elsewhere in this module.
+
+    Intuitively, the role of xi_elbow is to make the filterbank as "wavelet-like"
+    as possible (common xi/sigma ratio) while guaranteeing a lower bound on sigma
+    (hence an upper bound on time support) and full coverage of the Fourier
+    domain between pi/2**J and pi.
+
+    Parameters
+    ----------
+    J : int
+        log-scale of the scattering transform, such that wavelets of both
+        filterbanks have a maximal support that is proportional to 2**J.
+
+    Q : int
+        number of wavelets per octave in the geometric progression portion of
+        the filterbank.
+
+    r_psi : float in (0, 1)
+        Should be >0 and <1. The higher the r_psi, the greater the sigmas.
+        Adjacent wavelets peak at 1 and meet at r_psi.
+
+    sigma0 : float
+        Should be >0. The bandwidth of the lowpass filter is sigma0/2**J.
+    """
+    xi = compute_xi_max(Q)
+    sigma = compute_sigma_psi(xi, Q, r=r_psi)
+    sigma_min = sigma0 / 2**J
+
+    if sigma <= sigma_min:
+        xi = sigma
+    else:
+        yield xi, sigma
+        # High-frequency (constant-Q) region: geometric progression of xi
+        while sigma > (sigma_min * math.pow(2, 1 / Q)):
+            xi /= math.pow(2, 1 / Q)
+            sigma /= math.pow(2, 1 / Q)
+            yield xi, sigma
+
+    # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
+    for q in range(Q):
+        xi -= 1/Q
+        yield xi, sigma_min
+
+
 def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
                               max_subsampling=None, sigma0=0.1, alpha=5., **kwargs):
     """
