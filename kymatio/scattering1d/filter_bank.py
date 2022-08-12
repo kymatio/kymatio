@@ -335,7 +335,7 @@ def scatnet_generator(J, Q, r_psi, sigma0):
 
 
 def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
-                              max_subsampling=None, sigma0=0.1, alpha=5., **kwargs):
+                              sigma0=0.1, alpha=5., **kwargs):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -367,10 +367,6 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         Should be >0 and <1. Controls the redundancy of the filters
         (the larger r_psi, the larger the overlap between adjacent wavelets).
         Defaults to sqrt(0.5).
-    max_subsampling: int or None, optional
-        maximal dyadic subsampling to compute, in order
-        to save computation time if it is not required. Defaults to None, in
-        which case this value is dynamically adjusted depending on the filters.
     sigma0 : float, optional
         parameter controlling the frequential width of the low-pass filter at
         j=0; at a an absolute J, it is equal to sigma0 / 2**J. Defaults to 0.1
@@ -438,14 +434,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         j2 = get_max_dyadic_subsampling(xi2, sigma2, alpha)
         # compute the current value for the max_subsampling,
         # which depends on the input it can accept.
-        if max_subsampling is None:
-            possible_subsamplings_after_order1 = [j1 for j1 in j1s if j2 > j1]
-            if len(possible_subsamplings_after_order1) > 0:
-                max_sub_psi2 = max(possible_subsamplings_after_order1)
-            else:
-                max_sub_psi2 = 0
-        else:
-            max_sub_psi2 = max_subsampling
+        max_sub_psi2 = max([j1 for j1 in j1s if j2 > j1], default=0)
         # We first compute the filter without subsampling
         psi_levels = [wavelet_fn(N, xi2, sigma2, **wavelet_kwargs)]
         # compute the filter after subsampling at all other subsamplings
@@ -466,13 +455,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     # Determine the maximal subsampling for phi, which depends on the
     # input it can accept (both 1st and 2nd order)
     log2_T = math.floor(math.log2(T))
-    if max_subsampling is None:
-        max_subsampling_after_psi1 = max(j1s)
-        max_subsampling_after_psi2 = max(j2s)
-        max_sub_phi = min(max(max_subsampling_after_psi1,
-                              max_subsampling_after_psi2), log2_T)
-    else:
-        max_sub_phi = max_subsampling
+    max_sub_phi = min(max(max(j1s), max(j2s)), log2_T)
 
     # compute the filters at all possible subsamplings
     sigma_low = sigma0 / T
