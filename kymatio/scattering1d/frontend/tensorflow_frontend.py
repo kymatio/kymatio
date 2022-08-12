@@ -2,7 +2,6 @@ import tensorflow as tf
 import warnings
 
 from ...frontend.tensorflow_frontend import ScatteringTensorFlow
-from ..core.scattering1d import scattering1d
 from .base_frontend import ScatteringBase1D
 
 

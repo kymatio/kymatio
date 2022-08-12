@@ -131,7 +131,7 @@ class ScatteringBase1D(ScatteringBase):
 
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
-        x = self.backend.reshape_input(x, signal_shape, n_inserted_dims=1)
+        x = self.backend.reshape_input(x, signal_shape)
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
@@ -143,7 +143,6 @@ class ScatteringBase1D(ScatteringBase):
         elif self.out_type == 'dict':
             S = dict()
 
-        n_kept_dims = 1 + (self.out_type=='dict')
         for path in S_gen:
             path['order'] = len(path['n'])
             if self.average:
@@ -155,7 +154,7 @@ class ScatteringBase1D(ScatteringBase):
             path['coef'] = self.backend.unpad(
                 path['coef'], self.ind_start[res], self.ind_end[res])
             path['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=n_kept_dims)
+                path['coef'], batch_shape, n_kept_dims=1)
 
             if self.out_type in ['array', 'list']:
                 S.append(path)
@@ -169,9 +168,7 @@ class ScatteringBase1D(ScatteringBase):
 
         if self.out_type == 'array':
             S = self.backend.concatenate([path['coef'] for path in S], dim=-2)
-        elif self.out_type == 'list':
-            for n in range(len(S)):
-                S[n].pop('n')
+
         return S
 
     def meta(self):

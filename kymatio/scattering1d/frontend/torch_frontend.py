@@ -2,7 +2,6 @@ import torch
 import warnings
 
 from ...frontend.torch_frontend import ScatteringTorch
-from ..core.scattering1d import scattering1d
 from .base_frontend import ScatteringBase1D
 
 
