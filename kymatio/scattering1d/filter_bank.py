@@ -274,59 +274,6 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5)):
-    """
-    Computes the parameters of a Morlet wavelet filterbank.
-
-    This family is defined by constant ratios between the frequencies and
-    width of adjacent filters, up to a minimum frequency where the frequencies
-    are translated. sigma_min limits the smallest frequential width
-    among all filters, while preserving the coverage of the whole frequency
-    axis.
-    Parameters
-    ----------
-    sigma_min : float
-        This acts as a lower bound on the frequential widths of the band-pass
-        filters. The low-pass filter may be wider (if T < _N_padded), making
-        invariants over shorter time scales than longest band-pass filter.
-    Q : int
-        number of wavelets per octave.
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5).
-    Returns
-    -------
-    xis : list
-        central frequencies of the filters.
-    sigmas : list
-        bandwidths of the filters.
-    """
-    xi_max = compute_xi_max(Q)
-    sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
-
-    if sigma_max <= sigma_min:
-        xis = []
-        sigmas = []
-        elbow_xi = sigma_max
-    else:
-        xis =  [xi_max]
-        sigmas = [sigma_max]
-
-        # High-frequency (constant-Q) region: geometric progression of xi
-        while sigmas[-1] > (sigma_min * math.pow(2, 1/Q)):
-            xis.append(xis[-1] / math.pow(2, 1/Q))
-            sigmas.append(sigmas[-1] / math.pow(2, 1/Q))
-        elbow_xi = xis[-1]
-
-    # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
-    for q in range(1, Q):
-        xis.append(elbow_xi - q/Q * elbow_xi)
-        sigmas.append(sigma_min)
-
-    return xis, sigmas
-
-
 def scatnet_generator(J, Q, r_psi, sigma0):
     """
     Yields the center frequencies and bandwidths of a filterbank, in compliance
@@ -364,7 +311,7 @@ def scatnet_generator(J, Q, r_psi, sigma0):
         Adjacent wavelets peak at 1 and meet at r_psi.
 
     sigma0 : float
-        Should be >0. The bandwidth of the lowpass filter is sigma0/2**J.
+        Should be >0. The minimum bandwidth is sigma0/2**J.
     """
     xi = compute_xi_max(Q)
     sigma = compute_sigma_psi(xi, Q, r=r_psi)
