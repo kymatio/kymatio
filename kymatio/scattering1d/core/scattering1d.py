@@ -1,13 +1,15 @@
 
-def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
-        oversampling=0, max_order=2, average=True):
+def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average=True):
     """
     Main function implementing the 1-D scattering transform.
 
     Parameters
     ----------
     U_0 : Tensor
-        a torch Tensor of size `(B, 1, N)` where `N` is the temporal size
+        an backend-compatible array of size `(B, 1, N)` where `B` is batch size
+        and `N` is the padded signal length.
+    backend : module
+        Kymatio module which matches the type of U_0.
     psi1 : dictionary
         a dictionary of filters (in the Fourier domain), with keys (`j`, `q`).
         `j` corresponds to the downsampling factor for
@@ -25,22 +27,14 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
         a dictionary of filters of scale :math:`2^J` with keys (`j`)
         where :math:`2^j` is the downsampling factor.
         The array `phi[j]` is a real-valued filter.
-    J : int
-        scale of the scattering
-    ind_start : dictionary of ints, optional
-        indices to truncate the signal to recover only the
-        parts which correspond to the actual signal after padding and
-        downsampling. Defaults to None
-    ind_end : dictionary of ints, optional
-        See description of ind_start
     oversampling : int, optional
         how much to oversample the scattering (with respect to :math:`2^J`):
         the higher, the larger the resulting scattering
-        tensor along time. Defaults to `0`
+        tensor along time.
     max_order : int, optional
-        Number of orders in the scattering transform. Either 1 or 2 (default).
+        Number of orders in the scattering transform. Either 1 or 2.
     average : boolean, optional
-        whether to average the first order vector. Defaults to `True`
+        whether to average the result. Default to True.
     """
     cdgmm = backend.cdgmm
     ifft = backend.ifft
@@ -49,9 +43,6 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
     rfft = backend.rfft
     subsample_fourier = backend.subsample_fourier
     unpad = backend.unpad
-
-    # S is simply a dictionary if we do not perform the averaging...
-    out_S_0, out_S_1, out_S_2 = [], [], []
 
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
@@ -64,13 +55,9 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
         S_0_c = cdgmm(U_0_hat, phi['levels'][0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
-
-        S_0 = unpad(S_0_r, ind_start[k0], ind_end[k0])
+        yield {'coef': S_0_r, 'j': (), 'n': ()}
     else:
-        S_0 = unpad(U_0, ind_start[0], ind_end[0])
-    out_S_0.append({'coef': S_0,
-                    'j': (),
-                    'n': ()})
+        yield {'coef': U_0, 'j': (), 'n': ()}
 
     # First order:
     for n1 in range(len(psi1)):
@@ -96,14 +83,9 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
             S_1_c = cdgmm(U_1_hat, phi['levels'][k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
-
-            S_1 = unpad(S_1_r, ind_start[k1_J + k1], ind_end[k1_J + k1])
+            yield {'coef': S_1_r, 'j': (j1,), 'n': (n1,)}
         else:
-            S_1 = unpad(U_1_m, ind_start[k1], ind_end[k1])
-
-        out_S_1.append({'coef': S_1,
-                        'j': (j1,),
-                        'n': (n1,)})
+            yield {'coef': U_1_m, 'j': (j1,), 'n': (n1,)}
 
         if max_order == 2:
             # 2nd order
@@ -132,20 +114,8 @@ def scattering1d(U_0, backend, psi1, psi2, phi, ind_start=None, ind_end=None,
                         S_2_hat = subsample_fourier(S_2_c, 2**k2_log2_T)
                         S_2_r = irfft(S_2_hat)
 
-                        S_2 = unpad(S_2_r, ind_start[k1 + k2 + k2_log2_T],
-                                    ind_end[k1 + k2 + k2_log2_T])
+                        yield {'coef': S_2_r, 'j': (j1, j2), 'n': (n1, n2)}
                     else:
-                        S_2 = unpad(U_2_m, ind_start[k1 + k2], ind_end[k1 + k2])
-
-                    out_S_2.append({'coef': S_2,
-                                    'j': (j1, j2),
-                                    'n': (n1, n2)})
-
-    out_S = []
-    out_S.extend(out_S_0)
-    out_S.extend(out_S_1)
-    out_S.extend(out_S_2)
-
-    return out_S
+                        yield {'coef': U_2_m, 'j': (j1, j2), 'n': (n1, n2)}
 
 __all__ = ['scattering1d']

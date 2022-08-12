@@ -108,8 +108,7 @@ def test_sample_scattering(device, backend):
 
     Sx = scattering(x)
 
-    print(Sx.shape)
-
+    assert Sx.shape == Sx0.shape
     assert torch.allclose(Sx, Sx0)
 
 
