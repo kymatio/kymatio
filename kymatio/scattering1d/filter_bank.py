@@ -420,7 +420,6 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     max_j = 0
 
     # instantiate the dictionaries which will contain the filters
-    phi_f = {}
     psi1_f = []
     psi2_f = []
 
