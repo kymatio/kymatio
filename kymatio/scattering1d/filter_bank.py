@@ -412,6 +412,13 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
+    filterbank_fn = scatnet_generator
+    filterbank_kwargs = {"alpha": alpha, "r_psi": r_psi}
+    lowpass_fn = gauss_1d
+    lowpass_kwargs = {}
+    wavelet_fn = morlet_1d
+    wavelet_kwargs = {}
+
     # compute the spectral parameters of the filters
     sigma_min = sigma0 / math.pow(2, J)
     Q1, Q2 = Q
@@ -419,9 +426,6 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         for xi1, sigma1 in scatnet_generator(J, Q1, r_psi, sigma0)]
     j2s = [get_max_dyadic_subsampling(xi2, sigma2, alpha)
         for xi2, sigma2 in scatnet_generator(J, Q2, r_psi, sigma0)]
-
-    # width of the low-pass filter
-    sigma_low = sigma0 / T
 
     # instantiate the dictionaries which will contain the filters
     phi_f = {}
@@ -443,8 +447,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         else:
             max_sub_psi2 = max_subsampling
         # We first compute the filter without subsampling
-
-        psi_levels = [morlet_1d(N, xi2, sigma2)]
+        psi_levels = [wavelet_fn(N, xi2, sigma2, **wavelet_kwargs)]
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for level in range(1, max_sub_psi2 + 1):
@@ -455,7 +458,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
     for xi1, sigma1 in scatnet_generator(J, Q1, r_psi, sigma0):
-        psi_levels = [morlet_1d(N, xi1, sigma1)]
+        psi_levels = [wavelet_fn(N, xi1, sigma1, **wavelet_kwargs)]
         j1 = get_max_dyadic_subsampling(xi1, sigma1, alpha)
         psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
 
@@ -472,7 +475,8 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         max_sub_phi = max_subsampling
 
     # compute the filters at all possible subsamplings
-    phi_levels = [gauss_1d(N, sigma_low)]
+    sigma_low = sigma0 / T
+    phi_levels = [lowpass_fn(N, sigma_low, **lowpass_kwargs)]
     for level in range(1, max_sub_phi + 1):
         nperiods = 2**level
         phi_levels.append(periodize_filter_fourier(phi_levels[0], nperiods))
