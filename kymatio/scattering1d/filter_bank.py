@@ -48,29 +48,6 @@ def adaptive_choice_P(sigma, eps=1e-7):
     return P
 
 
-def periodize_filter_fourier(h_f, nperiods=1):
-    """
-    Computes a periodization of a filter provided in the Fourier domain.
-
-    Parameters
-    ----------
-    h_f : array_like
-        complex numpy array of shape (N*n_periods,)
-    n_periods: int, optional
-        Number of periods which should be used to periodize
-
-    Returns
-    -------
-    v_f : array_like
-        complex numpy array of size (N,), which is a periodization of
-        h_f as described in the formula:
-        v_f[k] = sum_{i=0}^{n_periods - 1} h_f[i * N + k]
-    """
-    N = h_f.shape[0] // nperiods
-    v_f = h_f.reshape(nperiods, N).mean(axis=0)
-    return v_f
-
-
 def morlet_1d(N, xi, sigma):
     """
     Computes the Fourier transform of a Morlet or Gauss filter.
@@ -106,12 +83,12 @@ def morlet_1d(N, xi, sigma):
     elif P > 1:
         freqs_low = freqs
     low_pass_f = np.exp(-(freqs_low**2) / (2 * sigma**2))
-    low_pass_f = periodize_filter_fourier(low_pass_f, nperiods=2 * P - 1)
+    low_pass_f = low_pass_f.reshape(2 * P - 1, -1).mean(axis=0)
     if xi:
         # define the gabor at freq xi and the low-pass, both of width sigma
         gabor_f = np.exp(-(freqs - xi)**2 / (2 * sigma**2))
         # discretize in signal <=> periodize in Fourier
-        gabor_f = periodize_filter_fourier(gabor_f, nperiods=2 * P - 1)
+        gabor_f = gabor_f.reshape(2 * P - 1, -1).mean(axis=0)
         # find the summation factor to ensure that morlet_f[0] = 0.
         kappa = gabor_f[0] / low_pass_f[0]
         filter_f = gabor_f - kappa * low_pass_f # psi (band-pass) case
@@ -219,7 +196,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     return N
 
 
-def get_max_dyadic_subsampling(xi, sigma, alpha):
+def get_max_dyadic_subsampling(xi, sigma, alpha, **unused_kwargs):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
     filter of frequency xi and width sigma
@@ -274,73 +251,78 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def compute_params_filterbank(sigma_min, Q, r_psi=math.sqrt(0.5)):
+def anden_generator(J, Q, sigma0, r_psi, **unused_kwargs):
     """
-    Computes the parameters of a Morlet wavelet filterbank.
+    Yields the center frequencies and bandwidths of a filterbank, in compliance
+    with the ScatNet package. Center frequencies follow a geometric progression
+    of common factor 2**(1/Q) above a certain "elbow frequency" xi_elbow and
+    an arithmetic progression of common difference (1/Q) below xi_elbow.
 
-    This family is defined by constant ratios between the frequencies and
-    width of adjacent filters, up to a minimum frequency where the frequencies
-    are translated. sigma_min limits the smallest frequential width
-    among all filters, while preserving the coverage of the whole frequency
-    axis.
+    The corresponding bandwidth sigma is proportional to center frequencies
+    for xi>=xi_elbow and are constant (sigma=sigma_min) for xi<xi_elbow.
+
+    The formula for xi_elbow is quite complicated and involves four hyperparameters
+    J, Q, r_psi, and sigma0:
+
+    xi_elbow = compute_xi_max(Q) * (sigma0/2**J)/compute_sigma_psi(xi, Q, r_psi)
+
+    where compute_xi_max and compute_sigma_psi are defined elsewhere in this module.
+
+    Intuitively, the role of xi_elbow is to make the filterbank as "wavelet-like"
+    as possible (common xi/sigma ratio) while guaranteeing a lower bound on sigma
+    (hence an upper bound on time support) and full coverage of the Fourier
+    domain between pi/2**J and pi.
+
     Parameters
     ----------
-    sigma_min : float
-        This acts as a lower bound on the frequential widths of the band-pass
-        filters. The low-pass filter may be wider (if T < _N_padded), making
-        invariants over shorter time scales than longest band-pass filter.
+    J : int
+        log-scale of the scattering transform, such that wavelets of both
+        filterbanks have a maximal support that is proportional to 2**J.
+
     Q : int
-        number of wavelets per octave.
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5).
-    Returns
-    -------
-    xis : list
-        central frequencies of the filters.
-    sigmas : list
-        bandwidths of the filters.
+        number of wavelets per octave in the geometric progression portion of
+        the filterbank.
+
+    r_psi : float in (0, 1)
+        Should be >0 and <1. The higher the r_psi, the greater the sigmas.
+        Adjacent wavelets peak at 1 and meet at r_psi.
+
+    sigma0 : float
+        Should be >0. The minimum bandwidth is sigma0/2**J.
     """
-    xi_max = compute_xi_max(Q)
-    sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
+    xi = compute_xi_max(Q)
+    sigma = compute_sigma_psi(xi, Q, r=r_psi)
+    sigma_min = sigma0 / 2**J
 
-    if sigma_max <= sigma_min:
-        xis = []
-        sigmas = []
-        elbow_xi = sigma_max
+    if sigma <= sigma_min:
+        xi = sigma
     else:
-        xis =  [xi_max]
-        sigmas = [sigma_max]
-
+        yield xi, sigma
         # High-frequency (constant-Q) region: geometric progression of xi
-        while sigmas[-1] > (sigma_min * math.pow(2, 1/Q)):
-            xis.append(xis[-1] / math.pow(2, 1/Q))
-            sigmas.append(sigmas[-1] / math.pow(2, 1/Q))
-        elbow_xi = xis[-1]
+        while sigma > (sigma_min * math.pow(2, 1 / Q)):
+            xi /= math.pow(2, 1 / Q)
+            sigma /= math.pow(2, 1 / Q)
+            yield xi, sigma
 
     # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
-    for q in range(1, Q):
-        xis.append(elbow_xi - q/Q * elbow_xi)
-        sigmas.append(sigma_min)
+    elbow_xi = xi
+    for q in range(Q-1):
+        xi -= 1/Q * elbow_xi
+        yield xi, sigma_min
 
-    return xis, sigmas
 
-
-def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
-                              max_subsampling=None, sigma0=0.1, alpha=5., **kwargs):
+def scattering_filter_factory(N, J, Q, T, filterbank):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
     Each single filter is provided as a dictionary with the following keys:
-    * 'xi': central frequency, defaults to 0 for low-pass filters.
-    * 'sigma': frequential width
-    * k where k is an integer bounded below by 0. The maximal value for k
-        depends on the type of filter, it is dynamically chosen depending
-        on max_subsampling and the characteristics of the filters.
-        Each value for k is an array (or tensor) of size 2**(J_support - k)
-        containing the Fourier transform of the filter after subsampling by
-        2**k
+    * 'xi': normalized center frequency, where 0.5 corresponds to Nyquist.
+    * 'sigma': normalized bandwidth in the Fourier.
+    * 'j': log2 of downsampling factor after filtering. j=0 means no downsampling,
+        j=1 means downsampling by one half, etc.
+    * 'levels': list of NumPy arrays containing the filter at various levels
+        of downsampling. levels[0] is at full resolution, levels[1] at half
+        resolution, etc.
 
     Parameters
     ----------
@@ -351,125 +333,59 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         log-scale of the scattering transform, such that wavelets of both
         filterbanks have a maximal support that is proportional to 2**J.
     Q : tuple
-        number of wavelets per octave at the first and second order 
+        number of wavelets per octave at the first and second order
         Q = (Q1, Q2). Q1 and Q2 are both int >= 1.
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5).
-    max_subsampling: int or None, optional
-        maximal dyadic subsampling to compute, in order
-        to save computation time if it is not required. Defaults to None, in
-        which case this value is dynamically adjusted depending on the filters.
-    sigma0 : float, optional
-        parameter controlling the frequential width of the low-pass filter at
-        j=0; at a an absolute J, it is equal to sigma0 / 2**J. Defaults to 0.1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
+    filterbank : tuple (callable filterbank_fn, dict filterbank_kwargs)
+        filterbank_fn should take J and Q as positional arguments and
+        **filterbank_kwargs as optional keyword arguments.
+        Corresponds to the self.filterbank property of the scattering object.
+        As of v0.3, only anden_generator is supported as filterbank_fn.
 
     Returns
     -------
-    phi_f : dictionary
-        a dictionary containing the low-pass filter at all possible
-        subsamplings. See above for a description of the dictionary structure.
-        The possible subsamplings are controlled by the inputs they can
-        receive, which correspond to the subsamplings performed on top of the
-        1st and 2nd order transforms.
-    psi1_f : dictionary
-        a dictionary containing the band-pass filters of the 1st order,
-        only for the base resolution as no subsampling is used in the
-        scattering tree.
-        Each value corresponds to a dictionary for a single filter, see above
-        for an exact description.
-        The keys of this dictionary are of the type (j, n) where n is an
-        integer counting the filters and j the maximal dyadic subsampling
-        which can be performed on top of the filter without aliasing.
-    psi2_f : dictionary
-        a dictionary containing the band-pass filters of the 2nd order
-        at all possible subsamplings. The subsamplings are determined by the
-        input they can receive, which depends on the scattering tree.
-        Each value corresponds to a dictionary for a single filter, see above
-        for an exact description.
-        The keys of this dictionary are of th etype (j, n) where n is an
-        integer counting the filters and j is the maximal dyadic subsampling
-        which can be performed on top of this filter without aliasing.
-
-    Refs
-    ----
-    Convolutional operators in the time-frequency domain, V. Lostanlen,
-    PhD Thesis, 2017
-    https://tel.archives-ouvertes.fr/tel-01559667
+    phi_f, psi1_f, psi2_f ... : dictionaries
+        phi_f corresponds to the low-pass filter and psi1_f, psi2_f, to the
+        wavelet filterbanks at layers 1 and 2 respectively.
+        See above for a description of the dictionary structure.
     """
-    # compute the spectral parameters of the filters
-    sigma_min = sigma0 / math.pow(2, J)
-    Q1, Q2 = Q
-    xi1s, sigma1s = compute_params_filterbank(sigma_min, Q1, r_psi)
-    j1s = [get_max_dyadic_subsampling(xi1, sigma1, alpha)
-        for xi1, sigma1 in zip(xi1s, sigma1s)]
-    xi2s, sigma2s = compute_params_filterbank(sigma_min, Q2, r_psi)
-    j2s = [get_max_dyadic_subsampling(xi2, sigma2, alpha)
-        for xi2, sigma2 in zip(xi2s, sigma2s)]
-
-    # width of the low-pass filter
-    sigma_low = sigma0 / T
-
-    # instantiate the dictionaries which will contain the filters
-    phi_f = {}
-    psi1_f = []
-    psi2_f = []
-
-    # compute the band-pass filters of the second order,
-    # which can take as input a subsampled
-    for (xi2, sigma2, j2) in zip(xi2s, sigma2s, j2s):
-        # compute the current value for the max_subsampling,
-        # which depends on the input it can accept.
-        if max_subsampling is None:
-            possible_subsamplings_after_order1 = [j1 for j1 in j1s if j2 > j1]
-            if len(possible_subsamplings_after_order1) > 0:
-                max_sub_psi2 = max(possible_subsamplings_after_order1)
-            else:
-                max_sub_psi2 = 0
-        else:
-            max_sub_psi2 = max_subsampling
-        # We first compute the filter without subsampling
-
-        psi_levels = [morlet_1d(N, xi2, sigma2)]
-        # compute the filter after subsampling at all other subsamplings
-        # which might be received by the network, based on this first filter
-        for level in range(1, max_sub_psi2 + 1):
-            nperiods = 2**level
-            psi_levels.append(periodize_filter_fourier(psi_levels[0], nperiods))
-        psi2_f.append({'levels': psi_levels, 'xi': xi2, 'sigma': sigma2, 'j': j2})
-
-    # for the 1st order filters, the input is not subsampled so we
-    # can only compute them with N=2**J_support
-    for (xi1, sigma1, j1) in zip(xi1s, sigma1s, j1s):
-        psi_levels = [morlet_1d(N, xi1, sigma1)]
-        psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
-
-    # compute the low-pass filters phi
-    # Determine the maximal subsampling for phi, which depends on the
-    # input it can accept (both 1st and 2nd order)
+    filterbank_fn, filterbank_kwargs = filterbank
+    max_j = 0
+    previous_J = 0
     log2_T = math.floor(math.log2(T))
-    if max_subsampling is None:
-        max_subsampling_after_psi1 = max(j1s)
-        max_subsampling_after_psi2 = max(j2s)
-        max_sub_phi = min(max(max_subsampling_after_psi1,
-                              max_subsampling_after_psi2), log2_T)
-    else:
-        max_sub_phi = max_subsampling
+    psis_f = []
 
-    # compute the filters at all possible subsamplings
+    # Loop over scattering layers
+    for Q_layer in Q:
+        psi_f = []
+
+        # Loop over center frequencies xi and bandwidths sigma in the filterbank
+        for xi, sigma in filterbank_fn(J, Q_layer, **filterbank_kwargs):
+
+            # Construct filter at full resolution
+            psi_levels = [morlet_1d(N, xi, sigma)]
+            j = get_max_dyadic_subsampling(xi, sigma, **filterbank_kwargs)
+
+            # Resample to smaller resolutions if necessary (beyond 1st layer)
+            # The idiom min(previous_J, j, log2_T) implements "j1 < j2"
+            for level in range(1, min(previous_J, j, log2_T)):
+                psi_level = psi_levels[0].reshape(2 ** level, -1).mean(axis=0)
+                psi_levels.append(psi_level)
+            psi_f.append({'levels': psi_levels, 'xi': xi, 'sigma': sigma, 'j': j})
+            max_j = max(j, max_j)
+
+        # Keep score of how many resolutions will be needed in the next layer
+        previous_J = max_j
+        psis_f.append(psi_f)
+
+    # Same with low-pass filter phi
+    sigma_low = filterbank_kwargs["sigma0"] / T
     phi_levels = [gauss_1d(N, sigma_low)]
-    for level in range(1, max_sub_phi + 1):
-        nperiods = 2**level
-        phi_levels.append(periodize_filter_fourier(phi_levels[0], nperiods))
+    for level in range(1, max(previous_J, 1+log2_T)):
+        phi_level = phi_levels[0].reshape(2 ** level, -1).mean(axis=0)
+        phi_levels.append(phi_level)
     phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
 
-    # return results
-    return phi_f, psi1_f, psi2_f
+    return tuple([phi_f] + psis_f)
