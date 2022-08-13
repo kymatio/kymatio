@@ -130,4 +130,4 @@ def test_Q(backend, frontend):
     Sc_tuple_out = Sc_tuple.scattering(x)
 
     assert np.allclose(Sc_int_out, Sc_tuple_out)
-    assert Sc_int_out.shape == Sc_tuple_out.shape    assert Sc_int_out.shape == Sc_tuple_out.shape
+    assert Sc_int_out.shape == Sc_tuple_out.shape
