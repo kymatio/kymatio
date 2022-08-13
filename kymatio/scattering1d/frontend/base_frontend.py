@@ -123,6 +123,7 @@ class ScatteringBase1D(ScatteringBase):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
             self._N_padded, self.J, self.Q, self.T,
+            self.r_psi, self.sigma0, self.alpha)
         ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
     def scattering(self, x):
@@ -278,7 +279,8 @@ class ScatteringBase1D(ScatteringBase):
 
     @property
     def filterbank(self):
-        filterbank_kwargs = {"alpha": 5, "r_psi": math.sqrt(0.5), "sigma0": 0.1}
+        filterbank_kwargs = {
+            "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
         return (scatnet_generator, filterbank_kwargs)
 
     _doc_shape = 'N'
