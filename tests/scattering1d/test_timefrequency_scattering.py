@@ -37,6 +37,7 @@ def test_scattering1d_widthfirst(device, backend):
     S = Scattering1D(J, shape, backend=backend).to(device)
     x = torch.zeros(shape)
     x[shape[0]//2] = 1
+    x = x.to(device)
 
     # Width-first scattering
     x_shape = S.backend.shape(x)
