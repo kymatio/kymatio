@@ -11,7 +11,7 @@ from ..utils import compute_border_indices, compute_padding
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=None,
                  oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J

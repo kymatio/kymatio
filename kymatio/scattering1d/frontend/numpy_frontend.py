@@ -5,7 +5,7 @@ from .base_frontend import ScatteringBase1D
 
 
 class ScatteringNumPy1D(ScatteringNumPy, ScatteringBase1D):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=None,
             oversampling=0, out_type='array', backend='numpy'):
         ScatteringNumPy.__init__(self)
         ScatteringBase1D.__init__(self, J, shape, Q, T, max_order, average,

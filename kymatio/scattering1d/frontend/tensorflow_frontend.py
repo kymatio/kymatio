@@ -6,7 +6,7 @@ from .base_frontend import ScatteringBase1D
 
 
 class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=None,
             oversampling=0, out_type='array', backend='tensorflow',
                  name='Scattering1D'):
         ScatteringTensorFlow.__init__(self, name=name)
