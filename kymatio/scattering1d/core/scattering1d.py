@@ -1,5 +1,5 @@
 
-def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average=True):
+def scattering1d(U_0, backend, filters, oversampling, average=True):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -44,6 +44,7 @@ def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average
     U_0_hat = backend.rfft(U_0)
 
     # Get S0
+    phi = filters[0]
     log2_T = phi['j']
     k0 = max(log2_T - oversampling, 0)
 
@@ -56,6 +57,7 @@ def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average
         yield {'coef': U_0, 'j': (), 'n': ()}
 
     # First order:
+    psi1 = filters[1]
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
@@ -70,7 +72,7 @@ def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average
         # Take the modulus
         U_1_m = backend.modulus(U_1_c)
 
-        if average or max_order > 1:
+        if average or len(filters) > 2:
             U_1_hat = backend.rfft(U_1_m)
 
         if average:
@@ -83,8 +85,9 @@ def scattering1d(U_0, backend, psi1, psi2, phi, oversampling, max_order, average
         else:
             yield {'coef': U_1_m, 'j': (j1,), 'n': (n1,)}
 
-        if max_order == 2:
+        if len(filters) > 2:
             # 2nd order
+            psi2 = filters[2]
             for n2 in range(len(psi2)):
                 j2 = psi2[n2]['j']
 
