@@ -1,4 +1,4 @@
-def scattering1d_depthfirst(U0, backend, filters, oversampling, average_local):
+def scattering1d_widthfirst(U0, backend, filters, oversampling, average_local):
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
@@ -34,7 +34,7 @@ def scattering1d_depthfirst(U0, backend, filters, oversampling, average_local):
 
         if average_local:
             U_1_hat = rfft(U_1_m)
-            # Depth-first algorithm: store U1 in anticipation of next layer
+            # Width-first algorithm: store U1 in anticipation of next layer
             U_1_hats.append({'coef': U_1_hat, 'j': (j1,), 'n': (n1,)})
 
             # Convolve with phi_J
@@ -56,7 +56,7 @@ def scattering1d_depthfirst(U0, backend, filters, oversampling, average_local):
     # separately for the sake of meta() and padding/unpadding downstream.
     yield {'coef': S_1, 'j': (-1,), 'n': (-1,), 'n1_max': len(S_1_list)}
 
-    # Second order. Note that n2 is the outer loop in the depth-first algorithm
+    # Second order. Note that n2 is the outer loop (width-first algorithm)
     psi2 = filters[2]
     for n2 in range(len(psi2)):
         j2 = psi2[n2]['j']
