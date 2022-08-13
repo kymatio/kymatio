@@ -50,7 +50,7 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     if average_local:
         # Concatenate S1 paths over the penultimate dimension with shared n1.
         # S1 is a real-valued 3D array indexed by (batch, n1, time)
-        S_1 = backend.concatenate(S_1_list, -2)
+        S_1 = backend.concatenate(S_1_list)
 
         # S1 is a stack of multiple n1 paths so we puth (-1) as placeholder.
         # n1 ranges between 0 (included) and n1_max (excluded), which we store
@@ -79,7 +79,7 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
         if len(Y_2_list) > 0:
             # Concatenate over the penultimate dimension with shared n2.
             # Y_2 is a complex-valued 3D array indexed by (batch, n1, time)
-            Y_2 = backend.concatenate(Y_2_list, -2)
+            Y_2 = backend.concatenate(Y_2_list)
 
             # Y_2 is a stack of multiple n1 paths so we put (-1) as placeholder.
             # n1 ranges between 0 (included) and n1_max (excluded), which we store
