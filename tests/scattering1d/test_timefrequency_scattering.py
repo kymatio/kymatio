@@ -71,3 +71,20 @@ def test_scattering1d_widthfirst(device, backend):
         U_n2 = dict(filter(keep_n2, U_depth_order2.items()))
         U_n2 = S.backend.concatenate([U_n2[key] for key in sorted(U_n2.keys())])
         assert torch.allclose(S.backend.modulus(Y_width_order2[key]), U_n2)
+
+    # Local averaging
+    S_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
+        average_local=True)
+    S_width = {path['n']: path['coef'] for path in S_gen}
+    S_gen = scattering1d(U_0, S.backend, S.psi1_f, S.psi2_f, S.phi_f,
+        S.oversampling, max_order=1, average=True)
+    S1_depth = {path['n']: path['coef'] for path in S_gen if len(path['n']) > 0}
+
+    keep_order1 = lambda item: (len(item[0]) == 1)
+    S1_width = dict(filter(keep_order1, S_width.items()))
+    print(list(S1_width.keys()))
+    assert len(S1_width) == 1
+    S1_width = S1_width[(-1,)]
+    S1_depth = S.backend.concatenate([
+        S1_depth[key] for key in sorted(S1_depth.keys())])
+    assert torch.allclose(S1_width, S1_depth)
