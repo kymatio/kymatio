@@ -6,7 +6,8 @@ import numpy as np
 from warnings import warn
 
 from ..core.scattering1d import scattering1d
-from ..filter_bank import compute_temporal_support, gauss_1d, scattering_filter_factory
+from ..filter_bank import (compute_temporal_support, gauss_1d,
+    scatnet_generator, scattering_filter_factory)
 from ..utils import compute_border_indices, compute_padding
 
 
@@ -122,7 +123,6 @@ class ScatteringBase1D(ScatteringBase):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
             self._N_padded, self.J, self.Q, self.T,
-            r_psi=self.r_psi, sigma0=self.sigma0, alpha=self.alpha)
         ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
     def scattering(self, x):
@@ -275,6 +275,11 @@ class ScatteringBase1D(ScatteringBase):
         "Measure len(self.phi_f[0]) for the padded length (previously 2**J_pad) "
         "or access shape[0] for the unpadded length (previously N).", DeprecationWarning)
         return int(self.shape[0])
+
+    @property
+    def filterbank(self):
+        filterbank_kwargs = {"alpha": 5, "r_psi": math.sqrt(0.5), "sigma0": 0.1}
+        return (scatnet_generator, filterbank_kwargs)
 
     _doc_shape = 'N'
 
