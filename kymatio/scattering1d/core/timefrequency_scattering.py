@@ -1,4 +1,4 @@
-def scattering1d_widthfirst(U0, backend, filters, oversampling, average_local):
+def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     # compute the Fourier transform
     U_0_hat = rfft(U_0)
 
