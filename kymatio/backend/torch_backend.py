@@ -230,3 +230,7 @@ class TorchBackend:
     @staticmethod
     def shape(x):
         return x.shape
+
+    @staticmethod
+    def sum(x, axis):
+        return torch.sum(x, dim=axis)

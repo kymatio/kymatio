@@ -106,3 +106,7 @@ class NumpyBackend:
     @staticmethod
     def shape(x):
         return x.shape
+
+    @staticmethod
+    def sum(x, axis):
+        return numpy.sum(x, axis=axis)
