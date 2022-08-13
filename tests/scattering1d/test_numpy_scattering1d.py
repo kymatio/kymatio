@@ -100,6 +100,20 @@ class TestScattering1DNumpy:
                 phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T)
                 assert(phi_f['sigma']==0.1/T)
 
+    def test_Scattering1D_average_global(self, backend):
+        """
+        Tests global averaging.
+        """
+        N = 2 ** 13
+        Q = (1, 1)
+        J = 5
+        T = 'global'
+        sc = Scattering1D(J, N, Q, T, backend=backend, frontend='numpy')
+        x = np.zeros((N,), dtype=np.float32)
+        Sx = sc(x)
+        assert Sx.shape[-1] == 1
+
+
 
 frontends = ['numpy', 'sklearn']
 @pytest.mark.parametrize("backend", backends)
@@ -129,4 +143,3 @@ def test_Q(backend, frontend):
     Sc_tuple_out = Sc_tuple.scattering(x)
 
     assert np.allclose(Sc_int_out, Sc_tuple_out)
-    assert Sc_int_out.shape == Sc_tuple_out.shape
