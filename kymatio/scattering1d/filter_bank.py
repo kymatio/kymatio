@@ -409,7 +409,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
         for level in range(1, max_sub_psi2 + 1):
-            psi_level = psi_levels[0].reshape(2**level, -1).mean(axis=0)
+            psi_level = psi_levels[0].reshape(2 ** level, -1).mean(axis=0)
             psi_levels.append(psi_level)
         psi2_f.append({'levels': psi_levels, 'xi': xi2, 'sigma': sigma2, 'j': j2})
         max_j = max(max_j, j2)
@@ -424,7 +424,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     sigma_low = sigma0 / T
     phi_levels = [gauss_1d(N, sigma_low)]
     for level in range(1, max_sub_phi + 1):
-        phi_level = phi_levels[0].reshape(2**level, -1).mean(axis=0)
+        phi_level = phi_levels[0].reshape(2 ** level, -1).mean(axis=0)
         phi_levels.append(phi_level)
     phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
 
