@@ -11,7 +11,7 @@ def compute_border_indices(log2_T, J, i0, i1):
     This function finds the integers i0, i1 for all temporal subsamplings
     by 2**J, being conservative on the indices.
 
-    Maximal subsampling is by `2**log2_T` if `average=True`, else by
+    Maximal subsampling is by `2**log2_T` if `T=None`, else by
     `2**max(log2_T, J)`. We compute indices up to latter to be sure.
 
     Parameters

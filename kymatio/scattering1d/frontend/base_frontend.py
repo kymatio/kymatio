@@ -11,7 +11,7 @@ from ..utils import compute_border_indices, compute_padding
 
 
 class ScatteringBase1D(ScatteringBase):
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, T=None, max_order=2,
                  oversampling=0, out_type='array', backend=None):
         super(ScatteringBase1D, self).__init__()
         self.J = J
@@ -19,17 +19,9 @@ class ScatteringBase1D(ScatteringBase):
         self.Q = Q
         self.T = T
         self.max_order = max_order
-        self.average = average
         self.oversampling = oversampling
         self.out_type = out_type
         self.backend = backend
-
-        if average is not None:
-            warn("The average option is deprecated and will be removed in v0.4."
-                 " For average=True, set T=None for default averaging"
-                 " or T>=1 for custom averaging."
-                 " For average=False set T=0.",
-                 DeprecationWarning)
 
     def build(self):
         """Set up padding and filters
@@ -74,32 +66,21 @@ class ScatteringBase1D(ScatteringBase):
         # check T or set default
         if self.T is None:
             self.T = 2 ** self.J
-            self.average = True if self.average is None else self.average
+            self.average = 'local'
         elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                 "cannot exceed input length (got {} > {}). For large averaging "
                 "size, consider passing T='global'.".format(self.T, N_input))
         elif self.T == 0:
-            if not self.average:
-                self.T = 2 ** self.J
-                self.average = False
-            else:
-                raise ValueError("average must not be True if T=0 "
-                                 "(got {})".format(self.average))
+            self.T = 2 ** self.J
+            self.average = False
         elif self.T < 1:
-            raise ValueError("T must be ==0 or >=1 (got {})".format(
-                             self.T))
+            raise ValueError("T must be ==0 or >=1 (got {})".format(self.T))
         elif self.T == 'global':
             self.T = 2 ** self.J
             self.average = 'global'
         else:
-            self.average = True if self.average is None else self.average
-            if not self.average:
-                raise ValueError("average=False is not permitted when T>=1, "
-                                 "(got {}). average is deprecated in v0.3 in "
-                                 "favour of T and will "
-                                 "be removed in v0.4.".format(self.T))
-
+            self.average = 'local'
 
         self.log2_T = math.floor(math.log2(self.T))
 
@@ -139,7 +120,7 @@ class ScatteringBase1D(ScatteringBase):
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
         S_gen = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
-            self.oversampling, self.max_order, average=self.average)
+            self.oversampling, self.max_order, (self.average=='local'))
 
         if self.out_type in ['array', 'list']:
             S = list()
@@ -148,14 +129,18 @@ class ScatteringBase1D(ScatteringBase):
 
         for path in S_gen:
             path['order'] = len(path['n'])
-            if self.average:
+            if self.average == 'local':
                 res = self.log2_T
             elif path['order']>0:
                 res = max(path['j'][-1] - self.oversampling, 0)
             else:
                 res = 0
-            path['coef'] = self.backend.unpad(
-                path['coef'], self.ind_start[res], self.ind_end[res])
+
+            if self.average == 'global':
+                path['coef'] = self.backend.sum(path['coef'], axis=-1)
+            else:
+                path['coef'] = self.backend.unpad(
+                    path['coef'], self.ind_start[res], self.ind_end[res])
             path['coef'] = self.backend.reshape_output(
                 path['coef'], batch_shape, n_kept_dims=1)
 
@@ -208,7 +193,7 @@ class ScatteringBase1D(ScatteringBase):
             __getattr__ = lambda self, attr: (lambda *args: None)
 
         S = scattering1d(None, DryBackend(), self.psi1_f, self.psi2_f,
-            self.phi_f, self.oversampling, self.max_order)
+            self.phi_f, self.oversampling, self.max_order, average_local=False)
         S = sorted(list(S), key=lambda path: (len(path['n']), path['n']))
         meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
@@ -248,7 +233,7 @@ class ScatteringBase1D(ScatteringBase):
 
         if not self.average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
-                             "average=False. Please set out_type to 'dict' or 'list'.")
+                             "T=0. Please set out_type to 'dict' or 'list'.")
 
         if self.oversampling < 0:
             raise ValueError("oversampling must be nonnegative. Got: {}".format(
