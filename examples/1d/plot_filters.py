@@ -15,13 +15,14 @@ which creates both the first- and second-order filter banks.
 # First, we import the `scattering_filter_factory` method, which we will use
 # to generate the filters.
 
-from kymatio.scattering1d.filter_bank import scattering_filter_factory
+from kymatio.scattering1d.filter_bank import scatnet_generator, scattering_filter_factory
 
 ###############################################################################
-# We then import `numpy` and `matplotlib` to display the filters.
+# We then import `math`, `matplotlib`, and `numpy` to display the filters.
 
-import numpy as np
+from math import sqrt
 import matplotlib.pyplot as plt
+import numpy as np
 
 ###############################################################################
 # Filter parameters and generation
@@ -66,7 +67,8 @@ T = 2**J
 # first-order wavelet filters (`psi1_f`), and the second-order filters
 # (`psi2_f`).
 
-phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T)
+filterbank = (scatnet_generator, {"alpha": 5, "r_psi": sqrt(1/2), "sigma0": 5})
+phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T, filterbank)
 
 ###############################################################################
 # The `phi_f` output is a dictionary where each integer key corresponds points
