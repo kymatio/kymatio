@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from kymatio import Scattering1D
 from kymatio.scattering1d.frontend.numpy_frontend import ScatteringNumPy1D
-from kymatio.scattering1d.filter_bank import (compute_params_filterbank,
+from kymatio.scattering1d.filter_bank import (compute_xi_max, compute_sigma_psi,
     get_max_dyadic_subsampling)
 from kymatio.scattering1d.utils import (compute_border_indices, compute_padding)
 
@@ -77,13 +77,39 @@ def test_meta():
         S.r_psi, S.sigma0, S.alpha)
 
 
+def legacy_compute_params_filterbank(sigma_min, Q, r_psi):
+    xi_max = compute_xi_max(Q)
+    sigma_max = compute_sigma_psi(xi_max, Q, r=r_psi)
+
+    if sigma_max <= sigma_min:
+        xis = []
+        sigmas = []
+        elbow_xi = sigma_max
+    else:
+        xis =  [xi_max]
+        sigmas = [sigma_max]
+
+        # High-frequency (constant-Q) region: geometric progression of xi
+        while sigmas[-1] > (sigma_min * math.pow(2, 1/Q)):
+            xis.append(xis[-1] / math.pow(2, 1/Q))
+            sigmas.append(sigmas[-1] / math.pow(2, 1/Q))
+        elbow_xi = xis[-1]
+
+    # Low-frequency (constant-bandwidth) region: arithmetic progression of xi
+    for q in range(1, Q):
+        xis.append(elbow_xi - q/Q * elbow_xi)
+        sigmas.append(sigma_min)
+
+    return xis, sigmas
+    
+
 def legacy_compute_meta_scattering(J, Q, max_order, r_psi, sigma0, alpha):
     sigma_min = sigma0 / math.pow(2, J)
     Q1, Q2 = Q
-    xi1s, sigma1s = compute_params_filterbank(sigma_min, Q1, r_psi)
+    xi1s, sigma1s = legacy_compute_params_filterbank(sigma_min, Q1, r_psi)
     j1s = [get_max_dyadic_subsampling(xi1, sigma1, alpha)
         for xi1, sigma1 in zip(xi1s, sigma1s)]
-    xi2s, sigma2s = compute_params_filterbank(sigma_min, Q2, r_psi)
+    xi2s, sigma2s = legacy_compute_params_filterbank(sigma_min, Q2, r_psi)
     j2s = [get_max_dyadic_subsampling(xi2, sigma2, alpha)
         for xi2, sigma2 in zip(xi2s, sigma2s)]
 
