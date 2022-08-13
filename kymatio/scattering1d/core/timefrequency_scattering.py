@@ -11,6 +11,7 @@ def scattering1d_depthfirst(U0, backend, filters, oversampling, average_local):
         S_0_c = cdgmm(U_0_hat, phi['levels'][0])
         S_0_hat = subsample_fourier(S_0_c, 2**k0)
         S_0_r = irfft(S_0_hat)
+        S_1_list = []
         # S_0_r and U_0 are 2D arrays indexed by (batch, time)
         yield {'coef': S_0_r, 'j': (), 'n': ()}
     else:
@@ -36,22 +37,30 @@ def scattering1d_depthfirst(U0, backend, filters, oversampling, average_local):
             # Depth-first algorithm: store U1 in anticipation of next layer
             U_1_hats.append({'coef': U_1_hat, 'j': (j1,), 'n': (n1,)})
 
-        if average_local:
             # Convolve with phi_J
             k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_c = cdgmm(U_1_hat, phi['levels'][k1])
             S_1_hat = subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = irfft(S_1_hat)
-            # S_1_r and U_1_m are 2D arrays indexed by (batch, time)
-            yield {'coef': S_1_r, 'j': (j1,), 'n': (n1,)}
+            S_1_list.append(S_1_r)
         else:
+            # U_1_m is a 2D array indexed by (batch, time)
             yield {'coef': U_1_m, 'j': (j1,), 'n': (n1,)}
+
+    # Concatenate S1 paths over the penultimate dimension with shared n1.
+    # S1 is a real-valued 3D array indexed by (batch, n1, time)
+    S_1 = concatenate(S_1_list, -2)
+
+    # S1 is a stack of multiple n1 paths so we puth (-1) as placeholder.
+    # n1 ranges between 0 (included) and n1_max (excluded), which we store
+    # separately for the sake of meta() and padding/unpadding downstream.
+    yield {'coef': S_1, 'j': (-1,), 'n': (-1,), 'n1_max': len(S_1_list)}
 
     # Second order. Note that n2 is the outer loop in the depth-first algorithm
     psi2 = filters[2]
     for n2 in range(len(psi2)):
         j2 = psi2[n2]['j']
-        Y2 = []
+        Y_2_list = []
 
         for U_1_hat in U_1_hats:
             j1 = U_1_hat['j'][0]
@@ -62,13 +71,13 @@ def scattering1d_depthfirst(U0, backend, filters, oversampling, average_local):
                 U_2_c = cdgmm(U_1_hat['coef'], psi2[n2]['levels'][k1])
                 U_2_hat = subsample_fourier(U_2_c, 2**k2)
                 U_2_c = ifft(U_2_hat)
-                Y2.append(U_2_c)
+                Y_2_list.append(U_2_c)
 
         # Concatenate over the penultimate dimension with shared n2.
-        # Y2 is a complex-valued 3D array indexed by (batch, n1, time)
-        Y2 = concatenate(Y2, -2)
+        # Y_2 is a complex-valued 3D array indexed by (batch, n1, time)
+        Y_2 = concatenate(Y_2_list, -2)
 
-        # Y2 is a stack of multiple n1 paths so we put (-1) as placeholder.
-        # In practice n1 ranges between 0 (included) and Y2.shape[-2] (excluded)
-        # so there is no loss of information in this concatenation.
-        yield {'coef': Y2, 'j': (-1, j2), 'n': (-1, n2)}
+        # Y_2 is a stack of multiple n1 paths so we put (-1) as placeholder.
+        # n1 ranges between 0 (included) and n1_max (excluded), which we store
+        # separately for the sake of meta() and padding/unpadding downstream.
+        yield {'coef': Y_2, 'j': (-1, j2), 'n': (-1, n2), 'n1_max': len(Y_2_list)}
