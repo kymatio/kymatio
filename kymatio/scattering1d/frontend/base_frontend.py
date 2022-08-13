@@ -67,6 +67,9 @@ class ScatteringBase1D(ScatteringBase):
         if self.T is None:
             self.T = 2 ** self.J
             self.average = 'local'
+        elif self.T == 'global':
+            self.T = 2 ** self.J
+            self.average = 'global'
         elif self.T > N_input:
             raise ValueError("The temporal support T of the low-pass filter "
                 "cannot exceed input length (got {} > {}). For large averaging "
@@ -76,9 +79,6 @@ class ScatteringBase1D(ScatteringBase):
             self.average = False
         elif self.T < 1:
             raise ValueError("T must be ==0 or >=1 (got {})".format(self.T))
-        elif self.T == 'global':
-            self.T = 2 ** self.J
-            self.average = 'global'
         else:
             self.average = 'local'
 
