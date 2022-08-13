@@ -7,7 +7,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import (compute_temporal_support, gauss_1d,
-    scatnet_generator, scattering_filter_factory)
+    anden_generator, scattering_filter_factory)
 from ..utils import compute_border_indices, compute_padding
 
 
@@ -280,7 +280,7 @@ class ScatteringBase1D(ScatteringBase):
     def filterbank(self):
         filterbank_kwargs = {
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
-        return (scatnet_generator, filterbank_kwargs)
+        return (anden_generator, filterbank_kwargs)
 
     _doc_shape = 'N'
 
