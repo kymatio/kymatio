@@ -2,7 +2,7 @@
 Testing all functions in filters_bank
 """
 
-from kymatio.scattering1d.filter_bank import (adaptive_choice_P, periodize_filter_fourier,
+from kymatio.scattering1d.filter_bank import (adaptive_choice_P,
     compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d,
     get_max_dyadic_subsampling, gauss_1d)
 import numpy as np
@@ -29,24 +29,6 @@ def test_adaptive_choice_P():
             lim_right = np.exp(-(P**2) / denom)
             assert lim_left <= eps
             assert lim_right <= eps
-
-
-def test_periodize_filter_fourier(random_state=42):
-    """
-    Tests whether the periodization in Fourier corresponds to
-    a subsampling in time
-    """
-    rng = np.random.RandomState(random_state)
-    size_signal = [2**j for j in range(5, 10)]
-    periods = [2**k for k in range(0, 6)]
-
-    for N in size_signal:
-        x = rng.randn(N) + 1j * rng.randn(N)
-        x_f = np.fft.fft(x)
-        for per in periods:
-            x_per_f = periodize_filter_fourier(x_f, nperiods=per)
-            x_per = np.fft.ifft(x_per_f)
-            assert np.max(np.abs(x_per - x[::per])) < 1e-7
 
 
 def test_morlet_1d():
