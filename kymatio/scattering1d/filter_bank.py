@@ -388,4 +388,4 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
         phi_levels.append(phi_level)
     phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
 
-    return phi_f, *tuple(psis_f)
+    return phi_f, psis_f[0], psis_f[1]
