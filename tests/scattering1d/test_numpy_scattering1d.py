@@ -1,6 +1,7 @@
 import pytest
 from kymatio import Scattering1D
-from kymatio.scattering1d.filter_bank import scattering_filter_factory
+from kymatio.scattering1d.filter_bank import scattering_filter_factory, scatnet_generator
+import math
 import os
 import sys
 import io
@@ -89,16 +90,16 @@ class TestScattering1DNumpy:
         sigma_low_scale_factor = [0, 5]
         Js = [5]
 
+        filterbank_kwargs = {"alpha": 5, "r_psi": math.sqrt(1/2), "sigma0": 0.1}
+        filterbank = (scatnet_generator, filterbank_kwargs)
+
         for j in Js:
             J = j
             for i in sigma_low_scale_factor:
-                T=2**(J-i)
-                if i == 0:
-                    default_str = ' (default)'
-                else:
-                    default_str = ''
-                phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T)
-                assert(phi_f['sigma']==0.1/T)
+                T = 2 ** (J-i)
+                phi_f, psi1_f, psi2_f = scattering_filter_factory(
+                    N, J, Q, T, filterbank)
+                assert (phi_f['sigma'] == 0.1/T)
 
 
 frontends = ['numpy', 'sklearn']
@@ -129,4 +130,4 @@ def test_Q(backend, frontend):
     Sc_tuple_out = Sc_tuple.scattering(x)
 
     assert np.allclose(Sc_int_out, Sc_tuple_out)
-    assert Sc_int_out.shape == Sc_tuple_out.shape
+    assert Sc_int_out.shape == Sc_tuple_out.shape    assert Sc_int_out.shape == Sc_tuple_out.shape

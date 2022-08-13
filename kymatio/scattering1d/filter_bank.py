@@ -196,7 +196,7 @@ def compute_temporal_support(h_f, criterion_amplitude=1e-3):
     return N
 
 
-def get_max_dyadic_subsampling(xi, sigma, alpha):
+def get_max_dyadic_subsampling(xi, sigma, alpha, **unused_kwargs):
     """
     Computes the maximal dyadic subsampling which is possible for a Gabor
     filter of frequency xi and width sigma
@@ -251,7 +251,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def scatnet_generator(J, Q, sigma0, r_psi):
+def scatnet_generator(J, Q, sigma0, r_psi, **unused_kwargs):
     """
     Yields the center frequencies and bandwidths of a filterbank, in compliance
     with the ScatNet package. Center frequencies follow a geometric progression
@@ -311,8 +311,7 @@ def scatnet_generator(J, Q, sigma0, r_psi):
         yield xi, sigma_min
 
 
-def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
-                              sigma0=0.1, alpha=5., **kwargs):
+def scattering_filter_factory(N, J, Q, T, filterbank):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -385,26 +384,25 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     PhD Thesis, 2017
     https://tel.archives-ouvertes.fr/tel-01559667
     """
-    filterbank_fn = scatnet_generator
-    filterbank_kwargs = {"r_psi": r_psi}
+    filterbank_fn, filterbank_kwargs = filterbank
 
     # for the 1st order filters, the input is not subsampled so we
     # can only compute them with N=2**J_support
     max_j = 0
     psi1_f = []
-    for xi1, sigma1 in filterbank_fn(J, Q[0], sigma0, **filterbank_kwargs):
+    for xi1, sigma1 in filterbank_fn(J, Q[0], **filterbank_kwargs):
         psi_levels = [morlet_1d(N, xi1, sigma1)]
-        j1 = get_max_dyadic_subsampling(xi1, sigma1, alpha)
+        j1 = get_max_dyadic_subsampling(xi1, sigma1, **filterbank_kwargs)
         psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
         max_j = max(max_j, j1)
 
     # compute the band-pass filters of the second order,
     # which can take as input a subsampled
     psi2_f = []
-    for xi2, sigma2 in filterbank_fn(J, Q[1], sigma0, **filterbank_kwargs):
+    for xi2, sigma2 in filterbank_fn(J, Q[1], **filterbank_kwargs):
         # We first compute the filter without subsampling
         psi_levels = [morlet_1d(N, xi2, sigma2)]
-        j2 = get_max_dyadic_subsampling(xi2, sigma2, alpha)
+        j2 = get_max_dyadic_subsampling(xi2, sigma2, **filterbank_kwargs)
         max_sub_psi2 = max(max_j, j2 - 1)
         # compute the filter after subsampling at all other subsamplings
         # which might be received by the network, based on this first filter
@@ -421,7 +419,7 @@ def scattering_filter_factory(N, J, Q, T, r_psi=math.sqrt(0.5),
     max_sub_phi = min(max_j, log2_T)
 
     # compute the filters at all possible subsamplings
-    sigma_low = sigma0 / T
+    sigma_low = filterbank_kwargs["sigma0"] / T
     phi_levels = [gauss_1d(N, sigma_low)]
     for level in range(1, max_sub_phi + 1):
         phi_level = phi_levels[0].reshape(2 ** level, -1).mean(axis=0)
