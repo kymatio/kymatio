@@ -385,46 +385,40 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
     https://tel.archives-ouvertes.fr/tel-01559667
     """
     filterbank_fn, filterbank_kwargs = filterbank
-
-    # for the 1st order filters, the input is not subsampled so we
-    # can only compute them with N=2**J_support
     max_j = 0
-    psi1_f = []
-    for xi1, sigma1 in filterbank_fn(J, Q[0], **filterbank_kwargs):
-        psi_levels = [morlet_1d(N, xi1, sigma1)]
-        j1 = get_max_dyadic_subsampling(xi1, sigma1, **filterbank_kwargs)
-        psi1_f.append({'levels': psi_levels, 'xi': xi1, 'sigma': sigma1, 'j': j1})
-        max_j = max(max_j, j1)
-
-    # compute the band-pass filters of the second order,
-    # which can take as input a subsampled
-    psi2_f = []
-    for xi2, sigma2 in filterbank_fn(J, Q[1], **filterbank_kwargs):
-        # We first compute the filter without subsampling
-        psi_levels = [morlet_1d(N, xi2, sigma2)]
-        j2 = get_max_dyadic_subsampling(xi2, sigma2, **filterbank_kwargs)
-        max_sub_psi2 = max(max_j, j2 - 1)
-        # compute the filter after subsampling at all other subsamplings
-        # which might be received by the network, based on this first filter
-        for level in range(1, max_sub_psi2 + 1):
-            psi_level = psi_levels[0].reshape(2 ** level, -1).mean(axis=0)
-            psi_levels.append(psi_level)
-        psi2_f.append({'levels': psi_levels, 'xi': xi2, 'sigma': sigma2, 'j': j2})
-        max_j = max(max_j, j2)
-
-    # compute the low-pass filters phi
-    # Determine the maximal subsampling for phi, which depends on the
-    # input it can accept (both 1st and 2nd order)
+    previous_J = 0
     log2_T = math.floor(math.log2(T))
-    max_sub_phi = min(max_j, log2_T)
+    psis_f = []
 
-    # compute the filters at all possible subsamplings
+    # Loop over scattering layers
+    for Q_layer in Q:
+        psi_f = []
+
+        # Loop over center frequencies xi and bandwidths sigma in the filterbank
+        for xi, sigma in filterbank_fn(J, Q_layer, **filterbank_kwargs):
+
+            # Construct filter at full resolution
+            psi_levels = [morlet_1d(N, xi, sigma)]
+            j = get_max_dyadic_subsampling(xi, sigma, **filterbank_kwargs)
+
+            # Resample to smaller resolutions if necessary (beyond 1st layer)
+            # The idiom min(previous_J, j, log2_T) implements "j1 < j2"
+            for level in range(1, min(previous_J, j, log2_T)):
+                psi_level = psi_levels[0].reshape(2 ** level, -1).mean(axis=0)
+                psi_levels.append(psi_level)
+            psi_f.append({'levels': psi_levels, 'xi': xi, 'sigma': sigma, 'j': j})
+            max_j = max(j, max_j)
+
+        # Keep score of how many resolutions will be needed in the next layer
+        previous_J = max_j
+        psis_f.append(psi_f)
+
+    # Same with low-pass filter phi
     sigma_low = filterbank_kwargs["sigma0"] / T
     phi_levels = [gauss_1d(N, sigma_low)]
-    for level in range(1, max_sub_phi + 1):
+    for level in range(1, max(previous_J, 1+log2_T)):
         phi_level = phi_levels[0].reshape(2 ** level, -1).mean(axis=0)
         phi_levels.append(phi_level)
     phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
 
-    # return results
-    return phi_f, psi1_f, psi2_f
+    return phi_f, *psis_f
