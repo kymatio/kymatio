@@ -316,14 +316,13 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
     Builds in Fourier the Morlet filters used for the scattering transform.
 
     Each single filter is provided as a dictionary with the following keys:
-    * 'xi': central frequency, defaults to 0 for low-pass filters.
-    * 'sigma': frequential width
-    * k where k is an integer bounded below by 0. The maximal value for k
-        depends on the type of filter, it is dynamically chosen depending
-        on max_subsampling and the characteristics of the filters.
-        Each value for k is an array (or tensor) of size 2**(J_support - k)
-        containing the Fourier transform of the filter after subsampling by
-        2**k
+    * 'xi': normalized center frequency, where 0.5 corresponds to Nyquist.
+    * 'sigma': normalized bandwidth in the Fourier.
+    * 'j': log2 of downsampling factor after filtering. j=0 means no downsampling,
+        j=1 means downsampling by one half, etc.
+    * 'levels': list of NumPy arrays containing the filter at various levels
+        of downsampling. levels[0] is at full resolution, levels[1] at half
+        resolution, etc.
 
     Parameters
     ----------
@@ -339,50 +338,18 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
     T : int
         temporal support of low-pass filter, controlling amount of imposed
         time-shift invariance and maximum subsampling
-    r_psi : float, optional
-        Should be >0 and <1. Controls the redundancy of the filters
-        (the larger r_psi, the larger the overlap between adjacent wavelets).
-        Defaults to sqrt(0.5).
-    sigma0 : float, optional
-        parameter controlling the frequential width of the low-pass filter at
-        j=0; at a an absolute J, it is equal to sigma0 / 2**J. Defaults to 0.1
-    alpha : float, optional
-        tolerance factor for the aliasing after subsampling.
-        The larger alpha, the more conservative the value of maximal
-        subsampling is. Defaults to 5.
+    filterbank : tuple (callable filterbank_fn, dict filterbank_kwargs)
+        filterbank_fn should take J and Q as positional arguments and
+        **filterbank_kwargs as optional keyword arguments.
+        Corresponds to the self.filterbank property of the scattering object.
+        As of v0.3, only scatnet_generator is supported as filterbank_fn.
 
     Returns
     -------
-    phi_f : dictionary
-        a dictionary containing the low-pass filter at all possible
-        subsamplings. See above for a description of the dictionary structure.
-        The possible subsamplings are controlled by the inputs they can
-        receive, which correspond to the subsamplings performed on top of the
-        1st and 2nd order transforms.
-    psi1_f : dictionary
-        a dictionary containing the band-pass filters of the 1st order,
-        only for the base resolution as no subsampling is used in the
-        scattering tree.
-        Each value corresponds to a dictionary for a single filter, see above
-        for an exact description.
-        The keys of this dictionary are of the type (j, n) where n is an
-        integer counting the filters and j the maximal dyadic subsampling
-        which can be performed on top of the filter without aliasing.
-    psi2_f : dictionary
-        a dictionary containing the band-pass filters of the 2nd order
-        at all possible subsamplings. The subsamplings are determined by the
-        input they can receive, which depends on the scattering tree.
-        Each value corresponds to a dictionary for a single filter, see above
-        for an exact description.
-        The keys of this dictionary are of th etype (j, n) where n is an
-        integer counting the filters and j is the maximal dyadic subsampling
-        which can be performed on top of this filter without aliasing.
-
-    Refs
-    ----
-    Convolutional operators in the time-frequency domain, V. Lostanlen,
-    PhD Thesis, 2017
-    https://tel.archives-ouvertes.fr/tel-01559667
+    phi_f, psi1_f, psi2_f ... : dictionaries
+        phi_f corresponds to the low-pass filter and psi1_f, psi2_f, to the
+        wavelet filterbanks at layers 1 and 2 respectively.
+        See above for a description of the dictionary structure.
     """
     filterbank_fn, filterbank_kwargs = filterbank
     max_j = 0
