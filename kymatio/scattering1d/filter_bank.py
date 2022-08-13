@@ -311,6 +311,15 @@ def anden_generator(J, Q, sigma0, r_psi, **unused_kwargs):
         yield xi, sigma_min
 
 
+def spin(filterbank):
+    filterbank_fn, filterbank_kwargs = filterbank
+    def spinned_fn(J, Q, **kwargs):
+        for xi, sigma in filterbank_fn(J, Q, **kwargs):
+            yield xi, sigma
+            yield -xi, sigma
+    return spinned_fn, filterbank_kwargs
+
+
 def scattering_filter_factory(N, J, Q, T, filterbank):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
