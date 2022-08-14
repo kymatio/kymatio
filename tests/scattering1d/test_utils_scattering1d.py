@@ -5,7 +5,8 @@ from kymatio import Scattering1D
 from kymatio.scattering1d.frontend.numpy_frontend import ScatteringNumPy1D
 from kymatio.scattering1d.filter_bank import (compute_xi_max, compute_sigma_psi,
     get_max_dyadic_subsampling)
-from kymatio.scattering1d.utils import (compute_border_indices, compute_padding)
+from kymatio.scattering1d.utils import (compute_border_indices, compute_padding,
+    parse_T)
 
 
 def test_compute_padding():
@@ -75,6 +76,23 @@ def test_meta():
     self_meta = S.meta()
     legacy_meta = legacy_compute_meta_scattering(S.J, S.Q, S.max_order,
         S.r_psi, S.sigma0, S.alpha)
+
+
+# Check that T parser works as intended
+def test_parse_T():
+    assert parse_T(T=None, J=5, N_input=1024) == (32, 'local')
+    assert parse_T(T='global', J=5, N_input=1024) == (32, 'global')
+    with pytest.raises(ValueError) as ve:
+        parse_T(T=2048, J=5, N_input=1024)
+    assert 'The support T of the low-pass filter cannot exceed' in ve.value.args[0]
+    with pytest.raises(ValueError) as ve:
+        parse_T(T=2048, J=5, N_input=1024, T_alias='F')
+    assert 'The support F of the low-pass filter cannot exceed' in ve.value.args[0]
+    assert parse_T(T=0, J=5, N_input=1024) == (32, False)
+    with pytest.raises(ValueError) as ve:
+        parse_T(T=0.5, J=5, N_input=1024)
+    assert 'must be ==0 or >=1' in ve.value.args[0]
+    assert parse_T(T=256, J=5, N_input=1024) == (256, 'local')
 
 
 def legacy_compute_params_filterbank(sigma_min, Q, r_psi):
