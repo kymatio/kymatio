@@ -4,7 +4,7 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     ------
     U_0 : array indexed by (batch, time)
     backend : module
-    filters : (phi, psi1, psi2) tuple of dictionaries. same as scattering1d
+    filters : [phi, psi1, psi2] list of dictionaries. same as scattering1d
     oversampling : int >= 0. same as scattering1d
     average_local : bool. same as scattering1d
 
