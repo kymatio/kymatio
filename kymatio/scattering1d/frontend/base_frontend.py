@@ -522,4 +522,40 @@ class ScatteringBase1D(ScatteringBase):
             n=cls._doc_array_n)
 
 
-__all__ = ['ScatteringBase1D']
+class TimeFrequencyScatteringBase(ScatteringBase1D):
+    def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0,
+            Q_fr=1, F=None, oversampling_fr=0, out_type='array', backend=None):
+        max_order = 2
+        super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,
+            max_order, oversampling, out_type, backend)
+        self.J_fr = J_fr
+        self.Q_fr = Q_fr
+        self.F = F
+        self.oversampling_fr = oversampling_fr
+
+    def build(self):
+        super(TimeFrequencyScatteringBase, self).build()
+        super(TimeFrequencyScatteringBase, self).create_filters()
+
+        # check F or set default
+        N_input_fr = len(self.psi1_f)
+        self.F, self.average_fr = parse_T(
+            self.F, self.J_fr, N_input_fr, T_alias='F')
+        self.log2_F = math.floor(math.log2(self.F))
+
+        # Compute the minimum support to pad (ideally)
+        phi_f = gauss_1d(N_input_fr, self.sigma0/max(self.F, 2 ** self.J_fr))
+        min_to_pad_fr = 3 * compute_temporal_support(
+            phi_f.reshape(1, -1), criterion_amplitude=1e-3)
+
+        # We want to pad the frequency domain to the minimum number that is:
+        # (1) greater than number of first-order coefficients, N_input_fr,
+        #     by a margin of at least min_to_pad_fr
+        # (2) a multiple of all subsampling factors of frequential scattering:
+        #     2**1, 2**2, etc. up to 2**K_fr = (2**J_fr / 2**oversampling_fr)
+        K_fr = max(self.J_fr - self.oversampling_fr, 0)
+        N_padded_fr_subsampled = (N_input_fr + min_to_pad_fr) // (2 ** K_fr)
+        self._N_padded_fr = N_padded_fr_subsampled * (2 ** K_fr)
+
+
+__all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
