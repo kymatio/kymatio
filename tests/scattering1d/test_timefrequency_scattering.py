@@ -57,8 +57,7 @@ def test_scattering1d_widthfirst():
     S_width = {path['n']: path['coef'] for path in S_gen}
 
     # Depth-first
-    S_gen = scattering1d(U_0, S.backend, S.psi1_f, S.psi2_f, S.phi_f,
-        S.oversampling, average_local)
+    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
     S1_depth = {path['n']: path['coef'] for path in S_gen if len(path['n']) > 0}
 
     # Check order 1 (order 2 is unaveraged in width-first so irrelevant here)
