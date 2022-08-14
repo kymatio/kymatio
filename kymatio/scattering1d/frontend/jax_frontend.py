@@ -11,7 +11,7 @@ class ScatteringJax1D(ScatteringJax, ScatteringNumPy1D):
     # be loaded
 
 
-    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=True,
+    def __init__(self, J, shape, Q=1, T=None, max_order=2, average=None,
             oversampling=0, out_type='array', backend='jax'):
         
         ScatteringJax.__init__(self)
