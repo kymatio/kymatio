@@ -32,7 +32,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.reduce_mean(y, axis=-2)
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, mode='reflect'):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -46,6 +46,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        mode : string (optional)
+            padding mode: "CONSTANT", "REFLECT", or "SYMMETRIC" (case-insensitive)
         Returns
         -------
         res : tensor
@@ -57,7 +59,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
         paddings = [[0, 0]] * len(x.shape[:-1])
         paddings += [[pad_left, pad_right]]
 
-        return tf.pad(x, paddings, mode="REFLECT")
+        return tf.pad(x, paddings, mode=mode)
 
     @staticmethod
     def unpad(x, i0, i1):

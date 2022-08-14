@@ -32,7 +32,7 @@ class NumpyBackend1D(NumpyBackend):
         return res
 
     @classmethod
-    def pad(cls, x, pad_left, pad_right):
+    def pad(cls, x, pad_left, pad_right, mode='reflect'):
         """Pad real 1D tensors
         1D implementation of the padding function for real PyTorch tensors.
         Parameters
@@ -46,6 +46,8 @@ class NumpyBackend1D(NumpyBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        mode : string (optional)
+            padding mode: "CONSTANT", "REFLECT", or "SYMMETRIC" (case-insensitive)
         Returns
         -------
         output : tensor
@@ -57,7 +59,7 @@ class NumpyBackend1D(NumpyBackend):
         paddings = ((0, 0),) * len(x.shape[:-1])
         paddings += (pad_left, pad_right),
 
-        output = cls._np.pad(x, paddings, mode='reflect')
+        output = cls._np.pad(x, paddings, mode=mode)
 
         return output
 
