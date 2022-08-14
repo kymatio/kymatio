@@ -52,7 +52,7 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
         # S1 is a real-valued 3D array indexed by (batch, n1, time)
         S_1 = backend.concatenate(S_1_list)
 
-        # S1 is a stack of multiple n1 paths so we puth (-1) as placeholder.
+        # S1 is a stack of multiple n1 paths so we put (-1) as placeholder.
         # n1 ranges between 0 (included) and n1_max (excluded), which we store
         # separately for the sake of meta() and padding/unpadding downstream.
         yield {'coef': S_1, 'j': (-1,), 'n': (-1,), 'n1_max': len(S_1_list)}
