@@ -95,7 +95,7 @@ def test_fft_type():
 
 
 def test_fft():
-    def coefficent(n):
+    def coefficient(n):
             return np.exp(-2 * np.pi * 1j * n)
 
     x_r = np.random.rand(4)
