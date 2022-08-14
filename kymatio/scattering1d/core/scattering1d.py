@@ -1,5 +1,5 @@
 
-def scattering1d(U_0, backend, filters, oversampling, average_global):
+def scattering1d(U_0, backend, filters, oversampling, average_local):
     """
     Main function implementing the 1-D scattering transform.
 
