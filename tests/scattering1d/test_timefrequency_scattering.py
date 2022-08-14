@@ -13,6 +13,8 @@ def test_scattering1d_widthfirst():
     x = torch.zeros(shape)
     x[shape[0]//2] = 1
 
+    ### average_local == False ###
+    average_local = False
     # Width-first scattering
     x_shape = S.backend.shape(x)
     batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
@@ -20,12 +22,11 @@ def test_scattering1d_widthfirst():
     U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
     U_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
-        average_local=False)
+        average_local)
     U_width = {path['n']: path['coef'] for path in U_gen}
 
     # Depth-first scattering
-    U_gen = scattering1d(U_0, S.backend, S.psi1_f, S.psi2_f, S.phi_f,
-        S.oversampling, S.max_order, average=False)
+    U_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
     U_depth = {path['n']: path['coef'] for path in U_gen}
 
     # Check orders 0 and 1
@@ -47,14 +48,20 @@ def test_scattering1d_widthfirst():
         U_n2 = S.backend.concatenate([U_n2[key] for key in sorted(U_n2.keys())])
         assert torch.allclose(S.backend.modulus(Y_width_order2[key]), U_n2)
 
-    # Local averaging
+    ### average_local == True ###
+    average_local = True
+
+    # Width-first
     S_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
-        average_local=True)
+        average_local)
     S_width = {path['n']: path['coef'] for path in S_gen}
+
+    # Depth-first
     S_gen = scattering1d(U_0, S.backend, S.psi1_f, S.psi2_f, S.phi_f,
-        S.oversampling, max_order=1, average=True)
+        S.oversampling, average_local)
     S1_depth = {path['n']: path['coef'] for path in S_gen if len(path['n']) > 0}
 
+    # Check order 1 (order 2 is unaveraged in width-first so irrelevant here)
     keep_order1 = lambda item: (len(item[0]) == 1)
     S1_width = dict(filter(keep_order1, S_width.items()))
     assert len(S1_width) == 1
