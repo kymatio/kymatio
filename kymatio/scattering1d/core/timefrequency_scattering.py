@@ -1,4 +1,35 @@
 def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
+    """
+    Inputs
+    ------
+    U_0 : array indexed by (batch, time)
+    backend : module
+    filters : (phi, psi1, psi2) tuple of dictionaries. same as scattering1d
+    oversampling : int >= 0. same as scattering1d
+    average_local : bool. same as scattering1d
+
+    Yields
+    ------
+    if average_local:
+        * S_0 indexed by (batch, time[log2_T])
+        * S_1 indexed by (batch, n1, time[log2_T])
+        * Y_2[n2=0] indexed by (batch, n1, time[log2_T]) and n1 s.t. j1 < j2
+        * etc. for every n2 < len(psi2)
+    else:
+        * U_0 indexed by (batch, time)
+        * U_1[n1=0] indexed by (batch, time[n1])
+        * etc. for every n1 < len(psi1)
+        * Y_2[n2=0] indexed by (batch, n1, time[n2]) and n1 s.t. j1 < j2
+        * etc. for every n2 < len(psi2)
+
+    Definitions
+    -----------
+    U_0(t) = x(t)
+    S_0(t) = (x * phi)(t)
+    U_1[n1](t) = |x * psi_{n1}|(t)
+    S_1(n1, t) = (|x * psi_{n1}| * phi)(t) broadcasted over n1
+    Y_2[n2](n1, t) = (U1 * psi_{n2})(n1, t) broadcasted over n1
+    """
     # compute the Fourier transform
     U_0_hat = backend.rfft(U_0)
 
