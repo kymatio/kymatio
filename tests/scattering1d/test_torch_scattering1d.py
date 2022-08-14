@@ -490,3 +490,17 @@ def test_check_runtime_args(device, backend):
                          frontend='torch').to(device)
         S(x)
     assert "nonnegative" in ve.value.args[0]
+
+
+def test_Scattering1D_average_global():
+    """
+    Tests global averaging.
+    """
+    N = 2 ** 13
+    Q = (1, 1)
+    J = 5
+    T = 'global'
+    sc = Scattering1D(J, N, Q, T, backend=backends[-1], frontend='torch', out_type='array')
+    x = torch.zeros((N,))
+    Sx = sc(x)
+    assert Sx.shape[-1] == 1

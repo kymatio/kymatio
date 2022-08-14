@@ -27,8 +27,4 @@ class TensorFlowBackend(NumpyBackend):
 
     @staticmethod
     def shape(x):
-        return tf.shape(x)
-
-    @staticmethod
-    def sum(x, axis):
-        return tf.math.reduce_sum(x, axis=axis)
+        return tf.shape(x)  

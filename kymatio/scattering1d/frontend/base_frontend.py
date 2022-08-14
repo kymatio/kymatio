@@ -137,7 +137,7 @@ class ScatteringBase1D(ScatteringBase):
                 res = 0
 
             if self.average == 'global':
-                path['coef'] = self.backend.sum(path['coef'], axis=-1)
+                path['coef'] = self.backend.average_global(path['coef'])
             else:
                 path['coef'] = self.backend.unpad(
                     path['coef'], self.ind_start[res], self.ind_end[res])

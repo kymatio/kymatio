@@ -96,4 +96,10 @@ class TensorFlowBackend1D(TensorFlowBackend):
 
         return tf.signal.ifft(x, name='ifft1d')
 
+    @classmethod
+    def average_global(cls, x):
+        cls.real_check(x)
+
+        return tf.math.reduce_sum(x, axis=-1, keepdims=True)
+
 backend = TensorFlowBackend1D
