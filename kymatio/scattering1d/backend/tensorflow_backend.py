@@ -82,7 +82,7 @@ class TensorFlowBackend1D(TensorFlowBackend):
 
     @classmethod
     def cfft(cls, x):
-        cls.complex_check(s)
+        cls.complex_check(x)
 
         return tf.signal.fft(x, name='cfft1d')
 
