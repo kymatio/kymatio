@@ -17,9 +17,9 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
         * etc. for every n2 < len(psi2)
     else:
         * U_0 indexed by (batch, time)
-        * U_1[n1=0] indexed by (batch, time[n1])
+        * U_1[n1=0] indexed by (batch, time[j1])
         * etc. for every n1 < len(psi1)
-        * Y_2[n2=0] indexed by (batch, n1, time[n2]) and n1 s.t. j1 < j2
+        * Y_2[n2=0] indexed by (batch, n1, time[j2]) and n1 s.t. j1 < j2
         * etc. for every n2 < len(psi2)
 
     Definitions
@@ -27,8 +27,8 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     U_0(t) = x(t)
     S_0(t) = (x * phi)(t)
     U_1[n1](t) = |x * psi_{n1}|(t)
-    S_1(n1, t) = (|x * psi_{n1}| * phi)(t) broadcast over n1
-    Y_2[n2](n1, t) = (U1 * psi_{n2})(n1, t) broadcast over n1
+    S_1(n1, t) = (|x * psi_{n1}| * phi)(t), conv. over t, broadcast over n1
+    Y_2[n2](n1, t) = (U_1 * psi_{n2})(n1, t), conv. over t, broadcast over n1
     """
     # compute the Fourier transform
     U_0_hat = backend.rfft(U_0)
