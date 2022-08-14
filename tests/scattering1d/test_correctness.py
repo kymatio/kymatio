@@ -23,8 +23,8 @@ def test_T():
     xs = np.roll(x, shift)
 
     # make scattering objects
-    ts0 = Scattering1D(J=J, Q=Q, shape=N, T=T0, average=1, out_type='array')
-    ts1 = Scattering1D(J=J, Q=Q, shape=N, T=T1, average=1, out_type='array')
+    ts0 = Scattering1D(J=J, Q=Q, shape=N, T=T0, out_type='array')
+    ts1 = Scattering1D(J=J, Q=Q, shape=N, T=T1, out_type='array')
 
     # scatter
     ts0_x  = ts0.scattering(x)
