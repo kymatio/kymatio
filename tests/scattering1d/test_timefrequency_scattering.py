@@ -66,5 +66,5 @@ def test_scattering1d_widthfirst():
     assert len(S1_width) == 1
     S1_width = S1_width[(-1,)]
     S1_depth = S.backend.concatenate([
-        S1_depth[key] for key in sorted(S1_depth.keys())])
+        S1_depth[key] for key in sorted(S1_depth.keys()) if len(key)==1])
     assert torch.allclose(S1_width, S1_depth)
