@@ -79,6 +79,12 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return x[..., i0:i1]
 
     @classmethod
+    def cfft(cls, x):
+        cls.complex_check(s)
+
+        return tf.signal.fft(x, name='cfft1d')
+
+    @classmethod
     def rfft(cls, x):
         cls.real_check(x)
 

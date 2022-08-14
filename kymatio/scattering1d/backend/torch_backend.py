@@ -101,6 +101,13 @@ class TorchBackend1D(TorchBackend):
 
         return x[..., i0:i1]
 
+    @classmethod
+    def cfft(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+
+        return _fft(x)
+
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
     @classmethod
