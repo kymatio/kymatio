@@ -119,8 +119,9 @@ class ScatteringBase1D(ScatteringBase):
 
         U_0 = self.backend.pad(x, pad_left=self.pad_left, pad_right=self.pad_right)
 
-        S_gen = scattering1d(U_0, self.backend, self.psi1_f, self.psi2_f, self.phi_f,
-            self.oversampling, self.max_order, (self.average=='local'))
+        filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
+        S_gen = scattering1d(U_0, self.backend, filters,
+            self.oversampling, (self.average=='local'))
 
         if self.out_type in ['array', 'list']:
             S = list()
@@ -192,8 +193,8 @@ class ScatteringBase1D(ScatteringBase):
         class DryBackend:
             __getattr__ = lambda self, attr: (lambda *args: None)
 
-        S = scattering1d(None, DryBackend(), self.psi1_f, self.psi2_f,
-            self.phi_f, self.oversampling, self.max_order, average_local=False)
+        filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
+        S = scattering1d(None, DryBackend(), filters, self.oversampling, average_local=False)
         S = sorted(list(S), key=lambda path: (len(path['n']), path['n']))
         meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
