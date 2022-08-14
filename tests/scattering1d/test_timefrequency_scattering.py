@@ -5,39 +5,13 @@ from kymatio.torch import Scattering1D
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.core.timefrequency_scattering import scattering1d_widthfirst
 
-backends = []
-skcuda_available = False
-try:
-    if torch.cuda.is_available():
-        from skcuda import cublas
-        import cupy
-        skcuda_available = True
-except:
-    Warning('torch_skcuda backend not available.')
-
-if skcuda_available:
-    from kymatio.scattering1d.backend.torch_skcuda_backend import backend
-    backends.append(backend)
-
-from kymatio.scattering1d.backend.torch_backend import backend
-backends.append(backend)
-
-if torch.cuda.is_available():
-    devices = ['cuda', 'cpu']
-else:
-    devices = ['cpu']
-
-
-@pytest.mark.parametrize("device", devices)
-@pytest.mark.parametrize("backend", backends)
-def test_scattering1d_widthfirst(device, backend):
+def test_scattering1d_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
-    S = Scattering1D(J, shape, backend=backend).to(device)
+    S = Scattering1D(J, shape)
     x = torch.zeros(shape)
     x[shape[0]//2] = 1
-    x = x.to(device)
 
     # Width-first scattering
     x_shape = S.backend.shape(x)
@@ -83,7 +57,6 @@ def test_scattering1d_widthfirst(device, backend):
 
     keep_order1 = lambda item: (len(item[0]) == 1)
     S1_width = dict(filter(keep_order1, S_width.items()))
-    print(list(S1_width.keys()))
     assert len(S1_width) == 1
     S1_width = S1_width[(-1,)]
     S1_depth = S.backend.concatenate([
