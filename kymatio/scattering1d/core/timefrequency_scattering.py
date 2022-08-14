@@ -27,8 +27,8 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     U_0(t) = x(t)
     S_0(t) = (x * phi)(t)
     U_1[n1](t) = |x * psi_{n1}|(t)
-    S_1(n1, t) = (|x * psi_{n1}| * phi)(t) broadcasted over n1
-    Y_2[n2](n1, t) = (U1 * psi_{n2})(n1, t) broadcasted over n1
+    S_1(n1, t) = (|x * psi_{n1}| * phi)(t) broadcast over n1
+    Y_2[n2](n1, t) = (U1 * psi_{n2})(n1, t) broadcast over n1
     """
     # compute the Fourier transform
     U_0_hat = backend.rfft(U_0)
