@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 from kymatio.scattering1d.backend.tensorflow_backend import backend
+import tensorflow as tf
 
 
 def test_subsample_fourier():
@@ -108,6 +109,9 @@ def test_fft():
     # increase tolerance here as tensorflow fft is slightly inaccurate due to
     # eigen implementation https://github.com/google/jax/issues/2952
     # (see also below)
+    assert np.allclose(y_r, z, atol=1e-6, rtol=1e-7)
+
+    z = backend.cfft(tf.cast(x_r, dtype=tf.complex64))
     assert np.allclose(y_r, z, atol=1e-6, rtol=1e-7)
 
     z_1 = backend.ifft(z)
