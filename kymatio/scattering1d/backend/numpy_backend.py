@@ -98,4 +98,10 @@ class NumpyBackend1D(NumpyBackend):
 
         return cls._fft.ifft(x)
 
+    @classmethod
+    def average_global(cls, x):
+        cls.real_check(x)
+
+        return cls._np.sum(x, axis=-1, keepdims=True)
+
 backend = NumpyBackend1D

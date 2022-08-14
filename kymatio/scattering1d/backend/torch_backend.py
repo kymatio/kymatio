@@ -127,5 +127,12 @@ class TorchBackend1D(TorchBackend):
 
         return _ifft(x)
 
+    @classmethod
+    def average_global(cls, x):
+        cls.contiguous_check(x)
+        cls.real_check(x)
+
+        return torch.sum(x, axis=-2, keepdims=True)
+
 
 backend = TorchBackend1D

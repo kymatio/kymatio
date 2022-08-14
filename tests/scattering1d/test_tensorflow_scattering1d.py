@@ -1,8 +1,9 @@
 import pytest
 from kymatio import Scattering1D
+import io
 import os
 import numpy as np
-import io
+import tensorflow as tf
 
 
 backends = []
@@ -65,3 +66,18 @@ def test_Q(backend):
 
     assert np.allclose(Sc_int_out, Sc_tuple_out)
     assert Sc_int_out.shape == Sc_tuple_out.shape
+
+
+@pytest.mark.parametrize("backend", backends)
+def test_Scattering1D_average_global(backend):
+    """
+    Tests global averaging.
+    """
+    N = 2 ** 13
+    Q = (1, 1)
+    J = 5
+    T = 'global'
+    sc = Scattering1D(J, N, Q, T, backend=backend, frontend='tensorflow', out_type='array')
+    x = tf.zeros((N,))
+    Sx = sc(x).numpy()
+    assert Sx.shape[-1] == 1

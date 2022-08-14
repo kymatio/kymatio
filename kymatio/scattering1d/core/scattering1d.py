@@ -1,5 +1,5 @@
 
-def scattering1d(U_0, backend, filters, oversampling, average=True):
+def scattering1d(U_0, backend, filters, oversampling, average_local):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -36,8 +36,8 @@ def scattering1d(U_0, backend, filters, oversampling, average=True):
         tensor along time. Must be nonnegative (`oversampling>=0     ).
     max_order : int, optional
         Number of orders in the scattering transform. Either 1 or 2.
-    average : boolean, optional
-        whether to average the result. Default to True.
+    average_local : boolean, optional
+        whether to locally average the result by means of a low-pass filter phi.
     """
 
     # compute the Fourier transform
@@ -48,7 +48,7 @@ def scattering1d(U_0, backend, filters, oversampling, average=True):
     log2_T = phi['j']
     k0 = max(log2_T - oversampling, 0)
 
-    if average:
+    if average_local:
         S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
         S_0_hat = backend.subsample_fourier(S_0_c, 2**k0)
         S_0_r = backend.irfft(S_0_hat)
@@ -62,7 +62,7 @@ def scattering1d(U_0, backend, filters, oversampling, average=True):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
 
-        sub1_adj = min(j1, log2_T) if average else j1
+        sub1_adj = min(j1, log2_T) if average_local else j1
         k1 = max(sub1_adj - oversampling, 0)
 
         U_1_c = backend.cdgmm(U_0_hat, psi1[n1]['levels'][0])
@@ -72,10 +72,10 @@ def scattering1d(U_0, backend, filters, oversampling, average=True):
         # Take the modulus
         U_1_m = backend.modulus(U_1_c)
 
-        if average or len(filters) > 2:
+        if average_local or (len(filters) > 2):
             U_1_hat = backend.rfft(U_1_m)
 
-        if average:
+        if average_local:
             # Convolve with phi_J
             k1_J = max(log2_T - k1 - oversampling, 0)
             S_1_c = backend.cdgmm(U_1_hat, phi['levels'][k1])
@@ -93,7 +93,7 @@ def scattering1d(U_0, backend, filters, oversampling, average=True):
 
                 if j2 > j1:
                     # convolution + downsampling
-                    sub2_adj = min(j2, log2_T) if average else j2
+                    sub2_adj = min(j2, log2_T) if average_local else j2
                     k2 = max(sub2_adj - k1 - oversampling, 0)
 
                     U_2_c = backend.cdgmm(U_1_hat, psi2[n2]['levels'][k1])
@@ -103,7 +103,7 @@ def scattering1d(U_0, backend, filters, oversampling, average=True):
 
                     U_2_m = backend.modulus(U_2_c)
 
-                    if average:
+                    if average_local:
                         U_2_hat = backend.rfft(U_2_m)
 
                         # Convolve with phi_J
