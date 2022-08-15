@@ -226,16 +226,16 @@ def test_fft(backend, device):
     if backend.name == "torch_skcuda" and device == "cpu":
         pytest.skip()
 
-    def coefficent(n):
+    def coefficient(n):
             return np.exp(-2 * np.pi * 1j * n)
 
     x_r = np.random.rand(4)
 
     I, K = np.meshgrid(np.arange(4), np.arange(4), indexing='ij')
 
-    coefficents = coefficent(K * I / x_r.shape[0])
-        
-    y_r = (x_r * coefficents).sum(-1)
+    coefficients = coefficient(K * I / x_r.shape[0])
+
+    y_r = (x_r * coefficients).sum(-1)
 
     x_r = torch.from_numpy(x_r)[..., None].to(device)
     y_r = torch.from_numpy(np.column_stack((y_r.real, y_r.imag))).to(device)
@@ -252,6 +252,9 @@ def test_fft(backend, device):
     print(z_2.shape)
     assert not z_2.shape[-1] == 2
     assert torch.allclose(x_r, z_2)
+    
+    z_3 = backend.cfft(backend.ifft(z))
+    assert torch.allclose(z, z_3)
 
 
 @pytest.mark.parametrize("device", devices)

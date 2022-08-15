@@ -48,7 +48,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right):
+    def pad(x, pad_left, pad_right, mode='reflect'):
         """Pad real 1D tensors
 
         1D implementation of the padding function for real PyTorch tensors.
@@ -64,6 +64,9 @@ class TorchBackend1D(TorchBackend):
         pad_right : int
             amount to add on the right of the tensor (at the end of the temporal
             axis).
+        mode : string (optional)
+            padding mode: "CONSTANT", "REFLECT", or "SYMMETRIC" (case-insensitive)
+
         Returns
         -------
         res : tensor
@@ -72,7 +75,7 @@ class TorchBackend1D(TorchBackend):
         if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
             raise ValueError('Indefinite padding size (larger than tensor).')
 
-        res = F.pad(x, (pad_left, pad_right), mode='reflect')
+        res = F.pad(x, (pad_left, pad_right), mode=mode)
         res = res[..., None]
 
         return res
@@ -100,6 +103,13 @@ class TorchBackend1D(TorchBackend):
         x = x.reshape(x.shape[:-1])
 
         return x[..., i0:i1]
+
+    @classmethod
+    def cfft(cls, x):
+        cls.contiguous_check(x)
+        cls.complex_check(x)
+
+        return _fft(x)
 
     # we cast to complex here then fft rather than use torch.rfft as torch.rfft is
     # inefficent.
