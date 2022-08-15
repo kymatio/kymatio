@@ -59,7 +59,7 @@ from kymatio.scattering3d.utils \
 # Finally, we import the utility functions that let us access the QM7 dataset
 # and the cache directories to store our results.
 
-from kymatio.datasets import fetch_qm7
+from ...datasets import fetch_qm7
 from kymatio.caching import get_cache_dir
 
 ###############################################################################

@@ -30,7 +30,7 @@ from PIL import Image
 
 from kymatio.torch import Scattering2D as Scattering
 from kymatio.caching import get_cache_dir
-from kymatio.datasets import get_dataset_dir
+from ...datasets import get_dataset_dir
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
