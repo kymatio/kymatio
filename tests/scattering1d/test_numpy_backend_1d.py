@@ -95,16 +95,19 @@ def test_fft_type():
 
 
 def test_fft():
-    def coefficent(n):
+    def coefficient(n):
             return np.exp(-2 * np.pi * 1j * n)
 
     x_r = np.random.rand(4)
 
     I, K = np.meshgrid(np.arange(4), np.arange(4), indexing='ij')
 
-    coefficents = coefficent(K * I / x_r.shape[0])
-        
-    y_r = (x_r * coefficents).sum(-1)
+    coefficients = coefficient(K * I / x_r.shape[0])
+
+    y_r = (x_r * coefficients).sum(-1)
+
+    z = backend.cfft(x_r.astype('complex64'))
+    assert np.allclose(y_r, z)
 
     z = backend.rfft(x_r)
     assert np.allclose(y_r, z)
