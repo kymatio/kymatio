@@ -13,8 +13,11 @@ def test_jtfs_build():
         J=10, J_fr=3, shape=4096, Q=8, backend='torch')
     assert jtfs.F is None
 
-    # Test parse_T(self.F, self.J_fr, N_input_fr, T_alias='F')
+    # Test Q_fr
     jtfs.build()
+    assert jtfs.Q_fr == (1,)
+
+    # Test parse_T(self.F, self.J_fr, N_input_fr, T_alias='F')
     assert jtfs.F == (2 ** jtfs.J_fr)
     assert jtfs.log2_F == jtfs.J_fr
 
@@ -24,6 +27,24 @@ def test_jtfs_build():
 
     # Test that padded frequency domain is divisible by max subsampling factor
     assert (jtfs._N_padded_fr % (2**jtfs.J_fr)) == 0
+
+
+def test_Q():
+    jtfs_kwargs = dict(J=10, J_fr=3, shape=4096, Q=8, backend='torch')
+    # test different cases for Q_fr
+    with pytest.raises(ValueError) as ve:
+        TimeFrequencyScatteringBase(Q_fr=0.9, **jtfs_kwargs).build()
+    assert "Q_fr must be >= 1" in ve.value.args[0]
+
+    # test different cases for Q_fr
+    with pytest.raises(ValueError) as ve:
+        TimeFrequencyScatteringBase(Q_fr=[1], **jtfs_kwargs).build()
+    assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
+
+    with pytest.raises(NotImplementedError) as ve:
+        TimeFrequencyScatteringBase(Q_fr=(1, 2), **jtfs_kwargs).build()
+    assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
+
 
 
 def test_scattering1d_widthfirst():

@@ -39,7 +39,7 @@ class ScatteringBase1D(ScatteringBase):
 
         # check the number of filters per octave
         if np.any(np.array(self.Q) < 1):
-            raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
+            raise ValueError('Q must always be >= 1, got {}'.format(self.Q))
 
         if isinstance(self.Q, int):
             self.Q = (self.Q, 1)
@@ -47,7 +47,7 @@ class ScatteringBase1D(ScatteringBase):
             if len(self.Q) == 1:
                 self.Q = self.Q + (1, )
             elif len(self.Q) < 1 or len(self.Q) > 2:
-                raise NotImplementedError("Q should be an integer, 1-tuple or "
+                raise NotImplementedError("Q must be an integer, 1-tuple or "
                                           "2-tuple. Scattering transforms "
                                           "beyond order 2 are not implemented.")
         else:
@@ -536,6 +536,20 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
     def build(self):
         super(TimeFrequencyScatteringBase, self).build()
         super(TimeFrequencyScatteringBase, self).create_filters()
+
+        # check the number of filters per octave
+        if np.any(np.array(self.Q_fr) < 1):
+            raise ValueError('Q_fr must be >= 1, got {}'.format(self.Q_fr))
+
+        if isinstance(self.Q_fr, int):
+            self.Q_fr = (self.Q_fr,)
+        elif isinstance(self.Q_fr, tuple):
+            if (len(self.Q_fr) != 1):
+                raise NotImplementedError("Q_fr must be an integer or 1-tuple. "
+                                          "Time-frequency scattering "
+                                          "beyond order 2 is not implemented.")
+        else:
+            raise ValueError("Q_fr must be an integer or 1-tuple.")
 
         # check F or set default
         N_input_fr = len(self.psi1_f)
