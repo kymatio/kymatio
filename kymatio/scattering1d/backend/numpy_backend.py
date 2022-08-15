@@ -112,4 +112,10 @@ class NumpyBackend1D(NumpyBackend):
 
         return cls._np.sum(x, axis=-1, keepdims=True)
 
+    @classmethod
+    def swap_time_frequency(cls, x):
+        cls.complex_check(x)
+
+        return cls._np.moveaxis(x, source=(-1, -2), destination=(-2, -1))
+
 backend = NumpyBackend1D
