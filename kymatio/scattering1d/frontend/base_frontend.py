@@ -557,6 +557,16 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         N_padded_fr_subsampled = (N_input_fr + min_to_pad_fr) // (2 ** K_fr)
         self._N_padded_fr = N_padded_fr_subsampled * (2 ** K_fr)
 
+    def create_filters(self):
+        phi0_fr_f = scattering_filter_factory(self._N_padded_fr,
+            self.J_fr, (), self.F, self.filterbank_fr)
+        phi1_fr_f, psis_fr_f = scattering_filter_factory(self._N_padded_fr,
+            self.J_fr, self.Q_fr, 2**self.J_fr, self.filterbank_fr)
+        self.filters_fr = (phi0_fr_fr, (phi1_fr_f, psis_fr_f))
+
+        # Check for absence of aliasing
+        assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
+
     @property
     def filterbank_fr(self):
         filterbank_kwargs = {
