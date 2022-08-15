@@ -1,4 +1,4 @@
-def scattering1d_widthfirst(U_0, backend, filters, oversampling):
+def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     """
     Inputs
     ------
@@ -9,10 +9,15 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling):
         Yields scattering coefficients at the sample
         rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         doubles the sample rate, until reaching the native sample rate.
+    average_local : boolean, optional
+        whether to locally average the result by means of a low-pass filter phi.
 
     Yields
     ------
-    * S_0 indexed by (batch, time[log2_T])
+    if average_local:
+        * S_0 indexed by (batch, time[log2_T])
+    else:
+        * U_0 indexed by (batch, time)
     * S_1 indexed by (batch, n1, time[log2_T])
     * Y_2[n2=0] indexed by (batch, n1, time[j1]) and n1 s.t. j1 < j2
     * etc. for every n2 < len(psi2)
@@ -31,12 +36,15 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling):
     # Get S0, a 2D array indexed by (batch, time)
     phi = filters[0]
     log2_T = phi['j']
-    k0 = max(log2_T - oversampling, 0)
-    S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
-    S_0_hat = backend.subsample_fourier(S_0_c, 2 ** k0)
-    S_0_r = backend.irfft(S_0_hat)
-    S_1_list = []
-    yield {'coef': S_0_r, 'j': (), 'n': ()}
+    if average_local:
+        k0 = max(log2_T - oversampling, 0)
+        S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
+        S_0_hat = backend.subsample_fourier(S_0_c, 2 ** k0)
+        S_0_r = backend.irfft(S_0_hat)
+        S_1_list = []
+        yield {'coef': S_0_r, 'j': (), 'n': ()}
+    else:
+        yield {'coef': U_0, 'j': (), 'n': ()}
 
     # First order:
     psi1 = filters[1]
