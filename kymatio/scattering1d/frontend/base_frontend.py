@@ -537,6 +537,16 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         super(TimeFrequencyScatteringBase, self).build()
         super(TimeFrequencyScatteringBase, self).create_filters()
 
+        if isinstance(self.Q_fr, int):
+            self.Q_fr = (self.Q_fr,)
+        elif isinstance(self.Q_fr, tuple):
+            if (len(self.Q_fr) != 1):
+                raise NotImplementedError("Q_fr should be an integer or 1-tuple. "
+                                          "Time-frequency scattering "
+                                          "beyond order 2 is not implemented.")
+        else:
+            raise ValueError("Q_fr must be an integer or a 1-tuple.")
+
         # check F or set default
         N_input_fr = len(self.psi1_f)
         self.F, self.average_fr = parse_T(
