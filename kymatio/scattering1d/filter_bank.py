@@ -395,6 +395,7 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
     for level in range(1, max(previous_J, 1+log2_T)):
         phi_level = phi_levels[0].reshape(2 ** level, -1).mean(axis=0)
         phi_levels.append(phi_level)
-    phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T}
+    phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T,
+        'N': N}
 
     return tuple([phi_f] + psis_f)

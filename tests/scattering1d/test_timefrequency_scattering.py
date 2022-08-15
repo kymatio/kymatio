@@ -47,6 +47,16 @@ def test_Q():
 
 
 
+def test_jtfs_create_filters():
+    jtfs = TimeFrequencyScatteringBase(
+        J=10, J_fr=3, shape=4096, Q=8, backend='torch')
+    jtfs.build()
+    jtfs.create_filters()
+
+    phi = jtfs.filters_fr[0]
+    assert phi['N'] == jtfs._N_padded_fr
+
+
 def test_scattering1d_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
