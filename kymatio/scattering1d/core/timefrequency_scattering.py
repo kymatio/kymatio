@@ -5,8 +5,15 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     U_0 : array indexed by (batch, time)
     backend : module
     filters : [phi, psi1, psi2] list of dictionaries. same as scattering1d
-    oversampling : int >= 0. same as scattering1d
-    average_local : bool. same as scattering1d
+    oversampling : int >=0, optional
+        if average_local is True, return scattering coefficients at the sample
+        rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
+        doubles the sample rate, until reaching the native sample rate.
+        if average_local is False, return first-order coefficients at the sample
+        rate max(1, 2**(j1-oversampling)) and second-order coefficients at the
+        sample rate max(1, 2**(j2-oversampling)).
+    average_local : boolean, optional
+        whether to locally average the result by means of a low-pass filter phi.
 
     Yields
     ------
