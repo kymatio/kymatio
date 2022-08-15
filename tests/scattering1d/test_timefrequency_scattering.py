@@ -49,3 +49,9 @@ def test_scattering1d_widthfirst():
         U_n2 = dict(filter(keep_n2, U2_depth.items()))
         U_n2 = S.backend.concatenate([U_n2[key] for key in sorted(U_n2.keys())])
         assert torch.allclose(S.backend.modulus(Y_width_order2[key]), U_n2)
+
+    # Check order 0 under average_local=False
+    W_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
+        average_local=False)
+    U_0_width = next(W_gen)
+    assert torch.allclose(U_0_width['coef'], U_0)
