@@ -39,7 +39,7 @@ class ScatteringBase1D(ScatteringBase):
 
         # check the number of filters per octave
         if np.any(np.array(self.Q) < 1):
-            raise ValueError('Q should always be >= 1, got {}'.format(self.Q))
+            raise ValueError('Q must always be >= 1, got {}'.format(self.Q))
 
         if isinstance(self.Q, int):
             self.Q = (self.Q, 1)
@@ -47,7 +47,7 @@ class ScatteringBase1D(ScatteringBase):
             if len(self.Q) == 1:
                 self.Q = self.Q + (1, )
             elif len(self.Q) < 1 or len(self.Q) > 2:
-                raise NotImplementedError("Q should be an integer, 1-tuple or "
+                raise NotImplementedError("Q must be an integer, 1-tuple or "
                                           "2-tuple. Scattering transforms "
                                           "beyond order 2 are not implemented.")
         else:
@@ -522,4 +522,54 @@ class ScatteringBase1D(ScatteringBase):
             n=cls._doc_array_n)
 
 
-__all__ = ['ScatteringBase1D']
+class TimeFrequencyScatteringBase(ScatteringBase1D):
+    def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0,
+            Q_fr=1, F=None, oversampling_fr=0, out_type='array', backend=None):
+        max_order = 2
+        super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,
+            max_order, oversampling, out_type, backend)
+        self.J_fr = J_fr
+        self.Q_fr = Q_fr
+        self.F = F
+        self.oversampling_fr = oversampling_fr
+
+    def build(self):
+        super(TimeFrequencyScatteringBase, self).build()
+        super(TimeFrequencyScatteringBase, self).create_filters()
+
+        # check the number of filters per octave
+        if np.any(np.array(self.Q_fr) < 1):
+            raise ValueError('Q_fr must be >= 1, got {}'.format(self.Q_fr))
+
+        if isinstance(self.Q_fr, int):
+            self.Q_fr = (self.Q_fr,)
+        elif isinstance(self.Q_fr, tuple):
+            if (len(self.Q_fr) != 1):
+                raise NotImplementedError("Q_fr must be an integer or 1-tuple. "
+                                          "Time-frequency scattering "
+                                          "beyond order 2 is not implemented.")
+        else:
+            raise ValueError("Q_fr must be an integer or 1-tuple.")
+
+        # check F or set default
+        N_input_fr = len(self.psi1_f)
+        self.F, self.average_fr = parse_T(
+            self.F, self.J_fr, N_input_fr, T_alias='F')
+        self.log2_F = math.floor(math.log2(self.F))
+
+        # Compute the minimum support to pad (ideally)
+        phi_f = gauss_1d(N_input_fr, self.sigma0/max(self.F, 2 ** self.J_fr))
+        min_to_pad_fr = 3 * compute_temporal_support(
+            phi_f.reshape(1, -1), criterion_amplitude=1e-3)
+
+        # We want to pad the frequency domain to the minimum number that is:
+        # (1) greater than number of first-order coefficients, N_input_fr,
+        #     by a margin of at least min_to_pad_fr
+        # (2) a multiple of all subsampling factors of frequential scattering:
+        #     2**1, 2**2, etc. up to 2**K_fr = (2**J_fr / 2**oversampling_fr)
+        K_fr = max(self.J_fr - self.oversampling_fr, 0)
+        N_padded_fr_subsampled = (N_input_fr + min_to_pad_fr) // (2 ** K_fr)
+        self._N_padded_fr = N_padded_fr_subsampled * (2 ** K_fr)
+
+
+__all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']

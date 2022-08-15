@@ -56,7 +56,7 @@ def test_Q():
     # test different cases for Q
     with pytest.raises(ValueError) as ve:
         _ = Scattering1D(J=J, Q=0.9)(inputs)
-    assert "Q should always be >= 1" in ve.value.args[0]
+    assert "Q must always be >= 1" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         _ = Scattering1D(J=J, Q=[8])(inputs)
