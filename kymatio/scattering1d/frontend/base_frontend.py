@@ -7,7 +7,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import (compute_temporal_support, gauss_1d,
-    anden_generator, scattering_filter_factory)
+    anden_generator, scattering_filter_factory, spin)
 from ..utils import compute_border_indices, compute_padding, parse_T
 
 
@@ -556,6 +556,12 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         K_fr = max(self.J_fr - self.oversampling_fr, 0)
         N_padded_fr_subsampled = (N_input_fr + min_to_pad_fr) // (2 ** K_fr)
         self._N_padded_fr = N_padded_fr_subsampled * (2 ** K_fr)
+
+    @property
+    def filterbank_fr(self):
+        filterbank_kwargs = {
+            "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
+        return spin(anden_generator, filterbank_kwargs)
 
 
 __all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
