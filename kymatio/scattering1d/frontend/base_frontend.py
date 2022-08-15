@@ -8,7 +8,7 @@ from warnings import warn
 from ..core.scattering1d import scattering1d
 from ..filter_bank import (compute_temporal_support, gauss_1d,
     anden_generator, scattering_filter_factory)
-from ..utils import compute_border_indices, compute_padding
+from ..utils import compute_border_indices, compute_padding, parse_T
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -65,24 +65,7 @@ class ScatteringBase1D(ScatteringBase):
         N_input = self.shape[0]
 
         # check T or set default
-        if self.T is None:
-            self.T = 2 ** self.J
-            self.average = 'local'
-        elif self.T == 'global':
-            self.T = 2 ** self.J
-            self.average = 'global'
-        elif self.T > N_input:
-            raise ValueError("The temporal support T of the low-pass filter "
-                "cannot exceed input length (got {} > {}). For large averaging "
-                "size, consider passing T='global'.".format(self.T, N_input))
-        elif self.T == 0:
-            self.T = 2 ** self.J
-            self.average = False
-        elif self.T < 1:
-            raise ValueError("T must be ==0 or >=1 (got {})".format(self.T))
-        else:
-            self.average = 'local'
-
+        self.T, self.average = parse_T(self.T, self.J, N_input)
         self.log2_T = math.floor(math.log2(self.T))
 
         # Compute the minimum support to pad (ideally)

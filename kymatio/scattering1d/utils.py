@@ -66,3 +66,43 @@ def compute_padding(N, N_input):
     if max(pad_left, pad_right) >= N_input:
         raise ValueError('Too large padding value, will lead to NaN errors')
     return pad_left, pad_right
+
+
+def parse_T(T, J, N_input, T_alias='T'):
+    """
+    Parses T in Scattering1D base frontend.
+    Parses T and F in TimeFrequencyScattering base frontend.
+
+    Parameters
+    ----------
+    T : None, string, integer 0, or float >= 1
+        user-provided T value
+    J : int
+        user-provided J value
+    N_input : int
+        input size
+    T_alias : string
+        Used for printing error messages.
+        Typically 'T' (default) or 'F' (in TimeFrequencyScattering).
+
+    Returns
+    -------
+    T_parsed : int
+        (2**J) if T is None, zero, or 'global'; user-provided T otherwise
+    average : string
+        'global' if T is 'global'; False if T is zero; 'local' otherwise
+    """
+    if T is None:
+        return 2 ** J, 'local'
+    elif T == 'global':
+        return 2 ** J, 'global'
+    elif T > N_input:
+        raise ValueError("The support {} of the low-pass filter cannot exceed "
+            "input length (got {} > {}). For large averaging size, consider "
+            "passing {}='global'.".format(T_alias, T, N_input, T_alias))
+    elif T == 0:
+        return 2 ** J, False
+    elif T < 1:
+        raise ValueError("{} must be ==0 or >=1 (got {})".format(T_alias, T))
+    else:
+        return T, 'local'
