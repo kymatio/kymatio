@@ -1,4 +1,4 @@
-def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
+def scattering1d_widthfirst(U_0, backend, filters, oversampling):
     """
     Inputs
     ------
@@ -6,28 +6,16 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     backend : module
     filters : [phi, psi1, psi2] list of dictionaries. same as scattering1d
     oversampling : int >=0, optional
-        if average_local is True, return scattering coefficients at the sample
+        Yields scattering coefficients at the sample
         rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         doubles the sample rate, until reaching the native sample rate.
-        if average_local is False, return first-order coefficients at the sample
-        rate max(1, 2**(j1-oversampling)) and second-order coefficients at the
-        sample rate max(1, 2**(j2-oversampling)).
-    average_local : boolean, optional
-        whether to locally average the result by means of a low-pass filter phi.
 
     Yields
     ------
-    if average_local:
-        * S_0 indexed by (batch, time[log2_T])
-        * S_1 indexed by (batch, n1, time[log2_T])
-        * Y_2[n2=0] indexed by (batch, n1, time[log2_T]) and n1 s.t. j1 < j2
-        * etc. for every n2 < len(psi2)
-    else:
-        * U_0 indexed by (batch, time)
-        * U_1[n1=0] indexed by (batch, time[j1])
-        * etc. for every n1 < len(psi1)
-        * Y_2[n2=0] indexed by (batch, n1, time[j2]) and n1 s.t. j1 < j2
-        * etc. for every n2 < len(psi2)
+    * S_0 indexed by (batch, time[log2_T])
+    * S_1 indexed by (batch, n1, time[log2_T])
+    * Y_2[n2=0] indexed by (batch, n1, time[j1]) and n1 s.t. j1 < j2
+    * etc. for every n2 < len(psi2)
 
     Definitions
     -----------
@@ -40,20 +28,15 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     # compute the Fourier transform
     U_0_hat = backend.rfft(U_0)
 
-    # Get S0
+    # Get S0, a 2D array indexed by (batch, time)
     phi = filters[0]
     log2_T = phi['j']
     k0 = max(log2_T - oversampling, 0)
-
-    if average_local:
-        S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
-        S_0_hat = backend.subsample_fourier(S_0_c, 2 ** k0)
-        S_0_r = backend.irfft(S_0_hat)
-        S_1_list = []
-        # S_0_r and U_0 are 2D arrays indexed by (batch, time)
-        yield {'coef': S_0_r, 'j': (), 'n': ()}
-    else:
-        yield {'coef': U_0, 'j': (), 'n': ()}
+    S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
+    S_0_hat = backend.subsample_fourier(S_0_c, 2 ** k0)
+    S_0_r = backend.irfft(S_0_hat)
+    S_1_list = []
+    yield {'coef': S_0_r, 'j': (), 'n': ()}
 
     # First order:
     psi1 = filters[1]
@@ -74,26 +57,21 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
         # Width-first algorithm: store U1 in anticipation of next layer
         U_1_hats.append({'coef': U_1_hat, 'j': (j1,), 'n': (n1,)})
 
-        if average_local:
-            # Convolve with phi_J
-            k1_J = max(log2_T - k1 - oversampling, 0)
-            S_1_c = backend.cdgmm(U_1_hat, phi['levels'][k1])
-            S_1_hat = backend.subsample_fourier(S_1_c, 2 ** k1_J)
-            S_1_r = backend.irfft(S_1_hat)
-            S_1_list.append(S_1_r)
-        else:
-            # U_1_m is a 2D array indexed by (batch, time)
-            yield {'coef': U_1_m, 'j': (j1,), 'n': (n1,)}
+        # Convolve with phi_J
+        k1_J = max(log2_T - k1 - oversampling, 0)
+        S_1_c = backend.cdgmm(U_1_hat, phi['levels'][k1])
+        S_1_hat = backend.subsample_fourier(S_1_c, 2 ** k1_J)
+        S_1_r = backend.irfft(S_1_hat)
+        S_1_list.append(S_1_r)
 
-    if average_local:
-        # Concatenate S1 paths over the penultimate dimension with shared n1.
-        # S1 is a real-valued 3D array indexed by (batch, n1, time)
-        S_1 = backend.concatenate(S_1_list)
+    # Concatenate S1 paths over the penultimate dimension with shared n1.
+    # S1 is a real-valued 3D array indexed by (batch, n1, time)
+    S_1 = backend.concatenate(S_1_list)
 
-        # S1 is a stack of multiple n1 paths so we put (-1) as placeholder.
-        # n1 ranges between 0 (included) and n1_max (excluded), which we store
-        # separately for the sake of meta() and padding/unpadding downstream.
-        yield {'coef': S_1, 'j': (-1,), 'n': (-1,), 'n1_max': len(S_1_list)}
+    # S1 is a stack of multiple n1 paths so we put (-1) as placeholder.
+    # n1 ranges between 0 (included) and n1_max (excluded), which we store
+    # separately for the sake of meta() and padding/unpadding downstream.
+    yield {'coef': S_1, 'j': (-1,), 'n': (-1,), 'n1_max': len(S_1_list)}
 
     # Second order. Note that n2 is the outer loop (width-first algorithm)
     psi2 = filters[2]
