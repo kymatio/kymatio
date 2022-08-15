@@ -436,7 +436,7 @@ def test_Q(device, backend):
     with pytest.raises(ValueError) as ve:
         _ = Scattering1D(
             J, shape, Q=0.9, backend=backend, frontend='torch')
-    assert "Q should always be >= 1" in ve.value.args[0]
+    assert "Q must always be >= 1" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         _ = Scattering1D(
