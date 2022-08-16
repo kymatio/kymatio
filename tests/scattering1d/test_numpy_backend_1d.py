@@ -107,7 +107,7 @@ def test_fft():
     y_r = (x_r * coefficients).sum(-1)
 
     z = backend.cfft(x_r.astype('complex64'))
-    assert np.allclose(y_r, z)
+    assert np.allclose(y_r, z, atol=1e-6)
 
     z = backend.rfft(x_r)
     assert np.allclose(y_r, z)
