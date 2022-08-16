@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import torch
 from kymatio.torch import Scattering1D
@@ -47,13 +48,24 @@ def test_Q():
 
 
 def test_jtfs_create_filters():
+    J_fr = 3
     jtfs = TimeFrequencyScatteringBase(
-        J=10, J_fr=3, shape=4096, Q=8, backend='torch')
+        J=10, J_fr=J_fr, shape=4096, Q=8, backend='torch')
     jtfs.build()
     jtfs.create_filters()
 
     phi = jtfs.filters_fr[0]
     assert phi['N'] == jtfs._N_padded_fr
+
+    psis = jtfs.filters_fr[1]
+    assert len(psis) == (1 + 2*(J_fr+1))
+    assert np.isclose(psis[0]['xi'], 0)
+    positive_spins = psis[1:][:J_fr+1]
+    negative_spins = psis[1:][J_fr+1:]
+    assert all([psi['xi']>0 for psi in positive_spins])
+    assert all([psi['xi']<0 for psi in negative_spins])
+    assert all([(psi_pos['xi']==-psi_neg['xi'])
+        for psi_pos, psi_neg in zip(positive_spins, negative_spins)])
 
 
 def test_scattering1d_widthfirst():
