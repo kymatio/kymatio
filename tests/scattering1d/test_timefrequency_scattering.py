@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
 import torch
-from kymatio.torch import Scattering1D
 
+import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
-from kymatio.scattering1d.core.timefrequency_scattering import scattering1d_widthfirst
+from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
+    scattering1d_widthfirst)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 
 
@@ -72,7 +73,7 @@ def test_scattering1d_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
-    S = Scattering1D(J, shape)
+    S = kymatio.Scattering1D(J, shape, frontend='torch')
     x = torch.zeros(shape)
     x[shape[0]//2] = 1
     x_shape = S.backend.shape(x)
