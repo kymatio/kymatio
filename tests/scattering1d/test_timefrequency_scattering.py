@@ -104,18 +104,39 @@ def test_scattering1d_widthfirst():
         S1_depth[key] for key in sorted(S1_depth.keys()) if len(key)==1])
     assert torch.allclose(S1_width, S1_depth)
 
-    # Check order 2
-    keep_order2 = lambda item: (len(item[0]) == 2)
-    Y_width_order2 = dict(filter(keep_order2, W.items()))
-    for key in Y_width_order2:
-        n2 = key[-1]
-        keep_n2 = lambda item: (item[0][-1] == n2)
-        U_n2 = dict(filter(keep_n2, U2_depth.items()))
-        U_n2 = S.backend.concatenate([U_n2[key] for key in sorted(U_n2.keys())])
-        assert torch.allclose(S.backend.modulus(Y_width_order2[key]), U_n2)
 
-    # Check order 0 under average_local=False
-    W_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
-        average_local=False)
-    U_0_width = next(W_gen)
-    assert torch.allclose(U_0_width['coef'], U_0)
+def test_frequency_scattering():
+    # Create S1 array as input
+    J = 5
+    shape = (4096,)
+    Q = 8
+    S = kymatio.Scattering1D(J=J, Q=Q, shape=shape, backend='numpy')
+    x = torch.zeros(shape)
+    x[shape[0]//2] = 1
+    x_shape = S.backend.shape(x)
+    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    x = S.backend.reshape_input(x, signal_shape)
+    U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
+    filters = [S.phi_f, S.psi1_f, S.psi2_f]
+    average_local = True
+    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
+    S_1_dict = {path['n']: path['coef'] for path in S_gen if len(path['n'])==1}
+    S_1 = S.backend.concatenate([S_1_dict[key] for key in sorted(S_1_dict.keys())])
+    X = {'coef': S_1, 'n1_max': len(S_1_dict)}
+
+    # Define scattering object
+    J_fr = 3
+    jtfs = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, backend='numpy')
+    jtfs.build()
+    jtfs.create_filters()
+
+    # spinned=False
+    freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
+        jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
+    for Y_fr in freq_gen:
+        assert Y_fr['spin'] >= 0
+
+    # spinned=True
+    freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
+        jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
