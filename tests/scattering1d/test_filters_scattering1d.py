@@ -136,6 +136,6 @@ def test_spin():
     spinned_generator, spinned_kwargs = spin(anden_generator, filterbank_kwargs)
     spinned_xisigmas = list(spinned_generator(J, Q, **spinned_kwargs))
     assert len(spinned_xisigmas) == (2*len(unspinned_xisigmas))
-    assert spinned_xisigmas[0][0] == -spinned_xisigmas[1][0]
-    assert spinned_xisigmas[0][1] == spinned_xisigmas[1][1]
+    assert spinned_xisigmas[0][0] == -spinned_xisigmas[J+1][0]
+    assert spinned_xisigmas[0][1] == spinned_xisigmas[J+1][1]
     assert spinned_kwargs == filterbank_kwargs
