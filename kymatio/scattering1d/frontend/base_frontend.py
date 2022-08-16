@@ -7,7 +7,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..filter_bank import (compute_temporal_support, gauss_1d,
-    anden_generator, scattering_filter_factory)
+    anden_generator, scattering_filter_factory, spin)
 from ..utils import compute_border_indices, compute_padding, parse_T
 
 
@@ -570,6 +570,22 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         K_fr = max(self.J_fr - self.oversampling_fr, 0)
         N_padded_fr_subsampled = (N_input_fr + min_to_pad_fr) // (2 ** K_fr)
         self._N_padded_fr = N_padded_fr_subsampled * (2 ** K_fr)
+
+    def create_filters(self):
+        phi0_fr_f,= scattering_filter_factory(self._N_padded_fr,
+            self.J_fr, (), self.F, self.filterbank_fr)
+        phi1_fr_f, psis_fr_f = scattering_filter_factory(self._N_padded_fr,
+            self.J_fr, self.Q_fr, 2**self.J_fr, self.filterbank_fr)
+        self.filters_fr = (phi0_fr_f, [phi1_fr_f] + psis_fr_f)
+
+        # Check for absence of aliasing
+        assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
+
+    @property
+    def filterbank_fr(self):
+        filterbank_kwargs = {
+            "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
+        return spin(anden_generator, filterbank_kwargs)
 
 
 __all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']

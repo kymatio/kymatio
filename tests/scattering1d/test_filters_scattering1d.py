@@ -133,7 +133,7 @@ def test_spin():
     Q = 1
     filterbank_kwargs = {"alpha": 5, "r_psi": math.sqrt(0.5), "sigma0": 0.1}
     unspinned_xisigmas = list(anden_generator(J, Q, **filterbank_kwargs))
-    spinned_generator, spinned_kwargs = spin((anden_generator, filterbank_kwargs))
+    spinned_generator, spinned_kwargs = spin(anden_generator, filterbank_kwargs)
     spinned_xisigmas = list(spinned_generator(J, Q, **spinned_kwargs))
     assert len(spinned_xisigmas) == (2*len(unspinned_xisigmas))
     assert spinned_xisigmas[0][0] == -spinned_xisigmas[1][0]
