@@ -558,9 +558,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         self.log2_F = math.floor(math.log2(self.F))
 
         # Compute the minimum support to pad (ideally)
-        phi_f = gauss_1d(N_input_fr, self.sigma0/max(self.F, 2 ** self.J_fr))
-        min_to_pad_fr = 3 * compute_temporal_support(
-            phi_f.reshape(1, -1), criterion_amplitude=1e-3)
+        min_to_pad_fr = 8 * min(self.F, 2 ** self.J_fr)
 
         # We want to pad the frequency domain to the minimum number that is:
         # (1) greater than number of first-order coefficients, N_input_fr,
