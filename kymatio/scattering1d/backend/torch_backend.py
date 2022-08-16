@@ -152,19 +152,18 @@ class TorchBackend1D(TorchBackend):
         ----------
         x : tensor
             if is_complex: (batch, frequency, time, real/imag)
-            else: (batch, frequency, time)
+            else: (batch, frequency, time, 1)
         Returns
         -------
         output : tensor
             if is_complex: (batch, time, frequency real/imag)
-            else: (batch, time, frequency)
+            else: (batch, time, frequency, 1)
         """
         if is_complex:
             cls.complex_check(x)
-            return torch.transpose(x, dim0=-2, dim1=-3)
         else:
             cls.real_check(x)
-            return torch.transpose(x, dim0=-1, dim1=-2)
+        return torch.transpose(x, dim0=-2, dim1=-3)
 
 
 backend = TorchBackend1D

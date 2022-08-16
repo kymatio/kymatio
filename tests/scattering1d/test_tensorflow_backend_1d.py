@@ -126,16 +126,30 @@ def test_swap_time_frequency_1d():
     shape = (10, 20, 3, 5)
     shape_T = (10, 20, 5, 3)
 
-    x = np.arange(np.prod(shape)).reshape(shape) * 1j
-    x_T = backend.swap_time_frequency(x)
+    x = np.arange(np.prod(shape)).reshape(shape) * 0.5
+    x_T = backend.swap_time_frequency(x, is_complex=False)
     assert tuple(x_T.shape) == shape_T
 
-    x_T_T = backend.swap_time_frequency(x_T)
+    x_T_T = backend.swap_time_frequency(x_T, is_complex=False)
+    assert tuple(x_T_T.shape) == shape
+    assert x_T_T.shape == x.shape
+    assert np.all(x == x_T_T)
+
+    with pytest.raises(TypeError) as record:
+        x = np.ones(shape + (4,)) * 1j
+        y = backend.swap_time_frequency(x, is_complex=False)
+    assert 'should be real' in record.value.args[0]
+
+    x = np.arange(np.prod(shape)).reshape(shape) * 1j
+    x_T = backend.swap_time_frequency(x, is_complex=True)
+    assert tuple(x_T.shape) == shape_T
+
+    x_T_T = backend.swap_time_frequency(x_T, is_complex=True)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
     assert np.all(x == x_T_T)
 
     with pytest.raises(TypeError) as record:
         x = np.ones(shape + (4,))
-        y = backend.swap_time_frequency(x)
+        y = backend.swap_time_frequency(x, is_complex=True)
     assert 'should be complex' in record.value.args[0]
