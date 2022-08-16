@@ -46,7 +46,6 @@ def test_Q():
     assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
 
 
-
 def test_jtfs_create_filters():
     jtfs = TimeFrequencyScatteringBase(
         J=10, J_fr=3, shape=4096, Q=8, backend='torch')
