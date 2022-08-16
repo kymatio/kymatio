@@ -1,3 +1,5 @@
+import numpy as np
+
 def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     """
     Inputs
@@ -111,15 +113,16 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
             yield {'coef': Y_2, 'j': (-1, j2), 'n': (-1, n2), 'n1_max': len(Y_2_list)}
 
 
-def frequency_scattering(X, backend, filters_fr, oversampling_fr, spinned):
+def frequency_scattering(X, backend, filters_fr, oversampling_fr,
+        average_local_fr, spinned):
     """
     Parameters
     ----------
-    X : array
-        if spinned, X=Y_2 is complex-valued and indexed by (batch, n1, time[j2]),
-        for some fixed n2 and variable n1 s.t. j1 < j2.
-        else, X=S_1 is real-valued and indexed by (batch, n1, time[log2_T]),
-        for variable n1 < len(psi1_f)
+    X : dictionary with keys 'coef' and 'n1_max'
+        if spinned, X['coef']=Y_2 is complex-valued and indexed by
+        (batch, n1, time[j2]), for some fixed n2 and variable n1 s.t. j1 < j2.
+        else, X['coef']=S_1 is real-valued and indexed by
+        (batch, n1, time[log2_T]) for variable n1 < len(psi1_f)
     backend : module
     filters_fr : [phi, psis] list where
         * phi is a dictionary decribing the low-pass filter of width F, used
@@ -130,6 +133,8 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr, spinned):
           Other elements, such that n_fr>0, correspond to "spinned" band-pass
           filter, where spin denotes the sign of the center frequency xi.
     oversampling_fr : int >= 0. same role as in scattering1d
+    average_local_fr : boolean
+        whether the result will be locally averaged with phi after this function
     spinned: boolean
         if True (complex input), yields Y_fr for all n_fr
         else (real input), yields Y_fr for only those n_fr s.t. spin>=0
@@ -150,11 +155,11 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr, spinned):
     log2_F = phi['j']
 
     # Swap time and frequency axis
-    X_T = backend.swap_time_frequency(X['coef'])
+    X_T = backend.swap_time_frequency(X['coef'], is_complex=spinned)
 
     # Zero-pad frequency domain
     pad_right = phi['N'] - X['n1_max']
-    X_pad = backend.pad(X_pad, pad_left=0, pad_right=pad_right, mode='constant')
+    X_pad = backend.pad(X_T, pad_left=0, pad_right=pad_right, mode='constant')
 
     # Spinned case switch
     if spinned:
