@@ -72,8 +72,9 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
+        if mode != 'constant':
+            if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
+                raise ValueError('Indefinite padding size (larger than tensor).')
 
         res = F.pad(x, (pad_left, pad_right), mode=mode)
         res = res[..., None]
