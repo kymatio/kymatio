@@ -165,7 +165,6 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
     if spinned:
         # Complex-input FFT
         X_hat = backend.cfft(X_pad)
-        enum = enumerate(psis)
     else:
         # Real-input FFT
         X_hat = backend.rfft(X_pad)
@@ -180,4 +179,5 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
         Y_fr_hat = backend.cdgmm(X_hat, psi['levels'][0])
         Y_fr_sub = backend.subsample_fourier(Y_fr_hat, 2 ** k_fr)
         Y_fr = backend.ifft(Y_fr_sub)
+        Y_fr = backend.swap_time_frequency(Y_fr)
         yield {**X, 'coef': Y_fr, 'j_fr': j_fr, 'n_fr': n_fr, 'spin': spin}
