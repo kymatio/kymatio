@@ -93,7 +93,8 @@ class ScatteringBase1D(ScatteringBase):
         ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
     def scattering(self, x):
-        ScatteringBase1D._check_runtime_args(self)
+        ScatteringBase1D._check_runtime_args(
+            self, out_types=['array', 'dict', 'list'])
         ScatteringBase1D._check_input(self, x)
 
         x_shape = self.backend.shape(x)
@@ -210,10 +211,10 @@ class ScatteringBase1D(ScatteringBase):
             return tuple(Counter(self.meta()['order']).values())
         return len(self.meta()['key'])
 
-    def _check_runtime_args(self):
-        if not self.out_type in ('array', 'dict', 'list'):
-            raise ValueError("The out_type must be one of 'array', 'dict'"
-                             ", or 'list'. Got: {}".format(self.out_type))
+    def _check_runtime_args(self, out_types):
+        if not self.out_type in out_types:
+            raise ValueError("The out_type must be one of {}. Got: {}".format(
+                str(out_types), self.out_type))
 
         if not self.average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
