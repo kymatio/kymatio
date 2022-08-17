@@ -56,6 +56,35 @@ def test_jtfs_create_filters():
     assert phi['N'] == jtfs._N_padded_fr
 
 
+def test_jtfs_check_runtime_args():
+    jtfs_kwargs = dict(J=10, J_fr=3, shape=4096, Q=8, backend='torch')
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(**jtfs_kwargs, out_type='doesnotexist')
+        S._check_runtime_args()
+    assert "out_type must be one" in ve.value.args[0]
+
+    for out_type in ['array', '2D', '3D']:
+        with pytest.raises(ValueError) as ve:
+            S = TimeFrequencyScatteringBase(**jtfs_kwargs, T=0, out_type=out_type)
+            S.build()
+            S._check_runtime_args()
+        assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(**jtfs_kwargs, oversampling=-1)
+        S.build()
+        S._check_runtime_args()
+    assert "nonnegative" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(**jtfs_kwargs, oversampling=0.5)
+        S.build()
+        S._check_runtime_args()
+    assert "integer" in ve.value.args[0]
+
+
+
+
 def test_scattering1d_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
