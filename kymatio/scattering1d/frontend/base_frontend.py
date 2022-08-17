@@ -588,5 +588,25 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
         return spin(anden_generator, filterbank_kwargs)
 
+    def _check_runtime_args(self):
+        super(TimeFrequencyScatteringBase, self)._check_runtime_args(
+            out_types=['array', 'dict', 'list', '2D', '3D']
+        )
+
+        if not self.average and self.out_type in ['array', '2D', '3D']:
+            raise ValueError("Cannot convert to out_type='{}' with T=0. "
+                "Please set out_type to 'dict' or 'list'.".format(self.out_type))
+
+        if self.oversampling_fr < 0:
+            raise ValueError("oversampling_fr must be nonnegative. "
+                "Got: {}".format(self.oversampling_fr))
+
+        if not isinstance(self.oversampling_fr, numbers.Integral):
+            raise ValueError("oversampling_fr must be integer. "
+                "Got: {}".format(self.oversampling_fr))
+
+        if not self.average_fr and self.out_type == '3D':
+            raise ValueError("Cannot convert to out_type='3D' with F=0. "
+                             "Please set out_type to '2D', 'dict', or 'list'.")
 
 __all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
