@@ -82,6 +82,24 @@ def test_jtfs_check_runtime_args():
         S._check_runtime_args()
     assert "integer" in ve.value.args[0]
 
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(**jtfs_kwargs, F=0, out_type='3D')
+        S.build()
+        S._check_runtime_args()
+    assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(**jtfs_kwargs, oversampling_fr=-1)
+        S.build()
+        S._check_runtime_args()
+    assert "nonnegative" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(**jtfs_kwargs, oversampling_fr=0.5)
+        S.build()
+        S._check_runtime_args()
+    assert "integer" in ve.value.args[0]
+
 
 
 
