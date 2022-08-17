@@ -424,6 +424,13 @@ def test_T(device, backend):
     assert torch.allclose(Sg0, Sx0)
     assert Sg1.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
 
+    # adjust oversampling
+    oversampling = 1
+    scattering2 = Scattering1D(J, N, Q, backend=backend,
+        frontend='torch', oversampling=oversampling).to(device)
+    Sg2 = scattering1(x)
+    assert Sg2.shape == (Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**oversampling)
+
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
