@@ -146,23 +146,19 @@ class TorchBackend1D(TorchBackend):
         return torch.sum(x, axis=-2, keepdims=True)
 
     @classmethod
-    def swap_time_frequency(cls, x, is_complex):
+    def swap_time_frequency(cls, x):
         """Swap time and frequency dimensions of a tensor
         Parameters
         ----------
         x : tensor
-            if is_complex: (batch, frequency, time, real/imag)
+            if complex: (batch, frequency, time, real/imag)
             else: (batch, frequency, time, 1)
         Returns
         -------
         output : tensor
-            if is_complex: (batch, time, frequency real/imag)
+            if complex: (batch, time, frequency real/imag)
             else: (batch, time, frequency, 1)
         """
-        if is_complex:
-            cls.complex_check(x)
-        else:
-            cls.real_check(x)
         return torch.transpose(x, dim0=-2, dim1=-3)
 
 

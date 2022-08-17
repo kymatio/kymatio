@@ -267,32 +267,22 @@ def test_swap_time_frequency_1d(device, backend, random_state=42):
     shape_T = (10, 20, 5, 3, 1)
 
     x = torch.arange(np.prod(shape)).reshape(shape) * 0.5
-    x_T = backend.swap_time_frequency(x, is_complex=False)
+    x_T = backend.swap_time_frequency(x)
     assert tuple(x_T.shape) == shape_T
 
-    x_T_T = backend.swap_time_frequency(x_T, is_complex=False)
+    x_T_T = backend.swap_time_frequency(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
     assert torch.all(x == x_T_T)
-
-    with pytest.raises(TypeError) as record:
-        x = torch.ones(shape + (2,)) * 0.5
-        y = backend.swap_time_frequency(x, is_complex=False)
-    assert 'should be real' in record.value.args[0]
 
     shape = (10, 20, 3, 5, 2)
     shape_T = (10, 20, 5, 3, 2)
 
     x = torch.arange(np.prod(shape)).reshape(shape)
-    x_T = backend.swap_time_frequency(x, is_complex=True)
+    x_T = backend.swap_time_frequency(x)
     assert tuple(x_T.shape) == shape_T
 
-    x_T_T = backend.swap_time_frequency(x_T, is_complex=True)
+    x_T_T = backend.swap_time_frequency(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
     assert torch.all(x == x_T_T)
-
-    with pytest.raises(TypeError) as record:
-        x = torch.ones(shape + (4,))
-        y = backend.swap_time_frequency(x, is_complex=True)
-    assert 'should be complex' in record.value.args[0]
