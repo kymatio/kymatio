@@ -138,5 +138,8 @@ def test_frequency_scattering():
         assert Y_fr['spin'] >= 0
 
     # spinned=True
+    X['coef'] = X['coef'].astype('complex64')
     freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
-        jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
+        jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
+    for Y_fr in freq_gen:
+        assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
