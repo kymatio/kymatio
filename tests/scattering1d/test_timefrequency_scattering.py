@@ -169,6 +169,8 @@ def test_joint_timefrequency_scattering():
         J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend='numpy')
     S.build()
     S.create_filters()
+    assert not S.average
+    assert not S.average_fr
     backend = kymatio.Scattering1D(
         J=J, Q=Q, shape=shape, T=0, backend='numpy').backend
 
@@ -223,6 +225,11 @@ def test_joint_timefrequency_scattering():
         stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
+        # Check that padding is sufficient
+        midpoint = (path['n1_max'] + S._N_padded_fr) // (2*stride_fr)
+        avg_value = np.mean(np.abs(path['coef'][midpoint, :]))
+        assert avg_value < 1e-5
+
     # Test second order
     S2_jtfs = filter(lambda path: len(path['n'])==2, S_jtfs)
     for path in S2_jtfs:
@@ -233,12 +240,17 @@ def test_joint_timefrequency_scattering():
         assert path['n1_max'] < S._N_padded_fr
 
         # Check that temporal stride works as intended
-        stride = 2**max(min(path['j'][1], S.log2_T) - S.oversampling, 0)
+        stride = 2**max(path['j'][1] - S.oversampling, 0)
         assert path['coef'].shape[-1] == (S._N_padded // stride)
 
         # Check that frequential stride works as intended
         stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
+
+        # Check that padding is sufficient
+        midpoint = (path['n1_max'] + S._N_padded_fr) // (2*stride_fr)
+        avg_value = np.mean(np.abs(path['coef'][midpoint, :]))
+        assert avg_value < 1e-5
 
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:
