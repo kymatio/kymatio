@@ -122,7 +122,7 @@ def test_frequency_scattering():
     S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
     S_1_dict = {path['n']: path['coef'] for path in S_gen if len(path['n'])==1}
     S_1 = S.backend.concatenate([S_1_dict[key] for key in sorted(S_1_dict.keys())])
-    X = {'coef': S_1, 'n1_max': len(S_1_dict)}
+    X = {'coef': S_1, 'n1_max': len(S_1_dict), 'n': (-1,), 'j': (-1,)}
 
     # Define scattering object
     J_fr = 3
@@ -136,10 +136,13 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
     for Y_fr in freq_gen:
         assert Y_fr['spin'] >= 0
+        assert Y_fr['n'] == (Y_fr['n_fr'],)
 
     # spinned=True
     X['coef'] = X['coef'].astype('complex64')
+    X['n'] = (-1, 4) # a mockup (n1, n2) pair from scattering1d_widthfirst
     freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
+        assert Y_fr['n'] == (4, Y_fr['n_fr'])
