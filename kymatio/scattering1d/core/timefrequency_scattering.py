@@ -1,6 +1,6 @@
 import numpy as np
 
-def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
+def time_scattering_widthfirst(U_0, backend, filters, oversampling, average_local):
     """
     Inputs
     ------

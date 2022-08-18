@@ -6,7 +6,7 @@ import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
-    scattering1d_widthfirst)
+    time_scattering_widthfirst)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 
 
@@ -80,7 +80,7 @@ def test_jtfs_create_filters():
         for psi_pos, psi_neg in zip(positive_spins, negative_spins)])
 
 
-def test_scattering1d_widthfirst():
+def test_time_scattering_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
@@ -94,7 +94,7 @@ def test_scattering1d_widthfirst():
 
     # Width-first
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
-    W_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
+    W_gen = time_scattering_widthfirst(U_0, S.backend, filters, S.oversampling,
         average_local=True)
     W = {path['n']: path['coef'] for path in W_gen}
 
@@ -151,7 +151,7 @@ def test_frequency_scattering():
 
     # spinned=True
     X['coef'] = X['coef'].astype('complex64')
-    X['n'] = (-1, 4) # a mockup (n1, n2) pair from scattering1d_widthfirst
+    X['n'] = (-1, 4) # a mockup (n1, n2) pair from time_scattering_widthfirst
     freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
