@@ -67,7 +67,6 @@ def time_scattering_widthfirst(U_0, backend, filters, oversampling, average_loca
         S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
         S_0_hat = backend.subsample_fourier(S_0_c, 2 ** k0)
         S_0_r = backend.irfft(S_0_hat)
-        S_1_list = []
         yield {'coef': S_0_r, 'j': (), 'n': ()}
     else:
         yield {'coef': U_0, 'j': (), 'n': ()}
@@ -75,6 +74,7 @@ def time_scattering_widthfirst(U_0, backend, filters, oversampling, average_loca
     # First order:
     psi1 = filters[1]
     U_1_hats = []
+    S_1_list = []
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
