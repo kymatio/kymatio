@@ -36,7 +36,6 @@ def test_jtfs_build():
     l1_double = np.linalg.norm(h_double_support, ord=1)
     l1_residual = l1_double - l1_current
     criterion_amplitude = 1e-3
-    print(l1_current, l1_double)
     assert l1_residual < criterion_amplitude
 
     # Test that padded frequency domain is divisible by max subsampling factor
