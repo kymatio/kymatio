@@ -125,7 +125,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
         (batch, n1, time[log2_T]) for variable n1 < len(psi1_f)
     backend : module
     filters_fr : [phi, psis] list where
-        * phi is a dictionary decribing the low-pass filter of width F, used
+        * phi is a dictionary describing the low-pass filter of width F, used
           to average S1 and S2 in frequency if and only if average_local_fr.
         * psis is a list of dictionaries, each describing a low-pass or band-pass
           band-pass filter indexed by n_fr. The first element, n_fr=0, corresponds
