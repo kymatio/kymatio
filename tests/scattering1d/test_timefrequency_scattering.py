@@ -4,6 +4,7 @@ import torch
 
 import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
+from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
     scattering1d_widthfirst)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
@@ -23,9 +24,20 @@ def test_jtfs_build():
     assert jtfs.F == (2 ** jtfs.J_fr)
     assert jtfs.log2_F == jtfs.J_fr
 
-    # Test that frequential padding is at least six times larger than F
+    # Test that frequential padding is sufficient
     N_input_fr = len(jtfs.psi1_f)
-    assert jtfs._N_padded_fr > (N_input_fr + 6 * jtfs.F)
+    assert (jtfs._N_padded_fr - N_input_fr) > (2 * jtfs.F)
+    assert (jtfs._N_padded_fr - N_input_fr)  > (2 * (2 ** jtfs.J_fr))
+    phi_f = gauss_1d(2 * jtfs._N_padded_fr, jtfs.sigma0/jtfs.F)
+    h_double_support = np.fft.fftshift(np.fft.ifft(phi_f))
+    h_current_support = h_double_support[
+        (jtfs._N_padded_fr//2):-jtfs._N_padded_fr//2]
+    l1_current = np.linalg.norm(h_current_support, ord=1)
+    l1_double = np.linalg.norm(h_double_support, ord=1)
+    l1_residual = l1_double - l1_current
+    criterion_amplitude = 1e-3
+    print(l1_current, l1_double)
+    assert l1_residual < criterion_amplitude
 
     # Test that padded frequency domain is divisible by max subsampling factor
     assert (jtfs._N_padded_fr % (2**jtfs.J_fr)) == 0
