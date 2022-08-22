@@ -8,6 +8,7 @@ from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
     time_scattering_widthfirst, joint_timefrequency_scattering)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
+from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScatteringTorch
 
 
 def test_jtfs_build():
@@ -259,3 +260,40 @@ def test_joint_timefrequency_scattering():
     S2_neg = filter(lambda path: path['spin']<0, S2_jtfs)
     assert len(list(S2_pos)) == len(list(S2_neg))
     assert set(S2_pos) == set(S2_neg)
+
+
+def test_differentiability_jtfs(random_state=42):
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+    S = TimeFrequencyScatteringTorch(J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0)
+    S.build()
+    S.create_filters()
+    S.load_filters()
+    backend = S.backend
+    torch.manual_seed(random_state)
+
+    x = torch.randn(shape, requires_grad=True)
+    x_shape = backend.shape(x)
+    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    x = backend.reshape_input(x, signal_shape)
+    U_0_in = backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
+
+    filters = [S.phi_f, S.psi1_f, S.psi2_f]
+    jtfs_gen = joint_timefrequency_scattering(U_0_in, backend,
+        filters, S.oversampling, S.average=='local',
+        S.filters_fr, S.oversampling_fr, S.average_fr=='local')
+
+    # Zeroth order
+    U_0 = next(jtfs_gen)
+    loss = torch.linalg.norm(U_0['coef'])
+
+    # First and second order
+    Sx = list(jtfs_gen)
+    for path in Sx:
+        loss += torch.linalg.norm(path['coef'])
+
+    loss.backward()
+    for path in Sx:
+        print(path['coef'].grad)
