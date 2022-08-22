@@ -2,7 +2,7 @@ import torch
 import warnings
 
 from ...frontend.torch_frontend import ScatteringTorch
-from .base_frontend import ScatteringBase1D
+from .base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 
 class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
@@ -39,6 +39,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
                     psi_f['levels'][level]).float().view(-1, 1)
                 self.register_buffer('tensor' + str(n), psi_f['levels'][level])
                 n += 1
+        return n
 
     def load_filters(self):
         """This function loads filters from the module's buffer """
@@ -58,6 +59,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
             for level in range(len(psi_f['levels'])):
                 psi_f['levels'][level] = buffer_dict['tensor' + str(n)]
                 n += 1
+        return n
 
     def scattering(self, x):
         self.load_filters()
@@ -67,4 +69,47 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
 ScatteringTorch1D._document()
 
 
-__all__ = ['ScatteringTorch1D']
+class TimeFrequencyScatteringTorch(
+        ScatteringTorch1D, TimeFrequencyScatteringBase):
+    def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0, Q_fr=1,
+            F=None, oversampling_fr=0, out_type='array', backend='torch'):
+        ScatteringTorch.__init__(self)
+        TimeFrequencyScatteringBase.__init__(self, J=J, J_fr=J_fr, shape=shape,
+            Q=Q, T=T, oversampling=oversampling, Q_fr=Q_fr, F=F,
+            oversampling_fr=oversampling_fr, out_type=out_type, backend=backend)
+        ScatteringBase1D._instantiate_backend(
+            self, 'kymatio.scattering1d.backend.')
+        TimeFrequencyScatteringBase.build(self)
+        TimeFrequencyScatteringBase.create_filters(self)
+        self.register_filters()
+
+    def register_filters(self):
+        n = super(TimeFrequencyScatteringTorch, self).register_filters()
+        for level in range(len(self.filters_fr[0]['levels'])):
+            self.filters_fr[0]['levels'][level] = torch.from_numpy(
+                self.filters_fr[0]['levels'][level]).float().view(-1, 1)
+            self.register_buffer(
+                'tensor' + str(n), self.filters_fr[0]['levels'][level])
+            n += 1
+        for psi_f in self.filters_fr[1]:
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = torch.from_numpy(
+                    psi_f['levels'][level]).float().view(-1, 1)
+                self.register_buffer('tensor' + str(n), psi_f['levels'][level])
+                n += 1
+
+    def load_filters(self):
+        buffer_dict = dict(self.named_buffers())
+        n = super(TimeFrequencyScatteringTorch, self).load_filters()
+
+        for level in range(len(self.filters_fr[0]['levels'])):
+            self.filters_fr[0]['levels'][level] = buffer_dict['tensor' + str(n)]
+            n += 1
+
+        for psi_f in self.filters_fr[1]:
+            for level in range(len(psi_f['levels'])):
+                psi_f['levels'][level] = buffer_dict['tensor' + str(n)]
+                n += 1
+
+
+__all__ = ['ScatteringTorch1D', 'TimeFrequencyScatteringTorch']
