@@ -114,7 +114,7 @@ class ScatteringBase1D(ScatteringBase):
         for path in S_gen:
             path['order'] = len(path['n'])
             if self.average == 'local':
-                res = self.log2_T
+                res = max(self.log2_T - self.oversampling, 0)
             elif path['order']>0:
                 res = max(path['j'][-1] - self.oversampling, 0)
             else:
