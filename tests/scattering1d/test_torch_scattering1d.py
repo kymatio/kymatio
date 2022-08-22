@@ -500,6 +500,12 @@ def test_check_runtime_args(device, backend):
         S(x)
     assert "nonnegative" in ve.value.args[0]
 
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, oversampling=0.5, backend=backend,
+                         frontend='torch').to(device)
+        S(x)
+    assert "integer" in ve.value.args[0]
+
 
 def test_Scattering1D_average_global():
     """
