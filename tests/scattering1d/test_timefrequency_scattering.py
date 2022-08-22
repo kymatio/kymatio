@@ -219,7 +219,7 @@ def test_joint_timefrequency_scattering():
 
         # Check that first-order coefficients have the same temporal stride
         stride = 2**max(S.log2_T - S.oversampling, 0)
-        assert path['coef'].shape[-1] == (S._N_padded // stride)
+        assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
         stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
@@ -241,7 +241,7 @@ def test_joint_timefrequency_scattering():
 
         # Check that temporal stride works as intended
         stride = 2**max(path['j'][1] - S.oversampling, 0)
-        assert path['coef'].shape[-1] == (S._N_padded // stride)
+        assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
         stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
