@@ -263,18 +263,20 @@ def test_joint_timefrequency_scattering():
 
 
 def test_differentiability_jtfs(random_state=42):
+    device = 'cpu'
     J = 8
     J_fr = 3
     shape = (4096,)
     Q = 8
-    S = TimeFrequencyScatteringTorch(J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0)
+    S = TimeFrequencyScatteringTorch(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0).to(device)
     S.build()
     S.create_filters()
     S.load_filters()
     backend = S.backend
     torch.manual_seed(random_state)
 
-    x = torch.randn(shape, requires_grad=True)
+    x = torch.randn(shape, requires_grad=True, device=device)
     x_shape = backend.shape(x)
     batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
     x = backend.reshape_input(x, signal_shape)
@@ -288,12 +290,6 @@ def test_differentiability_jtfs(random_state=42):
     # Zeroth order
     U_0 = next(jtfs_gen)
     loss = torch.linalg.norm(U_0['coef'])
-
-    # First and second order
-    Sx = list(jtfs_gen)
-    for path in Sx:
-        loss += torch.linalg.norm(path['coef'])
-
     loss.backward()
-    for path in Sx:
-        print(path['coef'].grad)
+    print(loss)
+    print(x.grad)
