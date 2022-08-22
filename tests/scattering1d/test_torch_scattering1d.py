@@ -268,7 +268,7 @@ def test_output_size(device, backend, random_state=42):
                 if detail:
                     num_orders = {0: 0, 1: 0, 2: 0}
                     for k in s_dico.keys():
-                        if k is ():
+                        if k == ():
                             num_orders[0] += 1
                         else:
                             if len(k) == 1:  # order1
