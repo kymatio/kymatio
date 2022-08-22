@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
          average_local, filters_fr, oversampling_fr, average_local_fr):
 
