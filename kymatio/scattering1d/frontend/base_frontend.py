@@ -533,6 +533,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         self.Q_fr = Q_fr
         self.F = F
         self.oversampling_fr = oversampling_fr
+        self.format = format
 
     def build(self):
         super(TimeFrequencyScatteringBase, self).build()
@@ -600,8 +601,6 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         if self.format not in ['time', 'joint']:
             raise ValueError("format must be 'time' or 'joint'. Got: {}".format(
                 self.format))
-
-
 
     @property
     def filterbank_fr(self):
