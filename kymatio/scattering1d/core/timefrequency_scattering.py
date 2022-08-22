@@ -184,7 +184,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
 
     # Zero-pad frequency domain
     pad_right = phi['N'] - X['n1_max']
-    X_pad = backend.pad(X_T, pad_left=0, pad_right=pad_right, mode='constant')
+    X_pad = backend.pad_frequency(X_T, pad_right)
 
     # Spinned case switch
     if spinned:
