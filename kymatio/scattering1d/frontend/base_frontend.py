@@ -595,7 +595,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                 self.oversampling_fr))
 
         if not isinstance(self.oversampling_fr, numbers.Integral):
-            raise ValueError("oversampling must be integer. Got: {}".format(
+            raise ValueError("oversampling_fr must be integer. Got: {}".format(
                 self.oversampling_fr))
 
         if self.format not in ['time', 'joint']:
