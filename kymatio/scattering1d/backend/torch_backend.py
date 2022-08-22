@@ -146,6 +146,10 @@ class TorchBackend1D(TorchBackend):
         return torch.sum(x, axis=-2, keepdims=True)
 
     @classmethod
+    def pad_frequency(cls, x, padding):
+        return F.pad(x, (0, 0, 0, padding), mode='constant', value=0)
+
+    @classmethod
     def swap_time_frequency(cls, x):
         """Swap time and frequency dimensions of a tensor
         Parameters
