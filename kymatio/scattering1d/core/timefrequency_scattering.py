@@ -1,3 +1,5 @@
+import numpy as np
+
 def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
     """
     Inputs
@@ -109,3 +111,79 @@ def scattering1d_widthfirst(U_0, backend, filters, oversampling, average_local):
             # n1 ranges between 0 (included) and n1_max (excluded), which we store
             # separately for the sake of meta() and padding/unpadding downstream.
             yield {'coef': Y_2, 'j': (-1, j2), 'n': (-1, n2), 'n1_max': len(Y_2_list)}
+
+
+def frequency_scattering(X, backend, filters_fr, oversampling_fr,
+        average_local_fr, spinned):
+    """
+    Parameters
+    ----------
+    X : dictionary with keys 'coef' and 'n1_max'
+        if spinned, X['coef']=Y_2 is complex-valued and indexed by
+        (batch, n1, time[j2]), for some fixed n2 and variable n1 s.t. j1 < j2.
+        else, X['coef']=S_1 is real-valued and indexed by
+        (batch, n1, time[log2_T]) for variable n1 < len(psi1_f)
+    backend : module
+    filters_fr : [phi, psis] list where
+        * phi is a dictionary describing the low-pass filter of width F, used
+          to average S1 and S2 in frequency if and only if average_local_fr.
+        * psis is a list of dictionaries, each describing a low-pass or band-pass
+          band-pass filter indexed by n_fr. The first element, n_fr=0, corresponds
+          to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
+          Other elements, such that n_fr>0, correspond to "spinned" band-pass
+          filter, where spin denotes the sign of the center frequency xi.
+    oversampling_fr : int >= 0. same role as in scattering1d
+    average_local_fr : boolean
+        whether the result will be locally averaged with phi after this function
+    spinned: boolean
+        if True (complex input), yields Y_fr for all n_fr
+        else (real input), yields Y_fr for only those n_fr s.t. spin>=0
+
+    Yields
+    ------
+    * Y_fr[n_fr=0] indexed by (batch, n1[j_fr], time), complex-valued, where
+        n1 has been zero-padded to size N_fr before convolution
+    * etc. for every n_fr < len(psis)
+
+    Definitions
+    -----------
+    Y_fr[n2](n1, t) = (X * psi)(t, n1), conv. over n1, broadcast over t
+    """
+
+    # Unpack filters_fr list
+    phi, psis = filters_fr
+    log2_F = phi['j']
+
+    # Swap time and frequency axis
+    X_T = backend.swap_time_frequency(X['coef'])
+
+    # Zero-pad frequency domain
+    pad_right = phi['N'] - X['n1_max']
+    X_pad = backend.pad(X_T, pad_left=0, pad_right=pad_right, mode='constant')
+
+    # Spinned case switch
+    if spinned:
+        # Complex-input FFT
+        X_hat = backend.cfft(X_pad)
+    else:
+        # Real-input FFT
+        X_hat = backend.rfft(X_pad)
+        # Restrict to nonnegative spins
+        psis = filter(lambda psi: psi['xi']>=0, psis)
+
+    for n_fr, psi in enumerate(psis):
+        j_fr = psi['j']
+        spin = np.sign(psi['xi'])
+        sub_fr_adj = min(j_fr, log2_F) if average_local_fr else j_fr
+        k_fr = max(sub_fr_adj - oversampling_fr, 0)
+        Y_fr_hat = backend.cdgmm(X_hat, psi['levels'][0])
+        Y_fr_sub = backend.subsample_fourier(Y_fr_hat, 2 ** k_fr)
+        Y_fr = backend.ifft(Y_fr_sub)
+        Y_fr = backend.swap_time_frequency(Y_fr)
+        # If not spinned, X['n']=S1['n']=(-1,) is a 1-tuple.
+        # If spinned, X['n']=Y2['n']=(-1,n2) is a 2-tuple.
+        # In either case, we elide the "-1" placeholder and define the new 'n'
+        # as (X['n'][1:] + (n_fr,)), i.e., n=(n_fr,) is not spinned
+        # and n=(n2, n_fr) if spinned. This 'n' tuple is unique.
+        yield {**X, 'coef': Y_fr, 'n': (X['n'][1:] + (n_fr,)),
+            'j_fr': j_fr, 'n_fr': n_fr, 'spin': spin}

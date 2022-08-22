@@ -313,8 +313,8 @@ def anden_generator(J, Q, sigma0, r_psi, **unused_kwargs):
 
 def spin(filterbank_fn, filterbank_kwargs):
     def spinned_fn(J, Q, **kwargs):
+        yield from filterbank_fn(J, Q, **kwargs)
         for xi, sigma in filterbank_fn(J, Q, **kwargs):
-            yield xi, sigma
             yield -xi, sigma
     return spinned_fn, filterbank_kwargs
 

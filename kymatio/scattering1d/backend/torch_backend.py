@@ -72,8 +72,9 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
+        if mode != 'constant':
+            if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
+                raise ValueError('Indefinite padding size (larger than tensor).')
 
         res = F.pad(x, (pad_left, pad_right), mode=mode)
         res = res[..., None]
@@ -150,14 +151,14 @@ class TorchBackend1D(TorchBackend):
         Parameters
         ----------
         x : tensor
-            4D: (batch, frequency, time, real/imag)
+            if complex: (batch, frequency, time, real/imag)
+            else: (batch, frequency, time, 1)
         Returns
         -------
         output : tensor
-            4D: (batch, time, frequency, real/imag)
+            if complex: (batch, time, frequency real/imag)
+            else: (batch, time, frequency, 1)
         """
-        cls.complex_check(x)
-
         return torch.transpose(x, dim0=-2, dim1=-3)
 
 

@@ -1,9 +1,12 @@
+import numpy as np
 import pytest
 import torch
-from kymatio.torch import Scattering1D
 
+import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
-from kymatio.scattering1d.core.timefrequency_scattering import scattering1d_widthfirst
+from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
+from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
+    scattering1d_widthfirst)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 
 
@@ -21,9 +24,19 @@ def test_jtfs_build():
     assert jtfs.F == (2 ** jtfs.J_fr)
     assert jtfs.log2_F == jtfs.J_fr
 
-    # Test that frequential padding is at least six times larger than F
+    # Test that frequential padding is sufficient
     N_input_fr = len(jtfs.psi1_f)
-    assert jtfs._N_padded_fr > (N_input_fr + 6 * jtfs.F)
+    assert (jtfs._N_padded_fr - N_input_fr) > (2 * jtfs.F)
+    assert (jtfs._N_padded_fr - N_input_fr)  > (2 * (2 ** jtfs.J_fr))
+    phi_f = gauss_1d(2 * jtfs._N_padded_fr, jtfs.sigma0/jtfs.F)
+    h_double_support = np.fft.fftshift(np.fft.ifft(phi_f))
+    h_current_support = h_double_support[
+        (jtfs._N_padded_fr//2):-jtfs._N_padded_fr//2]
+    l1_current = np.linalg.norm(h_current_support, ord=1)
+    l1_double = np.linalg.norm(h_double_support, ord=1)
+    l1_residual = l1_double - l1_current
+    criterion_amplitude = 1e-3
+    assert l1_residual < criterion_amplitude
 
     # Test that padded frequency domain is divisible by max subsampling factor
     assert (jtfs._N_padded_fr % (2**jtfs.J_fr)) == 0
@@ -47,20 +60,31 @@ def test_Q():
 
 
 def test_jtfs_create_filters():
+    J_fr = 3
     jtfs = TimeFrequencyScatteringBase(
-        J=10, J_fr=3, shape=4096, Q=8, backend='torch')
+        J=10, J_fr=J_fr, shape=4096, Q=8, backend='torch')
     jtfs.build()
     jtfs.create_filters()
 
     phi = jtfs.filters_fr[0]
     assert phi['N'] == jtfs._N_padded_fr
 
+    psis = jtfs.filters_fr[1]
+    assert len(psis) == (1 + 2*(J_fr+1))
+    assert np.isclose(psis[0]['xi'], 0)
+    positive_spins = psis[1:][:J_fr+1]
+    negative_spins = psis[1:][J_fr+1:]
+    assert all([psi['xi']>0 for psi in positive_spins])
+    assert all([psi['xi']<0 for psi in negative_spins])
+    assert all([(psi_pos['xi']==-psi_neg['xi'])
+        for psi_pos, psi_neg in zip(positive_spins, negative_spins)])
+
 
 def test_scattering1d_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
-    S = Scattering1D(J, shape)
+    S = kymatio.Scattering1D(J, shape, frontend='torch')
     x = torch.zeros(shape)
     x[shape[0]//2] = 1
     x_shape = S.backend.shape(x)
@@ -91,18 +115,45 @@ def test_scattering1d_widthfirst():
         S1_depth[key] for key in sorted(S1_depth.keys()) if len(key)==1])
     assert torch.allclose(S1_width, S1_depth)
 
-    # Check order 2
-    keep_order2 = lambda item: (len(item[0]) == 2)
-    Y_width_order2 = dict(filter(keep_order2, W.items()))
-    for key in Y_width_order2:
-        n2 = key[-1]
-        keep_n2 = lambda item: (item[0][-1] == n2)
-        U_n2 = dict(filter(keep_n2, U2_depth.items()))
-        U_n2 = S.backend.concatenate([U_n2[key] for key in sorted(U_n2.keys())])
-        assert torch.allclose(S.backend.modulus(Y_width_order2[key]), U_n2)
 
-    # Check order 0 under average_local=False
-    W_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
-        average_local=False)
-    U_0_width = next(W_gen)
-    assert torch.allclose(U_0_width['coef'], U_0)
+def test_frequency_scattering():
+    # Create S1 array as input
+    J = 5
+    shape = (4096,)
+    Q = 8
+    S = kymatio.Scattering1D(J=J, Q=Q, shape=shape, backend='numpy')
+    x = torch.zeros(shape)
+    x[shape[0]//2] = 1
+    x_shape = S.backend.shape(x)
+    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    x = S.backend.reshape_input(x, signal_shape)
+    U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
+    filters = [S.phi_f, S.psi1_f, S.psi2_f]
+    average_local = True
+    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
+    S_1_dict = {path['n']: path['coef'] for path in S_gen if len(path['n'])==1}
+    S_1 = S.backend.concatenate([S_1_dict[key] for key in sorted(S_1_dict.keys())])
+    X = {'coef': S_1, 'n1_max': len(S_1_dict), 'n': (-1,), 'j': (-1,)}
+
+    # Define scattering object
+    J_fr = 3
+    jtfs = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, backend='numpy')
+    jtfs.build()
+    jtfs.create_filters()
+
+    # spinned=False
+    freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
+        jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
+    for Y_fr in freq_gen:
+        assert Y_fr['spin'] >= 0
+        assert Y_fr['n'] == (Y_fr['n_fr'],)
+
+    # spinned=True
+    X['coef'] = X['coef'].astype('complex64')
+    X['n'] = (-1, 4) # a mockup (n1, n2) pair from scattering1d_widthfirst
+    freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
+        jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
+    for Y_fr in freq_gen:
+        assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
+        assert Y_fr['n'] == (4, Y_fr['n_fr'])

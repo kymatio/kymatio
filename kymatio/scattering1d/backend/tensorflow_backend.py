@@ -53,8 +53,9 @@ class TensorFlowBackend1D(TensorFlowBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-            raise ValueError('Indefinite padding size (larger than tensor).')
+        if mode != 'constant':
+            if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
+                raise ValueError('Indefinite padding size (larger than tensor).')
 
         paddings = [[0, 0]] * len(x.shape[:-1])
         paddings += [[pad_left, pad_right]]
@@ -112,8 +113,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
 
     @classmethod
     def swap_time_frequency(cls, x):
-        cls.complex_check(x)
-
         return tf.linalg.matrix_transpose(x)
 
 backend = TensorFlowBackend1D
