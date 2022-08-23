@@ -115,7 +115,7 @@ class NumpyBackend1D(NumpyBackend):
 
     @classmethod
     def pad_frequency(cls, x, padding):
-        cls.pad(x, pad_left=0, pad_right=padding, mode='constant')
+        return cls.pad(x, pad_left=0, pad_right=padding, mode='constant')
 
     @classmethod
     def swap_time_frequency(cls, x):
