@@ -122,6 +122,14 @@ def test_fft():
     assert np.allclose(x_r, z_2, atol=1e-6, rtol=1e-7)
 
 
+def test_pad_frequency():
+    shape = (10, 20, 3, 5)
+    shape_padded = (10, 20, 3, 16)
+    x = np.arange(np.prod(shape)).reshape(shape) * 0.5
+    x_padded = backend.pad_frequency(x, padding=11)
+    assert tuple(x_padded.shape) == shape_padded
+
+
 def test_swap_time_frequency_1d():
     shape = (10, 20, 3, 5)
     shape_T = (10, 20, 5, 3)
