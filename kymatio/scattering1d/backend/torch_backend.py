@@ -159,7 +159,7 @@ class TorchBackend1D(TorchBackend):
         "right", i.e., to lower frequencies. This is because "right" translates
         to higher values of the psi1 wavelet index n1 and thus to lower values
         of the center frequency xi1.
-        3. pad_frequency is 'constant' whereas 'pad' is 'reflect' by default.
+        4. pad_frequency is 'constant' whereas 'pad' is 'reflect' by default.
         This is for reasons of energy preservation, and also because there is
         no reason why the reflect power spectral density near Nyquist to be a
         continuation of the power spectral density near bin n1=_N_padded_fr.
