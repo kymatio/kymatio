@@ -584,7 +584,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
     def _check_runtime_args(self):
         super(TimeFrequencyScatteringBase, self)._check_runtime_args()
 
-        if self.format=='joint':
+        if self.format == 'joint':
             if (not self.average_fr) and (self.out_type == 'array'):
                 raise ValueError("Cannot convert to format='joint' with "
                 "out_type='array' and F=0. Either set format='time', "
