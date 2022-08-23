@@ -361,10 +361,10 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr):
     """
     log2_F = phi_fr_f['j']
     k_in = U_2['j_fr'][-1]
-    k_J = max(log2_F - k_in - oversampling, 0)
+    k_J = max(log2_F - k_in - oversampling_fr, 0)
     U_2_T = backend.swap_time_frequency(U_2['coef'])
     U_hat = backend.rfft(U_2_T)
-    S_c = backend.cdgmm(U_hat, phi_f['levels'][k_in])
+    S_c = backend.cdgmm(U_hat, phi_fr_f['levels'][k_in])
     S_hat = backend.subsample_fourier(S_c, 2 ** k_J)
     S_2_T = backend.irfft(S_hat)
     S_2 = backend.swap_time_frequency(S_2_T)
