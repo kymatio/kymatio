@@ -23,7 +23,10 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
           to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
           Other elements, such that n_fr>0, correspond to "spinned" band-pass
           filter, where spin denotes the sign of the center frequency xi.
-    oversampling_fr : int >= 0. same role as in scattering1d
+    oversampling_fr : int >=0
+        Yields joint time-frequency scattering coefficients with a frequential
+        stride max(1, 2**(log2_F-oversampling_fr)). Raising oversampling_fr
+        by one halves the stride, until reaching a stride of 1.
     average_local_fr : boolean
         whether the result will be locally averaged with phi after this function
 
@@ -88,11 +91,11 @@ def time_scattering_widthfirst(U_0, backend, filters, oversampling, average_loca
     U_0 : array indexed by (batch, time)
     backend : module
     filters : [phi, psi1, psi2] list of dictionaries. same as scattering1d
-    oversampling : int >=0, optional
+    oversampling : int >=0
         Yields scattering coefficients at the sample
         rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         doubles the sample rate, until reaching the native sample rate.
-    average_local : boolean, optional
+    average_local : boolean
         whether to locally average the result by means of a low-pass filter phi.
 
     Yields
@@ -213,7 +216,10 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
           to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
           Other elements, such that n_fr>0, correspond to "spinned" band-pass
           filter, where spin denotes the sign of the center frequency xi.
-    oversampling_fr : int >= 0. same role as in scattering1d
+    oversampling_fr : int >=0
+        Yields joint time-frequency scattering coefficients with a frequential
+        stride max(1, 2**(log2_F-oversampling_fr)). Raising oversampling_fr
+        by one halves the stride, until reaching a stride of 1.
     average_local_fr : boolean
         whether the result will be locally averaged with phi after this function
     spinned: boolean
@@ -287,7 +293,7 @@ def time_averaging(U_2, backend, phi_f, oversampling):
     backend : module
     phi_f : dictionary. Temporal low-pass filter in Fourier domain,
         same as scattering1d
-    oversampling : int >=0, optional
+    oversampling : int >=0
         Yields scattering coefficients at the sample
         rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         doubles the sample rate, until reaching the native sample rate.

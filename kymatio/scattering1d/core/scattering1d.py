@@ -37,9 +37,7 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
         if average_local is False, return first-order coefficients at the sample
         rate max(1, 2**(j1-oversampling)) and second-order coefficients at the
         sample rate max(1, 2**(j2-oversampling)).
-    max_order : int, optional
-        Number of orders in the scattering transform. Either 1 or 2.
-    average_local : boolean, optional
+    average_local : boolean
         whether to locally average the result by means of a low-pass filter phi.
     """
 
