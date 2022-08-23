@@ -266,7 +266,7 @@ def test_joint_timefrequency_scattering():
         S.average_fr = 'local'
         U_2 = {**path, 'coef': backend.modulus(path['coef'])}
         S_2 = frequency_averaging(
-            U_2, backend, S.filters_fr[0], S.oversampling_fr)
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
 
         # Check that averaged coefficients have the same frequential stride
         stride_fr = 2**max(S.log2_F - S.oversampling_fr, 0)
