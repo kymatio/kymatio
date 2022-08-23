@@ -153,7 +153,9 @@ class TorchBackend1D(TorchBackend):
         dimension to represent real vs. imaginary dimensions. Hence,
         pad_frequency operates over the penultimate dimension whereas pad
         operates over the last dimension.
-        2. pad_frequency is one-sided. It extends the frequency axis to the
+        2. pad_frequency does not add a trailing singleton dimmension to its
+        output. This is unlike pad and for the same reasons as (1).
+        3. pad_frequency is one-sided. It extends the frequency axis to the
         "right", i.e., to lower frequencies. This is because "right" translates
         to higher values of the psi1 wavelet index n1 and thus to lower values
         of the center frequency xi1.
