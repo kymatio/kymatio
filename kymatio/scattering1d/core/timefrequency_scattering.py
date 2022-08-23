@@ -382,5 +382,5 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr):
         S_2 = backend.swap_time_frequency(S_2_T)
         return {**U_2, 'coef': S_2, 'n1_stride': n1_stride}
     elif not average_fr:
-        n1_stride = 2**max(log2_F - oversampling_fr, 0)
+        n1_stride = 2**max(U_2['j_fr'][-1] - oversampling_fr, 0)
         return {**U_2, 'n1_stride': n1_stride}
