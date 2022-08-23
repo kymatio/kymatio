@@ -319,7 +319,7 @@ def time_averaging(U_2, backend, phi_f, oversampling, average,
     U_2{n2,n_fr}(t, n1) = |Y_2_fr{n2,n_fr}|(t, n1)
     """
     if average == 'global':
-        return {**U_2, 'coef': backend.average_global(U_2['coef']}
+        return {**U_2, 'coef': backend.average_global(U_2['coef'])}
     elif average == 'local':
         log2_T = phi['j']
         k_in = U_2['j'][-1]
