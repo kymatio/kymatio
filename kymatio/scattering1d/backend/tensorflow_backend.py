@@ -112,6 +112,10 @@ class TensorFlowBackend1D(TensorFlowBackend):
         return tf.math.reduce_sum(x, axis=-1, keepdims=True)
 
     @classmethod
+    def pad_frequency(cls, x, padding):
+        return cls.pad(x, pad_left=0, pad_right=padding, mode='constant')
+
+    @classmethod
     def swap_time_frequency(cls, x):
         return tf.linalg.matrix_transpose(x)
 
