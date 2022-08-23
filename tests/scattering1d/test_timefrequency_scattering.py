@@ -263,14 +263,30 @@ def test_joint_timefrequency_scattering():
         assert (S_2['coef'].shape[-1]*stride) == S._N_padded
         
         # Test frequential averaging
-        S.average_fr = 'local'
         U_2 = {**path, 'coef': backend.modulus(path['coef'])}
+
+        # average_fr == 'local'
+        S.average_fr = 'local'
         S_2 = frequency_averaging(
             U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
-
-        # Check that averaged coefficients have the same frequential stride
         stride_fr = 2**max(S.log2_F - S.oversampling_fr, 0)
+        assert S_2['n1_stride'] == stride_fr
         assert (S_2['coef'].shape[-2]*stride_fr) == S._N_padded_fr
+
+        # average_fr == 'global'
+        S.average_fr = 'global'
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        assert S_2['n1_stride'] == S_2['n1_max']
+        assert S_2['coef'].shape[-2] == 1
+
+        # average_fr == False
+        S.average_fr = False
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        stride_fr = 2**max(S_2['j_fr'][0] - S.oversampling_fr, 0)
+        assert S_2['n1_stride'] == stride_fr
+        assert np.allclose(S_2['coef'], U_2['coef'])
 
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:
