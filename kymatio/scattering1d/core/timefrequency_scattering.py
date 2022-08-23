@@ -13,7 +13,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
         Yields scattering coefficients at the sample
         rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         doubles the sample rate, until reaching the native sample rate.
-    average_local : boolean, optional
+    average_local : boolean
         whether to locally average the result by means of a low-pass filter phi.
     filters_fr : [phi, psis] list where
         * phi is a dictionary describing the low-pass filter of width F, used
@@ -222,13 +222,21 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
 
     Yields
     ------
-    * Y_fr[n_fr=0] indexed by (batch, n1[j_fr], time), complex-valued, where
-        n1 has been zero-padded to size N_fr before convolution
-    * etc. for every n_fr < len(psis)
+    Y_2_fr{n2,n_fr}(t, n1) = (Y_2*psi_{n_fr})(t[j2], n1[j_fr]),
+        conv. over n1, broadcast over t, n1 zero-padded up to N_fr
 
     Definitions
     -----------
-    Y_fr[n2](n1, t) = (X * psi)(t, n1), conv. over n1, broadcast over t
+    U_0(t) = x(t)
+    S_0(t) = (x * phi)(t)
+    U_1{n1}(t) = |x * psi_{n1}|(t)
+    S_1(n1, t) = (U_1 * phi)(t), conv. over t, broadcast over n1
+    Y_1_fr{n_fr}(t, n1) = (S_1*psi_{n_fr})(t[log2_T], n1[n_fr]),
+        conv. over n1, broadcast over t, n1 zero-padded up to N_fr
+    Y_2{n2}(t, n1) = (U_1 * psi_{n2})(t[j2], n2),
+        conv. over t, broadcast over n1
+    Y_2_fr{n2,n_fr}(t, n1) = (Y_2*psi_{n_fr})(t[j2], n1[j_fr]),
+        conv. over n1, broadcast over t, n1 zero-padded up to N_fr
     """
 
     # Unpack filters_fr list
