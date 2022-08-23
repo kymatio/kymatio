@@ -6,7 +6,7 @@ import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
-    scattering1d_widthfirst)
+    time_scattering_widthfirst, joint_timefrequency_scattering)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 
 
@@ -80,7 +80,7 @@ def test_jtfs_create_filters():
         for psi_pos, psi_neg in zip(positive_spins, negative_spins)])
 
 
-def test_scattering1d_widthfirst():
+def test_time_scattering_widthfirst():
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
@@ -94,7 +94,7 @@ def test_scattering1d_widthfirst():
 
     # Width-first
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
-    W_gen = scattering1d_widthfirst(U_0, S.backend, filters, S.oversampling,
+    W_gen = time_scattering_widthfirst(U_0, S.backend, filters, S.oversampling,
         average_local=True)
     W = {path['n']: path['coef'] for path in W_gen}
 
@@ -151,9 +151,111 @@ def test_frequency_scattering():
 
     # spinned=True
     X['coef'] = X['coef'].astype('complex64')
-    X['n'] = (-1, 4) # a mockup (n1, n2) pair from scattering1d_widthfirst
+    X['n'] = (-1, 4) # a mockup (n1, n2) pair from time_scattering_widthfirst
     freq_gen = frequency_scattering(X, S.backend, jtfs.filters_fr,
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
         assert Y_fr['n'] == (4, Y_fr['n_fr'])
+
+
+def test_joint_timefrequency_scattering():
+    # Define scattering object
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+    S = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend='numpy')
+    S.build()
+    S.create_filters()
+    assert not S.average
+    assert not S.average_fr
+    backend = kymatio.Scattering1D(
+        J=J, Q=Q, shape=shape, T=0, backend='numpy').backend
+
+    x = torch.zeros(shape)
+    x[shape[0]//2] = 1
+    x_shape = backend.shape(x)
+    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    x = backend.reshape_input(x, signal_shape)
+    U_0_in = backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
+
+    filters = [S.phi_f, S.psi1_f, S.psi2_f]
+    jtfs_gen = joint_timefrequency_scattering(U_0_in, backend,
+        filters, S.oversampling, S.average=='local',
+        S.filters_fr, S.oversampling_fr, S.average_fr=='local')
+    path_keys = ['coef', 'j', 'n', 'n1_max', 'j_fr', 'n_fr', 'spin']
+
+    # Zeroth order
+    U_0 = next(jtfs_gen)
+    assert np.allclose(U_0['coef'], U_0_in)
+    assert U_0['n'] == ()
+    assert U_0['j'] == ()
+
+    # First and second order
+    S_jtfs = list(jtfs_gen)
+
+    # Check that all path keys are unique
+    ns = [path['n'] for path in S_jtfs]
+    assert len(ns) == len(set(ns))
+
+    # Check that order 1 comes before order 2
+    orders = [len(path['n']) for path in S_jtfs]
+    assert set(orders) == {1, 2}
+    assert orders == sorted(orders)
+
+    # Test first order
+    S1_jtfs = filter(lambda path: len(path['n'])==1, S_jtfs)
+    for path in S1_jtfs:
+        # Check path format
+        assert path.keys() == set(path_keys)
+
+        # Check that first-order spins are nonnegative
+        assert path['spin'] >= 0
+
+        # Check frequency padding
+        assert path['n1_max'] < S._N_padded_fr
+
+        # Check that first-order coefficients have the same temporal stride
+        stride = 2**max(S.log2_T - S.oversampling, 0)
+        assert (path['coef'].shape[-1]*stride) == S._N_padded
+
+        # Check that frequential stride works as intended
+        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
+
+        # Check that padding is sufficient
+        midpoint = (path['n1_max'] + S._N_padded_fr) // (2*stride_fr)
+        avg_value = np.mean(np.abs(path['coef'][midpoint, :]))
+        assert avg_value < 1e-5
+
+    # Test second order
+    S2_jtfs = filter(lambda path: len(path['n'])==2, S_jtfs)
+    for path in S2_jtfs:
+        # Check path format
+        assert path.keys() == set(path_keys)
+
+        # Check frequency padding
+        assert path['n1_max'] < S._N_padded_fr
+
+        # Check that temporal stride works as intended
+        stride = 2**max(path['j'][1] - S.oversampling, 0)
+        assert (path['coef'].shape[-1]*stride) == S._N_padded
+
+        # Check that frequential stride works as intended
+        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
+
+        # Check that padding is sufficient
+        midpoint = (path['n1_max'] + S._N_padded_fr) // (2*stride_fr)
+        avg_value = np.mean(np.abs(path['coef'][midpoint, :]))
+        assert avg_value < 1e-5
+
+    # Check that second-order spins are mirrors of each other
+    for path in S2_jtfs:
+        del path['coef']
+    S2_pos = filter(lambda path: path['spin']>0, S2_jtfs)
+    S2_neg = filter(lambda path: path['spin']<0, S2_jtfs)
+    assert len(list(S2_pos)) == len(list(S2_neg))
+    assert set(S2_pos) == set(S2_neg)
