@@ -148,7 +148,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
     for Y_fr in freq_gen:
         assert Y_fr['spin'] >= 0
-        assert Y_fr['n'] == (Y_fr['n_fr'],)
+        assert Y_fr['n'] == Y_fr['n_fr']
 
     # spinned=True
     X['coef'] = X['coef'].astype('complex64')
@@ -157,7 +157,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
-        assert Y_fr['n'] == (4, Y_fr['n_fr'])
+        assert Y_fr['n'] == ((4,) + Y_fr['n_fr'])
 
 
 def test_joint_timefrequency_scattering():
@@ -223,7 +223,7 @@ def test_joint_timefrequency_scattering():
         assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        stride_fr = 2**max(path['j_fr'][0] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
@@ -245,7 +245,7 @@ def test_joint_timefrequency_scattering():
         assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        stride_fr = 2**max(path['j_fr'][0] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
