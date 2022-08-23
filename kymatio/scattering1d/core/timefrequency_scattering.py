@@ -278,8 +278,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
             'j_fr': j_fr, 'n_fr': n_fr, 'spin': spin}
 
 
-def time_averaging(U_2, backend, phi_f, oversampling, average,
-        ind_start, ind_end):
+def time_averaging(U_2, backend, phi_f, oversampling):
     """
     Parameters
     ----------
@@ -292,17 +291,10 @@ def time_averaging(U_2, backend, phi_f, oversampling, average,
         Yields scattering coefficients at the sample
         rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         doubles the sample rate, until reaching the native sample rate.
-    average : string or boolean
-        If 'global', calls backend.average_global
-        If 'local', performs convolution with phi_f followed by unpadding
-        If False, skips temporal averaging and only performs unpadding
-    ind_start, ind_end : lists of array indices for unpadding. See scattering1d
 
     Returns
     -------
-    if average=='global', S_2{n2,n_fr} indexed by (batch, n1[n_fr], time[global])
-    if average=='local', S_2{n2,n_fr} indexed by (batch, n1[n_fr], time[log2_T])
-    if average==False, U_2{n2,n_fr} indexed by (batch, n1[n_fr], time[j2])
+    S_2{n2,n_fr} indexed by (batch, n1[n_fr], time[log2_T])
 
     Definitions
     -----------
@@ -318,20 +310,11 @@ def time_averaging(U_2, backend, phi_f, oversampling, average,
         conv. over n1, broadcast over t, n1 zero-padded up to N_fr
     U_2{n2,n_fr}(t, n1) = |Y_2_fr{n2,n_fr}|(t, n1)
     """
-    if average == 'global':
-        return {**U_2, 'coef': backend.average_global(U_2['coef'])}
-    elif average == 'local':
-        log2_T = phi['j']
-        k_in = U_2['j'][-1]
-        k_J = max(log2_T - k_in - oversampling, 0)
-        U_hat = backend.rfft(U_2['coef'])
-        S_c = backend.cdgmm(U_hat, phi['levels'][k_in])
-        S_hat = backend.subsample_fourier(S_c, 2 ** k_J)
-        S_2 = backend.irfft(S_hat)
-        res = max(log2_T - oversampling, 0)
-        S_2_unpadded = backend.unpad(S_2, ind_start[res], ind_end[res])
-        return {**U_2, 'coef': S_2_unpadded}
-    else:
-        res = max(U_2['j'][-1] - oversampling, 0)
-        U_2_unpadded = backend.unpad(U_2['coef'], ind_start[res], ind_end[res])
-        return {**U_2, 'coef': U_2_unpadded}
+    log2_T = phi_f['j']
+    k_in = U_2['j'][-1]
+    k_J = max(log2_T - k_in - oversampling, 0)
+    U_hat = backend.rfft(U_2['coef'])
+    S_c = backend.cdgmm(U_hat, phi_f['levels'][k_in])
+    S_hat = backend.subsample_fourier(S_c, 2 ** k_J)
+    S_2 = backend.irfft(S_hat)
+    return {**U_2, 'coef': S_2}
