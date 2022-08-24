@@ -327,7 +327,7 @@ def time_averaging(U_2, backend, phi_f, oversampling):
     return {**U_2, 'coef': S_2}
 
 
-def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr):
+def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
     """
     Parameters
     ----------
