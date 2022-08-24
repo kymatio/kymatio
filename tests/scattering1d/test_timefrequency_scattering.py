@@ -9,6 +9,7 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
     joint_timefrequency_scattering, time_scattering_widthfirst,
     frequency_scattering, time_averaging, frequency_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
+from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
 
 
 def test_jtfs_build():
@@ -352,3 +353,10 @@ def test_joint_timefrequency_scattering():
     S2_neg = filter(lambda path: path['spin']<0, S2_jtfs)
     assert len(list(S2_pos)) == len(list(S2_neg))
     assert set(S2_pos) == set(S2_neg)
+
+
+def test_jtfs_numpy():
+    # Test __init__
+    S = TimeFrequencyScatteringNumPy(
+        J=10, J_fr=3, shape=4096, Q=8, backend='numpy')
+    assert S.F == (2 ** S.J_fr)
