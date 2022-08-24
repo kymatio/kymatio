@@ -30,16 +30,11 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
         * `sigma`: float, bandwidth
         * 'levels': list, values taken by the lowpass in the Fourier domain
                     at different levels of detail.
-    oversampling : int >=0, optional
-        if average_local is True, return scattering coefficients at the sample
-        rate max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
-        doubles the sample rate, until reaching the native sample rate.
-        if average_local is False, return first-order coefficients at the sample
-        rate max(1, 2**(j1-oversampling)) and second-order coefficients at the
-        sample rate max(1, 2**(j2-oversampling)).
-    max_order : int, optional
-        Number of orders in the scattering transform. Either 1 or 2.
-    average_local : boolean, optional
+    oversampling : int >=0
+        Yields scattering coefficients with a temporal stride equal to
+        max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
+        one unit halves the stride, until reaching a stride of 1.
+    average_local : boolean
         whether to locally average the result by means of a low-pass filter phi.
     """
 

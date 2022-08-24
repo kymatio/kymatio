@@ -5,8 +5,9 @@ import torch
 import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
-from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
-    time_scattering_widthfirst, joint_timefrequency_scattering)
+from kymatio.scattering1d.core.timefrequency_scattering import (
+    joint_timefrequency_scattering, time_scattering_widthfirst,
+    frequency_scattering, time_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 
 
@@ -251,6 +252,15 @@ def test_joint_timefrequency_scattering():
         midpoint = (path['n1_max'] + S._N_padded_fr) // (2*stride_fr)
         avg_value = np.mean(np.abs(path['coef'][midpoint, :]))
         assert avg_value < 1e-5
+
+        # Test time averaging
+        S.average = 'local'
+        U_2 = {**path, 'coef': backend.modulus(path['coef'])}
+        S_2 = time_averaging(U_2, backend, S.phi_f, S.oversampling)
+
+        # Check that averaged coefficients have the same temporal stride
+        stride = 2**max(S.log2_T - S.oversampling, 0)
+        assert (S_2['coef'].shape[-1]*stride) == S._N_padded
 
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:
