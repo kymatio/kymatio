@@ -7,7 +7,7 @@ from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (
     joint_timefrequency_scattering, time_scattering_widthfirst,
-    frequency_scattering, time_averaging)
+    frequency_scattering, time_averaging, frequency_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 
 
@@ -205,7 +205,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
     for Y_fr in freq_gen:
         assert Y_fr['spin'] >= 0
-        assert Y_fr['n'] == (Y_fr['n_fr'],)
+        assert Y_fr['n'] == Y_fr['n_fr']
 
     # spinned=True
     X['coef'] = X['coef'].astype('complex64')
@@ -214,7 +214,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
-        assert Y_fr['n'] == (4, Y_fr['n_fr'])
+        assert Y_fr['n'] == (4,) + Y_fr['n_fr']
 
 
 def test_joint_timefrequency_scattering():
@@ -280,7 +280,7 @@ def test_joint_timefrequency_scattering():
         assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        stride_fr = 2**max(path['j_fr'][0] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
@@ -302,7 +302,7 @@ def test_joint_timefrequency_scattering():
         assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        stride_fr = 2**max(path['j_fr'][0] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
@@ -318,6 +318,32 @@ def test_joint_timefrequency_scattering():
         # Check that averaged coefficients have the same temporal stride
         stride = 2**max(S.log2_T - S.oversampling, 0)
         assert (S_2['coef'].shape[-1]*stride) == S._N_padded
+        
+        # Test frequential averaging
+        U_2 = {**path, 'coef': backend.modulus(path['coef'])}
+
+        # average_fr == 'local'
+        S.average_fr = 'local'
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        stride_fr = 2**max(S.log2_F - S.oversampling_fr, 0)
+        assert S_2['n1_stride'] == stride_fr
+        assert (S_2['coef'].shape[-2]*stride_fr) == S._N_padded_fr
+
+        # average_fr == 'global'
+        S.average_fr = 'global'
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        assert S_2['n1_stride'] == S_2['n1_max']
+        assert S_2['coef'].shape[-2] == 1
+
+        # average_fr == False
+        S.average_fr = False
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        stride_fr = 2**max(S_2['j_fr'][0] - S.oversampling_fr, 0)
+        assert S_2['n1_stride'] == stride_fr
+        assert np.allclose(S_2['coef'], U_2['coef'])
 
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:
