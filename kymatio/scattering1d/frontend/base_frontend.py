@@ -581,6 +581,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         # Check for absence of aliasing
         assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
 
+    def scattering(self, x):
+        TimeFrequencyScatteringBase._check_runtime_args(self)
+        TimeFrequencyScatteringBase._check_input(self, x)
+
     def _check_runtime_args(self):
         super(TimeFrequencyScatteringBase, self)._check_runtime_args()
 
