@@ -212,7 +212,7 @@ class ScatteringBase1D(ScatteringBase):
 
     def _check_runtime_args(self):
         if not self.out_type in ('array', 'dict', 'list'):
-            raise ValueError("The out_type must be one of 'array', 'dict'"
+            raise ValueError("out_type must be one of 'array', 'dict'"
                              ", or 'list'. Got: {}".format(self.out_type))
 
         if not self.average and self.out_type == 'array':
@@ -524,7 +524,8 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
     def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0,
-            Q_fr=1, F=None, oversampling_fr=0, out_type='array', backend=None):
+            Q_fr=1, F=None, oversampling_fr=0,
+            out_type='array', format='joint', backend=None):
         max_order = 2
         super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,
             max_order, oversampling, out_type, backend)
@@ -532,6 +533,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         self.Q_fr = Q_fr
         self.F = F
         self.oversampling_fr = oversampling_fr
+        self.format = format
 
     def build(self):
         super(TimeFrequencyScatteringBase, self).build()
@@ -578,6 +580,27 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
 
         # Check for absence of aliasing
         assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
+
+    def _check_runtime_args(self):
+        super(TimeFrequencyScatteringBase, self)._check_runtime_args()
+
+        if self.format == 'joint':
+            if (not self.average_fr) and (self.out_type == 'array'):
+                raise ValueError("Cannot convert to format='joint' with "
+                "out_type='array' and F=0. Either set format='time', "
+                "out_type='dict', or out_type='list'.")
+
+        if self.oversampling_fr < 0:
+            raise ValueError("oversampling_fr must be nonnegative. Got: {}".format(
+                self.oversampling_fr))
+
+        if not isinstance(self.oversampling_fr, numbers.Integral):
+            raise ValueError("oversampling_fr must be integer. Got: {}".format(
+                self.oversampling_fr))
+
+        if self.format not in ['time', 'joint']:
+            raise ValueError("format must be 'time' or 'joint'. Got: {}".format(
+                self.format))
 
     @property
     def filterbank_fr(self):
