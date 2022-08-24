@@ -361,34 +361,12 @@ def test_jtfs_numpy():
     J_fr = 3
     shape = (1024,)
     Q = 3
-    S = TimeFrequencyScatteringNumPy(J=J, J_fr=J_fr,
-        shape=shape, Q=Q, out_type='list')
+    S = TimeFrequencyScatteringNumPy(J=J, J_fr=J_fr, shape=shape, Q=Q)
     assert S.F == (2 ** S.J_fr)
 
     x = torch.zeros(shape)
     x[shape[0]//2] = 1
     Sx = S(x)
 
-    # Check that all path keys are unique
-    ns = [path['n'] for path in Sx]
-    assert len(ns) == len(set(ns))
-
-    # Check that order 1 comes before order 2
-    orders = [len(path['n']) for path in Sx]
-    assert set(orders) == {0, 1, 2}
-    assert orders == sorted(orders)
-
-    # Check that coefficients are NumPy arrays
-    assert all([isinstance(path['coef'], np.ndarray) for path in Sx])
-
-    # Test T='global'
-    S = TimeFrequencyScatteringNumPy(J=J, J_fr=J_fr,
-        shape=shape, Q=Q, out_type='list', T='global')
-    Sx = S(x)
-    assert all([(path['coef'].shape[-1] == 1) for path in Sx])
-
-    # Test T=0, F=0
-    S = TimeFrequencyScatteringNumPy(J=J, J_fr=J_fr, oversampling=0,
-        shape=shape, Q=Q, out_type='list', T=0, F=0)
-    Sx = S(x)
-    assert all([(path['coef']>=0).all() for path in Sx])
+    assert isinstance(Sx, np.ndarray)
+    assert Sx.ndim == 3
