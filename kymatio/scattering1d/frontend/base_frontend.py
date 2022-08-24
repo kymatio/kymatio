@@ -6,6 +6,8 @@ import numpy as np
 from warnings import warn
 
 from ..core.scattering1d import scattering1d
+from ..core.timefrequency_scattering import (joint_timefrequency_scattering,
+    time_averaging, frequency_averaging)
 from ..filter_bank import (compute_temporal_support, gauss_1d,
     anden_generator, scattering_filter_factory, spin)
 from ..utils import compute_border_indices, compute_padding, parse_T
@@ -584,6 +586,76 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
     def scattering(self, x):
         TimeFrequencyScatteringBase._check_runtime_args(self)
         TimeFrequencyScatteringBase._check_input(self, x)
+
+        x_shape = self.backend.shape(x)
+        batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+        x = self.backend.reshape_input(x, signal_shape)
+        U_0 = self.backend.pad(
+            x, pad_left=self.pad_left, pad_right=self.pad_right)
+
+        filters = [self.phi_f, self.psi1_f, self.psi2_f]
+        S_gen = joint_timefrequency_scattering(U_0, self.backend,
+            filters, self.oversampling, (self.average=='local'),
+            self.filters_fr, self.oversampling_fr, (self.average_fr=='local'))
+
+        # Zeroth order
+        path = next(S_gen)
+        if self.average == 'global':
+            path['coef'] = self.backend.average_global(path['coef'])
+        else:
+            res = self.log2_T if self.average else 0
+            path['coef'] = self.backend.unpad(
+                path['coef'], self.ind_start[res], self.ind_end[res])
+        path['coef'] = self.backend.reshape_output(
+            path['coef'], batch_shape, n_kept_dims=1)
+        S = [{**path, 'order': 0}]
+
+        # First and second order
+        for path in S_gen:
+            # "The phase of the integrand must be set to a constant. This
+            # freedom in setting the stationary phase to an arbitrary constant
+            # value suggests the existence of a gauge boson" — Glinsky
+            path['coef'] = self.backend.modulus(path['coef'])
+
+            # Temporal averaging and unpadding. Switch cases:
+            # 1. If averaging is global, no need for unpadding at all.
+            # 2. If averaging is local, averaging depends on order:
+            #     2a. at order 1, unpad at resolution log2_T
+            #     2b. at order 2, average and unpad at resolution log2_T
+            # 3. If there is no averaging, unpadding depends on order:
+            #     3a. at order 1, unpad at resolution log2_T
+            #     3b. at order 2, unpad at resolution j2
+            # (for simplicity, we assume oversampling=0 in the rationale above,
+            #  but the implementation below works for any value of oversampling)
+            if self.average == 'global':
+                # Case 1.
+                path['coef'] = self.backend.average_global(path['coef'])
+            else:
+                if len(path['n']) > 1 and not self.average:
+                    # Case 3b.
+                    res = max(path['j'][-1] - self.oversampling, 0)
+                else:
+                    # Cases 2a, 2b, and 3a.
+                    res = max(self.log2_T - self.oversampling, 0)
+                    if len(path['n']) > 1 and self.average == 'local':
+                        # Case 2b.
+                        path = time_averaging(
+                            path, self.backend, self.phi_f, self.oversampling)
+                # Cases 2a, 2b, 3a, and 3b.
+                path['coef'] = self.backend.unpad(
+                    path['coef'], self.ind_start[res], self.ind_end[res])
+
+            # Frequential averaging for spinned coefficients
+            if self.average_fr and not (path['spin'] == 0):
+                path = frequency_averaging(path,
+                    self.backend, self.filters_fr[0],
+                    self.oversampling_fr, self.average_fr)
+            path['coef'] = self.backend.reshape_output(
+                path['coef'], batch_shape, n_kept_dims=2)
+            S.append({**path, 'order': len(path['n'])})
+
+        return S
+
 
     def _check_runtime_args(self):
         super(TimeFrequencyScatteringBase, self)._check_runtime_args()
