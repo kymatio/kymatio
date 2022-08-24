@@ -259,6 +259,27 @@ def test_fft(backend, device):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
+def test_pad_frequency(device, backend, random_state=42):
+    """
+    Tests the correctness of pad_frequency
+    """
+    # Real (last dimension is 1)
+    shape = (10, 20, 3, 5, 1)
+    shape_padded = (10, 20, 3, 16, 1)
+    x = torch.arange(np.prod(shape)).reshape(shape) * 0.5
+    x_padded = backend.pad_frequency(x, padding=11)
+    assert tuple(x_padded.shape) == shape_padded
+
+    # Complex (trailing dimension is 2)
+    shape = (10, 20, 3, 5, 2)
+    shape_padded = (10, 20, 3, 16, 2)
+    x = torch.arange(np.prod(shape)).reshape(shape) * 0.5
+    x_padded = backend.pad_frequency(x, padding=11)
+    assert tuple(x_padded.shape) == shape_padded
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
 def test_swap_time_frequency_1d(device, backend, random_state=42):
     """
     Tests the correctness of swap_time_frequency

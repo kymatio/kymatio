@@ -13,6 +13,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
         Yields scattering coefficients with a temporal stride equal to
         max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
         one unit halves the stride, until reaching a stride of 1.
+
     average_local : boolean
         whether to locally average the result by means of a low-pass filter phi.
     filters_fr : [phi, psis] list where
