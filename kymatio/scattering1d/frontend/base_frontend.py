@@ -645,16 +645,43 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                 path['coef'] = self.backend.unpad(
                     path['coef'], self.ind_start[res], self.ind_end[res])
 
-            # Frequential averaging for spinned coefficients
+            # Frequential averaging and unpadding
             if self.average_fr and not (path['spin'] == 0):
-                path = frequency_averaging(path,
-                    self.backend, self.filters_fr[0],
-                    self.oversampling_fr, self.average_fr)
-            path['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=2)
-            S.append({**path, 'order': len(path['n'])})
+                path = frequency_averaging(path, self.backend,
+                    self.filters_fr[0], self.oversampling_fr, self.average_fr)
+            if not (self.out_type == 'array' and self.format == 'joint'):
+                # TODO unpad_frequency
+                # path['coef'] = backend.unpad_frequency(path['coef'],
+                #    path['n1_max'], path['n1_stride'])
+                raise NotImplementedError
 
-        return S
+            # Splitting and reshaping
+            if self.format == 'joint':
+                paths = [path]
+            elif self.format == 'time':
+                # TODO split
+                # paths = self.backend.split(path)
+                raise NotImplementedError
+            for path in paths:
+                path['coef'] = self.backend.reshape_output(
+                    path['coef'], batch_shape, n_kept_dims=2)
+                S.append({**path, 'order': len(path['n'])})
+
+        if (self.format == 'joint') and (self.out_type == 'array'):
+            # Skip zeroth order
+            S = S[1:]
+            # Concatenate first and second order into a 4D tensor:
+            # (batch, n_jtfs, freq, time) where n_jtfs aggregates (n2, n_fr)
+            return self.backend.concatenate([path['coef'] for path in S], dim=-3)
+        elif (self.format == 'time'):
+            # Sort paths by order and then by key 'n' (tuple)
+            # Order 0: n=(). Order 1: n=(n1, n_fr). Order 2: n=(n1, n2, n_fr)
+            S.sort(key=(lambda path: (path['order'], path['n'])))
+
+        if (self.out_type == 'dict'):
+            return {path['n']: path['coef'] for path in S}
+        elif (self.out_type == 'list'):
+            return S
 
 
     def _check_runtime_args(self):
