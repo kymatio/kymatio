@@ -157,7 +157,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
-        assert Y_fr['n'] == ((4,) + Y_fr['n_fr'])
+        assert Y_fr['n'] == (4,) + Y_fr['n_fr']
 
 
 def test_joint_timefrequency_scattering():
