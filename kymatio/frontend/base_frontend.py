@@ -56,4 +56,4 @@ class ScatteringBase():
         raise NotImplementedError
 
     class _DryBackend:
-        __getattr__ = lambda self, attr: (lambda *args: None)
+        __getattr__ = lambda self, attr: (lambda *args, **kwargs: None)
