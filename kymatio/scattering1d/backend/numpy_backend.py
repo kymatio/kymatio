@@ -121,4 +121,9 @@ class NumpyBackend1D(NumpyBackend):
     def swap_time_frequency(cls, x):
         return cls._np.moveaxis(x, source=(-1, -2), destination=(-2, -1))
 
+    @classmethod
+    def unpad_frequency(cls, x, n1_max, n1_stride):
+        n1_unpadded = 1 + (n1_max//n1_stride)
+        return x[..., :n1_unpadded, :]
+
 backend = NumpyBackend1D
