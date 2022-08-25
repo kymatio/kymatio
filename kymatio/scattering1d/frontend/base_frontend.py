@@ -7,7 +7,7 @@ from warnings import warn
 
 from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import (joint_timefrequency_scattering,
-    time_averaging, frequency_averaging)
+    jtfs_average_and_format)
 from ..filter_bank import (compute_temporal_support, gauss_1d,
     anden_generator, scattering_filter_factory, spin)
 from ..utils import compute_border_indices, compute_padding, parse_T
@@ -594,82 +594,50 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             x, pad_left=self.pad_left, pad_right=self.pad_right)
 
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
-        S_gen = joint_timefrequency_scattering(U_0, self.backend,
+        U_gen = joint_timefrequency_scattering(U_0, self.backend,
             filters, self.oversampling, (self.average=='local'),
             self.filters_fr, self.oversampling_fr, (self.average_fr=='local'))
 
+        S_gen = jtfs_average_and_format(U_gen, self.backend,
+            self.phi_f, self.oversampling, self.average,
+            self.filters_fr[0], self.oversampling_fr, self.average_fr,
+            self.out_type, self.format)
+
         # Zeroth order
         path = next(S_gen)
-        if self.average == 'global':
-            path['coef'] = self.backend.average_global(path['coef'])
-        else:
+        if not self.average == 'global':
             res = self.log2_T if self.average else 0
             path['coef'] = self.backend.unpad(
                 path['coef'], self.ind_start[res], self.ind_end[res])
         path['coef'] = self.backend.reshape_output(
             path['coef'], batch_shape, n_kept_dims=1)
-        S = [{**path, 'order': 0}]
+        S = [path]
 
         # First and second order
         for path in S_gen:
-            # "The phase of the integrand must be set to a constant. This
-            # freedom in setting the stationary phase to an arbitrary constant
-            # value suggests the existence of a gauge boson" — Glinsky
-            path['coef'] = self.backend.modulus(path['coef'])
-
-            # Temporal averaging and unpadding. Switch cases:
+            # Temporal unpadding. Switch cases:
             # 1. If averaging is global, no need for unpadding at all.
-            # 2. If averaging is local, averaging depends on order:
-            #     2a. at order 1, S_gen yields
-            #               Y_1_fr = S_1 * psi_{n_fr}
-            #         unpad at resolution log2_T
-            #     2b. at order 2, S_gen yields
-            #               Y_2_fr = U_1 * psi_{n2} * psi_{n_fr}
-            #         average and unpad at resolution log2_T
+            # 2. If averaging is local, unpad at resolution log2_T
             # 3. If there is no averaging, unpadding depends on order:
             #     3a. at order 1, unpad Y_1_fr at resolution log2_T
             #     3b. at order 2, unpad Y_2_fr at resolution j2
             # (for simplicity, we assume oversampling=0 in the rationale above,
             #  but the implementation below works for any value of oversampling)
-            if self.average == 'global':
-                # Case 1.
-                path['coef'] = self.backend.average_global(path['coef'])
-            else:
-                if len(path['n']) > 1 and not self.average:
+            if not self.average == 'global':
+                if not self.average and len(path['n']) > 1:
                     # Case 3b.
                     res = max(path['j'][-1] - self.oversampling, 0)
                 else:
                     # Cases 2a, 2b, and 3a.
                     res = max(self.log2_T - self.oversampling, 0)
-                    if len(path['n']) > 1 and self.average == 'local':
-                        # Case 2b.
-                        path = time_averaging(
-                            path, self.backend, self.phi_f, self.oversampling)
                 # Cases 2a, 2b, 3a, and 3b.
                 path['coef'] = self.backend.unpad(
                     path['coef'], self.ind_start[res], self.ind_end[res])
 
-            # Frequential averaging and unpadding
-            if self.average_fr and not (path['spin'] == 0):
-                path = frequency_averaging(path, self.backend,
-                    self.filters_fr[0], self.oversampling_fr, self.average_fr)
-            if not (self.out_type == 'array' and self.format == 'joint'):
-                # TODO unpad_frequency
-                # path['coef'] = backend.unpad_frequency(path['coef'],
-                #    path['n1_max'], path['n1_stride'])
-                raise NotImplementedError
-
-            # Splitting and reshaping
-            if self.format == 'joint':
-                paths = [path]
-            elif self.format == 'time':
-                # TODO split
-                # paths = self.backend.split(path)
-                raise NotImplementedError
-            for path in paths:
-                path['coef'] = self.backend.reshape_output(
-                    path['coef'], batch_shape, n_kept_dims=2)
-                S.append({**path, 'order': len(path['n'])})
+            # Reshape path to batch shape.
+            path['coef'] = self.backend.reshape_output(
+                path['coef'], batch_shape, n_kept_dims=2)
+            S.append(path)
 
         if (self.format == 'joint') and (self.out_type == 'array'):
             # Skip zeroth order
@@ -677,16 +645,18 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             # Concatenate first and second order into a 4D tensor:
             # (batch, n_jtfs, freq, time) where n_jtfs aggregates (n2, n_fr)
             return self.backend.concatenate([path['coef'] for path in S], dim=-3)
-        elif (self.format == 'time'):
-            # Sort paths by order and then by key 'n' (tuple)
-            # Order 0: n=(). Order 1: n=(n1, n_fr). Order 2: n=(n1, n2, n_fr)
-            S.sort(key=(lambda path: (path['order'], path['n'])))
+        else:
+            raise NotImplementedError
 
-        if (self.out_type == 'dict'):
-            return {path['n']: path['coef'] for path in S}
-        elif (self.out_type == 'list'):
-            return S
-
+        # TODO
+        # # Sort paths by order and then by key 'n' (tuple)
+        # # Order 0: n=(). Order 1: n=(n1, n_fr). Order 2: n=(n1, n2, n_fr)
+        # S.sort(key=(lambda path: (path['order'], path['n'])))
+        #
+        # if (self.out_type == 'dict'):
+        #     return {path['n']: path['coef'] for path in S}
+        # elif (self.out_type == 'list'):
+        #     return S
 
     def _check_runtime_args(self):
         super(TimeFrequencyScatteringBase, self)._check_runtime_args()
