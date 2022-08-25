@@ -6,7 +6,7 @@ Scattering transforms are translation-invariant signal representations implement
 
 [![PyPI](https://img.shields.io/badge/Python-3.7%2C_3.8%2C_3.9%2C_3.10-blue.svg)](https://pypi.org/project/kymatio/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Build Status](https://travis-ci.org/kymatio/kymatio.svg?branch=main)](https://travis-ci.org/kymatio/kymatio)
+![Build status](https://github.com/kymatio/kymatio/actions/workflows/pip.yml/badge.svg)
 [![Downloads](https://pepy.tech/badge/kymatio)](https://pepy.tech/project/kymatio)
 [![codecov](https://codecov.io/gh/kymatio/kymatio/branch/main/graph/badge.svg)](https://codecov.io/gh/kymatio/kymatio)
 
