@@ -1,5 +1,5 @@
-Kymatio: Wavelet scattering in Python
-======================================
+Kymatio: Wavelet scattering in Python - v0.3.0 “Erdre”
+======================================================
 
 Kymatio is an implementation of the wavelet scattering transform in the Python programming language, suitable for large-scale numerical experiments in signal processing and machine learning.
 Scattering transforms are translation-invariant signal representations implemented as convolutional networks whose filters are not learned, but fixed (as wavelet filters).
@@ -33,7 +33,7 @@ Each algorithm comes packaged with a frontend and backend. The frontend takes ca
 interfacing with the user. The backend defines functions necessary for
 computation of the scattering transform.
 
-Currently, there are eight available frontend–backend pairs, NumPy (CPU), scikit-learn (CPU), pure PyTorch (CPU and GPU), PyTorch>=1.10 (CPU and GPU), PyTorch+scikit-cuda (GPU), PyTorch>=1.10+scikit-cuda (GPU), TensorFlow (CPU and GPU), and Keras (CPU and GPU).
+Currently, there are eight available frontend–backend pairs, NumPy (CPU), scikit-learn (CPU), pure PyTorch (CPU and GPU), PyTorch>=1.10 (CPU and GPU), PyTorch+scikit-cuda (GPU), PyTorch>=1.10+scikit-cuda (GPU), TensorFlow (CPU and GPU), Keras (CPU and GPU), and Jax (CPU and GPU).
 
 ## Scalability
 
@@ -78,7 +78,7 @@ Linux and macOS are the two officially supported operating systems.
 
 ## NumPy
 
-To explicitly call the `numpy` frontend, run:
+To explicitly call the NumPy frontend, run:
 
 ```
 from kymatio.numpy import Scattering2D
@@ -127,6 +127,16 @@ inputs = Input(shape=(32, 32))
 scattering = Scattering2D(J=2)(inputs)
 ```
 
+## Jax
+
+With Jax installed, you can also instantiate a Jax `Scattering2D` object:
+
+```
+from kymatio.jax import Scattering2D
+
+scattering = Scattering2D(J=2, shape=(32, 32))
+```
+
 # Installation from source
 
 Assuming the Kymatio source has been downloaded, you may install it by running
@@ -146,7 +156,7 @@ python setup.py develop
 
 ## GPU acceleration
 
-Certain frontends, `numpy` and `sklearn`, only allow processing on the CPU and are therefore slower. The `torch`, `tensorflow`, and `keras` frontends, however, also support GPU processing, which can significantly accelerate computations. Additionally, the `torch` backend supports an optimized `skcuda` backend which currently provides the fastest performance in computing scattering transforms. In 2D, it may be instantiated using:
+Certain frontends, `numpy` and `sklearn`, only allow processing on the CPU and are therefore slower. The `torch`, `tensorflow`, `keras`, and `jax` frontends, however, also support GPU processing, which can significantly accelerate computations. Additionally, the `torch` backend supports an optimized `skcuda` backend which currently provides the fastest performance in computing scattering transforms. In 2D, it may be instantiated using:
 
 ```
 from kymatio.torch import Scattering2D
