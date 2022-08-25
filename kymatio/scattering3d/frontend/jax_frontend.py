@@ -23,3 +23,5 @@ class HarmonicScatteringJax3D(ScatteringJax, HarmonicScatteringNumPy3D):
         ScatteringBase3D._instantiate_backend(self, 'kymatio.scattering3d.backend.')
         ScatteringBase3D.build(self)
         ScatteringBase3D.create_filters(self)
+
+HarmonicScatteringJax3D._document()

@@ -21,3 +21,4 @@ class ScatteringJax2D(ScatteringJax, ScatteringNumPy2D):
         ScatteringBase2D.build(self)
         ScatteringBase2D.create_filters(self)
 
+ScatteringJax2D._document()
