@@ -15,7 +15,7 @@ Use Kymatio if you need a library that:
 * supports 1-D, 2-D, and 3-D wavelets,
 * integrates wavelet scattering in a deep learning architecture, and
 * runs seamlessly on CPU and GPU hardware, with major deep learning APIs, such
-  as PyTorch and TensorFlow.
+  as PyTorch, TensorFlow, and Jax.
 
 # The Kymatio environment
 
@@ -23,7 +23,7 @@ Use Kymatio if you need a library that:
 
 The Kymatio organization associates the developers of several pre-existing packages for wavelet scattering, including `ScatNet`, `scattering.m`, `PyScatWave`, `WaveletScattering.jl`, and `PyScatHarm`.
 
-The resort to PyTorch tensors as inputs to Kymatio allows the programmer to backpropagate the gradient of wavelet scattering coefficients, thus integrating them within an end-to-end trainable pipeline, such as a deep neural network.
+Interfacing Kymatio into deep learning frameworks allows the programmer to backpropagate the gradient of wavelet scattering coefficients, thus integrating them within an end-to-end trainable pipeline, such as a deep neural network.
 
 ## Portability
 
@@ -46,7 +46,7 @@ We refer to our [official benchmarks](https://www.kymat.io/userguide.html#benchm
 
 ## How to cite
 
-If you use this package, please cite our paper <a href="">Kymatio: Scattering Transforms in Python</a>:
+If you use this package, please cite our paper *Kymatio: Scattering Transforms in Python*:
 
 Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zarka J., Mallat S., Andén J., Belilovsky E., Bruna J., Lostanlen V., Chaudhary M., Hirn M. J., Oyallon E., Zhang S., Cella C., Eickenberg M. (2020). Kymatio: Scattering Transforms in Python. Journal of Machine Learning Research 21(60):1−6, 2020. [(paper)](http://jmlr.org/papers/v21/19-047.html) [(bibtex)](http://jmlr.org/papers/v21/19-047.bib)
 
@@ -74,7 +74,7 @@ pip install kymatio
 Linux and macOS are the two officially supported operating systems.
 
 
-# Frontend
+# Frontends
 
 ## NumPy
 
@@ -87,7 +87,7 @@ scattering = Scattering2D(J=2, shape=(32, 32))
 
 ## Scikit-learn
 
-After installing the latest version of scikit-learn, you can call `Scattering2D` as a `Transformer` using:
+You can call also call `Scattering2D` as a scikit-learn `Transformer` using:
 
 ```
 from kymatio.sklearn import Scattering2D
@@ -97,7 +97,7 @@ scattering_transformer = Scattering2D(2, (32, 32))
 
 ## PyTorch
 
-After installing the latest version of PyTorch, you can call `Scattering2D` as a `torch.nn.Module` using:
+Using PyTorch, you can instantiate `Scattering2D` as a `torch.nn.Module`:
 
 ```
 from kymatio.torch import Scattering2D
@@ -105,9 +105,9 @@ from kymatio.torch import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
-## TensorFlow
+## TensorFlow and Keras
 
-After installing the latest version of TensorFlow, you can call `Scattering2D` as a `tf.Module` using:
+Similarly, in TensorFlow, you can instantiate `Scattering2D` as a `tf.Module`:
 
 ```
 from kymatio.tensorflow import Scattering2D
@@ -115,9 +115,7 @@ from kymatio.tensorflow import Scattering2D
 scattering = Scattering2D(J=2, shape=(32, 32))
 ```
 
-## Keras
-
-Alternatively, with TensorFlow installed, you can call `Scattering2D` as a Keras `Layer` using:
+Alternatively, you can call `Scattering2D` as a Keras `Layer` using:
 
 ```
 from tensorflow.keras.layers import Input
@@ -129,7 +127,7 @@ scattering = Scattering2D(J=2)(inputs)
 
 ## Jax
 
-With Jax installed, you can also instantiate a Jax `Scattering2D` object:
+Finally, with Jax installed, you can also instantiate a Jax `Scattering2D` object:
 
 ```
 from kymatio.jax import Scattering2D
@@ -156,31 +154,18 @@ python setup.py develop
 
 ## GPU acceleration
 
-Certain frontends, `numpy` and `sklearn`, only allow processing on the CPU and are therefore slower. The `torch`, `tensorflow`, `keras`, and `jax` frontends, however, also support GPU processing, which can significantly accelerate computations. Additionally, the `torch` backend supports an optimized `skcuda` backend which currently provides the fastest performance in computing scattering transforms. In 2D, it may be instantiated using:
+Certain frontends, `numpy` and `sklearn`, only allow processing on the CPU and are therefore slower. The `torch`, `tensorflow`, `keras`, and `jax` frontends, however, also support GPU processing, which can significantly accelerate computations. Additionally, the `torch` backend supports an optimized `skcuda` backend which currently provides the fastest performance in computing scattering transforms.
+
+To use it, you must first install the `scikit-cuda` and `cupy` dependencies:
+```
+pip install scikit-cuda cupy
+```
+Then you may instantiate a scattering object using the `backend='torch_skcuda'` argument:
 
 ```
 from kymatio.torch import Scattering2D
 
 scattering = Scattering2D(J=2, shape=(32, 32), backend='torch_skcuda')
-```
-
-This is particularly useful when working with large images, such as those in ImageNet, which are of size 224×224.
-
-## PyTorch and scikit-cuda
-
-To run Kymatio on a graphics processing unit (GPU), you can either use the PyTorch-style `cuda()` method to move your
-object to GPU. Kymatio is designed to operate on a variety of backends for tensor operations. For extra speed, install
-the CUDA library and the `skcuda` dependency by running the following pip command:
-
-```
-pip install scikit-cuda cupy
-```
-
-The user may control the choice of backend at runtime via for instance:
-
-```
-from kymatio.torch import Scattering2D
-scattering = Scattering2D(J=2, shape=(32, 32)), backend='torch_skcuda')
 ```
 
 # Documentation
