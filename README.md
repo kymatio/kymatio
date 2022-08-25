@@ -62,7 +62,7 @@ Kymatio requires:
 * SciPy (>= 0.13)
 
 
-### Standard installation (on CPU hardware)
+### Standard installation
 We strongly recommend running Kymatio in an Anaconda environment, because this simplifies the installation of other
 dependencies. You may install the latest version of Kymatio using the package manager `pip`, which will automatically download
 Kymatio from the Python Package Index (PyPI):
