@@ -647,16 +647,6 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         else:
             raise NotImplementedError
 
-        # TODO
-        # # Sort paths by order and then by key 'n' (tuple)
-        # # Order 0: n=(). Order 1: n=(n1, n_fr). Order 2: n=(n1, n2, n_fr)
-        # S.sort(key=(lambda path: (path['order'], path['n'])))
-        #
-        # if (self.out_type == 'dict'):
-        #     return {path['n']: path['coef'] for path in S}
-        # elif (self.out_type == 'list'):
-        #     return S
-
     def meta(self):
         backend = self._DryBackend()
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
@@ -692,7 +682,6 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                     # Second order and format='time': n=(n1, n2, n_fr)
                     meta['n'].append([path['n'][2:]])
                 meta['n_fr'].append(path['n_fr'][0])
-        meta['n'] = np.stack(meta['n'])
         meta['n_fr'] = np.array(meta['n_fr'])
         for key in ['xi', 'sigma', 'j']:
             meta[key] = np.zeros((meta['n_fr'].shape[0], 2)) * np.nan
