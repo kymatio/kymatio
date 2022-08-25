@@ -282,7 +282,8 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
         # as (X['n'][1:] + (n_fr,)), i.e., n=(n_fr,) is not spinned
         # and n=(n2, n_fr) if spinned. This 'n' tuple is unique.
         yield {**X, 'coef': Y_fr, 'n': (X['n'][1:] + (n_fr,)),
-            'j_fr': (j_fr,), 'n_fr': (n_fr,), 'spin': spin}
+            'j_fr': (j_fr,), 'n_fr': (n_fr,), 'n1_stride': (2**j_fr),
+            'spin': spin}
 
 
 def time_averaging(U_2, backend, phi_f, oversampling):

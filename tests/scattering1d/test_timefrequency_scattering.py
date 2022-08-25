@@ -244,7 +244,7 @@ def test_joint_timefrequency_scattering():
     jtfs_gen = joint_timefrequency_scattering(U_0_in, backend,
         filters, S.oversampling, S.average=='local',
         S.filters_fr, S.oversampling_fr, S.average_fr=='local')
-    path_keys = ['coef', 'j', 'n', 'n1_max', 'j_fr', 'n_fr', 'spin']
+    path_keys = ['coef', 'j', 'n', 'n1_max', 'n1_stride', 'j_fr', 'n_fr', 'spin']
 
     # Zeroth order
     U_0 = next(jtfs_gen)
