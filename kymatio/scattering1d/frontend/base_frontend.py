@@ -620,11 +620,15 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             # Temporal averaging and unpadding. Switch cases:
             # 1. If averaging is global, no need for unpadding at all.
             # 2. If averaging is local, averaging depends on order:
-            #     2a. at order 1, unpad at resolution log2_T
-            #     2b. at order 2, average and unpad at resolution log2_T
+            #     2a. at order 1, S_gen yields
+            #               Y_1_fr = S_1 * psi_{n_fr}
+            #         unpad at resolution log2_T
+            #     2b. at order 2, S_gen yields
+            #               Y_2_fr = U_1 * psi_{n2} * psi_{n_fr}
+            #         average and unpad at resolution log2_T
             # 3. If there is no averaging, unpadding depends on order:
-            #     3a. at order 1, unpad at resolution log2_T
-            #     3b. at order 2, unpad at resolution j2
+            #     3a. at order 1, unpad Y_1_fr at resolution log2_T
+            #     3b. at order 2, unpad Y_2_fr at resolution j2
             # (for simplicity, we assume oversampling=0 in the rationale above,
             #  but the implementation below works for any value of oversampling)
             if self.average == 'global':
