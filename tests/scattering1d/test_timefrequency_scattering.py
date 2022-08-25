@@ -357,16 +357,23 @@ def test_joint_timefrequency_scattering():
 
 def test_jtfs_numpy():
     # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
     J = 8
     J_fr = 3
     shape = (1024,)
     Q = 3
-    S = TimeFrequencyScatteringNumPy(J=J, J_fr=J_fr, shape=shape, Q=Q)
+    x = torch.zeros(kwargs["shape"])
+    x[kwargs["shape"][0]//2] = 1
+
+    # Local averaging
+    S = TimeFrequencyScatteringNumPy(**kwargs)
     assert S.F == (2 ** S.J_fr)
-
-    x = torch.zeros(shape)
-    x[shape[0]//2] = 1
     Sx = S(x)
-
     assert isinstance(Sx, np.ndarray)
     assert Sx.ndim == 3
+
+    # Global averaging
+    S = TimeFrequencyScatteringNumPy(T='global', **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 3
+    assert Sx.shape[-1] == 1
