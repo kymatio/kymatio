@@ -644,8 +644,11 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             # Concatenate first and second order into a 4D tensor:
             # (batch, n_jtfs, freq, time) where n_jtfs aggregates (n2, n_fr)
             return self.backend.concatenate([path['coef'] for path in S], dim=-3)
-        else:
-            raise NotImplementedError
+        elif self.out_type == 'dict':
+            return {path['n']: path['coef'] for path in S}
+        elif self.out_type == 'list':
+            return S
+
 
     def meta(self):
         backend = self._DryBackend()
