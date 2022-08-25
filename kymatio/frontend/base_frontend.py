@@ -54,3 +54,6 @@ class ScatteringBase():
         will create the filters as numpy array, and then, it should
         save those arrays. """
         raise NotImplementedError
+
+    class _DryBackend:
+        __getattr__ = lambda self, attr: (lambda *args: None)
