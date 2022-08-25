@@ -668,6 +668,42 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             self.filters_fr[0], self.oversampling_fr, self.average_fr,
             self.out_type, self.format)
         S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
+        meta = dict(order=np.array([len(path['n']) for path in S]))
+        meta['key'] = [path['n'] for path in S]
+        meta['n'] = []
+        meta['n_fr'] = []
+        for path in S:
+            if len(path['n']) == 0:
+                # Zeroth order: no n1, no n_fr, no n2
+                meta['n'].append([np.nan, np.nan])
+                meta['n_fr'].append(np.nan)
+            else:
+                n1_range = range(0, path['n1_max'], path['n1_stride'])
+                if len(path['n']) == 1:
+                    # First order and format='joint': n=(n_fr,)
+                    meta['n'].append([n1_range, np.nan])
+                elif len(path['n']) == 2 and self.format == 'joint':
+                    # Second order and format='joint': n=(n2, n_fr)
+                    meta['n'].append([n1_range, path['n'][0]])
+                elif len(path['n']) == 2 and self.format == 'time':
+                    # First order and format='time': n=(n1, n_fr)
+                    meta['n'].append([path['n'][0], np.nan])
+                elif len(path['n']) == 3 and self.format == 'time':
+                    # Second order and format='time': n=(n1, n2, n_fr)
+                    meta['n'].append([path['n'][2:]])
+                meta['n_fr'].append(path['n_fr'][0])
+        meta['n'] = np.stack(meta['n'])
+        meta['n_fr'] = np.array(meta['n_fr'])
+        for key in ['xi', 'sigma', 'j']:
+            meta[key] = np.zeros((meta['n_fr'].shape[0], 2)) * np.nan
+            for order, filterbank in enumerate(filters[1:]):
+                for n, psi in enumerate(filterbank):
+                    meta[key][meta['n'][:, order]==n, order] = psi[key]
+            meta[key + '_fr'] = meta['n_fr'] * np.nan
+            for n_fr, psi_fr in enumerate(self.filters_fr[1]):
+                meta[key + '_fr'][meta['n_fr']==n_fr] = psi_fr[key]
+        meta['spin'] = np.sign(meta['xi_fr'])
+        return meta
 
     def _check_runtime_args(self):
         super(TimeFrequencyScatteringBase, self)._check_runtime_args()
