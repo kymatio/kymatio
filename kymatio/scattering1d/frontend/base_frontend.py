@@ -175,11 +175,9 @@ class ScatteringBase1D(ScatteringBase):
                 The tuples indexing the corresponding scattering coefficient
                 in the non-vectorized output.
         """
-        class DryBackend:
-            __getattr__ = lambda self, attr: (lambda *args: None)
-
+        backend = self._DryBackend()
         filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
-        S = scattering1d(None, DryBackend(), filters, self.oversampling, average_local=False)
+        S = scattering1d(None, backend, filters, self.oversampling, average_local=False)
         S = sorted(list(S), key=lambda path: (len(path['n']), path['n']))
         meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
