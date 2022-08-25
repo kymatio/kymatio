@@ -35,3 +35,10 @@ Keras
 .. automodule:: kymatio.keras
     :members:
     :show-inheritance:
+
+Jax
+===
+
+.. automodule:: kymatio.jax
+    :members:
+    :show-inheritance:
