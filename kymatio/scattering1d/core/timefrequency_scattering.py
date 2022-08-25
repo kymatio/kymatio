@@ -429,10 +429,8 @@ def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
 
         # Frequential unpadding.
         if not (out_type == 'array' and format == 'joint'):
-            raise NotImplementedError
-        #     # TODO unpad_frequency
-        #     path['coef'] = backend.unpad_frequency(path['coef'],
-        #         path['n1_max'], path['n1_stride'])
+            path['coef'] = backend.unpad_frequency(
+                path['coef'], path['n1_max'], path['n1_stride'])
 
         # Splitting and reshaping
         if format == 'joint':
