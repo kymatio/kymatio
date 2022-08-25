@@ -147,6 +147,23 @@ class TorchBackend1D(TorchBackend):
 
     @classmethod
     def pad_frequency(cls, x, padding):
+        """Pad the frequency axis in preparation for frequency scattering.
+        pad_frequency has some important differences with pad:
+        1. in pad_frequency, the input Tensor has a trailing singleton
+        dimension to represent real vs. imaginary dimensions. Hence,
+        pad_frequency operates over the penultimate dimension whereas pad
+        operates over the last dimension.
+        2. pad_frequency does not add a trailing singleton dimmension to its
+        output. This is unlike pad and for the same reasons as (1).
+        3. pad_frequency is one-sided. It extends the frequency axis to the
+        "right", i.e., to lower frequencies. This is because "right" translates
+        to higher values of the psi1 wavelet index n1 and thus to lower values
+        of the center frequency xi1.
+        4. pad_frequency is 'constant' whereas 'pad' is 'reflect' by default.
+        This is for reasons of energy preservation, and also because there is
+        no reason why the reflect power spectral density near Nyquist to be a
+        continuation of the power spectral density near bin n1=_N_padded_fr.
+        """
         return F.pad(x, (0, 0, 0, padding), mode='constant', value=0)
 
     @classmethod

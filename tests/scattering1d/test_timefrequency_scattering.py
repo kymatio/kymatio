@@ -5,8 +5,9 @@ import torch
 import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
-from kymatio.scattering1d.core.timefrequency_scattering import (frequency_scattering,
-    time_scattering_widthfirst, joint_timefrequency_scattering)
+from kymatio.scattering1d.core.timefrequency_scattering import (
+    joint_timefrequency_scattering, time_scattering_widthfirst,
+    frequency_scattering, time_averaging, frequency_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScatteringTorch
 
@@ -58,6 +59,63 @@ def test_Q():
     with pytest.raises(NotImplementedError) as ve:
         TimeFrequencyScatteringBase(Q_fr=(1, 2), **jtfs_kwargs).build()
     assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
+
+
+def test_check_runtime_args():
+    kwargs = dict(J=10, J_fr=3, shape=4096, Q=8)
+    S = TimeFrequencyScatteringBase(**kwargs)
+    S.build()
+    assert S._check_runtime_args() is None
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(out_type='doesnotexist', **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "out_type must be one of" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(T=0, **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(oversampling=-1, **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "nonnegative" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(oversampling=0.5, **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "integer" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(
+            F=0, out_type='array', format='joint', **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "Cannot convert" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(oversampling_fr=-1, **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "nonnegative" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(oversampling_fr=0.5, **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "integer" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = TimeFrequencyScatteringBase(format='doesnotexist', **kwargs)
+        S.build()
+        S._check_runtime_args()
+    assert "format must be" in ve.value.args[0]
+
 
 
 def test_jtfs_create_filters():
@@ -148,7 +206,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=False)
     for Y_fr in freq_gen:
         assert Y_fr['spin'] >= 0
-        assert Y_fr['n'] == (Y_fr['n_fr'],)
+        assert Y_fr['n'] == Y_fr['n_fr']
 
     # spinned=True
     X['coef'] = X['coef'].astype('complex64')
@@ -158,7 +216,6 @@ def test_frequency_scattering():
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
         assert Y_fr['n'] == (4, Y_fr['n_fr'])
-
 
 def test_joint_timefrequency_scattering():
     # Define scattering object
@@ -220,10 +277,10 @@ def test_joint_timefrequency_scattering():
 
         # Check that first-order coefficients have the same temporal stride
         stride = 2**max(S.log2_T - S.oversampling, 0)
-        assert path['coef'].shape[-1] == (S._N_padded // stride)
+        assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        stride_fr = 2**max(path['j_fr'][0] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
@@ -242,16 +299,51 @@ def test_joint_timefrequency_scattering():
 
         # Check that temporal stride works as intended
         stride = 2**max(path['j'][1] - S.oversampling, 0)
-        assert path['coef'].shape[-1] == (S._N_padded // stride)
+        assert (path['coef'].shape[-1]*stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2**max(path['j_fr'] - S.oversampling_fr, 0)
+        stride_fr = 2**max(path['j_fr'][0] - S.oversampling_fr, 0)
         assert (path['coef'].shape[-2]*stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
         midpoint = (path['n1_max'] + S._N_padded_fr) // (2*stride_fr)
         avg_value = np.mean(np.abs(path['coef'][midpoint, :]))
         assert avg_value < 1e-5
+
+        # Test time averaging
+        S.average = 'local'
+        U_2 = {**path, 'coef': backend.modulus(path['coef'])}
+        S_2 = time_averaging(U_2, backend, S.phi_f, S.oversampling)
+
+        # Check that averaged coefficients have the same temporal stride
+        stride = 2**max(S.log2_T - S.oversampling, 0)
+        assert (S_2['coef'].shape[-1]*stride) == S._N_padded
+        
+        # Test frequential averaging
+        U_2 = {**path, 'coef': backend.modulus(path['coef'])}
+
+        # average_fr == 'local'
+        S.average_fr = 'local'
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        stride_fr = 2**max(S.log2_F - S.oversampling_fr, 0)
+        assert S_2['n1_stride'] == stride_fr
+        assert (S_2['coef'].shape[-2]*stride_fr) == S._N_padded_fr
+
+        # average_fr == 'global'
+        S.average_fr = 'global'
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        assert S_2['n1_stride'] == S_2['n1_max']
+        assert S_2['coef'].shape[-2] == 1
+
+        # average_fr == False
+        S.average_fr = False
+        S_2 = frequency_averaging(
+            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr)
+        stride_fr = 2**max(S_2['j_fr'][0] - S.oversampling_fr, 0)
+        assert S_2['n1_stride'] == stride_fr
+        assert np.allclose(S_2['coef'], U_2['coef'])
 
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:

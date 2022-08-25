@@ -268,7 +268,7 @@ def test_output_size(device, backend, random_state=42):
                 if detail:
                     num_orders = {0: 0, 1: 0, 2: 0}
                     for k in s_dico.keys():
-                        if k is ():
+                        if k == ():
                             num_orders[0] += 1
                         else:
                             if len(k) == 1:  # order1
@@ -499,6 +499,12 @@ def test_check_runtime_args(device, backend):
                          frontend='torch').to(device)
         S(x)
     assert "nonnegative" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, oversampling=0.5, backend=backend,
+                         frontend='torch').to(device)
+        S(x)
+    assert "integer" in ve.value.args[0]
 
 
 def test_Scattering1D_average_global():
