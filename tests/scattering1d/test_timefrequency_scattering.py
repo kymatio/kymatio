@@ -279,8 +279,8 @@ def test_differentiability_jtfs(random_state=42):
     x = torch.randn(shape, requires_grad=True, device=device)
     x_shape = backend.shape(x)
     batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
-    x = backend.reshape_input(x, signal_shape)
-    U_0_in = backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
+    x_reshaped = backend.reshape_input(x_reshaped, signal_shape)
+    U_0_in = backend.pad(x_reshaped, pad_left=S.pad_left, pad_right=S.pad_right)
 
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
     jtfs_gen = joint_timefrequency_scattering(U_0_in, backend,
