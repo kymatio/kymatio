@@ -419,3 +419,12 @@ def test_jtfs_numpy():
     Sx = S(x)
     assert Sx.ndim == 3
     assert Sx.shape[-1] == 1
+
+    # Dictionary output
+    S = TimeFrequencyScatteringNumPy(out_type='dict', **kwargs)
+    Sx = S(x)
+
+    # List output
+    S = TimeFrequencyScatteringNumPy(out_type='list', T=0, F=0, **kwargs)
+    Sx = S(x)
+    assert all([path['coef'].ndim==2 for path in Sx if path['order']>0])
