@@ -177,8 +177,9 @@ class ScatteringBase1D(ScatteringBase):
         """
         backend = self._DryBackend()
         filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
-        S = scattering1d(None, backend, filters, self.oversampling, average_local=False)
-        S = sorted(list(S), key=lambda path: (len(path['n']), path['n']))
+        S_gen = scattering1d(
+            None, backend, filters, self.oversampling, average_local=False)
+        S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
         meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
         meta['n'] = np.stack([np.append(
@@ -655,6 +656,18 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         #     return {path['n']: path['coef'] for path in S}
         # elif (self.out_type == 'list'):
         #     return S
+
+    def meta(self):
+        backend = self._DryBackend()
+        filters = [self.phi_f, self.psi1_f, self.psi2_f]
+        U_gen = joint_timefrequency_scattering(None, backend,
+            filters, self.oversampling, self.average=='local',
+            self.filters_fr, self.oversampling_fr, self.average_fr=='local')
+        S_gen = jtfs_average_and_format(U_gen, backend,
+            self.phi_f, self.oversampling, self.average,
+            self.filters_fr[0], self.oversampling_fr, self.average_fr,
+            self.out_type, self.format)
+        S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
 
     def _check_runtime_args(self):
         super(TimeFrequencyScatteringBase, self)._check_runtime_args()
