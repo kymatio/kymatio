@@ -383,14 +383,17 @@ def test_differentiability_jtfs(random_state=42):
     # Zeroth order
     S_0 = next(jtfs_gen)
     loss = torch.linalg.norm(S_0['coef'])
-    loss.backward()
-    assert not torch.isnan(loss)
+    loss.backward(retain_graph=True)
+    assert torch.abs(loss) >= 0.
     grad = x.grad
-    assert grad is not None
-    assert grad.isnan().sum() == 0
+    assert torch.max(torch.abs(grad)) > 0.
 
-    S_0 = next(jtfs_gen)
-    import pdb; pdb.set_trace()
+    S_1 = next(jtfs_gen)
+    loss = torch.linalg.norm(S_0['coef'])
+    loss.backward()
+    assert torch.abs(loss) >= 0.
+    grad = x.grad
+    assert torch.max(torch.abs(grad)) > 0.
     # TODO add tests here
 
 
