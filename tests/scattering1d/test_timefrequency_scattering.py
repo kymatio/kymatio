@@ -381,13 +381,16 @@ def test_differentiability_jtfs(random_state=42):
         S.filters_fr, S.oversampling_fr, S.average_fr=='local')
 
     # Zeroth order
-    U_0 = next(jtfs_gen)
-    loss = torch.linalg.norm(U_0['coef'])
+    S_0 = next(jtfs_gen)
+    loss = torch.linalg.norm(S_0['coef'])
     loss.backward()
     assert not torch.isnan(loss)
     grad = x.grad
     assert grad is not None
     assert grad.isnan().sum() == 0
+
+    S_0 = next(jtfs_gen)
+    import pdb; pdb.set_trace()
     # TODO add tests here
 
 
