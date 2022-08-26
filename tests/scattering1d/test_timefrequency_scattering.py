@@ -10,6 +10,7 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
     frequency_scattering, time_averaging, frequency_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScatteringTorch
+from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
 
 
 def test_jtfs_build():
@@ -215,7 +216,7 @@ def test_frequency_scattering():
         jtfs.oversampling_fr, jtfs.average_fr=='local', spinned=True)
     for Y_fr in freq_gen:
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
-        assert Y_fr['n'] == (4, Y_fr['n_fr'])
+        assert Y_fr['n'] == (4,) + Y_fr['n_fr']
 
 def test_joint_timefrequency_scattering():
     # Define scattering object
@@ -318,7 +319,7 @@ def test_joint_timefrequency_scattering():
         # Check that averaged coefficients have the same temporal stride
         stride = 2**max(S.log2_T - S.oversampling, 0)
         assert (S_2['coef'].shape[-1]*stride) == S._N_padded
-        
+
         # Test frequential averaging
         U_2 = {**path, 'coef': backend.modulus(path['coef'])}
 
@@ -387,3 +388,28 @@ def test_differentiability_jtfs(random_state=42):
     grad = x.grad
     assert grad is not None
     assert grad.isnan().sum() == 0
+    # TODO add tests here
+
+
+def test_jtfs_numpy():
+    # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
+    J = 8
+    J_fr = 3
+    shape = (1024,)
+    Q = 3
+    x = torch.zeros(kwargs["shape"])
+    x[kwargs["shape"][0]//2] = 1
+
+    # Local averaging
+    S = TimeFrequencyScatteringNumPy(**kwargs)
+    assert S.F == (2 ** S.J_fr)
+    Sx = S(x)
+    assert isinstance(Sx, np.ndarray)
+    assert Sx.ndim == 3
+
+    # Global averaging
+    S = TimeFrequencyScatteringNumPy(T='global', **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 3
+    assert Sx.shape[-1] == 1
