@@ -1,3 +1,5 @@
+.. include:: _preamble.rst
+
 Version 0.3.0
 =============
 With this version we start a change log.
