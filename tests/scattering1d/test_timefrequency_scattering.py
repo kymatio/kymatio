@@ -10,6 +10,7 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
     frequency_scattering, time_averaging, frequency_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScatteringTorch
+from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
 
 
 def test_jtfs_build():
@@ -383,5 +384,28 @@ def test_differentiability_jtfs(random_state=42):
     U_0 = next(jtfs_gen)
     loss = torch.linalg.norm(U_0['coef'])
     loss.backward()
-    print(loss)
-    print(x.grad)
+    # TODO add tests here
+
+
+def test_jtfs_numpy():
+    # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
+    J = 8
+    J_fr = 3
+    shape = (1024,)
+    Q = 3
+    x = torch.zeros(kwargs["shape"])
+    x[kwargs["shape"][0]//2] = 1
+
+    # Local averaging
+    S = TimeFrequencyScatteringNumPy(**kwargs)
+    assert S.F == (2 ** S.J_fr)
+    Sx = S(x)
+    assert isinstance(Sx, np.ndarray)
+    assert Sx.ndim == 3
+
+    # Global averaging
+    S = TimeFrequencyScatteringNumPy(T='global', **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 3
+    assert Sx.shape[-1] == 1
