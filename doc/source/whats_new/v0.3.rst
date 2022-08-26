@@ -1,17 +1,13 @@
 Version 0.3.0
 =============
-With this version we start a change log. 
-We will follow the way scikit-learn does it by having a whats_new folder in the docs 
-and a changelog file for each minor (X.Y` version.
+With this version we start a change log.
+We will follow the way scikit-learn does it by having a whats_new folder in the docs and a changelog file for each minor (X.Y) version.
 This document will be required to be updated with every pull request.
 For this release we will mostly use the PR descriptions, but in the future better descriptions will be required.
 
 New contributions should be prepended to the appropriate version's file.
 
-Changelog
----------
-
-
+**Changelog**
 
 - |Maintenance| Fixed the issues that made Jenkins CI runs fail. :pr:`810` by :user:`Joakim Anden <janden>`
 
@@ -19,23 +15,23 @@ Changelog
 
 - |Fix| Removed redundant default value for alpha. :pr:`814`
 
-- |Maintenance| remove `size_scattering` kwarg from `scattering1d` :pr:`837`
+- |Maintenance| remove ``size_scattering`` kwarg from `scattering1d` :pr:`837`
 
 - |Documentation| updated contributing guidelines :pr:`813`
 
-- |Maintenance| decouple `scattering_filter_factory` from `ScatteringBase1D.build` :pr:`842`
+- |Maintenance| decouple ``scattering_filter_factory`` from `ScatteringBase1D.build` :pr:`842`
 
-- |Maintenance| simplify `compute_params_filterbank`, remove `_move_one_dyadic_step` :pr:`848`
+- |Maintenance| simplify ``compute_params_filterbank``, remove `_move_one_dyadic_step` :pr:`848`
 
-- |Maintenance| remove `calibrate_scattering_filters` :pr:`850`
+- |Maintenance| remove ``calibrate_scattering_filters`` :pr:`850`
 
-- |Maintenance| Simplify `filter_bank.py` :pr:`833`
+- |Maintenance| Simplify ``filter_bank.py`` :pr:`833`
 
 - |Maintenance| avoid passing log2_T, pad, unpad to 1D core :pr:`860`
 
 - |Maintenance| Remove vectorize + write frontend-agnostic runtime checks :pr:`861`
 
-- |Maintenance| Remove `out_type` from 1D core, perform formatting in the frontends :pr:`862`
+- |Maintenance| Remove ``out_type`` from 1D core, perform formatting in the frontends :pr:`862`
 
 - |Documentation| fixing example, now import TorchBackend3D to utilize compute_integrals :pr:`829`
 
@@ -45,9 +41,9 @@ Changelog
 
 - |Documentation| fix reconstruct_torch.py example by calling detach :pr:`826`
 
-- |Maintenance| Make `Scattering1D` compatible with TF>=2.5 :pr:`882`
+- |Maintenance| Make ``Scattering1D`` compatible with TF>=2.5 :pr:`882`
 
-- |Api| precompute_size_scattering now returns a tuple :pr:`878`
+- |API| precompute_size_scattering now returns a tuple :pr:`878`
 
 - |Maintenance| HarmonicScattering3D now outputs real coefficients in Numpy.  :pr:`889`
 
@@ -55,23 +51,23 @@ Changelog
 
 - |Maintenance|, STY Various ASV maintenance, style changes.  :pr:`845`
 
-- |Feature| Make `Q2` customizable :pr:`854`
+- |Feature| Make ``Q2`` customizable :pr:`854`
 
-- |Maintenance| deprecate `self.N` and `self.J_pad` in 1D :pr:`863`
+- |Maintenance| deprecate ``self.N`` and ``self.J_pad`` in 1D :pr:`863`
 
-- |Maintenance| make `Scattering2D` compatible with TF>=2.5 :pr:`883`
+- |Maintenance| make ``Scattering2D`` compatible with TF>=2.5 :pr:`883`
 
-- |Maintenance| move core 1D asserts to `_check_filterbanks` in `ScatteringBase` :pr:`876`
+- |Maintenance| move core 1D asserts to ``_check_filterbanks`` in ``ScatteringBase`` :pr:`876`
 
-- |Maintenance| check `oversampling` in 1D :pr:`887`
+- |Maintenance| check ``oversampling`` in 1D :pr:`887`
 
-- |Maintenance| Deprecate `self.N` in 2D :pr:`886`
+- |Maintenance| Deprecate ``self.N`` in 2D :pr:`886`
 
 - |Fix| examples/plot_filters.py :pr:`815`
 
 - |Test| add summary call to keras 1d and 2d tests.  :pr:`888`
 
-- |Documentation| Enable `.to(device`` semantics for pytorch examples :pr:`874`
+- |Documentation| Enable ``.to(device)``` semantics for pytorch examples :pr:`874`
 
 - |Maintenance| redefine cdgmm3d to call cdgmm in torch skcuda backend :pr:`865`
 
@@ -87,7 +83,7 @@ Changelog
 
 - |Fix| include 'n' field in 1D/2D list + remove singleton dimension in 1D dict :pr:`900`
 
-- |Maintenance| deprecate `average` in `Scattering1D` :pr:`897`
+- |Maintenance| deprecate ``average`` in ``Scattering1D`` :pr:`897`
 
 - |Documentation| document N and J in scattering_filter_factory :pr:`901`
 
