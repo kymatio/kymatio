@@ -195,7 +195,7 @@ cd doc; make clean; make html
 
 We wish to thank the Scientific Computing Core at the Flatiron Institute for the use of their computing resources for testing.
 
-[![Flatiron](doc/source/_static/FL_Full_Logo_Mark_Small.png)](https://www.flatironinstitute.org/)
+[![Flatiron](https://kymat.io/_static/FL_Full_Logo_Mark_Small.png)](https://www.flatironinstitute.org/)
 
 We would also like to thank École Normale Supérieure for their support.
 
