@@ -72,8 +72,8 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
     S_1 = next(time_gen)
 
     # Y_1_fr_{n_fr}(n1, t[log2_T]) = (|x*psi_{n1}|*phi*psi_{n_fr})(t[log2_T])
-    yield from frequency_scattering(S_1, backend, filters_fr, oversampling_fr,
-        average_local_fr, spinned=False)
+    yield from frequency_scattering(S_1, backend,
+        filters_fr, oversampling_fr, average_local_fr, spinned=False)
 
     # Second order: Y_2_{n2}(t[log2_T], n1[j_fr])
     #                   = (|x*psi_{n1}|*psi_{n2})(t[j2], n1[j_fr])
