@@ -427,3 +427,9 @@ def test_jtfs_numpy():
     S = TimeFrequencyScatteringNumPy(out_type='list', T=0, F=0, **kwargs)
     Sx = S(x)
     assert all([path['coef'].ndim==2 for path in Sx if path['order']>0])
+
+    # meta()
+    meta = S.meta()
+    for key in ['xi', 'sigma', 'j', 'xi_fr', 'sigma_fr', 'j_fr', 'spin']:
+        assert key in meta.keys()
+        assert len(meta[key]) == len(Sx)
