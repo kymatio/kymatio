@@ -123,7 +123,7 @@ class NumpyBackend1D(NumpyBackend):
 
     @classmethod
     def unpad_frequency(cls, x, n1_max, n1_stride):
-        n1_unpadded = 1 + (n1_max//n1_stride)
+        n1_unpadded = 1 + (n1_max // n1_stride)
         return x[..., :n1_unpadded, :]
 
 backend = NumpyBackend1D
