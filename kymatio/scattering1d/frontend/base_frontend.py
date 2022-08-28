@@ -684,6 +684,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                     # Second order and format='time': n=(n1, n2, n_fr)
                     meta['n'].append([path['n'][2:]])
                 meta['n_fr'].append(path['n_fr'][0])
+        meta['n'] = np.array(meta['n'], dtype=object)
         meta['n_fr'] = np.array(meta['n_fr'])
         for key in ['xi', 'sigma', 'j']:
             meta[key] = np.zeros((meta['n_fr'].shape[0], 2)) * np.nan
