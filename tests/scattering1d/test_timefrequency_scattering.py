@@ -389,7 +389,6 @@ def test_differentiability_jtfs(random_state=42):
     assert torch.max(torch.abs(grad)) > 0.
 
     for S in jtfs_gen:
-        print(S)
         loss = torch.linalg.norm(S['coef'])
         loss.backward(retain_graph=True)
         assert torch.abs(loss) >= 0.
