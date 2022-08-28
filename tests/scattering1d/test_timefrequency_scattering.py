@@ -9,6 +9,7 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
     joint_timefrequency_scattering, time_scattering_widthfirst,
     frequency_scattering, time_averaging, frequency_averaging)
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
+from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScatteringTorch
 from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
 
 
@@ -217,7 +218,6 @@ def test_frequency_scattering():
         assert Y_fr['coef'].shape[-1] == X['coef'].shape[-1]
         assert Y_fr['n'] == (4,) + Y_fr['n_fr']
 
-
 def test_joint_timefrequency_scattering():
     # Define scattering object
     J = 8
@@ -319,7 +319,7 @@ def test_joint_timefrequency_scattering():
         # Check that averaged coefficients have the same temporal stride
         stride = 2**max(S.log2_T - S.oversampling, 0)
         assert (S_2['coef'].shape[-1]*stride) == S._N_padded
-        
+
         # Test frequential averaging
         U_2 = {**path, 'coef': backend.modulus(path['coef'])}
 
@@ -353,6 +353,48 @@ def test_joint_timefrequency_scattering():
     S2_neg = filter(lambda path: path['spin']<0, S2_jtfs)
     assert len(list(S2_pos)) == len(list(S2_neg))
     assert set(S2_pos) == set(S2_neg)
+
+
+def test_differentiability_jtfs(random_state=42):
+    device = 'cpu'
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+    S = TimeFrequencyScatteringTorch(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0).to(device)
+    S.build()
+    S.create_filters()
+    S.load_filters()
+    backend = S.backend
+    torch.manual_seed(random_state)
+
+    x = torch.randn(shape, requires_grad=True, device=device)
+    x_shape = backend.shape(x)
+    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    x_reshaped = backend.reshape_input(x, signal_shape)
+    U_0_in = backend.pad(x_reshaped, pad_left=S.pad_left, pad_right=S.pad_right)
+
+    filters = [S.phi_f, S.psi1_f, S.psi2_f]
+    jtfs_gen = joint_timefrequency_scattering(U_0_in, backend,
+        filters, S.oversampling, S.average=='local',
+        S.filters_fr, S.oversampling_fr, S.average_fr=='local')
+
+    # Zeroth order
+    S_0 = next(jtfs_gen)
+    loss = torch.linalg.norm(S_0['coef'])
+    loss.backward(retain_graph=True)
+    assert torch.abs(loss) >= 0.
+    grad = x.grad
+    assert torch.max(torch.abs(grad)) > 0.
+
+    for S in jtfs_gen:
+        print(S)
+        loss = torch.linalg.norm(S['coef'])
+        loss.backward(retain_graph=True)
+        assert torch.abs(loss) >= 0.
+        grad = x.grad
+        assert torch.max(torch.abs(grad)) > 0.
 
 
 def test_jtfs_numpy():
