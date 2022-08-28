@@ -651,12 +651,11 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
 
 
     def meta(self):
-        backend = self._DryBackend()
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
-        U_gen = joint_timefrequency_scattering(None, backend,
+        U_gen = joint_timefrequency_scattering(None, self._DryBackend(),
             filters, self.oversampling, self.average=='local',
             self.filters_fr, self.oversampling_fr, self.average_fr=='local')
-        S_gen = jtfs_average_and_format(U_gen, backend,
+        S_gen = jtfs_average_and_format(U_gen, self._DryBackend(),
             self.phi_f, self.oversampling, self.average,
             self.filters_fr[0], self.oversampling_fr, self.average_fr,
             self.out_type, self.format)
