@@ -17,13 +17,13 @@ New contributions should be prepended to the appropriate version's file.
 
 - |Fix| Removed redundant default value for alpha. :pr:`814`
 
-- |Maintenance| remove ``size_scattering`` kwarg from `scattering1d` :pr:`837`
+- |Maintenance| remove ``size_scattering`` kwarg from ``scattering1d`` :pr:`837`
 
 - |Documentation| updated contributing guidelines :pr:`813`
 
-- |Maintenance| decouple ``scattering_filter_factory`` from `ScatteringBase1D.build` :pr:`842`
+- |Maintenance| decouple ``scattering_filter_factory`` from ``ScatteringBase1D.build`` :pr:`842`
 
-- |Maintenance| simplify ``compute_params_filterbank``, remove `_move_one_dyadic_step` :pr:`848`
+- |Maintenance| simplify ``compute_params_filterbank``, remove ``_move_one_dyadic_step`` :pr:`848`
 
 - |Maintenance| remove ``calibrate_scattering_filters`` :pr:`850`
 
