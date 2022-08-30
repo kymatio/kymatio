@@ -183,8 +183,8 @@ class TorchBackend1D(TorchBackend):
         """
         return torch.transpose(x, dim0=-2, dim1=-3)
 
-    @classmethod
-    def unpad_frequency(cls, x, n1_max, n1_stride):
+    @staticmethod
+    def unpad_frequency(x, n1_max, n1_stride):
         """Unpad the frequency axis after frequency scattering and/or frequency
         averaging. This is called at the end of `jtfs_average_and_format`
         unless `out_type='array'` and `format='joint'`.

@@ -119,4 +119,9 @@ class TensorFlowBackend1D(TensorFlowBackend):
     def swap_time_frequency(cls, x):
         return tf.linalg.matrix_transpose(x)
 
+    @staticmethod
+    def unpad_frequency(x, n1_max, n1_stride):
+        n1_unpadded = 1 + (n1_max // n1_stride)
+        return x[:, :, :n1_unpadded, :]
+
 backend = TensorFlowBackend1D
