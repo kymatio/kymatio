@@ -188,6 +188,7 @@ class TorchBackend1D(TorchBackend):
         """Unpad the frequency axis after frequency scattering and/or frequency
         averaging. This is called at the end of `jtfs_average_and_format`
         unless `out_type='array'` and `format='joint'`.
+        NB. Unpadding is one-sided. See point 3 of pad_frequency docstring.
         Parameters
         ----------
         x : tensor (batch, frequency, time, 1), corresponds to path['coef']
