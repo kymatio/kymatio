@@ -282,7 +282,8 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
         # as (X['n'][1:] + (n_fr,)), i.e., n=(n_fr,) is not spinned
         # and n=(n2, n_fr) if spinned. This 'n' tuple is unique.
         yield {**X, 'coef': Y_fr, 'n': (X['n'][1:] + (n_fr,)),
-            'j_fr': (j_fr,), 'n_fr': (n_fr,), 'spin': spin}
+            'j_fr': (j_fr,), 'n_fr': (n_fr,), 'n1_stride': (2**j_fr),
+            'spin': spin}
 
 
 def time_averaging(U_2, backend, phi_f, oversampling):
@@ -384,3 +385,57 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
     elif not average_fr:
         n1_stride = 2**max(U_2['j_fr'][-1] - oversampling_fr, 0)
         return {**U_2, 'n1_stride': n1_stride}
+
+
+def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
+        phi_fr_f, oversampling_fr, average_fr, out_type, format):
+    # Zeroth order
+    path = next(U_gen)
+    log2_T = phi_f['j']
+    if average == 'global':
+        path['coef'] = backend.average_global(path['coef'])
+    yield {**path, 'order': 0}
+
+    # First and second order
+    for path in U_gen:
+        # "The phase of the integrand must be set to a constant. This
+        # freedom in setting the stationary phase to an arbitrary constant
+        # value suggests the existence of a gauge boson" — Glinsky
+        path['coef'] = backend.modulus(path['coef'])
+
+        # Temporal averaging. Switch cases:
+        # 1. If averaging is global, no need for unpadding at all.
+        # 2. If averaging is local, averaging depends on order:
+        #     2a. at order 1, U_gen yields
+        #               Y_1_fr = S_1 * psi_{n_fr}
+        #         no need for further averaging
+        #     2b. at order 2, U_gen yields
+        #               Y_2_fr = U_1 * psi_{n2} * psi_{n_fr}
+        #         average with phi
+        # (for simplicity, we assume oversampling=0 in the rationale above,
+        #  but the implementation below works for any value of oversampling)
+        if average == 'global':
+            # Case 1.
+            path['coef'] = backend.average_global(path['coef'])
+        elif average == 'local' and len(path['n']) > 1:
+            # Case 2b.
+            path = time_averaging(path, backend, phi_f, oversampling)
+
+        # Frequential averaging. NB. if spin==0, U_gen is already averaged.
+        # Hence, we only average if spin!=0, i.e. psi_{n_fr} in path.
+        if average_fr and not path['spin'] == 0:
+            path = frequency_averaging(path, backend,
+                phi_fr_f, oversampling_fr, average_fr)
+
+        # Frequential unpadding.
+        if not (out_type == 'array' and format == 'joint'):
+            path['coef'] = backend.unpad_frequency(
+                path['coef'], path['n1_max'], path['n1_stride'])
+
+        # Splitting and reshaping
+        if format == 'joint':
+            yield {**path, 'order': len(path['n'])}
+        elif format == 'time':
+            raise NotImplementedError
+        #     # TODO split
+        #     yield from self.backend.split(path)
