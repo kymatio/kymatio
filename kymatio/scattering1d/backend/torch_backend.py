@@ -174,13 +174,34 @@ class TorchBackend1D(TorchBackend):
         x : tensor
             if complex: (batch, frequency, time, real/imag)
             else: (batch, frequency, time, 1)
+
         Returns
         -------
         output : tensor
-            if complex: (batch, time, frequency real/imag)
+            if complex: (batch, time, frequency, real/imag)
             else: (batch, time, frequency, 1)
         """
         return torch.transpose(x, dim0=-2, dim1=-3)
+
+    @classmethod
+    def unpad_frequency(cls, x, n1_max, n1_stride):
+        """Unpad the frequency axis after frequency scattering and/or frequency
+        averaging. This is called at the end of `jtfs_average_and_format`
+        unless `out_type='array'` and `format='joint'`.
+        Parameters
+        ----------
+        x : tensor (batch, frequency, time, 1), corresponds to path['coef']
+        n1_max: integer. last first-order wavelet index n1 such that j1 < j2
+        for the scattering path of x. By definition, lower than len(psi1_f).
+        n1_stride: integer frequential subsampling factor associated to the
+        scattering path of x. Equal to max(1, 2**(j_fr - oversampling_fr)).
+        Returns
+        -------
+        output : tensor (batch, time, unpadded frequency, 1)
+        """
+        n1_unpadded = 1 + (n1_max // n1_stride)
+        return x[:, :, :n1_unpadded, :]
+
 
 
 backend = TorchBackend1D
