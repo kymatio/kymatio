@@ -461,6 +461,7 @@ def test_jtfs_numpy():
     # Dictionary output
     S = TimeFrequencyScatteringNumPy(out_type="dict", **kwargs)
     Sx = S(x)
+    assert all([isinstance(path, np.ndarray) for path in Sx.values()])
 
     # List output
     S = TimeFrequencyScatteringNumPy(out_type="list", T=0, F=0, **kwargs)
@@ -472,3 +473,13 @@ def test_jtfs_numpy():
     for key in ["xi", "sigma", "j", "xi_fr", "sigma_fr", "j_fr", "spin"]:
         assert key in meta.keys()
         assert len(meta[key]) == len(Sx)
+
+    # format='time'
+    S = TimeFrequencyScatteringNumPy(T=None, F=0, format="time", **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 2
+
+    # format='time' with global averaging
+    S = TimeFrequencyScatteringNumPy(T="global", F=0, format="time", **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 2
