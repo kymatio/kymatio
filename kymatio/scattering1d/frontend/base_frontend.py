@@ -634,8 +634,8 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                     path['coef'], self.ind_start[res], self.ind_end[res])
 
             # Reshape path to batch shape.
-            path['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=2)
+            path['coef'] = self.backend.reshape_output(path['coef'],
+                batch_shape, n_kept_dims=(1 + (self.format == "joint")))
             S.append(path)
 
         if (self.format == 'joint') and (self.out_type == 'array'):
