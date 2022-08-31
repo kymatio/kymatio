@@ -641,9 +641,13 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         if (self.format == 'joint') and (self.out_type == 'array'):
             # Skip zeroth order
             S = S[1:]
-            # Concatenate first and second order into a 4D tensor:
+            # Concatenate first and second orders into a 4D tensor:
             # (batch, n_jtfs, freq, time) where n_jtfs aggregates (n2, n_fr)
             return self.backend.concatenate([path['coef'] for path in S], dim=-3)
+        elif (self.format == "time") and (self.out_type == "array"):
+            # Concatenate zeroth, first, and second orders into a 3D tensor:
+            # (batch, n_jtfs, time) where n_jtfs aggregates (n1, n2, n_fr)
+            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
         elif self.out_type == 'dict':
             return {path['n']: path['coef'] for path in S}
         elif self.out_type == 'list':
