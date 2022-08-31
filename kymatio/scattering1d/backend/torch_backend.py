@@ -196,7 +196,7 @@ class TorchBackend1D(TorchBackend):
         x : tensor (batch, frequency, time, 1), corresponds to path['coef']
         n1_max: integer, the last first-order wavelet index (n1) such that j1 < j2
             for the scattering path of x. By definition, lower than len(psi1_f).
-        n1_stride: integer, related to the frequential subsampling factor associated to the
+        n1_stride: integer frequential subsampling factor associated to the
             scattering path of x. Equal to max(1, 2**(j_fr - oversampling_fr)).
         Returns
         -------
