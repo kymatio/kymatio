@@ -149,3 +149,13 @@ def test_unpad_frequency():
     x = np.arange(np.prod(shape)).reshape(shape) * 0.5
     x_unpadded = backend.unpad_frequency(x, n1_max=10, n1_stride=2)
     assert x_unpadded.shape == shape_unpadded
+
+def test_split_frequency_axis():
+    shape = (10, 20, 16, 3)
+    x = tf.constant(np.arange(np.prod(shape)).reshape(shape) * 0.5)
+    X_split = backend.split_frequency_axis(x)
+    assert len(X_split) == x.shape[-2]
+    for i, x_split in enumerate(X_split):
+        assert x_split.shape[:-2] == x.shape[:-2]
+        assert x_split.shape[-1:] == x.shape[-1:]
+        assert np.allclose(x_split[..., 0, :], x[..., i, :])

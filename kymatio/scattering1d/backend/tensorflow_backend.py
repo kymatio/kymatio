@@ -126,6 +126,6 @@ class TensorFlowBackend1D(TensorFlowBackend):
 
     @staticmethod
     def split_frequency_axis(x):
-        return tf.split(x, tuple(tf.shape(x))[-2], axis=-2)
+        return tf.split(x, x.shape[-2], axis=-2)
 
 backend = TensorFlowBackend1D
