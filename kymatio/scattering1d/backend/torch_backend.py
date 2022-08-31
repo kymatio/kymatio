@@ -220,7 +220,7 @@ class TorchBackend1D(TorchBackend):
         output : list of tensors, each of shape (batch, 1, time, 1). The number
         of elements in the list is equal to that of the frequency axis.
         """
-        return torch.split(x, x.shape[-3], axis=-3)
+        return torch.split(x, 1, dim=-3)
 
 
 backend = TorchBackend1D
