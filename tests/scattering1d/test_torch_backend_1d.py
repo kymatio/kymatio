@@ -307,3 +307,11 @@ def test_swap_time_frequency_1d(device, backend, random_state=42):
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
     assert torch.all(x == x_T_T)
+
+
+def test_unpad_frequency():
+    shape = (10, 20, 16, 3)
+    shape_unpadded = (10, 20, 6, 3)
+    x = np.arange(np.prod(shape)).reshape(shape) * 0.5
+    x_unpadded = backend.unpad_frequency(x, n1_max=10, n1_stride=2)
+    assert x_unpadded.shape == shape_unpadded

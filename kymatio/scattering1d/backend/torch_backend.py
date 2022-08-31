@@ -4,7 +4,7 @@ from ...backend.torch_backend import TorchBackend
 
 from packaging import version
 
-if version.parse(torch.__version__) >= version.parse('1.8'):
+if version.parse(torch.__version__) >= version.parse("1.8"):
     _fft = lambda x: torch.view_as_real(torch.fft.fft(torch.view_as_complex(x)))
     _ifft = lambda x: torch.view_as_real(torch.fft.ifft(torch.view_as_complex(x)))
     _irfft = lambda x: torch.fft.ifft(torch.view_as_complex(x)).real[..., None]
@@ -48,7 +48,7 @@ class TorchBackend1D(TorchBackend):
         return res
 
     @staticmethod
-    def pad(x, pad_left, pad_right, mode='reflect'):
+    def pad(x, pad_left, pad_right, mode="reflect"):
         """Pad real 1D tensors
 
         1D implementation of the padding function for real PyTorch tensors.
@@ -72,9 +72,9 @@ class TorchBackend1D(TorchBackend):
         res : tensor
             The tensor passed along the third dimension.
         """
-        if mode != 'constant':
+        if mode != "constant":
             if (pad_left >= x.shape[-1]) or (pad_right >= x.shape[-1]):
-                raise ValueError('Indefinite padding size (larger than tensor).')
+                raise ValueError("Indefinite padding size (larger than tensor).")
 
         res = F.pad(x, (pad_left, pad_right), mode=mode)
         res = res[..., None]
@@ -119,7 +119,9 @@ class TorchBackend1D(TorchBackend):
         cls.contiguous_check(x)
         cls.real_check(x)
 
-        x_r = torch.zeros(x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device)
+        x_r = torch.zeros(
+            x.shape[:-1] + (2,), dtype=x.dtype, layout=x.layout, device=x.device
+        )
         x_r[..., 0] = x[..., 0]
 
         return _fft(x_r)
@@ -164,7 +166,7 @@ class TorchBackend1D(TorchBackend):
         no reason why the reflect power spectral density near Nyquist to be a
         continuation of the power spectral density near bin n1=_N_padded_fr.
         """
-        return F.pad(x, (0, 0, 0, padding), mode='constant', value=0)
+        return F.pad(x, (0, 0, 0, padding), mode="constant", value=0)
 
     @classmethod
     def swap_time_frequency(cls, x):
@@ -174,13 +176,34 @@ class TorchBackend1D(TorchBackend):
         x : tensor
             if complex: (batch, frequency, time, real/imag)
             else: (batch, frequency, time, 1)
+
         Returns
         -------
         output : tensor
-            if complex: (batch, time, frequency real/imag)
+            if complex: (batch, time, frequency, real/imag)
             else: (batch, time, frequency, 1)
         """
         return torch.transpose(x, dim0=-2, dim1=-3)
+
+    @staticmethod
+    def unpad_frequency(x, n1_max, n1_stride):
+        """Unpad the frequency axis after frequency scattering and/or frequency
+        averaging. This is called at the end of `jtfs_average_and_format`
+        unless `out_type='array'` and `format='joint'`.
+        NB. Unpadding is one-sided. See point 3 of pad_frequency docstring.
+        Parameters
+        ----------
+        x : tensor (batch, frequency, time, 1), corresponds to path['coef']
+        n1_max: integer, the last first-order wavelet index (n1) such that j1 < j2
+            for the scattering path of x. By definition, lower than len(psi1_f).
+        n1_stride: integer frequential subsampling factor associated to the
+            scattering path of x. Equal to max(1, 2**(j_fr - oversampling_fr)).
+        Returns
+        -------
+        output : tensor (batch, time, unpadded frequency, 1)
+        """
+        n1_unpadded = 1 + (n1_max // n1_stride)
+        return x[:, :, :n1_unpadded, :]
 
 
 backend = TorchBackend1D
