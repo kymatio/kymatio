@@ -483,3 +483,7 @@ def test_jtfs_numpy():
     S = TimeFrequencyScatteringNumPy(T="global", F=0, format="time", **kwargs)
     Sx = S(x)
     assert Sx.ndim == 2
+
+    # format='time' meta()
+    meta = S.meta()
+    assert len(meta['key']) == Sx.shape[-2]
