@@ -391,7 +391,7 @@ def time_formatting(path, backend):
     n1 = 0
     for split_coef in backend.split_frequency_axis(path["coef"]):
         split_path = {**path, "coef": split_coef, "order": len(path["n"])}
-        split_path["n"][0] = n1
+        split_path["n"] = (n1,) + split_path["n"][1:]
         del split_path["n1_max"]
         del split_path["n1_stride"]
         yield split_path
@@ -447,4 +447,4 @@ def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
         if format == 'joint':
             yield {**path, 'order': len(path['n'])}
         elif format == 'time':
-            yield from time_formatting(path)
+            yield from time_formatting(path, backend)
