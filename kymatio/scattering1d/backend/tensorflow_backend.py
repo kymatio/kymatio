@@ -124,4 +124,8 @@ class TensorFlowBackend1D(TensorFlowBackend):
         n1_unpadded = 1 + (n1_max // n1_stride)
         return x[:, :, :n1_unpadded, :]
 
+    @staticmethod
+    def split_frequency_axis(x):
+        return tf.split(x, tuple(tf.shape(x))[-2], axis=-2)
+
 backend = TensorFlowBackend1D
