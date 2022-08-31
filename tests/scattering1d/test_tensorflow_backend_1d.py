@@ -143,12 +143,14 @@ def test_swap_time_frequency_1d():
     assert x_T_T.shape == x.shape
     assert np.all(x == x_T_T)
 
+
 def test_unpad_frequency():
     shape = (10, 20, 16, 3)
     shape_unpadded = (10, 20, 6, 3)
     x = np.arange(np.prod(shape)).reshape(shape) * 0.5
     x_unpadded = backend.unpad_frequency(x, n1_max=10, n1_stride=2)
     assert x_unpadded.shape == shape_unpadded
+
 
 def test_split_frequency_axis():
     shape = (10, 20, 16, 3)
