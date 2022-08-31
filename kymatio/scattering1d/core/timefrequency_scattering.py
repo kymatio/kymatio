@@ -387,6 +387,17 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
         return {**U_2, 'n1_stride': n1_stride}
 
 
+def time_formatting(path, backend):
+    n1 = 0
+    for split_coef in backend.split_frequency_axis(path["coef"]):
+        split_path = {**path, "coef": split_coef, "order": len(path["n"])}
+        split_path["n"][0] = n1
+        del split_path["n1_max"]
+        del split_path["n1_stride"]
+        yield split_path
+        n1 += path["n1_stride"]
+
+
 def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
         phi_fr_f, oversampling_fr, average_fr, out_type, format):
     # Zeroth order
@@ -436,6 +447,4 @@ def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
         if format == 'joint':
             yield {**path, 'order': len(path['n'])}
         elif format == 'time':
-            raise NotImplementedError
-        #     # TODO split
-        #     yield from self.backend.split(path)
+            yield from time_formatting(path)
