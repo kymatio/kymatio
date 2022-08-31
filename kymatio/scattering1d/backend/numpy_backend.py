@@ -126,7 +126,7 @@ class NumpyBackend1D(NumpyBackend):
         n1_unpadded = 1 + (n1_max // n1_stride)
         return x[..., :n1_unpadded, :]
 
-    @staticmethod
+    @classmethod
     def split_frequency_axis(cls, x):
         return cls._np.split(x, indices_or_sections=x.shape[-2], axis=-2)
 
