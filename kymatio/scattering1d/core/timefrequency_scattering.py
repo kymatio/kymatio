@@ -20,7 +20,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
      * phi is a dictionary describing the low-pass filter of width F, used
        to average S1 and S2 in frequency if and only if average_local_fr.
      * psis is a list of dictionaries, each describing a low-pass or band-pass
-       band-pass filter indexed by n_fr. The first element, n_fr=0, corresponds
+       filter indexed by n_fr. The first element, n_fr=0, corresponds
        to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
        Other elements, such that n_fr>0, correspond to "spinned" band-pass
        filter, where spin denotes the sign of the center frequency xi.
@@ -63,7 +63,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
     Y_2_fr{n2,n_fr}(t, n1) = (Y_2*psi_{n_fr})(t[j2], n1[j_fr]),
      conv. over n1, broadcast over t, n1 zero-padded up to N_fr
     """
-    # Zeroth order: S0(t[log_T]) if average_local, U0(t) otherwise
+    # Zeroth order: S0(t[log2_T]) if average_local, U0(t) otherwise
     time_gen = time_scattering_widthfirst(
         U_0, backend, filters, oversampling, average_local)
     yield next(time_gen)
@@ -213,7 +213,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
         * phi is a dictionary describing the low-pass filter of width F, used
           to average S1 and S2 in frequency if and only if average_local_fr.
         * psis is a list of dictionaries, each describing a low-pass or band-pass
-          band-pass filter indexed by n_fr. The first element, n_fr=0, corresponds
+          filter indexed by n_fr. The first element, n_fr=0, corresponds
           to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
           Other elements, such that n_fr>0, correspond to "spinned" band-pass
           filter, where spin denotes the sign of the center frequency xi.
