@@ -7,7 +7,7 @@ from ...numpy import Scattering1D as ScatteringNumPy1D
 class ScatteringTransformer1D(ScatteringTransformerMixin, ScatteringNumPy1D):
     pass
 
-
+# comments
 ScatteringTransformer1D._document()
 
 
