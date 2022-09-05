@@ -1,12 +1,10 @@
-name: Kymatio docs CI
+name: Kymatio build and upload docs
 
 on:
-    - push
-    - pull_request
+  workflow_dispatch
 
 jobs:
     docs:
-        if: github.ref == 'refs/heads/master'
         runs-on: ubuntu-20.04
 
         steps:
