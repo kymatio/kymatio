@@ -1,5 +1,5 @@
 pytest
-sphinx<3.0
+sphinx
 sphinxcontrib-bibtex
 sphinx-gallery
 pillow
