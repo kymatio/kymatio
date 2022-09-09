@@ -6,10 +6,20 @@ import numpy as np
 import tensorflow as tf
 
 
+
 backends = []
+gpu_available = tf.test.is_gpu_available()
+
+if not gpu_available:
+    Warning('GPU not available for tensorflow.')
 
 from kymatio.scattering1d.backend.tensorflow_backend import backend
 backends.append(backend)
+
+if gpu_available:
+    devices = ['cuda', 'cpu']
+else:
+    devices = ['cpu']
 
 
 class TestScattering1DTensorFlow:
@@ -81,3 +91,28 @@ def test_Scattering1D_average_global(backend):
     x = tf.zeros((N,))
     Sx = sc(x).numpy()
     assert Sx.shape[-1] == 1
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
+def test_differentiability_scattering(device, backend, random_state=42):
+    """
+    It simply tests whether it is really differentiable or not.
+    This does NOT test whether the gradients are correct.
+    """
+
+    tf.random.set_seed(random_state) 
+
+    J = 6
+    Q = 8
+    T = 2**12
+    
+    with tf.device(device):
+        scattering = Scattering1D(J, T, Q, frontend='tensorflow', backend=backend)
+        x = tf.Variable(tf.random.normal((2, T)))
+
+    with tf.GradientTape(persistent=True) as tape:
+        s = scattering(x)
+        loss = tf.reduce_sum(tf.abs(s))
+    grad = tape.gradient(loss, x)
+    assert tf.reduce_max(tf.abs(grad)) > 0.
