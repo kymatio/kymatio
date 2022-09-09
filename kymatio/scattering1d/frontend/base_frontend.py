@@ -634,16 +634,20 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                     path['coef'], self.ind_start[res], self.ind_end[res])
 
             # Reshape path to batch shape.
-            path['coef'] = self.backend.reshape_output(
-                path['coef'], batch_shape, n_kept_dims=2)
+            path['coef'] = self.backend.reshape_output(path['coef'],
+                batch_shape, n_kept_dims=(1 + (self.format == "joint")))
             S.append(path)
 
         if (self.format == 'joint') and (self.out_type == 'array'):
             # Skip zeroth order
             S = S[1:]
-            # Concatenate first and second order into a 4D tensor:
+            # Concatenate first and second orders into a 4D tensor:
             # (batch, n_jtfs, freq, time) where n_jtfs aggregates (n2, n_fr)
             return self.backend.concatenate([path['coef'] for path in S], dim=-3)
+        elif (self.format == "time") and (self.out_type == "array"):
+            # Concatenate zeroth, first, and second orders into a 3D tensor:
+            # (batch, n_jtfs, time) where n_jtfs aggregates (n1, n2, n_fr)
+            return self.backend.concatenate([path['coef'] for path in S], dim=-2)
         elif self.out_type == 'dict':
             return {path['n']: path['coef'] for path in S}
         elif self.out_type == 'list':
@@ -659,32 +663,33 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             self.filters_fr[0], self.oversampling_fr, self.average_fr,
             self.out_type, self.format)
         S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
-        meta = dict(order=np.array([len(path['n']) for path in S]))
-        meta['key'] = [path['n'] for path in S]
-        meta['n'] = []
-        meta['n_fr'] = []
+        meta = dict(key=[path['n'] for path in S], n=[], n_fr=[], order=[])
         for path in S:
             if len(path['n']) == 0:
                 # Zeroth order: no n1, no n_fr, no n2
                 meta['n'].append([np.nan, np.nan])
                 meta['n_fr'].append(np.nan)
+                meta['order'].append(0)
             else:
-                n1_range = range(0, path['n1_max'], path['n1_stride'])
                 if len(path['n']) == 1:
                     # First order and format='joint': n=(n_fr,)
+                    n1_range = range(0, path['n1_max'], path['n1_stride'])
                     meta['n'].append([n1_range, np.nan])
                 elif len(path['n']) == 2 and self.format == 'joint':
                     # Second order and format='joint': n=(n2, n_fr)
+                    n1_range = range(0, path['n1_max'], path['n1_stride'])
                     meta['n'].append([n1_range, path['n'][0]])
                 elif len(path['n']) == 2 and self.format == 'time':
                     # First order and format='time': n=(n1, n_fr)
                     meta['n'].append([path['n'][0], np.nan])
                 elif len(path['n']) == 3 and self.format == 'time':
                     # Second order and format='time': n=(n1, n2, n_fr)
-                    meta['n'].append([path['n'][2:]])
+                    meta['n'].append(path['n'][:2])
                 meta['n_fr'].append(path['n_fr'][0])
+                meta['order'].append(len(path['n']) - (self.format == 'time'))
         meta['n'] = np.array(meta['n'], dtype=object)
         meta['n_fr'] = np.array(meta['n_fr'])
+        meta['order'] = np.array(meta['order'])
         for key in ['xi', 'sigma', 'j']:
             meta[key] = np.zeros((meta['n_fr'].shape[0], 2)) * np.nan
             for order, filterbank in enumerate(filters[1:]):

@@ -19,12 +19,14 @@ ScatteringNumPy1D._document()
 
 class TimeFrequencyScatteringNumPy(
         ScatteringNumPy1D, TimeFrequencyScatteringBase):
-    def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0, Q_fr=1,
-            F=None, oversampling_fr=0, out_type='array', backend='numpy'):
+    def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0,
+            Q_fr=1, F=None, oversampling_fr=0,
+            out_type='array', format='joint', backend='numpy'):
         ScatteringNumPy.__init__(self)
         TimeFrequencyScatteringBase.__init__(self, J=J, J_fr=J_fr, shape=shape,
-            Q=Q, T=T, oversampling=oversampling, Q_fr=Q_fr, F=F,
-            oversampling_fr=oversampling_fr, out_type=out_type, backend=backend)
+            Q=Q, T=T, oversampling=oversampling,
+            Q_fr=Q_fr, F=F, oversampling_fr=oversampling_fr,
+            out_type=out_type, format=format, backend=backend)
         ScatteringBase1D._instantiate_backend(
             self, 'kymatio.scattering1d.backend.')
         TimeFrequencyScatteringBase.build(self)

@@ -20,7 +20,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
      * phi is a dictionary describing the low-pass filter of width F, used
        to average S1 and S2 in frequency if and only if average_local_fr.
      * psis is a list of dictionaries, each describing a low-pass or band-pass
-       band-pass filter indexed by n_fr. The first element, n_fr=0, corresponds
+       filter indexed by n_fr. The first element, n_fr=0, corresponds
        to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
        Other elements, such that n_fr>0, correspond to "spinned" band-pass
        filter, where spin denotes the sign of the center frequency xi.
@@ -63,7 +63,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, oversampling,
     Y_2_fr{n2,n_fr}(t, n1) = (Y_2*psi_{n_fr})(t[j2], n1[j_fr]),
      conv. over n1, broadcast over t, n1 zero-padded up to N_fr
     """
-    # Zeroth order: S0(t[log_T]) if average_local, U0(t) otherwise
+    # Zeroth order: S0(t[log2_T]) if average_local, U0(t) otherwise
     time_gen = time_scattering_widthfirst(
         U_0, backend, filters, oversampling, average_local)
     yield next(time_gen)
@@ -213,7 +213,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
         * phi is a dictionary describing the low-pass filter of width F, used
           to average S1 and S2 in frequency if and only if average_local_fr.
         * psis is a list of dictionaries, each describing a low-pass or band-pass
-          band-pass filter indexed by n_fr. The first element, n_fr=0, corresponds
+          filter indexed by n_fr. The first element, n_fr=0, corresponds
           to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
           Other elements, such that n_fr>0, correspond to "spinned" band-pass
           filter, where spin denotes the sign of the center frequency xi.
@@ -387,6 +387,25 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
         return {**U_2, 'n1_stride': n1_stride}
 
 
+def time_formatting(path, backend):
+    if path["coef"] is None:
+        # special case: user called meta(), so we propagate None
+        coef_list = [None] * (1 + path["n1_max"] // path["n1_stride"])
+    else:
+        coef_list = backend.split_frequency_axis(path["coef"])
+    for i, n1 in enumerate(range(0, path["n1_max"], path["n1_stride"])):
+        split_path = {**path, "coef": coef_list[i], "order": len(path["n"])-1}
+        # If not spinned, X['n']=S1['n']=(n_fr,) is a 1-tuple.
+        # If spinned, X['n']=Y2['n']=(n2,n_fr) is a 2-tuple.
+        # In either case, we prepend n1 and define the new 'n'
+        # as (n1,) + X['n'], i.e., n=(n1, n_fr) is not spinned
+        # and n=(n1, n2, n_fr) if spinned. This 'n' tuple is unique.
+        split_path["n"] = (n1,) + split_path["n"]
+        del split_path["n1_max"]
+        del split_path["n1_stride"]
+        yield split_path
+
+
 def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
         phi_fr_f, oversampling_fr, average_fr, out_type, format):
     # Zeroth order
@@ -436,6 +455,4 @@ def jtfs_average_and_format(U_gen, backend, phi_f, oversampling, average,
         if format == 'joint':
             yield {**path, 'order': len(path['n'])}
         elif format == 'time':
-            raise NotImplementedError
-        #     # TODO split
-        #     yield from self.backend.split(path)
+            yield from time_formatting(path, backend)
