@@ -49,7 +49,6 @@ def test_jtfs_build():
     assert (jtfs._N_padded_fr % (2**jtfs.J_fr)) == 0
 
 
-
 def test_Q():
     jtfs_kwargs = dict(J=10, J_fr=3, shape=4096, Q=8, backend="torch")
     # test different cases for Q_fr
