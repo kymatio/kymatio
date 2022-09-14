@@ -14,4 +14,3 @@ Contributors
 * Edouard Oyallon <https://github.com/edouardoyallon>
 * Louis Thiry <https://github.com/louity>
 * Sergey Zagoruyko <https://github.com/szagoruyko>
-* Han
