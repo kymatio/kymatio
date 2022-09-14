@@ -428,16 +428,15 @@ def test_differentiability_jtfs(random_state=42):
         S_0 = next(jtfs_gen) 
         loss = tf.norm(S_0["coef"])
         assert tf.abs(loss) >= 0.0
-    grad = tape.gradient(loss, x)
-    assert tf.reduce_max(tf.abs(grad)) > 0.0
-
-    Ss = list(jtfs_gen)
-    for S in Ss:
-        with tf.GradientTape(persistent=True) as tape:
+        losses = [loss]
+        for S in list(jtfs_gen):
             loss = tf.norm(S["coef"])
             assert tf.abs(loss) >= 0.0
+            losses.append(loss)
+    for loss in losses:
         grad = tape.gradient(loss,x)
         assert tf.reduce_max(tf.abs(grad)) > 0.0
+
 
 
 def test_jtfs_numpy():
