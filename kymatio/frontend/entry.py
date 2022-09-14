@@ -35,16 +35,10 @@ class ScatteringEntry(object):
             module = importlib.import_module('kymatio.' + self.class_name + '.frontend.' + frontend + '_frontend')
 
             # Create frontend-specific class name by inserting frontend name
-            # after `Scattering`.
+            # in lieu of "Entry"
             frontend = frontend_suffixes[frontend]
-
             class_name = self.__class__.__name__
-
-            base_name = class_name[:-len('Entry*D')]
-            dim_suffix = class_name[-len('*D'):]
-
-            class_name = base_name + frontend + dim_suffix
-
+            class_name = class_name.replace("Entry", frontend)
             self.__class__ = getattr(module, class_name)
             self.__init__(*args, **kwargs)
         except Exception as e:
