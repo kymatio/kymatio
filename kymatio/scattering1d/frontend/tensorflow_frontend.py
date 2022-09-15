@@ -19,10 +19,10 @@ class ScatteringTensorFlow1D(ScatteringTensorFlow, ScatteringBase1D):
 ScatteringTensorFlow1D._document()
 
 
-class TimeFrequencyScatteringTensorflow(
+class TimeFrequencyScatteringTensorFlow(
         ScatteringTensorFlow, TimeFrequencyScatteringBase):
     def __init__(self, *, J, J_fr, shape, Q, T=None, oversampling=0, Q_fr=1,
-            F=None, oversampling_fr=0, out_type='array', backend='tensorflow', name="TimeFrequencyScatteringScattering"):
+            F=None, oversampling_fr=0, out_type='array', backend='tensorflow', name='TimeFrequencyScattering'):
         ScatteringTensorFlow.__init__(self,name=name)
         TimeFrequencyScatteringBase.__init__(self, J=J, J_fr=J_fr, shape=shape,
             Q=Q, T=T, oversampling=oversampling, Q_fr=Q_fr, F=F,
@@ -35,7 +35,7 @@ class TimeFrequencyScatteringTensorflow(
 
 
 
-__all__ = ['ScatteringTensorflow1D', 'TimeFrequencyScatteringTensorflow']
+__all__ = ['ScatteringTensorFlow1D', 'TimeFrequencyScatteringTensorFlow']
 
 
 

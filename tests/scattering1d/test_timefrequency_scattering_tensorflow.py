@@ -15,7 +15,7 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
 )
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
-from kymatio.scattering1d.frontend.tensorflow_frontend import TimeFrequencyScatteringTensorflow
+from kymatio.scattering1d.frontend.tensorflow_frontend import TimeFrequencyScatteringTensorFlow
 
 
 
@@ -398,7 +398,7 @@ def test_differentiability_jtfs(random_state=42):
     Q = 8
 
     with tf.device(device):
-        S = TimeFrequencyScatteringTensorflow(J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0)
+        S = TimeFrequencyScatteringTensorFlow(J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0)
         S.build()
         S.create_filters()
         x = tf.Variable(tf.random.normal(shape))

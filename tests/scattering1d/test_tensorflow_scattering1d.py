@@ -11,7 +11,7 @@ backends = []
 gpu_available = tf.test.is_gpu_available()
 
 if not gpu_available:
-    Warning('GPU not available for tensorflow.')
+    Warning('GPU not available for TensorFlow.')
 
 from kymatio.scattering1d.backend.tensorflow_backend import backend
 backends.append(backend)
