@@ -464,6 +464,7 @@ def test_jtfs_numpy_and_sklearn(frontend):
     # Dictionary output
     S = TimeFrequencyScattering(frontend=frontend, out_type="dict", **kwargs)
     Sx = S(x)
+    assert all([isinstance(path, np.ndarray) for path in Sx.values()])
 
     # List output
     S = TimeFrequencyScattering(
@@ -477,7 +478,21 @@ def test_jtfs_numpy_and_sklearn(frontend):
         assert key in meta.keys()
         assert len(meta[key]) == len(Sx)
 
-    # test
+    # format='time'
+    S = TimeFrequencyScatteringNumPy(T=None, F=0, format="time", **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 2
+
+    # format='time' with global averaging
+    S = TimeFrequencyScatteringNumPy(T="global", F=0, format="time", **kwargs)
+    Sx = S(x)
+    assert Sx.ndim == 2
+
+    # format='time' meta()
+    meta = S.meta()
+    assert len(meta['key']) == Sx.shape[-2]
+
+    # Frontend dispatch
     S_entry = TimeFrequencyScattering(frontend=frontend, **kwargs)(x)
     S_numpy = TimeFrequencyScatteringNumPy(**kwargs)(x)
     assert np.allclose(S_entry, S_numpy)

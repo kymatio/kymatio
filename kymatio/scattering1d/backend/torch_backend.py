@@ -191,6 +191,7 @@ class TorchBackend1D(TorchBackend):
         averaging. This is called at the end of `jtfs_average_and_format`
         unless `out_type='array'` and `format='joint'`.
         NB. Unpadding is one-sided. See point 3 of pad_frequency docstring.
+
         Parameters
         ----------
         x : tensor (batch, frequency, time, 1), corresponds to path['coef']
@@ -198,12 +199,28 @@ class TorchBackend1D(TorchBackend):
             for the scattering path of x. By definition, lower than len(psi1_f).
         n1_stride: integer frequential subsampling factor associated to the
             scattering path of x. Equal to max(1, 2**(j_fr - oversampling_fr)).
+
         Returns
         -------
         output : tensor (batch, time, unpadded frequency, 1)
         """
         n1_unpadded = 1 + (n1_max // n1_stride)
         return x[:, :, :n1_unpadded, :]
+
+    @staticmethod
+    def split_frequency_axis(x):
+        """Split tensor along its frequency axis.
+
+        Parameters
+        ----------
+        x : tensor (batch, frequency, time, 1), corresponds to path['coef']
+
+        Returns
+        -------
+        output : list of tensors, each of shape (batch, 1, time, 1). The number
+        of elements in the list is equal to that of the frequency axis.
+        """
+        return torch.split(x, 1, dim=-3)
 
 
 backend = TorchBackend1D
