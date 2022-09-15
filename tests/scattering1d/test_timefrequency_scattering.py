@@ -435,6 +435,7 @@ def test_differentiability_jtfs(random_state=42):
         grad = x.grad
         assert torch.max(torch.abs(grad)) > 0.0
 
+
 frontends = ["numpy", "sklearn"]
 @pytest.mark.parametrize("frontend", frontends)
 def test_jtfs_numpy_and_sklearn(frontend):
@@ -475,3 +476,8 @@ def test_jtfs_numpy_and_sklearn(frontend):
     for key in ["xi", "sigma", "j", "xi_fr", "sigma_fr", "j_fr", "spin"]:
         assert key in meta.keys()
         assert len(meta[key]) == len(Sx)
+
+    # test
+    S_entry = TimeFrequencyScattering(frontend=frontend, **kwargs)(x)
+    S_numpy = TimeFrequencyScatteringNumPy(**kwargs)(x)
+    assert np.allclose(S_entry, S_numpy)
