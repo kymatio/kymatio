@@ -3,6 +3,7 @@ import pytest
 import torch
 
 import kymatio
+from kymatio import TimeFrequencyScattering
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (
@@ -435,7 +436,9 @@ def test_differentiability_jtfs(random_state=42):
         assert torch.max(torch.abs(grad)) > 0.0
 
 
-def test_jtfs_numpy():
+frontends = ["numpy", "sklearn"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_jtfs_numpy_and_sklearn(frontend):
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
     J = 8
@@ -446,25 +449,26 @@ def test_jtfs_numpy():
     x[kwargs["shape"][0] // 2] = 1
 
     # Local averaging
-    S = TimeFrequencyScatteringNumPy(**kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, **kwargs)
     assert S.F == (2**S.J_fr)
     Sx = S(x)
     assert isinstance(Sx, np.ndarray)
     assert Sx.ndim == 3
 
     # Global averaging
-    S = TimeFrequencyScatteringNumPy(T="global", **kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, T="global", **kwargs)
     Sx = S(x)
     assert Sx.ndim == 3
     assert Sx.shape[-1] == 1
 
     # Dictionary output
-    S = TimeFrequencyScatteringNumPy(out_type="dict", **kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, out_type="dict", **kwargs)
     Sx = S(x)
     assert all([isinstance(path, np.ndarray) for path in Sx.values()])
 
     # List output
-    S = TimeFrequencyScatteringNumPy(out_type="list", T=0, F=0, **kwargs)
+    S = TimeFrequencyScattering(
+        frontend=frontend, out_type="list", T=0, F=0, **kwargs)
     Sx = S(x)
     assert all([path["coef"].ndim == 2 for path in Sx if path["order"] > 0])
 
@@ -487,3 +491,8 @@ def test_jtfs_numpy():
     # format='time' meta()
     meta = S.meta()
     assert len(meta['key']) == Sx.shape[-2]
+
+    # Frontend dispatch
+    S_entry = TimeFrequencyScattering(frontend=frontend, **kwargs)(x)
+    S_numpy = TimeFrequencyScatteringNumPy(**kwargs)(x)
+    assert np.allclose(S_entry, S_numpy)
