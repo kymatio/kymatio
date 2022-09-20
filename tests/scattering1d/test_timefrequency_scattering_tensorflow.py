@@ -69,60 +69,6 @@ def test_Q():
     assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
 
 
-def test_check_runtime_args():
-    kwargs = dict(J=10, J_fr=3, shape=4096, Q=8)
-    S = TimeFrequencyScatteringBase(**kwargs)
-    S.build()
-    assert S._check_runtime_args() is None
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(out_type="doesnotexist", **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "out_type must be one of" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(T=0, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "Cannot convert" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(oversampling=-1, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "nonnegative" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(oversampling=0.5, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "integer" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(F=0, out_type="array", format="joint", **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "Cannot convert" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(oversampling_fr=-1, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "nonnegative" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(oversampling_fr=0.5, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "integer" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(format="doesnotexist", **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "format must be" in ve.value.args[0]
-
 
 def test_jtfs_create_filters():
     J_fr = 3
@@ -186,61 +132,6 @@ def test_time_scattering_widthfirst():
     )
     assert np.allclose(S1_width.numpy(), S1_depth.numpy())
 
-
-def test_frequency_scattering():
-    # Create S1 array as input
-    J = 5
-    shape = (4096,)
-    Q = 8
-    S = kymatio.Scattering1D(J=J, Q=Q, shape=shape, backend="numpy")
-    x = np.zeros(shape)
-    x[shape[0] // 2] = 1
-    x_shape = S.backend.shape(x)
-    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
-    x = S.backend.reshape_input(x, signal_shape)
-    U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
-    filters = [S.phi_f, S.psi1_f, S.psi2_f]
-    average_local = True
-    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
-    S_1_dict = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) == 1}
-    S_1 = S.backend.concatenate([S_1_dict[key] for key in sorted(S_1_dict.keys())])
-    X = {"coef": S_1, "n1_max": len(S_1_dict), "n": (-1,), "j": (-1,)}
-
-    # Define scattering object
-    J_fr = 3
-    jtfs = TimeFrequencyScatteringBase(
-        J=J, J_fr=J_fr, shape=shape, Q=Q, backend="numpy"
-    )
-    jtfs.build()
-    jtfs.create_filters()
-
-    # spinned=False
-    freq_gen = frequency_scattering(
-        X,
-        S.backend,
-        jtfs.filters_fr,
-        jtfs.oversampling_fr,
-        jtfs.average_fr == "local",
-        spinned=False,
-    )
-    for Y_fr in freq_gen:
-        assert Y_fr["spin"] >= 0
-        assert Y_fr["n"] == Y_fr["n_fr"]
-
-    # spinned=True
-    X["coef"] = X["coef"].astype("complex64")
-    X["n"] = (-1, 4)  # a mockup (n1, n2) pair from time_scattering_widthfirst
-    freq_gen = frequency_scattering(
-        X,
-        S.backend,
-        jtfs.filters_fr,
-        jtfs.oversampling_fr,
-        jtfs.average_fr == "local",
-        spinned=True,
-    )
-    for Y_fr in freq_gen:
-        assert Y_fr["coef"].shape[-1] == X["coef"].shape[-1]
-        assert Y_fr["n"] == (4,) + Y_fr["n_fr"]
 
 
 def test_joint_timefrequency_scattering():
@@ -439,40 +330,3 @@ def test_differentiability_jtfs(random_state=42):
 
 
 
-def test_jtfs_numpy():
-    # Test __init__
-    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
-    J = 8
-    J_fr = 3
-    shape = (1024,)
-    Q = 3
-    x = np.zeros(kwargs["shape"])
-    x[kwargs["shape"][0] // 2] = 1
-
-    # Local averaging
-    S = TimeFrequencyScatteringNumPy(**kwargs)
-    assert S.F == (2**S.J_fr)
-    Sx = S(x)
-    assert isinstance(Sx, np.ndarray)
-    assert Sx.ndim == 3
-
-    # Global averaging
-    S = TimeFrequencyScatteringNumPy(T="global", **kwargs)
-    Sx = S(x)
-    assert Sx.ndim == 3
-    assert Sx.shape[-1] == 1
-
-    # Dictionary output
-    S = TimeFrequencyScatteringNumPy(out_type="dict", **kwargs)
-    Sx = S(x)
-
-    # List output
-    S = TimeFrequencyScatteringNumPy(out_type="list", T=0, F=0, **kwargs)
-    Sx = S(x)
-    assert all([path["coef"].ndim == 2 for path in Sx if path["order"] > 0])
-
-    # meta()
-    meta = S.meta()
-    for key in ["xi", "sigma", "j", "xi_fr", "sigma_fr", "j_fr", "spin"]:
-        assert key in meta.keys()
-        assert len(meta[key]) == len(Sx)
