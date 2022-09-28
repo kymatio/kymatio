@@ -13,6 +13,7 @@ from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringB
 from kymatio.scattering1d.frontend.tensorflow_frontend import (
     TimeFrequencyScatteringTensorFlow,
 )
+from .test_timefrequency_scattering import _joint_timefrequency_scattering_test_routine
 
 
 def test_jtfs_build():
@@ -64,6 +65,26 @@ def test_Q():
     with pytest.raises(NotImplementedError) as ve:
         TimeFrequencyScatteringBase(Q_fr=(1, 2), **jtfs_kwargs).build()
     assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
+
+
+def test_jtfs():
+    # Define scattering object
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+    S = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend="tensorflow"
+    )
+    S.build()
+    S.create_filters()
+    assert not S.average
+    assert not S.average_fr
+    backend = kymatio.Scattering1D(
+        J=J, Q=Q, shape=shape, T=0, backend="tensorflow"
+    ).backend
+
+    _joint_timefrequency_scattering_test_routine(S, backend, shape)
 
 
 def test_jtfs_create_filters():

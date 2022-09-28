@@ -239,21 +239,7 @@ def test_frequency_scattering():
         assert Y_fr["n"] == (4,) + Y_fr["n_fr"]
 
 
-def test_joint_timefrequency_scattering():
-    # Define scattering object
-    J = 8
-    J_fr = 3
-    shape = (4096,)
-    Q = 8
-    S = TimeFrequencyScatteringBase(
-        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend="numpy"
-    )
-    S.build()
-    S.create_filters()
-    assert not S.average
-    assert not S.average_fr
-    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, backend="numpy").backend
-
+def _joint_timefrequency_scattering_test_routine(S, backend, shape):
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = backend.shape(x)
@@ -384,6 +370,24 @@ def test_joint_timefrequency_scattering():
     S2_neg = filter(lambda path: path["spin"] < 0, S2_jtfs)
     assert len(list(S2_pos)) == len(list(S2_neg))
     assert set(S2_pos) == set(S2_neg)
+
+
+def test_joint_timefrequency_scattering():
+    # Define scattering object
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+    S = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend="numpy"
+    )
+    S.build()
+    S.create_filters()
+    assert not S.average
+    assert not S.average_fr
+    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, backend="numpy").backend
+
+    _joint_timefrequency_scattering_test_routine(S, backend, shape)
 
 
 def test_differentiability_jtfs(random_state=42):
