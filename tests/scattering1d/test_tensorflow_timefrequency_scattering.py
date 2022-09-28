@@ -1,4 +1,3 @@
-import ssl
 import numpy as np
 import pytest
 import tensorflow as tf
@@ -122,7 +121,7 @@ def test_time_scattering_widthfirst():
     x[shape[0] // 2] = 1
     x = tf.convert_to_tensor(x)
     x_shape = S.backend.shape(x)
-    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    _, signal_shape = x_shape[:-1], x_shape[-1:]
     x = S.backend.reshape_input(x, signal_shape)
     U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
 
@@ -136,8 +135,6 @@ def test_time_scattering_widthfirst():
     # Depth-first
     S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local=True)
     S1_depth = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) > 0}
-    U_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local=False)
-    U2_depth = {path["n"]: path["coef"] for path in U_gen if len(path["n"]) == 2}
 
     # Check order 1
     keep_order1 = lambda item: (len(item[0]) == 1)
@@ -171,7 +168,7 @@ def test_differentiability_jtfs(random_state=42):
 
     with tf.GradientTape(persistent=True) as tape:
         x_shape = backend.shape(x)
-        batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+        _, signal_shape = x_shape[:-1], x_shape[-1:]
         x_reshaped = backend.reshape_input(x, signal_shape)
         U_0_in = backend.pad(x_reshaped, pad_left=S.pad_left, pad_right=S.pad_right)
 
