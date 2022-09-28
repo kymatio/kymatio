@@ -2,7 +2,6 @@ import ssl
 import numpy as np
 import pytest
 import tensorflow as tf
-
 import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
@@ -16,7 +15,6 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
 from kymatio.scattering1d.frontend.tensorflow_frontend import TimeFrequencyScatteringTensorFlow
-
 
 
 def test_jtfs_build():
@@ -51,7 +49,6 @@ def test_jtfs_build():
     assert (jtfs._N_padded_fr % (2**jtfs.J_fr)) == 0
 
 
-
 def test_Q():
     jtfs_kwargs = dict(J=10, J_fr=3, shape=4096, Q=8, backend="tensorflow")
     # test different cases for Q_fr
@@ -67,7 +64,6 @@ def test_Q():
     with pytest.raises(NotImplementedError) as ve:
         TimeFrequencyScatteringBase(Q_fr=(1, 2), **jtfs_kwargs).build()
     assert "Q_fr must be an integer or 1-tuple" in ve.value.args[0]
-
 
 
 def test_jtfs_create_filters():
@@ -133,7 +129,6 @@ def test_time_scattering_widthfirst():
     assert np.allclose(S1_width.numpy(), S1_depth.numpy())
 
 
-
 def test_differentiability_jtfs(random_state=42):
     device = "cpu"
     J = 8
@@ -152,22 +147,20 @@ def test_differentiability_jtfs(random_state=42):
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
 
     with tf.GradientTape(persistent=True) as tape:
-
         x_shape = backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
         x_reshaped = backend.reshape_input(x, signal_shape)
         U_0_in = backend.pad(x_reshaped, pad_left=S.pad_left, pad_right=S.pad_right)
 
         jtfs_gen = joint_timefrequency_scattering(
-        U_0_in,
-        backend,
-        filters,
-        S.oversampling,
-        S.average == "local",
-        S.filters_fr,
-        S.oversampling_fr,
-        S.average_fr == "local",
-        )
+            U_0_in,
+            backend,
+            filters,
+            S.oversampling,
+            S.average == "local",
+            S.filters_fr,
+            S.oversampling_fr,
+            S.average_fr == "local")
         # Zeroth order
         S_0 = next(jtfs_gen) 
         loss = tf.norm(S_0["coef"])
