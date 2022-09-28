@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 import tensorflow as tf
 import kymatio
+from kymatio.tensorflow import Scattering1D
 from kymatio.scattering1d.core.scattering1d import scattering1d
 from kymatio.scattering1d.filter_bank import gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (
@@ -79,8 +80,8 @@ def test_jtfs():
     S.create_filters()
     assert not S.average
     assert not S.average_fr
-    backend = kymatio.Scattering1D(
-        J=J, Q=Q, shape=shape, T=0, backend="tensorflow"
+    backend = Scattering1D(
+        J=J, Q=Q, shape=shape, T=0
     ).backend
 
     _joint_timefrequency_scattering_test_routine(S, backend, shape)
