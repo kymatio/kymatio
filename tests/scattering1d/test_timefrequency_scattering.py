@@ -5,7 +5,7 @@ import torch
 import kymatio
 from kymatio import TimeFrequencyScattering
 from kymatio.scattering1d.core.scattering1d import scattering1d
-from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
+from kymatio.scattering1d.filter_bank import gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (
     joint_timefrequency_scattering,
     time_scattering_widthfirst,
@@ -156,7 +156,7 @@ def test_time_scattering_widthfirst():
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
-    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    _, signal_shape = x_shape[:-1], x_shape[-1:]
     x = S.backend.reshape_input(x, signal_shape)
     U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
 
@@ -170,8 +170,6 @@ def test_time_scattering_widthfirst():
     # Depth-first
     S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local=True)
     S1_depth = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) > 0}
-    U_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local=False)
-    U2_depth = {path["n"]: path["coef"] for path in U_gen if len(path["n"]) == 2}
 
     # Check order 1
     keep_order1 = lambda item: (len(item[0]) == 1)
@@ -193,7 +191,7 @@ def test_frequency_scattering():
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
-    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    _, signal_shape = x_shape[:-1], x_shape[-1:]
     x = S.backend.reshape_input(x, signal_shape)
     U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
@@ -240,25 +238,11 @@ def test_frequency_scattering():
         assert Y_fr["n"] == (4,) + Y_fr["n_fr"]
 
 
-def test_joint_timefrequency_scattering():
-    # Define scattering object
-    J = 8
-    J_fr = 3
-    shape = (4096,)
-    Q = 8
-    S = TimeFrequencyScatteringBase(
-        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend="numpy"
-    )
-    S.build()
-    S.create_filters()
-    assert not S.average
-    assert not S.average_fr
-    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, backend="numpy").backend
-
+def _joint_timefrequency_scattering_test_routine(S, backend, shape):
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = backend.shape(x)
-    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    _, signal_shape = x_shape[:-1], x_shape[-1:]
     x = backend.reshape_input(x, signal_shape)
     U_0_in = backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
 
@@ -387,6 +371,24 @@ def test_joint_timefrequency_scattering():
     assert set(S2_pos) == set(S2_neg)
 
 
+def test_joint_timefrequency_scattering():
+    # Define scattering object
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+    S = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend="numpy"
+    )
+    S.build()
+    S.create_filters()
+    assert not S.average
+    assert not S.average_fr
+    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, backend="numpy").backend
+
+    _joint_timefrequency_scattering_test_routine(S, backend, shape)
+
+
 def test_differentiability_jtfs(random_state=42):
     device = "cpu"
     J = 8
@@ -404,7 +406,7 @@ def test_differentiability_jtfs(random_state=42):
 
     x = torch.randn(shape, requires_grad=True, device=device)
     x_shape = backend.shape(x)
-    batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
+    _, signal_shape = x_shape[:-1], x_shape[-1:]
     x_reshaped = backend.reshape_input(x, signal_shape)
     U_0_in = backend.pad(x_reshaped, pad_left=S.pad_left, pad_right=S.pad_right)
 
@@ -441,10 +443,6 @@ frontends = ["numpy", "sklearn"]
 def test_jtfs_numpy_and_sklearn(frontend):
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
-    J = 8
-    J_fr = 3
-    shape = (1024,)
-    Q = 3
     x = torch.zeros(kwargs["shape"])
     x[kwargs["shape"][0] // 2] = 1
 
