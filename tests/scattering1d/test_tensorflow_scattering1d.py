@@ -6,7 +6,6 @@ import numpy as np
 import tensorflow as tf
 
 
-
 backends = []
 gpu_available = tf.test.is_gpu_available()
 
@@ -47,6 +46,7 @@ class TestScattering1DTensorFlow:
         Sx = scattering(x)
         assert np.allclose(Sx, Sx0, atol=1e-6, rtol =1e-7)
 
+        
 @pytest.mark.parametrize("backend", backends)
 def test_Q(backend):
     J = 3
