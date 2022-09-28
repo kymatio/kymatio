@@ -4,22 +4,22 @@ import pytest
 import tensorflow as tf
 import kymatio
 from kymatio.scattering1d.core.scattering1d import scattering1d
-from kymatio.scattering1d.filter_bank import compute_temporal_support, gauss_1d
+from kymatio.scattering1d.filter_bank import gauss_1d
 from kymatio.scattering1d.core.timefrequency_scattering import (
     joint_timefrequency_scattering,
     time_scattering_widthfirst,
-    frequency_scattering,
-    time_averaging,
-    frequency_averaging,
 )
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
-from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
-from kymatio.scattering1d.frontend.tensorflow_frontend import TimeFrequencyScatteringTensorFlow
+from kymatio.scattering1d.frontend.tensorflow_frontend import (
+    TimeFrequencyScatteringTensorFlow,
+)
 
 
 def test_jtfs_build():
     # Test __init__
-    jtfs = TimeFrequencyScatteringBase(J=10, J_fr=3, shape=4096, Q=8, backend="tensorflow")
+    jtfs = TimeFrequencyScatteringBase(
+        J=10, J_fr=3, shape=4096, Q=8, backend="tensorflow"
+    )
     assert jtfs.F is None
 
     # Test Q_fr
@@ -98,7 +98,7 @@ def test_time_scattering_widthfirst():
     shape = (1024,)
     S = kymatio.Scattering1D(J, shape, frontend="tensorflow")
     x = np.zeros(shape)
-    x[shape[0]//2] = 1
+    x[shape[0] // 2] = 1
     x = tf.convert_to_tensor(x)
     x_shape = S.backend.shape(x)
     batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
@@ -137,12 +137,14 @@ def test_differentiability_jtfs(random_state=42):
     Q = 8
 
     with tf.device(device):
-        S = TimeFrequencyScatteringTensorFlow(J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0)
+        S = TimeFrequencyScatteringTensorFlow(
+            J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0
+        )
         S.build()
         S.create_filters()
         x = tf.Variable(tf.random.normal(shape))
     backend = S.backend
-    tf.random.set_seed(random_state) 
+    tf.random.set_seed(random_state)
 
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
 
@@ -160,9 +162,10 @@ def test_differentiability_jtfs(random_state=42):
             S.average == "local",
             S.filters_fr,
             S.oversampling_fr,
-            S.average_fr == "local")
+            S.average_fr == "local",
+        )
         # Zeroth order
-        S_0 = next(jtfs_gen) 
+        S_0 = next(jtfs_gen)
         loss = tf.norm(S_0["coef"])
         assert tf.abs(loss) >= 0.0
         losses = [loss]
@@ -171,8 +174,5 @@ def test_differentiability_jtfs(random_state=42):
             assert tf.abs(loss) >= 0.0
             losses.append(loss)
     for loss in losses:
-        grad = tape.gradient(loss,x)
+        grad = tape.gradient(loss, x)
         assert tf.reduce_max(tf.abs(grad)) > 0.0
-
-
-
