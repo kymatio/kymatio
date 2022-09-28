@@ -12,7 +12,7 @@ from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringB
 from kymatio.scattering1d.frontend.tensorflow_frontend import (
     TimeFrequencyScatteringTensorFlow,
 )
-from test_tensorflow_timefrequency_scattering import _joint_timefrequency_scattering_test_routine
+from test_timefrequency_scattering import _joint_timefrequency_scattering_test_routine
 
 
 def test_jtfs_build():
