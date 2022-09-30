@@ -1,4 +1,7 @@
 from .scattering1d.frontend.torch_frontend import ScatteringTorch1D as Scattering1D
+from .scattering1d.frontend.torch_frontend import (
+    TimeFrequencyScatteringTorch as TimeFrequencyScattering,
+)
 from .scattering2d.frontend.torch_frontend import ScatteringTorch2D as Scattering2D
 from .scattering3d.frontend.torch_frontend import (
     HarmonicScatteringTorch3D as HarmonicScattering3D,
