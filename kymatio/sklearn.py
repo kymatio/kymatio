@@ -2,6 +2,9 @@ from .scattering1d.frontend.sklearn_frontend import (
     ScatteringTransformer1D as Scattering1D,
 )
 from .scattering2d.frontend.sklearn_frontend import (
+    TimeFrequencyScatteringTransformer as TimeFrequencyScattering,
+)
+from .scattering2d.frontend.sklearn_frontend import (
     ScatteringTransformer2D as Scattering2D,
 )
 from .scattering3d.frontend.sklearn_frontend import (
