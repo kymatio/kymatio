@@ -558,29 +558,17 @@ def test_jtfs_numpy_and_sklearn(frontend):
     assert np.allclose(S_entry, S_numpy)
 
 
-def test_jtfs_torch_frontend():
+frontends = ["torch", "tensorflow"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_jtfs_torch_tf_frontends(frontend):
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
     x = torch.zeros(kwargs["shape"])
     x[kwargs["shape"][0] // 2] = 1
 
     # Local averaging
-    S = TimeFrequencyScattering(frontend="torch", **kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, **kwargs)
     assert S.F == (2**S.J_fr)
     Sx = S(x)
-    assert isinstance(Sx, torch.Tensor)
-    assert Sx.ndim == 3
-
-
-def test_jtfs_tf_frontend():
-    # Test __init__
-    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
-    x = torch.zeros(kwargs["shape"])
-    x[kwargs["shape"][0] // 2] = 1
-
-    # Local averaging
-    S = TimeFrequencyScattering(frontend="tensorflow", **kwargs)
-    assert S.F == (2**S.J_fr)
-    Sx = S(x)
-    assert isinstance(Sx, tf.Tensor)
+    assert isinstance(Sx, torch.Tensor) if frontend == "torch" else isinstance(Sx, tf.Tensor)
     assert Sx.ndim == 3
