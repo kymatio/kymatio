@@ -251,7 +251,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
     log2_F = phi['j']
 
     # Swap time and frequency axis
-    X_T = backend.swap_time_frequency(X['coef'])
+    X_T = backend.swap_time_frequency(X['coef']) 
 
     # Zero-pad frequency domain
     pad_right = phi['N'] - X['n1_max']

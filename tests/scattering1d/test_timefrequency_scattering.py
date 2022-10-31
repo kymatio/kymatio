@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-import torch
+import torch, tensorflow as tf
 
 import kymatio
 from kymatio import TimeFrequencyScattering
@@ -18,9 +18,11 @@ from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScattering
 from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
 
 
-def test_jtfs_build():
+backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
+@pytest.mark.parametrize("backend", backends)
+def test_jtfs_build(backend):
     # Test __init__
-    jtfs = TimeFrequencyScatteringBase(J=10, J_fr=3, shape=4096, Q=8, backend="torch")
+    jtfs = TimeFrequencyScatteringBase(J=10, J_fr=3, shape=4096, Q=8, backend=backend)
     assert jtfs.F is None
 
     # Test Q_fr
@@ -50,8 +52,10 @@ def test_jtfs_build():
     assert (jtfs._N_padded_fr % (2**jtfs.J_fr)) == 0
 
 
-def test_Q():
-    jtfs_kwargs = dict(J=10, J_fr=3, shape=4096, Q=8, backend="torch")
+backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
+@pytest.mark.parametrize("backend", backends)
+def test_Q(backend):
+    jtfs_kwargs = dict(J=10, J_fr=3, shape=4096, Q=8, backend=backend)
     # test different cases for Q_fr
     with pytest.raises(ValueError) as ve:
         TimeFrequencyScatteringBase(Q_fr=0.9, **jtfs_kwargs).build()
@@ -122,10 +126,14 @@ def test_check_runtime_args():
     assert "format must be" in ve.value.args[0]
 
 
-def test_jtfs_create_filters():
+backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
+
+
+@pytest.mark.parametrize("backend", backends)
+def test_jtfs_create_filters(backend):
     J_fr = 3
     jtfs = TimeFrequencyScatteringBase(
-        J=10, J_fr=J_fr, shape=4096, Q=8, backend="torch"
+        J=10, J_fr=J_fr, shape=4096, Q=8, backend=backend
     )
     jtfs.build()
     jtfs.create_filters()
@@ -148,11 +156,13 @@ def test_jtfs_create_filters():
     )
 
 
-def test_time_scattering_widthfirst():
+backends = ["numpy", "torch", "tensorflow"]
+@pytest.mark.parametrize("backend", backends)
+def test_time_scattering_widthfirst(backend):
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
-    S = kymatio.Scattering1D(J, shape, frontend="torch")
+    S = kymatio.Scattering1D(J, shape, frontend=backend)
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
@@ -179,15 +189,20 @@ def test_time_scattering_widthfirst():
     S1_depth = S.backend.concatenate(
         [S1_depth[key] for key in sorted(S1_depth.keys()) if len(key) == 1]
     )
-    assert torch.allclose(S1_width, S1_depth)
+    if backend != "numpy":
+        S1_width = S1_width.numpy()
+        S1_depth = S1_depth.numpy()
+    assert np.allclose(S1_width, S1_depth)
 
 
-def test_frequency_scattering():
+frontends = ["numpy"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_frequency_scattering(frontend):
     # Create S1 array as input
     J = 5
     shape = (4096,)
     Q = 8
-    S = kymatio.Scattering1D(J=J, Q=Q, shape=shape, backend="numpy")
+    S = kymatio.Scattering1D(J=J, Q=Q, shape=shape, frontend=frontend)
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
@@ -204,7 +219,7 @@ def test_frequency_scattering():
     # Define scattering object
     J_fr = 3
     jtfs = TimeFrequencyScatteringBase(
-        J=J, J_fr=J_fr, shape=shape, Q=Q, backend="numpy"
+        J=J, J_fr=J_fr, shape=shape, Q=Q, backend=frontend
     )
     jtfs.build()
     jtfs.create_filters()
@@ -371,25 +386,26 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
     assert set(S2_pos) == set(S2_neg)
 
 
-def test_joint_timefrequency_scattering():
+backends = ["numpy", "tensorflow"]
+@pytest.mark.parametrize("backend", backends)
+def test_joint_timefrequency_scattering(backend):
     # Define scattering object
     J = 8
     J_fr = 3
     shape = (4096,)
     Q = 8
     S = TimeFrequencyScatteringBase(
-        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend="numpy"
+        J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend=backend
     )
     S.build()
     S.create_filters()
     assert not S.average
     assert not S.average_fr
-    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, backend="numpy").backend
-
+    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, frontend=backend).backend
     _joint_timefrequency_scattering_test_routine(S, backend, shape)
 
 
-def test_differentiability_jtfs(random_state=42):
+def test_differentiability_jtfs_torch(random_state=42):
     device = "cpu"
     J = 8
     J_fr = 3
@@ -438,6 +454,55 @@ def test_differentiability_jtfs(random_state=42):
         assert torch.max(torch.abs(grad)) > 0.0
 
 
+def test_differentiability_jtfs_tensorflow(random_state=42):
+    device = "cpu"
+    J = 8
+    J_fr = 3
+    shape = (4096,)
+    Q = 8
+
+    with tf.device(device):
+        S = TimeFrequencyScattering(
+            J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, frontend="tensorflow"
+        )
+        S.build()
+        S.create_filters()
+        x = tf.Variable(tf.random.normal(shape))
+    backend = S.backend
+    tf.random.set_seed(random_state)
+
+    filters = [S.phi_f, S.psi1_f, S.psi2_f]
+
+    with tf.GradientTape(persistent=True) as tape:
+        x_shape = backend.shape(x)
+        _, signal_shape = x_shape[:-1], x_shape[-1:]
+        x_reshaped = backend.reshape_input(x, signal_shape)
+        U_0_in = backend.pad(x_reshaped, pad_left=S.pad_left, pad_right=S.pad_right)
+
+        jtfs_gen = joint_timefrequency_scattering(
+            U_0_in,
+            backend,
+            filters,
+            S.oversampling,
+            S.average == "local",
+            S.filters_fr,
+            S.oversampling_fr,
+            S.average_fr == "local",
+        )
+        # Zeroth order
+        S_0 = next(jtfs_gen)
+        loss = tf.norm(S_0["coef"])
+        assert tf.abs(loss) >= 0.0
+        losses = [loss]
+        for S in list(jtfs_gen):
+            loss = tf.norm(S["coef"])
+            assert tf.abs(loss) >= 0.0
+            losses.append(loss)
+    for loss in losses:
+        grad = tape.gradient(loss, x)
+        assert tf.reduce_max(tf.abs(grad)) > 0.0
+
+
 frontends = ["numpy", "sklearn"]
 @pytest.mark.parametrize("frontend", frontends)
 def test_jtfs_numpy_and_sklearn(frontend):
@@ -465,8 +530,7 @@ def test_jtfs_numpy_and_sklearn(frontend):
     assert all([isinstance(path, np.ndarray) for path in Sx.values()])
 
     # List output
-    S = TimeFrequencyScattering(
-        frontend=frontend, out_type="list", T=0, F=0, **kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, out_type="list", T=0, F=0, **kwargs)
     Sx = S(x)
     assert all([path["coef"].ndim == 2 for path in Sx if path["order"] > 0])
 
@@ -488,9 +552,25 @@ def test_jtfs_numpy_and_sklearn(frontend):
 
     # format='time' meta()
     meta = S.meta()
-    assert len(meta['key']) == Sx.shape[-2]
+    assert len(meta["key"]) == Sx.shape[-2]
 
     # Frontend dispatch
     S_entry = TimeFrequencyScattering(frontend=frontend, **kwargs)(x)
     S_numpy = TimeFrequencyScatteringNumPy(**kwargs)(x)
     assert np.allclose(S_entry, S_numpy)
+
+
+frontends = ["torch"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_jtfs_torch_frontend(frontend):
+    # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
+    x = torch.zeros(kwargs["shape"])
+    x[kwargs["shape"][0] // 2] = 1
+
+    # Local averaging
+    S = TimeFrequencyScattering(frontend=frontend, **kwargs)
+    assert S.F == (2**S.J_fr)
+    Sx = S(x)
+    assert isinstance(Sx, torch.Tensor)
+    assert Sx.ndim == 3

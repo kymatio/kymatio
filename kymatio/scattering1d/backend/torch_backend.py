@@ -183,7 +183,7 @@ class TorchBackend1D(TorchBackend):
             if complex: (batch, time, frequency, real/imag)
             else: (batch, time, frequency, 1)
         """
-        return torch.transpose(x, dim0=-2, dim1=-3)
+        return torch.transpose(x, dim0=-2, dim1=-3).contiguous()
 
     @staticmethod
     def unpad_frequency(x, n1_max, n1_stride):
