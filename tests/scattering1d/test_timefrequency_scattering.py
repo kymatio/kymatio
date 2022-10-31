@@ -127,8 +127,6 @@ def test_check_runtime_args():
 
 
 backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
-
-
 @pytest.mark.parametrize("backend", backends)
 def test_jtfs_create_filters(backend):
     J_fr = 3
@@ -156,13 +154,13 @@ def test_jtfs_create_filters(backend):
     )
 
 
-backends = ["numpy", "torch", "tensorflow"]
-@pytest.mark.parametrize("backend", backends)
-def test_time_scattering_widthfirst(backend):
+frontends = ["numpy", "torch", "tensorflow", "sklearn"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_time_scattering_widthfirst(frontend):
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
-    S = kymatio.Scattering1D(J, shape, frontend=backend)
+    S = kymatio.Scattering1D(J, shape, frontend=frontend)
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
@@ -189,7 +187,7 @@ def test_time_scattering_widthfirst(backend):
     S1_depth = S.backend.concatenate(
         [S1_depth[key] for key in sorted(S1_depth.keys()) if len(key) == 1]
     )
-    if backend != "numpy":
+    if frontend not in ["numpy", "sklearn"]:
         S1_width = S1_width.numpy()
         S1_depth = S1_depth.numpy()
     assert np.allclose(S1_width, S1_depth)
@@ -560,17 +558,29 @@ def test_jtfs_numpy_and_sklearn(frontend):
     assert np.allclose(S_entry, S_numpy)
 
 
-frontends = ["torch"]
-@pytest.mark.parametrize("frontend", frontends)
-def test_jtfs_torch_frontend(frontend):
+def test_jtfs_torch_frontend():
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
     x = torch.zeros(kwargs["shape"])
     x[kwargs["shape"][0] // 2] = 1
 
     # Local averaging
-    S = TimeFrequencyScattering(frontend=frontend, **kwargs)
+    S = TimeFrequencyScattering(frontend="torch", **kwargs)
     assert S.F == (2**S.J_fr)
     Sx = S(x)
     assert isinstance(Sx, torch.Tensor)
+    assert Sx.ndim == 3
+
+
+def test_jtfs_tf_frontend():
+    # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
+    x = torch.zeros(kwargs["shape"])
+    x[kwargs["shape"][0] // 2] = 1
+
+    # Local averaging
+    S = TimeFrequencyScattering(frontend="tensorflow", **kwargs)
+    assert S.F == (2**S.J_fr)
+    Sx = S(x)
+    assert isinstance(Sx, tf.Tensor)
     assert Sx.ndim == 3
