@@ -287,11 +287,13 @@ def test_swap_time_frequency_1d(device, backend, random_state=42):
     x = torch.arange(np.prod(shape)).reshape(shape) * 0.5
     x_T = backend.swap_time_frequency(x)
     assert tuple(x_T.shape) == shape_T
+    assert x_T.is_contiguous()
 
     x_T_T = backend.swap_time_frequency(x_T)
     assert tuple(x_T_T.shape) == shape
     assert x_T_T.shape == x.shape
     assert torch.all(x == x_T_T)
+    assert x_T_T.is_contiguous()
 
     shape = (10, 20, 3, 5, 2)
     shape_T = (10, 20, 5, 3, 2)
