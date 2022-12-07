@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pytest
 import torch, tensorflow as tf
@@ -587,3 +589,30 @@ def test_jtfs_torch_tf_frontends(frontend):
     Sx = S(x)
     assert isinstance(Sx, torch.Tensor) if frontend == "torch" else isinstance(Sx, tf.Tensor)
     assert Sx.ndim == 3
+
+
+frontends = ["torch", "tensorflow"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_F(frontend):
+    """
+    Applies scattering on a stored signal with non-default F
+    """
+    kwargs = {"J": 8, "J_fr": 3, "shape": (8192,), "Q": 3}
+    x = torch.zeros(kwargs["shape"])
+    x[kwargs["shape"][0] // 2] = 1
+
+    # default F
+    jtfs0 = TimeFrequencyScattering(frontend="torch", format="joint", **kwargs)
+
+    # explict F
+    jtfs1 = TimeFrequencyScattering(frontend="torch", format="joint", F=2**kwargs['J_fr'], **kwargs)
+
+    Sx0 = jtfs0(x)
+    Sx1 = jtfs1(x)
+    assert torch.equal(Sx0, Sx1)
+    assert Sx0.shape == Sx1.shape
+
+    # non-default F smaller than 2**J_fr
+    jtfs2 = TimeFrequencyScattering(frontend="torch", format="joint", F=2**kwargs['J_fr'] // 4, **kwargs)
+    Sx2 = jtfs2(x)
+    assert Sx0.shape[0] == Sx2.shape[0] and Sx0.shape[2] == Sx2.shape[2] and Sx0.shape[1] < Sx2.shape[1]
