@@ -373,7 +373,7 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
             S_2_T = backend.average_global(U_2_T)
             n1_stride = U_2['n1_max']
         elif average_fr == 'local':
-            k_in = U_2['j_fr'][-1]
+            k_in = min(U_2['j_fr'][-1], log2_F)
             k_J = max(log2_F - k_in - oversampling_fr, 0)
             U_hat = backend.rfft(U_2_T)
             S_c = backend.cdgmm(U_hat, phi_fr_f['levels'][k_in])
