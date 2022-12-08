@@ -666,10 +666,12 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         meta = dict(key=[path['n'] for path in S], n=[], n_fr=[], order=[])
         for path in S:
             if len(path['n']) == 0:
-                # Zeroth order: no n1, no n_fr, no n2
-                meta['n'].append([np.nan, np.nan])
-                meta['n_fr'].append(np.nan)
-                meta['order'].append(0)
+                # If format='joint' and out_type='array' skip zeroth order
+                if not (self.format == 'joint' and self.out_type == 'array'):
+                    # Zeroth order: no n1, no n_fr, no n2
+                    meta['n'].append([np.nan, np.nan])
+                    meta['n_fr'].append(np.nan)
+                    meta['order'].append(0)
             else:
                 if len(path['n']) == 1:
                     # First order and format='joint': n=(n_fr,)

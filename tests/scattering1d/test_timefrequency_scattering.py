@@ -548,6 +548,10 @@ def test_jtfs_numpy_and_sklearn(frontend):
     Sx = S(x)
     assert Sx.ndim == 3
 
+    # format='joint' meta()
+    meta = S.meta()
+    assert len(meta["order"]) == Sx.shape[-3]
+
     # format='time' with global averaging
     S = TimeFrequencyScatteringNumPy(T="global", F=0, format="time", **kwargs)
     Sx = S(x)
