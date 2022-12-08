@@ -602,7 +602,7 @@ def test_F(frontend):
     # default F
     jtfs0 = TimeFrequencyScattering(frontend="torch", format="joint", **kwargs)
 
-    # explict F
+    # explicit F
     jtfs1 = TimeFrequencyScattering(frontend="torch", format="joint", F=2**kwargs['J_fr'], **kwargs)
 
     Sx0 = jtfs0(x)
@@ -610,7 +610,9 @@ def test_F(frontend):
     assert torch.equal(Sx0, Sx1)
     assert Sx0.shape == Sx1.shape
 
-    # non-default F smaller than 2**J_fr
+    """ non-default F smaller than 2**J_fr. This checks that the subsampling
+        index does not exceed log2_F and cause an IndexError at runtime (#976).
+    """
     jtfs2 = TimeFrequencyScattering(frontend="torch", format="joint", F=2**kwargs['J_fr'] // 4, **kwargs)
     Sx2 = jtfs2(x)
     assert Sx0.shape[0] == Sx2.shape[0] and Sx0.shape[2] == Sx2.shape[2] and Sx0.shape[1] < Sx2.shape[1]
