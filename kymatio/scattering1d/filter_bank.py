@@ -377,8 +377,8 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
             j = get_max_dyadic_subsampling(xi, sigma, **filterbank_kwargs)
 
             # Resample to smaller resolutions if necessary (beyond 1st layer)
-            # The idiom min(previous_J, j, log2_T) implements "j1 < j2"
-            for level in range(1, min(previous_J, j, log2_T)):
+            # The idiom min(previous_J, j, 1+log2_T) implements "j1 < j2"
+            for level in range(1, min(previous_J, j, 1+log2_T)):
                 psi_level = psi_levels[0].reshape(2 ** level, -1).mean(axis=0)
                 psi_levels.append(psi_level)
             psi_f.append({'levels': psi_levels, 'xi': xi, 'sigma': sigma, 'j': j})
