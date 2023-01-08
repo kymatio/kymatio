@@ -319,7 +319,7 @@ def spin(filterbank_fn, filterbank_kwargs):
     return spinned_fn, filterbank_kwargs
 
 
-def scattering_filter_factory(N, J, Q, T, filterbank):
+def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.mean):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -351,6 +351,8 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
         **filterbank_kwargs as optional keyword arguments.
         Corresponds to the self.filterbank property of the scattering object.
         As of v0.3, only anden_generator is supported as filterbank_fn.
+    _reduction : callable
+        either np.mean (default) or np.sum.
 
     Returns
     -------
@@ -379,7 +381,8 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
             # Resample to smaller resolutions if necessary (beyond 1st layer)
             # The idiom min(previous_J, j, 1+log2_T) implements "j1 < j2"
             for level in range(1, min(previous_J, j, 1+log2_T)):
-                psi_level = psi_levels[0].reshape(2 ** level, -1).mean(axis=0)
+                psi_level_reshaped = psi_levels[0].reshape(2**level, -1)
+                psi_level = _reduction(psi_level_reshaped, axis=0)
                 psi_levels.append(psi_level)
             psi_f.append({'levels': psi_levels, 'xi': xi, 'sigma': sigma, 'j': j})
             max_j = max(j, max_j)
@@ -392,7 +395,8 @@ def scattering_filter_factory(N, J, Q, T, filterbank):
     sigma_low = filterbank_kwargs["sigma0"] / T
     phi_levels = [gauss_1d(N, sigma_low)]
     for level in range(1, max(previous_J, 1+log2_T)):
-        phi_level = phi_levels[0].reshape(2 ** level, -1).mean(axis=0)
+        phi_level_reshaped = phi_levels[0].reshape(2**level, -1)
+        phi_level = _reduction(phi_level_reshaped, axis=0)
         phi_levels.append(phi_level)
     phi_f = {'levels': phi_levels, 'xi': 0, 'sigma': sigma_low, 'j': log2_T,
         'N': N}
