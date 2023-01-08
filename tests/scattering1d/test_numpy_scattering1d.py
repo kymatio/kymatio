@@ -114,6 +114,16 @@ class TestScattering1DNumpy:
         Sx = sc(x)
         assert Sx.shape[-1] == 1
 
+    def test_981(self, backend):
+        """
+        Tests against bug #981, in which some low values of T triggered an
+        `IndexError` in second-order backend.cdgmm
+        """
+        N = 1024
+        x = np.zeros(N)
+        sc = Scattering1D(J=8, shape=(N,), T=2)
+        Sx = sc(x)
+        assert Sx.shape[-1] == N/sc.T
 
 
 frontends = ['numpy', 'sklearn']
