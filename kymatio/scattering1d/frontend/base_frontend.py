@@ -25,6 +25,7 @@ class ScatteringBase1D(ScatteringBase):
         self.oversampling = oversampling
         self.out_type = out_type
         self.backend = backend
+        self._reduction = np.mean
 
     def build(self):
         """Set up padding and filters
@@ -38,7 +39,6 @@ class ScatteringBase1D(ScatteringBase):
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
-        self._reduction = np.mean
 
         # check the number of filters per octave
         if np.any(np.array(self.Q) < 1):
