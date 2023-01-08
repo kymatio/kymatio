@@ -38,6 +38,7 @@ class ScatteringBase1D(ScatteringBase):
         self.r_psi = math.sqrt(0.5)
         self.sigma0 = 0.1
         self.alpha = 5.
+        self._reduction = np.mean
 
         # check the number of filters per octave
         if np.any(np.array(self.Q) < 1):
@@ -91,7 +92,7 @@ class ScatteringBase1D(ScatteringBase):
     def create_filters(self):
         # Create the filters
         self.phi_f, self.psi1_f, self.psi2_f = scattering_filter_factory(
-            self._N_padded, self.J, self.Q, self.T, self.filterbank)
+            self._N_padded, self.J, self.Q, self.T, self.filterbank, self._reduction)
         ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
     def scattering(self, x):
@@ -535,6 +536,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         self.F = F
         self.oversampling_fr = oversampling_fr
         self.format = format
+        self._reduction = np.sum
 
     def build(self):
         super(TimeFrequencyScatteringBase, self).build()
@@ -574,9 +576,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
 
     def create_filters(self):
         phi0_fr_f,= scattering_filter_factory(self._N_padded_fr,
-            self.J_fr, (), self.F, self.filterbank_fr)
+            self.J_fr, (), self.F, self.filterbank_fr, self._reduction)
         phi1_fr_f, psis_fr_f = scattering_filter_factory(self._N_padded_fr,
-            self.J_fr, self.Q_fr, 2**self.J_fr, self.filterbank_fr)
+            self.J_fr, self.Q_fr, 2**self.J_fr, self.filterbank_fr,
+            self._reduction)
         self.filters_fr = (phi0_fr_f, [phi1_fr_f] + psis_fr_f)
 
         # Check for absence of aliasing
