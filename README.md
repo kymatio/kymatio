@@ -6,9 +6,9 @@ Scattering transforms are translation-invariant signal representations implement
 
 [![PyPI](https://img.shields.io/badge/python-3.5%2C%203.6%2C%203.7-blue.svg)](https://pypi.org/project/kymatio/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Build Status](https://travis-ci.org/kymatio/kymatio.svg?branch=master)](https://travis-ci.org/kymatio/kymatio)
+[![Build Status](https://travis-ci.org/kymatio/kymatio.svg?branch=main)](https://travis-ci.org/kymatio/kymatio)
 [![Downloads](https://pepy.tech/badge/kymatio)](https://pepy.tech/project/kymatio)
-[![codecov](https://codecov.io/gh/kymatio/kymatio/branch/master/graph/badge.svg)](https://codecov.io/gh/kymatio/kymatio)
+[![codecov](https://codecov.io/gh/kymatio/kymatio/branch/main/graph/badge.svg)](https://codecov.io/gh/kymatio/kymatio)
 
 
 Use Kymatio if you need a library that:
