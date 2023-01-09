@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 # `fetch_fsdd` function downloads the FSDD, if needed.
 
 from kymatio.numpy import Scattering1D
-from kymatio.datasets import fetch_fsdd
+from ...datasets import fetch_fsdd
 
 ###############################################################################
 # Scattering setup

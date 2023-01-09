@@ -43,7 +43,7 @@ import numpy as np
 # `fetch_fsdd` function downloads the FSDD, if needed.
 
 from kymatio.keras import Scattering1D
-from kymatio.datasets import fetch_fsdd
+from ...datasets import fetch_fsdd
 
 ###############################################################################
 # Pipeline setup
