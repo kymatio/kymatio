@@ -204,7 +204,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha, **unused_kwargs):
     Finds the maximal integer j such that:
     omega_0 < 2^{-(j + 1)}
     where omega_0 is the boundary of the filter, defined as
-    omega_0 = xi + alpha * sigma
+    omega_0 = abs(xi) + alpha * sigma
 
     This ensures that the filter can be subsampled by a factor 2^j without
     aliasing.
@@ -214,7 +214,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha, **unused_kwargs):
     Parameters
     ----------
     xi : float
-        frequency of the filter in [0, 1]
+        frequency of the filter in [-0.5, 0.5]
     sigma : float
         frequential width of the filter
     alpha : float, optional
@@ -227,7 +227,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha, **unused_kwargs):
         integer such that 2^j is the maximal subsampling accepted by the
         Gabor filter without aliasing.
     """
-    upper_bound = min(xi + alpha * sigma, 0.5)
+    upper_bound = min(abs(xi) + alpha * sigma, 0.5)
     j = math.floor(-math.log2(upper_bound)) - 1
     j = int(j)
     return j
