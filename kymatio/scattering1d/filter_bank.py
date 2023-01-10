@@ -214,7 +214,7 @@ def get_max_dyadic_subsampling(xi, sigma, alpha, **unused_kwargs):
     Parameters
     ----------
     xi : float
-        frequency of the filter in [-1, 1]
+        frequency of the filter in [-0.5, 0.5]
     sigma : float
         frequential width of the filter
     alpha : float, optional
