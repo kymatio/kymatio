@@ -620,3 +620,24 @@ def test_F(frontend):
     jtfs2 = TimeFrequencyScattering(frontend="torch", format="joint", F=2**kwargs['J_fr'] // 4, **kwargs)
     Sx2 = jtfs2(x)
     assert Sx0.shape[0] == Sx2.shape[0] and Sx0.shape[2] == Sx2.shape[2] and Sx0.shape[1] < Sx2.shape[1]
+
+
+backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
+@pytest.mark.parametrize("backend", backends)
+def test_986(backend):
+    J_fr = 6
+    jtfs = TimeFrequencyScatteringBase(
+        J=8, J_fr=J_fr, shape=4096, Q=8, backend=backend
+    )
+    jtfs.build()
+    jtfs.create_filters()
+
+    psis = jtfs.filters_fr[1]
+    positive_spins = sorted(psis[1:][: J_fr + 1], key=lambda x: x["xi"], reverse=True)
+    negative_spins = sorted(psis[1:][J_fr + 1 :], key=lambda x: x["xi"])
+    assert all(
+        [
+            (psi_pos["j"] == psi_neg["j"])
+            for psi_pos, psi_neg in zip(positive_spins, negative_spins)
+        ]
+    )
