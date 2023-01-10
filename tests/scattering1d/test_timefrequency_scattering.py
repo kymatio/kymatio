@@ -633,8 +633,8 @@ def test_986(backend):
     jtfs.create_filters()
 
     psis = jtfs.filters_fr[1]
-    positive_spins = sorted(psis[1:][: J_fr + 1], key=lambda x: x["xi"], reverse=True)
-    negative_spins = sorted(psis[1:][J_fr + 1 :], key=lambda x: x["xi"])
+    positive_spins = sorted([psi for psi in psis[1:] if np.sign(psi['xi']) > 0], key=lambda x: x["xi"], reverse=True)
+    negative_spins = sorted([psi for psi in psis[1:] if np.sign(psi['xi']) < 0], key=lambda x: x["xi"])
     assert all(
         [
             (psi_pos["j"] == psi_neg["j"])
