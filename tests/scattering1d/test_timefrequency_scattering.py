@@ -75,54 +75,54 @@ def test_check_runtime_args():
     kwargs = dict(J=10, J_fr=3, shape=4096, Q=8)
     S = TimeFrequencyScatteringBase(**kwargs)
     S.build()
-    assert S._check_runtime_args() is None
+    assert S._check_runtime_args(stride=None) is None
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(out_type="doesnotexist", **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "out_type must be one of" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(T=0, **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "Cannot convert" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling=-1, **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "nonnegative" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling=0.5, **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "integer" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(F=0, out_type="array", format="joint", **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "Cannot convert" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling_fr=-1, **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "nonnegative" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling_fr=0.5, **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "integer" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(format="doesnotexist", **kwargs)
         S.build()
-        S._check_runtime_args()
+        S._check_runtime_args(stride=None)
     assert "format must be" in ve.value.args[0]
 
 
