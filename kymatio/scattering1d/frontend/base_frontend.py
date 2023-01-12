@@ -10,7 +10,7 @@ from ..core.timefrequency_scattering import (joint_timefrequency_scattering,
     jtfs_average_and_format)
 from ..filter_bank import (compute_temporal_support, gauss_1d,
     anden_generator, scattering_filter_factory, spin)
-from ..utils import compute_border_indices, compute_padding, ispow2, parse_T
+from ..utils import compute_border_indices, compute_padding, parse_T
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -238,7 +238,7 @@ class ScatteringBase1D(ScatteringBase):
             if not isinstance(stride, numbers.Integral):
                 raise ValueError("stride must be integer. Got: {}".format(
                     stride))
-            if not ispow2(stride):
+            if math.floor(math.log2(x)) != math.ceil(math.log2(x)):
                 raise ValueError("stride must be a power of two. Got: {}".format(
                     stride))
 
