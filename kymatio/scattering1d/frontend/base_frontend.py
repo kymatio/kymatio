@@ -10,7 +10,7 @@ from ..core.timefrequency_scattering import (joint_timefrequency_scattering,
     jtfs_average_and_format)
 from ..filter_bank import (compute_temporal_support, gauss_1d,
     anden_generator, scattering_filter_factory, spin)
-from ..utils import compute_border_indices, compute_padding, parse_T
+from ..utils import compute_border_indices, compute_padding, ispow2, parse_T
 
 
 class ScatteringBase1D(ScatteringBase):
@@ -95,9 +95,14 @@ class ScatteringBase1D(ScatteringBase):
             self._N_padded, self.J, self.Q, self.T, self.filterbank, self._reduction)
         ScatteringBase._check_filterbanks(self.psi1_f, self.psi2_f)
 
-    def scattering(self, x):
-        ScatteringBase1D._check_runtime_args(self)
+    def scattering(self, x, stride=None):
+        ScatteringBase1D._check_runtime_args(self, stride)
         ScatteringBase1D._check_input(self, x)
+
+        if stride is None:
+            oversampling = self.oversampling
+        else:
+            oversampling = self.log2_T - int(math.floor(math.log2(stride)))
 
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
@@ -107,7 +112,7 @@ class ScatteringBase1D(ScatteringBase):
 
         filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
         S_gen = scattering1d(U_0, self.backend, filters,
-            self.oversampling, (self.average=='local'))
+            oversampling, (self.average=='local'))
 
         if self.out_type in ['array', 'list']:
             S = list()
@@ -117,9 +122,9 @@ class ScatteringBase1D(ScatteringBase):
         for path in S_gen:
             path['order'] = len(path['n'])
             if self.average == 'local':
-                res = max(self.log2_T - self.oversampling, 0)
+                res = max(self.log2_T - oversampling, 0)
             elif path['order']>0:
-                res = max(path['j'][-1] - self.oversampling, 0)
+                res = max(path['j'][-1] - oversampling, 0)
             else:
                 res = 0
 
@@ -212,7 +217,35 @@ class ScatteringBase1D(ScatteringBase):
             return tuple(Counter(self.meta()['order']).values())
         return len(self.meta()['key'])
 
-    def _check_runtime_args(self):
+    def _check_runtime_args(self, stride):
+        # check oversampling (NB: this will be removed in v0.5)
+        if self.oversampling < 0:
+            raise ValueError("oversampling must be nonnegative. Got: {}".format(
+                self.oversampling))
+        if not isinstance(self.oversampling, numbers.Integral):
+            raise ValueError("oversampling must be integer. Got: {}".format(
+                self.oversampling))
+        if self.oversampling > 0:
+            warn("oversampling is deprecated in v0.4 and will be removed"
+                " in v0.5. Pass stride = 2**(J-oversampling) or "
+                "stride = 2**(log2(T)-oversampling) "
+                "to retain current behavior.", DeprecationWarning)
+            if not stride is None:
+                raise ValueError("stride={} is incompatible with "
+                    "oversampling={}".format(stride, self.oversampling))
+
+        if not stride is None:
+            if not isinstance(stride, numbers.Integral):
+                raise ValueError("stride must be integer. Got: {}".format(
+                    stride))
+            if not ispow2(stride):
+                raise ValueError("stride must be a power of two. Got: {}".format(
+                    stride))
+
+        if (self.T==0) or (self.T=="global"):
+            raise ValueError("stride={} is incompatible with T={}.".format(
+                stride, self.T))
+
         if not self.out_type in ('array', 'dict', 'list'):
             raise ValueError("out_type must be one of 'array', 'dict'"
                              ", or 'list'. Got: {}".format(self.out_type))
@@ -220,14 +253,6 @@ class ScatteringBase1D(ScatteringBase):
         if not self.average and self.out_type == 'array':
             raise ValueError("Cannot convert to out_type='array' with "
                              "T=0. Please set out_type to 'dict' or 'list'.")
-
-        if self.oversampling < 0:
-            raise ValueError("oversampling must be nonnegative. Got: {}".format(
-                self.oversampling))
-
-        if not isinstance(self.oversampling, numbers.Integral):
-            raise ValueError("oversampling must be integer. Got: {}".format(
-                self.oversampling))
 
     def _check_input(self, x):
         # basic checking, should be improved
@@ -585,8 +610,8 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         # Check for absence of aliasing
         assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
 
-    def scattering(self, x):
-        TimeFrequencyScatteringBase._check_runtime_args(self)
+    def scattering(self, x, stride=None):
+        TimeFrequencyScatteringBase._check_runtime_args(self, stride)
         TimeFrequencyScatteringBase._check_input(self, x)
 
         x_shape = self.backend.shape(x)
@@ -706,8 +731,8 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         meta['spin'] = np.sign(meta['xi_fr'])
         return meta
 
-    def _check_runtime_args(self):
-        super(TimeFrequencyScatteringBase, self)._check_runtime_args()
+    def _check_runtime_args(self, stride):
+        super(TimeFrequencyScatteringBase, self)._check_runtime_args(stride)
 
         if self.format == 'joint':
             if (not self.average_fr) and (self.out_type == 'array'):

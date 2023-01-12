@@ -68,6 +68,21 @@ def compute_padding(N, N_input):
     return pad_left, pad_right
 
 
+def ispow2(x):
+    """
+    Checks if a positive number is a power of two.
+
+    Parameters
+    ----------
+    x : int
+
+    Returns
+    -------
+    b : boolean
+    """
+    return math.floor(math.log2(x)) == math.ceil(math.log2(x))
+
+
 def parse_T(T, J, N_input, T_alias='T'):
     """
     Parses T in Scattering1D base frontend.
