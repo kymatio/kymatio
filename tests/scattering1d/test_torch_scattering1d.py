@@ -506,6 +506,17 @@ def test_check_runtime_args(device, backend):
         S(x)
     assert "integer" in ve.value.args[0]
 
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, stride="noninteger",
+            backend=backend, frontend='torch').to(device)
+        S(x)
+    assert "integer" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, stride=17,
+            backend=backend, frontend='torch').to(device)
+        S(x)
+    assert "power of two" in ve.value.args[0]
 
 def test_Scattering1D_average_global():
     """
