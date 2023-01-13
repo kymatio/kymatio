@@ -32,6 +32,8 @@ class TestScattering1DNumpy:
         Sx = scattering(x)
         assert Sx.shape == Sx0.shape
         assert np.allclose(Sx, Sx0)
+        assert scattering.oversampling==0
+        assert scattering.N == scattering.shape[0]
 
     def test_Scattering1D_T(self, backend):
         """
