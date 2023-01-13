@@ -19,9 +19,9 @@ class ScatteringBase1D(ScatteringBase):
         super(ScatteringBase1D, self).__init__()
         self.J = J
         self.shape = shape
-        self.Q = Q
-        self.T = T
-        self.stride = stride
+        self._Q = Q
+        self._T = T
+        self._stride = stride
         self.max_order = max_order
         self.out_type = out_type
         self.backend = backend
@@ -42,36 +42,35 @@ class ScatteringBase1D(ScatteringBase):
         self.sigma0 = 0.1
         self.alpha = 5.
 
-        # check the number of filters per octave
-        if np.any(np.array(self.Q) < 1):
-            raise ValueError('Q must always be >= 1, got {}'.format(self.Q))
-
-        if isinstance(self.Q, int):
-            self.Q = (self.Q, 1)
-        elif isinstance(self.Q, tuple):
-            if len(self.Q) == 1:
-                self.Q = self.Q + (1, )
-            elif len(self.Q) < 1 or len(self.Q) > 2:
-                raise NotImplementedError("Q must be an integer, 1-tuple or "
-                                          "2-tuple. Scattering transforms "
-                                          "beyond order 2 are not implemented.")
-        else:
-            raise ValueError("Q must be an integer or a tuple")
-
         # check input length
         if isinstance(self.shape, numbers.Integral):
             self.shape = (self.shape,)
         elif isinstance(self.shape, tuple):
             if len(self.shape) > 1:
                 raise ValueError("If shape is specified as a tuple, it must "
-                                 "have exactly one element")
+                    "have exactly one element. Got: {}".format(self.shape))
+            self.shape = self.shape
         else:
-            raise ValueError("shape must be an integer or a 1-tuple")
+            raise ValueError("shape must be an integer or a 1-tuple. "
+                "Got: {}".format(self.shape))
         N_input = self.shape[0]
 
-        # check T or set default
-        self.T, self.average = parse_T(self.T, self.J, N_input)
-        self.log2_T = math.floor(math.log2(self.T))
+        # check oversampling (NB: this will be removed in v0.5)
+        if self._oversampling < 0:
+            raise ValueError("oversampling must be nonnegative. Got: {}".format(
+                self._oversampling))
+        if not isinstance(self._oversampling, numbers.Integral):
+            raise ValueError("oversampling must be integer. Got: {}".format(
+                self._oversampling))
+        if self._oversampling > 0:
+            warn("oversampling is deprecated in and will be removed in v0.5."
+                "Pass stride = 2**(J-oversampling) or "
+                "stride = 2**(log2(T)-oversampling) "
+                "to retain current behavior.", DeprecationWarning)
+            if not self._stride in [None, 2**(self.log2_T-self._oversampling-1)]:
+                raise ValueError("oversampling={} and stride={}"
+                    "are incompatible".format(self._oversampling, self._stride))
+            self._stride = 2 ** (self.log2_T-self._oversampling)
 
         # Compute the minimum support to pad (ideally)
         phi_f = gauss_1d(N_input, self.sigma0/self.T)
@@ -101,11 +100,6 @@ class ScatteringBase1D(ScatteringBase):
         ScatteringBase1D._check_runtime_args(self)
         ScatteringBase1D._check_input(self, x)
 
-        if self.stride is None:
-            oversampling = self._oversampling
-        else:
-            oversampling = self.log2_T - int(math.floor(math.log2(stride)))
-
         x_shape = self.backend.shape(x)
         batch_shape, signal_shape = x_shape[:-1], x_shape[-1:]
         x = self.backend.reshape_input(x, signal_shape)
@@ -114,7 +108,7 @@ class ScatteringBase1D(ScatteringBase):
 
         filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
         S_gen = scattering1d(U_0, self.backend, filters,
-            oversampling, (self.average=='local'))
+            self.log2_stride, (self.average=='local'))
 
         if self.out_type in ['array', 'list']:
             S = list()
@@ -124,9 +118,9 @@ class ScatteringBase1D(ScatteringBase):
         for path in S_gen:
             path['order'] = len(path['n'])
             if self.average == 'local':
-                res = max(self.log2_T - oversampling, 0)
+                res = self.log2_stride
             elif path['order']>0:
-                res = max(path['j'][-1] - oversampling, 0)
+                res = max(path['j'][-1] - self._oversampling, 0)
             else:
                 res = 0
 
@@ -186,7 +180,7 @@ class ScatteringBase1D(ScatteringBase):
         backend = self._DryBackend()
         filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
         S_gen = scattering1d(
-            None, backend, filters, self._oversampling, average_local=False)
+            None, backend, filters, self.log2_stride, average_local=False)
         S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
         meta = dict(order=np.array([len(path['n']) for path in S]))
         meta['key'] = [path['n'] for path in S]
@@ -220,35 +214,6 @@ class ScatteringBase1D(ScatteringBase):
         return len(self.meta()['key'])
 
     def _check_runtime_args(self):
-        # check oversampling (NB: this will be removed in v0.5)
-        if self._oversampling < 0:
-            raise ValueError("oversampling must be nonnegative. Got: {}".format(
-                self._oversampling))
-        if not isinstance(self._oversampling, numbers.Integral):
-            raise ValueError("oversampling must be integer. Got: {}".format(
-                self._oversampling))
-        if self._oversampling > 0:
-            warn("oversampling is deprecated in v0.4 and will be removed"
-                " in v0.5. Pass stride = 2**(J-oversampling) or "
-                "stride = 2**(log2(T)-oversampling) "
-                "to retain current behavior.", DeprecationWarning)
-            if not self.stride is None:
-                raise ValueError("stride={} is incompatible with "
-                    "oversampling={}".format(self.stride, self._oversampling))
-
-        if not self.stride is None:
-            if not isinstance(self.stride, numbers.Integral):
-                raise ValueError("stride must be integer. Got: {}".format(
-                    self.stride))
-            log2_stride = math.log2(self.stride)
-            if math.floor(log2_stride) != math.ceil(log2_stride):
-                raise ValueError("stride must be a power of two. Got: {}".format(
-                    self.stride))
-
-        if (self.T==0) or (self.T=="global"):
-            raise ValueError("stride={} is incompatible with T={}.".format(
-                stride, self.T))
-
         if not self.out_type in ('array', 'dict', 'list'):
             raise ValueError("out_type must be one of 'array', 'dict'"
                              ", or 'list'. Got: {}".format(self.out_type))
@@ -286,10 +251,60 @@ class ScatteringBase1D(ScatteringBase):
         return self._oversampling
 
     @property
+    def average(self):
+        return parse_T(self._T, self.J, self.shape[0], T_alias='T')[1]
+
+    @property
     def filterbank(self):
         filterbank_kwargs = {
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
         return (anden_generator, filterbank_kwargs)
+
+    @property
+    def log2_stride(self):
+        if self._stride is None:
+            return self.log2_T
+        if not isinstance(self._stride, numbers.Integral):
+            raise ValueError("stride must be integer. Got: {}".format(
+                self._stride))
+        log2_stride = math.log2(self._stride)
+        if math.floor(log2_stride) != math.ceil(log2_stride):
+            raise ValueError("stride must be a power of two. Got: {}".format(
+                self._stride))
+        if self.average in [False, "global"]:
+            raise ValueError("stride={} is incompatible with T={}.".format(
+                self._stride, self._T))
+        return int(log2_stride)
+
+    @property
+    def log2_T(self):
+        return int(math.floor(math.log2(self.T)))
+
+    @property
+    def Q(self):
+        if np.any(np.array(self._Q) < 1):
+            raise ValueError('Q must always be >= 1, got {}'.format(self._Q))
+        if isinstance(self._Q, int):
+            return (self._Q, 1)
+        elif isinstance(self._Q, tuple):
+            if len(self._Q) == 1:
+                return (self._Q + (1,))
+            elif len(self._Q) == 2:
+                return self._Q
+            raise NotImplementedError("Q must be an integer, 1-tuple or "
+                "2-tuple. Scattering transforms beyond order 2 are not "
+                "implemented. Got: {}".format(self._Q))
+        else:
+            raise ValueError("Q must be an integer or a tuple")
+
+    @property
+    def stride(self):
+        return (2**self.log2_stride)
+
+    @property
+    def T(self):
+        return parse_T(self._T, self.J, self.shape[0], T_alias='T')[0]
+
 
     _doc_shape = 'N'
 
@@ -632,18 +647,18 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
 
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
         U_gen = joint_timefrequency_scattering(U_0, self.backend,
-            filters, self._oversampling, (self.average=='local'),
+            filters, self.log2_stride, (self.average=='local'),
             self.filters_fr, self.oversampling_fr, (self.average_fr=='local'))
 
         S_gen = jtfs_average_and_format(U_gen, self.backend,
-            self.phi_f, self._oversampling, self.average,
+            self.phi_f, self.log2_stride, self.average,
             self.filters_fr[0], self.oversampling_fr, self.average_fr,
             self.out_type, self.format)
 
         # Zeroth order
         path = next(S_gen)
         if not self.average == 'global':
-            res = self.log2_T if self.average else 0
+            res = self.log2_stride if self.average else 0
             path['coef'] = self.backend.unpad(
                 path['coef'], self.ind_start[res], self.ind_end[res])
         path['coef'] = self.backend.reshape_output(
@@ -663,10 +678,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             if not self.average == 'global':
                 if not self.average and len(path['n']) > 1:
                     # Case 3b.
-                    res = max(path['j'][-1] - self._oversampling, 0)
+                    res = max(path['j'][-1], 0)
                 else:
                     # Cases 2a, 2b, and 3a.
-                    res = max(self.log2_T - self._oversampling, 0)
+                    res = max(self.log2_stride, 0)
                 # Cases 2a, 2b, 3a, and 3b.
                 path['coef'] = self.backend.unpad(
                     path['coef'], self.ind_start[res], self.ind_end[res])
@@ -694,10 +709,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
     def meta(self):
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
         U_gen = joint_timefrequency_scattering(None, self._DryBackend(),
-            filters, self._oversampling, self.average=='local',
+            filters, self.log2_stride, self.average=='local',
             self.filters_fr, self.oversampling_fr, self.average_fr=='local')
         S_gen = jtfs_average_and_format(U_gen, self._DryBackend(),
-            self.phi_f, self._oversampling, self.average,
+            self.phi_f, self.log2_stride, self.average,
             self.filters_fr[0], self.oversampling_fr, self.average_fr,
             self.out_type, self.format)
         S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
