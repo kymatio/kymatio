@@ -518,6 +518,24 @@ def test_check_runtime_args(device, backend):
         S(x)
     assert "power of two" in ve.value.args[0]
 
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, T=0, stride=16, out_type="list",
+            backend=backend, frontend='torch').to(device)
+        S(x)
+    assert "incompatible" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, T="global", stride=16,
+            backend=backend, frontend='torch').to(device)
+        S(x)
+    assert "incompatible" in ve.value.args[0]
+
+    with pytest.raises(ValueError) as ve:
+        S = Scattering1D(J, shape, stride=16, oversampling=1,
+            backend=backend, frontend='torch').to(device)
+        S(x)
+    assert "incompatible" in ve.value.args[0]
+
 def test_Scattering1D_average_global():
     """
     Tests global averaging.
