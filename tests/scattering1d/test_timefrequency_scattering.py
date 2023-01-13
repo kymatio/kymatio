@@ -75,54 +75,54 @@ def test_check_runtime_args():
     kwargs = dict(J=10, J_fr=3, shape=4096, Q=8)
     S = TimeFrequencyScatteringBase(**kwargs)
     S.build()
-    assert S._check_runtime_args(stride=None) is None
+    assert S._check_runtime_args() is None
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(out_type="doesnotexist", **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "out_type must be one of" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(T=0, **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "Cannot convert" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling=-1, **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "nonnegative" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling=0.5, **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "integer" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(F=0, out_type="array", format="joint", **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "Cannot convert" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling_fr=-1, **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "nonnegative" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(oversampling_fr=0.5, **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "integer" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(format="doesnotexist", **kwargs)
         S.build()
-        S._check_runtime_args(stride=None)
+        S._check_runtime_args()
     assert "format must be" in ve.value.args[0]
 
 
@@ -171,12 +171,12 @@ def test_time_scattering_widthfirst(frontend):
     # Width-first
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
     W_gen = time_scattering_widthfirst(
-        U_0, S.backend, filters, S.oversampling, average_local=True
+        U_0, S.backend, filters, S._oversampling, average_local=True
     )
     W = {path["n"]: path["coef"] for path in W_gen}
 
     # Depth-first
-    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local=True)
+    S_gen = scattering1d(U_0, S.backend, filters, S._oversampling, average_local=True)
     S1_depth = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) > 0}
 
     # Check order 1
@@ -209,7 +209,7 @@ def test_frequency_scattering(frontend):
     U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
     average_local = True
-    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
+    S_gen = scattering1d(U_0, S.backend, filters, S._oversampling, average_local)
     S_1_dict = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) == 1}
     S_1 = S.backend.concatenate([S_1_dict[key] for key in sorted(S_1_dict.keys())])
     X = {"coef": S_1, "n1_max": len(S_1_dict), "n": (-1,), "j": (-1,)}
@@ -264,7 +264,7 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         U_0_in,
         backend,
         filters,
-        S.oversampling,
+        S._oversampling,
         S.average == "local",
         S.filters_fr,
         S.oversampling_fr,
@@ -303,7 +303,7 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         assert path["n1_max"] < S._N_padded_fr
 
         # Check that first-order coefficients have the same temporal stride
-        stride = 2 ** max(S.log2_T - S.oversampling, 0)
+        stride = 2 ** max(S.log2_T - S._oversampling, 0)
         assert (path["coef"].shape[-1] * stride) == S._N_padded
 
         # Check that frequential stride works as intended
@@ -325,7 +325,7 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         assert path["n1_max"] < S._N_padded_fr
 
         # Check that temporal stride works as intended
-        stride = 2 ** max(path["j"][1] - S.oversampling, 0)
+        stride = 2 ** max(path["j"][1] - S._oversampling, 0)
         assert (path["coef"].shape[-1] * stride) == S._N_padded
 
         # Check that frequential stride works as intended
@@ -340,10 +340,10 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         # Test time averaging
         S.average = "local"
         U_2 = {**path, "coef": backend.modulus(path["coef"])}
-        S_2 = time_averaging(U_2, backend, S.phi_f, S.oversampling)
+        S_2 = time_averaging(U_2, backend, S.phi_f, S._oversampling)
 
         # Check that averaged coefficients have the same temporal stride
-        stride = 2 ** max(S.log2_T - S.oversampling, 0)
+        stride = 2 ** max(S.log2_T - S._oversampling, 0)
         assert (S_2["coef"].shape[-1] * stride) == S._N_padded
 
         # Test frequential averaging
@@ -429,7 +429,7 @@ def test_differentiability_jtfs_torch(random_state=42):
         U_0_in,
         backend,
         filters,
-        S.oversampling,
+        S._oversampling,
         S.average == "local",
         S.filters_fr,
         S.oversampling_fr,
@@ -481,7 +481,7 @@ def test_differentiability_jtfs_tensorflow(random_state=42):
             U_0_in,
             backend,
             filters,
-            S.oversampling,
+            S._oversampling,
             S.average == "local",
             S.filters_fr,
             S.oversampling_fr,

@@ -12,6 +12,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
         shape,
         Q=1,
         T=None,
+        stride=None,
         max_order=2,
         oversampling=0,
         out_type="array",
@@ -19,7 +20,7 @@ class ScatteringTorch1D(ScatteringTorch, ScatteringBase1D):
     ):
         ScatteringTorch.__init__(self)
         ScatteringBase1D.__init__(
-            self, J, shape, Q, T, max_order, oversampling, out_type, backend
+            self, J, shape, Q, T, stride, max_order, oversampling, out_type, backend
         )
         ScatteringBase1D._instantiate_backend(self, "kymatio.scattering1d.backend.")
         ScatteringBase1D.build(self)
@@ -91,6 +92,7 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBas
         shape,
         Q,
         T=None,
+        stride=None,
         oversampling=0,
         Q_fr=1,
         F=None,
@@ -107,6 +109,7 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBas
             shape=shape,
             Q=Q,
             T=T,
+            stride=stride,
             oversampling=oversampling,
             Q_fr=Q_fr,
             F=F,
