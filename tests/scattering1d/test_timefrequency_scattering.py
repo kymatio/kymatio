@@ -251,7 +251,7 @@ def test_frequency_scattering(frontend):
         assert Y_fr["n"] == (4,) + Y_fr["n_fr"]
 
 
-def _joint_timefrequency_scattering_test_routine(S, backend, shape):
+def _jtfs_test_routine(S, backend, shape):
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = backend.shape(x)
@@ -274,7 +274,11 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
 
     # Zeroth order
     U_0 = next(jtfs_gen)
-    assert np.allclose(U_0["coef"], U_0_in)
+    if S.average:
+        assert (U_0["coef"].shape[-1]*S.stride) == U_0_in.shape[-1]
+    else:
+        assert U_0["coef"].shape == U_0_in.shape
+        assert np.allclose(U_0["coef"], U_0_in)
     assert U_0["n"] == ()
     assert U_0["j"] == ()
 
@@ -314,6 +318,10 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         avg_value = np.mean(np.abs(path["coef"][midpoint, :]))
         assert avg_value < 1e-5
 
+        # Check that averaged coefficients have the right temporal stride
+        if S.average == "local":
+            assert (path["coef"].shape[-1] * S.stride) == S._N_padded
+
     # Test second order
     S2_jtfs = filter(lambda path: len(path["n"]) == 2, S_jtfs)
     for path in S2_jtfs:
@@ -335,6 +343,35 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         avg_value = np.mean(np.abs(path["coef"][midpoint, :]))
         assert avg_value < 1e-5
 
+    # Test frequential averaging
+    U_2 = {**path, "coef": backend.modulus(path["coef"])}
+
+    # average_fr == 'local'
+    S.average_fr = "local"
+    S_2 = frequency_averaging(
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+    )
+    stride_fr = 2 ** max(S.log2_F - S.oversampling_fr, 0)
+    assert S_2["n1_stride"] == stride_fr
+    assert (S_2["coef"].shape[-2] * stride_fr) == S._N_padded_fr
+
+    # average_fr == 'global'
+    S.average_fr = "global"
+    S_2 = frequency_averaging(
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+    )
+    assert S_2["n1_stride"] == S_2["n1_max"]
+    assert S_2["coef"].shape[-2] == 1
+
+    # average_fr == False
+    S.average_fr = False
+    S_2 = frequency_averaging(
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+    )
+    stride_fr = 2 ** max(S_2["j_fr"][0] - S.oversampling_fr, 0)
+    assert S_2["n1_stride"] == stride_fr
+    assert np.allclose(S_2["coef"], U_2["coef"])
+
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:
         del path["coef"]
@@ -352,6 +389,8 @@ def test_joint_timefrequency_scattering(backend):
     J_fr = 3
     shape = (4096,)
     Q = 8
+
+    # no average, no average_fr
     S = TimeFrequencyScatteringBase(
         J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend=backend
     )
@@ -359,8 +398,21 @@ def test_joint_timefrequency_scattering(backend):
     S.create_filters()
     assert not S.average
     assert not S.average_fr
-    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, frontend=backend).backend
-    _joint_timefrequency_scattering_test_routine(S, backend, shape)
+    sc1d_backend = kymatio.Scattering1D(
+        J=J, Q=Q, shape=shape, T=0, frontend=backend).backend
+    _jtfs_test_routine(S, sc1d_backend, shape)
+
+    # average, average_fr
+    S = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, backend=backend
+    )
+    S.build()
+    S.create_filters()
+    assert S.average
+    assert S.average_fr
+    sc1d_backend = kymatio.Scattering1D(
+        J=J, Q=Q, shape=shape, frontend=backend).backend
+    _jtfs_test_routine(S, sc1d_backend, shape)
 
 
 def test_differentiability_jtfs_torch(random_state=42):
