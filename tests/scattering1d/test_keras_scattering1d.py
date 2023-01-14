@@ -51,7 +51,7 @@ def test_Scattering1D():
   
     sc0 = Scattering1D(J=J, Q=Q)
     sc0.build(inputs0.shape)
-    print(sc0.compute_output_shape(inputs0.shape))
+    assert sc0.compute_output_shape(inputs0.shape)[-1] == 8
 
 def test_Q():
     J = 3
