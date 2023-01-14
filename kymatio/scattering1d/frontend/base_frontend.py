@@ -241,17 +241,6 @@ class ScatteringBase1D(ScatteringBase):
         return parse_T(self._T, self.J, self.shape[0], T_alias='T')[1]
 
     @property
-    def oversampling(self):
-        warn("The attribute oversampling is deprecated and will be removed in v0.5. "
-        "Pass stride = 2**(J-oversampling) or stride = 2**(log2(T)-oversampling) "
-        "to retain current behavior.", DeprecationWarning)
-        return self._oversampling
-
-    @property
-    def average(self):
-        return parse_T(self._T, self.J, self.shape[0], T_alias='T')[1]
-
-    @property
     def filterbank(self):
         filterbank_kwargs = {
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}

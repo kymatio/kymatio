@@ -137,11 +137,13 @@ def test_Q(backend, frontend):
 
     # test different cases for Q
     with pytest.raises(ValueError) as ve:
-        _ = Scattering1D(J, shape, Q=0.9, backend=backend, frontend=frontend)
+        S = Scattering1D(J, shape, Q=0.9, backend=backend, frontend=frontend)
+        Q = S.Q
     assert "Q must always be >= 1" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        _ = Scattering1D(J, shape, Q=[8], backend=backend, frontend=frontend)
+        S = Scattering1D(J, shape, Q=[8], backend=backend, frontend=frontend)
+        Q = S.Q
     assert "Q must be an integer or a tuple" in ve.value.args[0]
 
     Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend=frontend)
