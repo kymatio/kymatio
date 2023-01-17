@@ -17,9 +17,10 @@ import sys
 import kymatio
 from distutils.version import LooseVersion
 
+# Allows us to import sphinx_issues as an extension.
+sys.path.insert(0, os.path.abspath("."))
 
-
-autodoc_mock_imports = ['torch', 'tensorflow', 'sklearn']
+autodoc_mock_imports = ['torch', 'tensorflow', 'sklearn', 'jax']
 
 # -- Project information -----------------------------------------------------
 
@@ -56,7 +57,8 @@ extensions = [
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
     'texext',
-    'm2r2'
+    'm2r2',
+    'sphinx_issues'
 ]
 
 bibtex_bibfiles = ["_static/bibtex.bib"]
@@ -75,6 +77,7 @@ sphinx_gallery_conf = {
 
 intersphinx_mapping = {'kymatio': ('../kymatio', None)}
 
+issues_github_path = 'kymatio/kymatio'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
