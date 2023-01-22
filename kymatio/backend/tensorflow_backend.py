@@ -6,7 +6,7 @@ class TensorFlowBackend(NumpyBackend):
     name = 'tensorflow'
 
     @staticmethod
-    def concatenate(arrays, dim=1):
+    def stack(arrays, dim=1):
         return tf.stack(arrays, axis=dim)
 
     @staticmethod

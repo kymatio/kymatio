@@ -141,7 +141,7 @@ class TorchBackend:
         return norm
 
     @staticmethod
-    def concatenate(arrays, dim=2):
+    def stack(arrays, dim=2):
         return torch.stack(arrays, dim=dim)
 
     @classmethod

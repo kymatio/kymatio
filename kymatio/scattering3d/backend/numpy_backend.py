@@ -54,7 +54,7 @@ class NumpyBackend3D(NumpyBackend):
         return integrals
 
     @classmethod
-    def concatenate(cls, arrays, L):
+    def stack(cls, arrays, L):
         S = cls._np.stack(arrays, axis=1)
         S = S.reshape((S.shape[0], S.shape[1] // (L + 1), (L + 1)) + S.shape[2:])
         return S

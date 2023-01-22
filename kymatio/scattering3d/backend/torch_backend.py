@@ -70,7 +70,7 @@ else:
 
 class TorchBackend3D(TorchBackend):
     @staticmethod
-    def concatenate(arrays, L):
+    def stack(arrays, L):
         S = torch.stack(arrays, dim=1)
         S = S.reshape((S.shape[0], S.shape[1] // (L + 1), (L + 1)) + S.shape[2:])
         return S

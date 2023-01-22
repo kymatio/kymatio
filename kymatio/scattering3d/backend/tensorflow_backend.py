@@ -96,7 +96,7 @@ class TensorFlowBackend3D(TensorFlowBackend):
         return Cr + 1.0j * Ci
 
     @staticmethod
-    def concatenate(arrays, L):
+    def stack(arrays, L):
         S = tf.stack(arrays, axis=1)
         S = tf.reshape(S, tuple((S.shape[0], S.shape[1] // (L + 1), (L + 1))) + tuple(S.shape[2:]))
         return S

@@ -6,7 +6,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
     ifft = backend.ifft
     irfft = backend.irfft    
     cdgmm = backend.cdgmm
-    concatenate = backend.concatenate
+    stack = backend.stack
 
     # Define lists for output.
     out_S_0, out_S_1, out_S_2 = [], [], []
@@ -83,7 +83,7 @@ def scattering2d(x, pad, unpad, backend, J, L, phi, psi, max_order,
     out_S.extend(out_S_2)
 
     if out_type == 'array':
-        out_S = concatenate([x['coef'] for x in out_S])
+        out_S = stack([x['coef'] for x in out_S])
 
     return out_S
 
