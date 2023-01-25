@@ -184,7 +184,7 @@ def test_time_scattering_widthfirst(frontend):
     S1_width = dict(filter(keep_order1, W.items()))
     assert len(S1_width) == 1
     S1_width = S1_width[(-1,)]
-    S1_depth = S.backend.concatenate(
+    S1_depth = S.backend.stack(
         [S1_depth[key] for key in sorted(S1_depth.keys()) if len(key) == 1]
     )
     if frontend not in ["numpy", "sklearn"]:
@@ -211,7 +211,7 @@ def test_frequency_scattering(frontend):
     average_local = True
     S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
     S_1_dict = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) == 1}
-    S_1 = S.backend.concatenate([S_1_dict[key] for key in sorted(S_1_dict.keys())])
+    S_1 = S.backend.stack([S_1_dict[key] for key in sorted(S_1_dict.keys())])
     X = {"coef": S_1, "n1_max": len(S_1_dict), "n": (-1,), "j": (-1,)}
 
     # Define scattering object

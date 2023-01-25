@@ -176,8 +176,8 @@ class TorchBackend2D(TorchBackend):
         return in_
 
     @staticmethod
-    def concatenate(arrays):
-        return TorchBackend.concatenate(arrays, -3)
+    def stack(arrays):
+        return TorchBackend.stack(arrays, -3)
 
 
 backend = TorchBackend2D

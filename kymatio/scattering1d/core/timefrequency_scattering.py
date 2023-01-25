@@ -159,9 +159,9 @@ def time_scattering_widthfirst(U_0, backend, filters, oversampling, average_loca
         S_1_r = backend.irfft(S_1_hat)
         S_1_list.append(S_1_r)
 
-    # Concatenate S1 paths over the penultimate dimension with shared n1.
+    # Stack S1 paths over the penultimate dimension with shared n1.
     # S1 is a real-valued 3D array indexed by (batch, n1, time)
-    S_1 = backend.concatenate(S_1_list)
+    S_1 = backend.stack(S_1_list)
 
     # S1 is a stack of multiple n1 paths so we put (-1) as placeholder.
     # n1 ranges between 0 (included) and n1_max (excluded), which we store
@@ -188,9 +188,9 @@ def time_scattering_widthfirst(U_0, backend, filters, oversampling, average_loca
                 Y_2_list.append(U_2_c)
 
         if len(Y_2_list) > 0:
-            # Concatenate over the penultimate dimension with shared n2.
+            # Stack over the penultimate dimension with shared n2.
             # Y_2 is a complex-valued 3D array indexed by (batch, n1, time)
-            Y_2 = backend.concatenate(Y_2_list)
+            Y_2 = backend.stack(Y_2_list)
 
             # Y_2 is a stack of multiple n1 paths so we put (-1) as placeholder.
             # n1 ranges between 0 (included) and n1_max (excluded), which we store

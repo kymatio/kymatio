@@ -80,7 +80,7 @@ class NumpyBackend2D(NumpyBackend):
         return cls._Pad(cls._np, pad_size, input_size)
 
     @classmethod
-    def concatenate(cls, arrays):
+    def stack(cls, arrays):
         return cls._np.stack(arrays, axis=-3)
 
     @classmethod

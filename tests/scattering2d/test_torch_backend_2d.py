@@ -368,12 +368,12 @@ class TestFFT:
 
 class TestBackendUtils:
     @pytest.mark.parametrize('backend', backends)
-    def test_concatenate(self, backend):
+    def test_stack(self, backend):
         x = torch.randn(3, 6, 6)
         y = torch.randn(3, 6, 6)
         z = torch.randn(3, 6, 6)
 
-        w = backend.concatenate((x, y, z))
+        w = backend.stack((x, y, z))
 
         assert w.shape == (x.shape[0],) + (3,) + (x.shape[-2:])
         assert np.allclose(w[:, 0, ...], x)

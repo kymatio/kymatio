@@ -12,14 +12,14 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
         first order scattering coefficients
         if max_order is 2 it returns a torch tensor with the
         first and second order scattering coefficients,
-        concatenated along the feature axis
+        stacked along the feature axis
     """
     rfft = backend.rfft
     ifft = backend.ifft
     cdgmm3d = backend.cdgmm3d
     modulus = backend.modulus
     modulus_rotation = backend.modulus_rotation
-    concatenate = backend.concatenate
+    stack = backend.stack
 
     U_0_c = rfft(x)
 
@@ -62,7 +62,7 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
         if max_order == 2:
             s_order_2.append(s_order_2_l)
 
-    # Concatenate the orders (along the j axis) if needed.
+    # Stack the orders (along the j axis) if needed.
     S = s_order_1
     if max_order == 2:
         S = [x + y for x, y in zip(S, s_order_2)]
@@ -70,6 +70,6 @@ def scattering3d(x, filters, rotation_covariant, L, J, max_order, backend, avera
     # Invert (ell, m × j) ordering to (m × j, ell).
     S = [x for y in zip(*S) for x in y]
 
-    S = concatenate(S, L)
+    S = stack(S, L)
 
     return S
