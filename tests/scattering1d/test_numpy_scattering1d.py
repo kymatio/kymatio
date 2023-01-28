@@ -146,6 +146,11 @@ def test_Q(backend, frontend):
         Q = S.Q
     assert "Q must be an integer or a tuple" in ve.value.args[0]
 
+    with pytest.raises(NotImplementedError) as ve:
+        S = Scattering1D(J, shape, Q=(1, 1, 1), backend=backend, frontend=frontend)
+        Q = S.Q
+    assert "Scattering transforms beyond order 2 are not implemented" in ve.value.args[0]
+
     Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend=frontend)
     Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend=frontend)
 
