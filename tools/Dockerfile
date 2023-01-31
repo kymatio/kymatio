@@ -32,5 +32,5 @@ RUN python3 -m pip install \
       jax \
       scikit-cuda \
       cupy \
-      'tensorflow-gpu>=2.0.0a0' \
+      tensorflow \
       scikit-learn
