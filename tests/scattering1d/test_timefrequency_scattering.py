@@ -23,7 +23,7 @@ backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
 def test_jtfs_build(backend):
     # Test __init__
     jtfs = TimeFrequencyScatteringBase(J=10, J_fr=3, shape=4096, Q=8, backend=backend)
-    assert jtfs.F is None
+    assert jtfs.F == (2**jtfs.J_fr)
 
     # Test Q_fr
     jtfs.build()
@@ -323,26 +323,26 @@ def _jtfs_test_routine(S, backend, shape):
     U_2 = {**path, "coef": backend.modulus(path["coef"])}
 
     # average_fr == 'local'
-    S.average_fr = "local"
+    average_fr = "local"
     S_2 = frequency_averaging(
-        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, average_fr
     )
     stride_fr = 2 ** max(S.log2_F - S.oversampling_fr, 0)
     assert S_2["n1_stride"] == stride_fr
     assert (S_2["coef"].shape[-2] * stride_fr) == S._N_padded_fr
 
     # average_fr == 'global'
-    S.average_fr = "global"
+    average_fr = "global"
     S_2 = frequency_averaging(
-        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, average_fr
     )
     assert S_2["n1_stride"] == S_2["n1_max"]
     assert S_2["coef"].shape[-2] == 1
 
     # average_fr == False
-    S.average_fr = False
+    average_fr = False
     S_2 = frequency_averaging(
-        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, average_fr
     )
     stride_fr = 2 ** max(S_2["j_fr"][0] - S.oversampling_fr, 0)
     assert S_2["n1_stride"] == stride_fr
