@@ -1,5 +1,5 @@
 
-def scattering1d(U_0, backend, filters, oversampling, average_local):
+def scattering1d(U_0, backend, filters, log2_stride, average_local):
     """
     Main function implementing the 1-D scattering transform.
 
@@ -30,10 +30,8 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
         * `sigma`: float, bandwidth
         * 'levels': list, values taken by the lowpass in the Fourier domain
                     at different levels of detail.
-    oversampling : int >=0
-        Yields scattering coefficients with a temporal stride equal to
-        max(1, 2**(log2_T-oversampling)). Hence, raising oversampling by
-        one unit halves the stride, until reaching a stride of 1.
+    log2_stride : int >=0
+        Yields coefficients with a temporal stride equal to 2**log2_stride.
     average_local : boolean
         whether to locally average the result by means of a low-pass filter phi.
     """
@@ -44,11 +42,11 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
     # Get S0
     phi = filters[0]
     log2_T = phi['j']
-    k0 = max(log2_T - oversampling, 0)
+    stride = 2**log2_stride
 
     if average_local:
         S_0_c = backend.cdgmm(U_0_hat, phi['levels'][0])
-        S_0_hat = backend.subsample_fourier(S_0_c, 2**k0)
+        S_0_hat = backend.subsample_fourier(S_0_c, stride)
         S_0_r = backend.irfft(S_0_hat)
         yield {'coef': S_0_r, 'j': (), 'n': ()}
     else:
@@ -59,10 +57,7 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
     for n1 in range(len(psi1)):
         # Convolution + downsampling
         j1 = psi1[n1]['j']
-
-        sub1_adj = min(j1, log2_T) if average_local else j1
-        k1 = max(sub1_adj - oversampling, 0)
-
+        k1 = min(j1, log2_stride) if average_local else j1
         U_1_c = backend.cdgmm(U_0_hat, psi1[n1]['levels'][0])
         U_1_hat = backend.subsample_fourier(U_1_c, 2**k1)
         U_1_c = backend.ifft(U_1_hat)
@@ -75,7 +70,7 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
 
         if average_local:
             # Convolve with phi_J
-            k1_J = max(log2_T - k1 - oversampling, 0)
+            k1_J = max(log2_stride - k1, 0)
             S_1_c = backend.cdgmm(U_1_hat, phi['levels'][k1])
             S_1_hat = backend.subsample_fourier(S_1_c, 2**k1_J)
             S_1_r = backend.irfft(S_1_hat)
@@ -91,26 +86,22 @@ def scattering1d(U_0, backend, filters, oversampling, average_local):
 
                 if j2 > j1:
                     # convolution + downsampling
-                    sub2_adj = min(j2, log2_T) if average_local else j2
-                    k2 = max(sub2_adj - k1 - oversampling, 0)
-
+                    sub2_adj = min(j2, log2_stride) if average_local else j2
+                    k2 = max(sub2_adj - k1, 0)
                     U_2_c = backend.cdgmm(U_1_hat, psi2[n2]['levels'][k1])
                     U_2_hat = backend.subsample_fourier(U_2_c, 2**k2)
-                    # take the modulus
                     U_2_c = backend.ifft(U_2_hat)
 
+                    # take the modulus
                     U_2_m = backend.modulus(U_2_c)
 
                     if average_local:
-                        U_2_hat = backend.rfft(U_2_m)
-
                         # Convolve with phi_J
-                        k2_log2_T = max(log2_T - k2 - k1 - oversampling, 0)
-
-                        S_2_c = backend.cdgmm(U_2_hat, phi['levels'][k1 + k2])
+                        U_2_hat = backend.rfft(U_2_m)
+                        k2_log2_T = max(log2_stride - sub2_adj, 0)
+                        S_2_c = backend.cdgmm(U_2_hat, phi['levels'][k1+k2])
                         S_2_hat = backend.subsample_fourier(S_2_c, 2**k2_log2_T)
                         S_2_r = backend.irfft(S_2_hat)
-
                         yield {'coef': S_2_r, 'j': (j1, j2), 'n': (n1, n2)}
                     else:
                         yield {'coef': U_2_m, 'j': (j1, j2), 'n': (n1, n2)}

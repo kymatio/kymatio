@@ -32,6 +32,7 @@ class TestScattering1DNumpy:
         Sx = scattering(x)
         assert Sx.shape == Sx0.shape
         assert np.allclose(Sx, Sx0)
+        assert scattering.oversampling==0
 
     def test_Scattering1D_T(self, backend):
         """
@@ -59,16 +60,16 @@ class TestScattering1DNumpy:
         T = 2**(J-sigma_low_scale_factor)
         scattering2 = Scattering1D(J, N, Q, T=T, backend=backend, frontend='numpy')
         Sx2 = scattering2(x)
-        assert Sx2.shape == (Sx1.shape[0], Sx1.shape[1], Sx1.shape[2]*2**(sigma_low_scale_factor))        
+        assert Sx2.shape == (Sx1.shape[0], Sx1.shape[1], Sx1.shape[2]*2**(sigma_low_scale_factor))
         # adjust J
         sigma_low_scale_factor = 1
         T=2**J
         scattering2 = Scattering1D(J-sigma_low_scale_factor, N, Q, T=T, backend=backend, frontend='numpy')
         Sx2 = scattering2(x)
-        meta2 = scattering2.meta()             
+        meta2 = scattering2.meta()
         # find comparable paths
         indices1 = np.array([], dtype=int)
-        indices2 = np.array([], dtype=int)        
+        indices2 = np.array([], dtype=int)
         meta1['sigma'][np.isnan(meta1['sigma'])] = -1
         meta2['sigma'][np.isnan(meta2['sigma'])] = -1
         i = 0
@@ -77,9 +78,9 @@ class TestScattering1DNumpy:
           if len(index1[0]) != 0:
             indices1 = np.append(indices1, index1[0])
             indices2 = np.append(indices2, i)
-          i += 1         
+          i += 1
         assert np.allclose(Sx1[:,indices1, :],Sx2[:,indices2, :])
-        
+
     def test_Scattering1D_filter_factory_T(self, backend):
         """
         Constructs the scattering filters for the T parameter which controls the
@@ -136,12 +137,19 @@ def test_Q(backend, frontend):
 
     # test different cases for Q
     with pytest.raises(ValueError) as ve:
-        _ = Scattering1D(J, shape, Q=0.9, backend=backend, frontend=frontend)
+        S = Scattering1D(J, shape, Q=0.9, backend=backend, frontend=frontend)
+        Q = S.Q
     assert "Q must always be >= 1" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        _ = Scattering1D(J, shape, Q=[8], backend=backend, frontend=frontend)
-    assert "Q must be an integer or a tuple" in ve.value.args[0] 
+        S = Scattering1D(J, shape, Q=[8], backend=backend, frontend=frontend)
+        Q = S.Q
+    assert "Q must be an integer or a tuple" in ve.value.args[0]
+
+    with pytest.raises(NotImplementedError) as ve:
+        S = Scattering1D(J, shape, Q=(1, 1, 1), backend=backend, frontend=frontend)
+        Q = S.Q
+    assert "Scattering transforms beyond order 2 are not implemented" in ve.value.args[0]
 
     Sc_int = Scattering1D(J, shape, Q=(8, ), backend=backend, frontend=frontend)
     Sc_tuple = Scattering1D(J, shape, Q=(8, 1), backend=backend, frontend=frontend)

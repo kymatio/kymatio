@@ -11,11 +11,11 @@ class ScatteringJax1D(ScatteringJax, ScatteringNumPy1D):
     # be loaded
 
 
-    def __init__(self, J, shape, Q=1, T=None, max_order=2,
+    def __init__(self, J, shape, Q=1, T=None, stride=None, max_order=2,
             oversampling=0, out_type='array', backend='jax'):
 
         ScatteringJax.__init__(self)
-        ScatteringBase1D.__init__(self, J, shape, Q, T, max_order,
+        ScatteringBase1D.__init__(self, J, shape, Q, T, stride, max_order,
                 oversampling, out_type, backend)
         ScatteringBase1D._instantiate_backend(self, 'kymatio.scattering1d.backend.')
         ScatteringBase1D.build(self)

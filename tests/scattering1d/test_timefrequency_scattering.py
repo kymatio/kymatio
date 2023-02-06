@@ -171,12 +171,12 @@ def test_time_scattering_widthfirst(frontend):
     # Width-first
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
     W_gen = time_scattering_widthfirst(
-        U_0, S.backend, filters, S.oversampling, average_local=True
+        U_0, S.backend, filters, S.log2_stride, average_local=True
     )
     W = {path["n"]: path["coef"] for path in W_gen}
 
     # Depth-first
-    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local=True)
+    S_gen = scattering1d(U_0, S.backend, filters, S.log2_stride, average_local=True)
     S1_depth = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) > 0}
 
     # Check order 1
@@ -209,7 +209,7 @@ def test_frequency_scattering(frontend):
     U_0 = S.backend.pad(x, pad_left=S.pad_left, pad_right=S.pad_right)
     filters = [S.phi_f, S.psi1_f, S.psi2_f]
     average_local = True
-    S_gen = scattering1d(U_0, S.backend, filters, S.oversampling, average_local)
+    S_gen = scattering1d(U_0, S.backend, filters, S.log2_stride, average_local)
     S_1_dict = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) == 1}
     S_1 = S.backend.stack([S_1_dict[key] for key in sorted(S_1_dict.keys())])
     X = {"coef": S_1, "n1_max": len(S_1_dict), "n": (-1,), "j": (-1,)}
@@ -251,7 +251,7 @@ def test_frequency_scattering(frontend):
         assert Y_fr["n"] == (4,) + Y_fr["n_fr"]
 
 
-def _joint_timefrequency_scattering_test_routine(S, backend, shape):
+def _jtfs_test_routine(S, backend, shape):
     x = torch.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = backend.shape(x)
@@ -264,7 +264,7 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         U_0_in,
         backend,
         filters,
-        S.oversampling,
+        S.log2_stride,
         S.average == "local",
         S.filters_fr,
         S.oversampling_fr,
@@ -274,7 +274,11 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
 
     # Zeroth order
     U_0 = next(jtfs_gen)
-    assert np.allclose(U_0["coef"], U_0_in)
+    if S.average:
+        assert (U_0["coef"].shape[-1]*S.stride) == U_0_in.shape[-1]
+    else:
+        assert U_0["coef"].shape == U_0_in.shape
+        assert np.allclose(U_0["coef"], U_0_in)
     assert U_0["n"] == ()
     assert U_0["j"] == ()
 
@@ -303,8 +307,7 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         assert path["n1_max"] < S._N_padded_fr
 
         # Check that first-order coefficients have the same temporal stride
-        stride = 2 ** max(S.log2_T - S.oversampling, 0)
-        assert (path["coef"].shape[-1] * stride) == S._N_padded
+        assert (path["coef"].shape[-1] * S.stride) == S._N_padded
 
         # Check that frequential stride works as intended
         stride_fr = 2 ** max(path["j_fr"][0] - S.oversampling_fr, 0)
@@ -314,6 +317,10 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         midpoint = (path["n1_max"] + S._N_padded_fr) // (2 * stride_fr)
         avg_value = np.mean(np.abs(path["coef"][midpoint, :]))
         assert avg_value < 1e-5
+
+        # Check that averaged coefficients have the right temporal stride
+        if S.average == "local":
+            assert (path["coef"].shape[-1] * S.stride) == S._N_padded
 
     # Test second order
     S2_jtfs = filter(lambda path: len(path["n"]) == 2, S_jtfs)
@@ -325,8 +332,7 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         assert path["n1_max"] < S._N_padded_fr
 
         # Check that temporal stride works as intended
-        stride = 2 ** max(path["j"][1] - S.oversampling, 0)
-        assert (path["coef"].shape[-1] * stride) == S._N_padded
+        assert (path["coef"].shape[-1] * (2**path["j"][1])) == S._N_padded
 
         # Check that frequential stride works as intended
         stride_fr = 2 ** max(path["j_fr"][0] - S.oversampling_fr, 0)
@@ -337,43 +343,34 @@ def _joint_timefrequency_scattering_test_routine(S, backend, shape):
         avg_value = np.mean(np.abs(path["coef"][midpoint, :]))
         assert avg_value < 1e-5
 
-        # Test time averaging
-        S.average = "local"
-        U_2 = {**path, "coef": backend.modulus(path["coef"])}
-        S_2 = time_averaging(U_2, backend, S.phi_f, S.oversampling)
+    # Test frequential averaging
+    U_2 = {**path, "coef": backend.modulus(path["coef"])}
 
-        # Check that averaged coefficients have the same temporal stride
-        stride = 2 ** max(S.log2_T - S.oversampling, 0)
-        assert (S_2["coef"].shape[-1] * stride) == S._N_padded
+    # average_fr == 'local'
+    S.average_fr = "local"
+    S_2 = frequency_averaging(
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+    )
+    stride_fr = 2 ** max(S.log2_F - S.oversampling_fr, 0)
+    assert S_2["n1_stride"] == stride_fr
+    assert (S_2["coef"].shape[-2] * stride_fr) == S._N_padded_fr
 
-        # Test frequential averaging
-        U_2 = {**path, "coef": backend.modulus(path["coef"])}
+    # average_fr == 'global'
+    S.average_fr = "global"
+    S_2 = frequency_averaging(
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+    )
+    assert S_2["n1_stride"] == S_2["n1_max"]
+    assert S_2["coef"].shape[-2] == 1
 
-        # average_fr == 'local'
-        S.average_fr = "local"
-        S_2 = frequency_averaging(
-            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
-        )
-        stride_fr = 2 ** max(S.log2_F - S.oversampling_fr, 0)
-        assert S_2["n1_stride"] == stride_fr
-        assert (S_2["coef"].shape[-2] * stride_fr) == S._N_padded_fr
-
-        # average_fr == 'global'
-        S.average_fr = "global"
-        S_2 = frequency_averaging(
-            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
-        )
-        assert S_2["n1_stride"] == S_2["n1_max"]
-        assert S_2["coef"].shape[-2] == 1
-
-        # average_fr == False
-        S.average_fr = False
-        S_2 = frequency_averaging(
-            U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
-        )
-        stride_fr = 2 ** max(S_2["j_fr"][0] - S.oversampling_fr, 0)
-        assert S_2["n1_stride"] == stride_fr
-        assert np.allclose(S_2["coef"], U_2["coef"])
+    # average_fr == False
+    S.average_fr = False
+    S_2 = frequency_averaging(
+        U_2, backend, S.filters_fr[0], S.oversampling_fr, S.average_fr
+    )
+    stride_fr = 2 ** max(S_2["j_fr"][0] - S.oversampling_fr, 0)
+    assert S_2["n1_stride"] == stride_fr
+    assert np.allclose(S_2["coef"], U_2["coef"])
 
     # Check that second-order spins are mirrors of each other
     for path in S2_jtfs:
@@ -392,6 +389,8 @@ def test_joint_timefrequency_scattering(backend):
     J_fr = 3
     shape = (4096,)
     Q = 8
+
+    # no average, no average_fr
     S = TimeFrequencyScatteringBase(
         J=J, J_fr=J_fr, shape=shape, Q=Q, T=0, F=0, backend=backend
     )
@@ -399,8 +398,21 @@ def test_joint_timefrequency_scattering(backend):
     S.create_filters()
     assert not S.average
     assert not S.average_fr
-    backend = kymatio.Scattering1D(J=J, Q=Q, shape=shape, T=0, frontend=backend).backend
-    _joint_timefrequency_scattering_test_routine(S, backend, shape)
+    sc1d_backend = kymatio.Scattering1D(
+        J=J, Q=Q, shape=shape, T=0, frontend=backend).backend
+    _jtfs_test_routine(S, sc1d_backend, shape)
+
+    # average, average_fr
+    S = TimeFrequencyScatteringBase(
+        J=J, J_fr=J_fr, shape=shape, Q=Q, backend=backend
+    )
+    S.build()
+    S.create_filters()
+    assert S.average
+    assert S.average_fr
+    sc1d_backend = kymatio.Scattering1D(
+        J=J, Q=Q, shape=shape, frontend=backend).backend
+    _jtfs_test_routine(S, sc1d_backend, shape)
 
 
 def test_differentiability_jtfs_torch(random_state=42):
@@ -429,7 +441,7 @@ def test_differentiability_jtfs_torch(random_state=42):
         U_0_in,
         backend,
         filters,
-        S.oversampling,
+        S.log2_stride,
         S.average == "local",
         S.filters_fr,
         S.oversampling_fr,
@@ -481,7 +493,7 @@ def test_differentiability_jtfs_tensorflow(random_state=42):
             U_0_in,
             backend,
             filters,
-            S.oversampling,
+            S.log2_stride,
             S.average == "local",
             S.filters_fr,
             S.oversampling_fr,
