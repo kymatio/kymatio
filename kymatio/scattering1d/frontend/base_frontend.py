@@ -56,13 +56,15 @@ class ScatteringBase1D(ScatteringBase):
         N_input = self.shape[0]
 
         # check oversampling (NB: this will be removed in v0.5)
-        if self._oversampling < 0:
+        if self._oversampling is None:
+            pass
+        elif self._oversampling < 0:
             raise ValueError("oversampling must be nonnegative. Got: {}".format(
                 self._oversampling))
-        if not isinstance(self._oversampling, numbers.Integral):
+        elif not isinstance(self._oversampling, numbers.Integral):
             raise ValueError("oversampling must be integer. Got: {}".format(
                 self._oversampling))
-        if self._oversampling > 0:
+        elif self._oversampling > 0:
             warn("oversampling is deprecated in and will be removed in v0.5."
                 "Pass stride = 2**(J-oversampling) or "
                 "stride = 2**(log2(T)-oversampling) "
@@ -562,9 +564,10 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
     def __init__(self, *, J, J_fr, shape, Q, T=None, stride=None,
-            oversampling=0, Q_fr=1, F=None, oversampling_fr=0,
+            Q_fr=1, F=None, oversampling_fr=0,
             out_type='array', format='joint', backend=None):
         max_order = 2
+        oversampling = None
         super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,
             stride, max_order, oversampling, out_type, backend)
         self.J_fr = J_fr
