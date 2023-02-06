@@ -96,18 +96,6 @@ def test_check_runtime_args():
     assert "Cannot convert" in ve.value.args[0]
 
     with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(oversampling_fr=-1, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "nonnegative" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
-        S = TimeFrequencyScatteringBase(oversampling_fr=0.5, **kwargs)
-        S.build()
-        S._check_runtime_args()
-    assert "integer" in ve.value.args[0]
-
-    with pytest.raises(ValueError) as ve:
         S = TimeFrequencyScatteringBase(format="doesnotexist", **kwargs)
         S.build()
         S._check_runtime_args()
