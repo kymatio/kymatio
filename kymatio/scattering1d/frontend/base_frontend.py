@@ -574,6 +574,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         self.Q_fr = Q_fr
         self._F = F
         self.oversampling_fr = 0
+        self._stride_fr = stride_fr
         self.format = format
         self._reduction = np.sum
 
@@ -619,7 +620,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         # Check for absence of aliasing
         assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
 
-    def scattering(self, x, stride=None):
+    def scattering(self, x):
         TimeFrequencyScatteringBase._check_runtime_args(self)
         TimeFrequencyScatteringBase._check_input(self, x)
 
@@ -632,11 +633,11 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
         U_gen = joint_timefrequency_scattering(U_0, self.backend,
             filters, self.log2_stride, (self.average=='local'),
-            self.filters_fr, self.oversampling_fr, (self.average_fr=='local'))
+            self.filters_fr, self.log2_stride_fr, (self.average_fr=='local'))
 
         S_gen = jtfs_average_and_format(U_gen, self.backend,
             self.phi_f, self.log2_stride, self.average,
-            self.filters_fr[0], self.oversampling_fr, self.average_fr,
+            self.filters_fr[0], self.log2_stride_fr, self.average_fr,
             self.out_type, self.format)
 
         # Zeroth order
@@ -657,8 +658,6 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             # 3. If there is no averaging, unpadding depends on order:
             #     3a. at order 1, unpad Y_1_fr at resolution log2_T
             #     3b. at order 2, unpad Y_2_fr at resolution j2
-            # (for simplicity, we assume oversampling=0 in the rationale above,
-            #  but the implementation below works for any value of oversampling)
             if not self.average == 'global':
                 if not self.average and len(path['n']) > 1:
                     # Case 3b.
@@ -694,10 +693,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
         U_gen = joint_timefrequency_scattering(None, self._DryBackend(),
             filters, self.log2_stride, self.average=='local',
-            self.filters_fr, self.oversampling_fr, self.average_fr=='local')
+            self.filters_fr, self.log2_stride_fr, self.average_fr=='local')
         S_gen = jtfs_average_and_format(U_gen, self._DryBackend(),
             self.phi_f, self.log2_stride, self.average,
-            self.filters_fr[0], self.oversampling_fr, self.average_fr,
+            self.filters_fr[0], self.log2_stride_fr, self.average_fr,
             self.out_type, self.format)
         S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
         meta = dict(key=[path['n'] for path in S], n=[], n_fr=[], order=[])

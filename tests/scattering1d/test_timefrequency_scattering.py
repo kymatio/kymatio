@@ -203,7 +203,7 @@ def test_frequency_scattering(frontend):
         X,
         S.backend,
         jtfs.filters_fr,
-        jtfs.oversampling_fr,
+        jtfs.log2_stride_fr,
         jtfs.average_fr == "local",
         spinned=False,
     )
@@ -218,7 +218,7 @@ def test_frequency_scattering(frontend):
         X,
         S.backend,
         jtfs.filters_fr,
-        jtfs.oversampling_fr,
+        jtfs.log2_stride_fr,
         jtfs.average_fr == "local",
         spinned=True,
     )
@@ -243,7 +243,7 @@ def _jtfs_test_routine(S, backend, shape):
         S.log2_stride,
         S.average == "local",
         S.filters_fr,
-        S.oversampling_fr,
+        S.log2_stride_fr,
         S.average_fr == "local",
     )
     path_keys = ["coef", "j", "n", "n1_max", "n1_stride", "j_fr", "n_fr", "spin"]
@@ -286,7 +286,7 @@ def _jtfs_test_routine(S, backend, shape):
         assert (path["coef"].shape[-1] * S.stride) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2 ** max(path["j_fr"][0] - S.oversampling_fr, 0)
+        stride_fr = (2 ** path["j_fr"][0])
         assert (path["coef"].shape[-2] * stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
@@ -311,7 +311,7 @@ def _jtfs_test_routine(S, backend, shape):
         assert (path["coef"].shape[-1] * (2**path["j"][1])) == S._N_padded
 
         # Check that frequential stride works as intended
-        stride_fr = 2 ** max(path["j_fr"][0] - S.oversampling_fr, 0)
+        stride_fr = (2 ** path["j_fr"][0])
         assert (path["coef"].shape[-2] * stride_fr) == S._N_padded_fr
 
         # Check that padding is sufficient
@@ -325,16 +325,16 @@ def _jtfs_test_routine(S, backend, shape):
     # average_fr == 'local'
     average_fr = "local"
     S_2 = frequency_averaging(
-        U_2, backend, S.filters_fr[0], S.oversampling_fr, average_fr
+        U_2, backend, S.filters_fr[0], S.log2_stride_fr, average_fr
     )
-    stride_fr = 2 ** max(S.log2_F - S.oversampling_fr, 0)
+    stride_fr = (2 ** S.log2_stride_fr)
     assert S_2["n1_stride"] == stride_fr
     assert (S_2["coef"].shape[-2] * stride_fr) == S._N_padded_fr
 
     # average_fr == 'global'
     average_fr = "global"
     S_2 = frequency_averaging(
-        U_2, backend, S.filters_fr[0], S.oversampling_fr, average_fr
+        U_2, backend, S.filters_fr[0], S.log2_stride_fr, average_fr
     )
     assert S_2["n1_stride"] == S_2["n1_max"]
     assert S_2["coef"].shape[-2] == 1
@@ -342,9 +342,9 @@ def _jtfs_test_routine(S, backend, shape):
     # average_fr == False
     average_fr = False
     S_2 = frequency_averaging(
-        U_2, backend, S.filters_fr[0], S.oversampling_fr, average_fr
+        U_2, backend, S.filters_fr[0], S.log2_stride_fr, average_fr
     )
-    stride_fr = 2 ** max(S_2["j_fr"][0] - S.oversampling_fr, 0)
+    stride_fr = (2 ** S_2["j_fr"][0])
     assert S_2["n1_stride"] == stride_fr
     assert np.allclose(S_2["coef"], U_2["coef"])
 
@@ -420,7 +420,7 @@ def test_differentiability_jtfs_torch(random_state=42):
         S.log2_stride,
         S.average == "local",
         S.filters_fr,
-        S.oversampling_fr,
+        S.log2_stride_fr,
         S.average_fr == "local",
     )
 
@@ -472,7 +472,7 @@ def test_differentiability_jtfs_tensorflow(random_state=42):
             S.log2_stride,
             S.average == "local",
             S.filters_fr,
-            S.oversampling_fr,
+            S.log2_stride_fr,
             S.average_fr == "local",
         )
         # Zeroth order
