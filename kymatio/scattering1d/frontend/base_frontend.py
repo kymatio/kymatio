@@ -564,7 +564,7 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
     def __init__(self, *, J, J_fr, shape, Q, T=None, stride=None,
-            Q_fr=1, F=None, oversampling_fr=0,
+            Q_fr=1, F=None, stride_fr=None,
             out_type='array', format='joint', backend=None):
         max_order = 2
         oversampling = None
@@ -573,7 +573,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         self.J_fr = J_fr
         self.Q_fr = Q_fr
         self.F = F
-        self.oversampling_fr = oversampling_fr
+        self.oversampling_fr = 0
         self.format = format
         self._reduction = np.sum
 

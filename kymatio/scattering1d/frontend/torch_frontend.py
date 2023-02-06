@@ -95,7 +95,7 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBas
         stride=None,
         Q_fr=1,
         F=None,
-        oversampling_fr=0,
+        stride_fr=None,
         out_type="array",
         format="joint",
         backend="torch"
@@ -111,7 +111,7 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBas
             stride=stride,
             Q_fr=Q_fr,
             F=F,
-            oversampling_fr=oversampling_fr,
+            stride_fr=stride_fr,
             out_type=out_type,
             format=format,
             backend=backend,
