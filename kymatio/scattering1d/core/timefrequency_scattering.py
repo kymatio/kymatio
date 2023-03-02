@@ -2,7 +2,7 @@ import numpy as np
 
 
 def joint_timefrequency_scattering(U_0, backend, filters, log2_stride,
-         average_local, filters_fr, oversampling_fr, average_local_fr):
+         average_local, filters_fr, log2_stride_fr, average_local_fr):
     """
     Parameters
     ----------
@@ -21,10 +21,9 @@ def joint_timefrequency_scattering(U_0, backend, filters, log2_stride,
        to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
        Other elements, such that n_fr>0, correspond to "spinned" band-pass
        filter, where spin denotes the sign of the center frequency xi.
-    oversampling_fr : int >=0
-        Yields joint time-frequency scattering coefficients with a frequential
-        stride of max(1, 2**(log2_F-oversampling_fr)). Raising oversampling_fr
-        by one halves the stride, until reaching a stride of 1.
+    log2_stride_fr : int >=0
+        yields coefficients with a frequential stride of 2**log2_stride_fr
+        if average_local_fr (see below), otherwise 2**j_fr
     average_local_fr : boolean
         whether the result will be locally averaged with phi after this function
 
@@ -70,7 +69,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, log2_stride,
 
     # Y_1_fr_{n_fr}(n1, t[log2_T]) = (|x*psi_{n1}|*phi*psi_{n_fr})(t[log2_T])
     yield from frequency_scattering(S_1, backend,
-        filters_fr, oversampling_fr, average_local_fr, spinned=False)
+        filters_fr, log2_stride_fr, average_local_fr, spinned=False)
 
     # Second order: Y_2_{n2}(t[log2_T], n1[j_fr])
     #                   = (|x*psi_{n1}|*psi_{n2})(t[j2], n1[j_fr])
@@ -79,7 +78,7 @@ def joint_timefrequency_scattering(U_0, backend, filters, log2_stride,
         # Y_2_fr_{n2,n_fr}(t[j2], n1[j_fr])
         #     = (|x*psi_{n1}|*psi_{n2}*psi_{n_fr})(t[j2], n1[j_fr])
         yield from frequency_scattering(Y_2, backend, filters_fr,
-            oversampling_fr, average_local_fr, spinned=True)
+            log2_stride_fr, average_local_fr, spinned=True)
 
 
 def time_scattering_widthfirst(U_0, backend, filters, log2_stride, average_local):
@@ -190,7 +189,7 @@ def time_scattering_widthfirst(U_0, backend, filters, log2_stride, average_local
             yield {'coef': Y_2, 'j': (-1, j2), 'n': (-1, n2), 'n1_max': len(Y_2_list)}
 
 
-def frequency_scattering(X, backend, filters_fr, oversampling_fr,
+def frequency_scattering(X, backend, filters_fr, log2_stride_fr,
         average_local_fr, spinned):
     """
     Parameters
@@ -209,10 +208,9 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
           to a low-pass filter of width 2**J_fr and satisfies xi=0, i.e, spin=0.
           Other elements, such that n_fr>0, correspond to "spinned" band-pass
           filter, where spin denotes the sign of the center frequency xi.
-    oversampling_fr : int >=0
-        Yields joint time-frequency scattering coefficients with a frequential
-        stride max(1, 2**(log2_F-oversampling_fr)). Raising oversampling_fr
-        by one halves the stride, until reaching a stride of 1.
+    log2_stride_fr : int >=0
+        yields coefficients with a frequential stride of 2**log2_stride_fr
+        if average_local_fr (see below), otherwise 2**j_fr
     average_local_fr : boolean
         whether the result will be locally averaged with phi after this function
     spinned: boolean
@@ -262,8 +260,7 @@ def frequency_scattering(X, backend, filters_fr, oversampling_fr,
     for n_fr, psi in enumerate(psis):
         j_fr = psi['j']
         spin = np.sign(psi['xi'])
-        sub_fr_adj = min(j_fr, log2_F) if average_local_fr else j_fr
-        k_fr = max(sub_fr_adj - oversampling_fr, 0)
+        k_fr = min(j_fr, log2_stride_fr) if average_local_fr else j_fr
         Y_fr_hat = backend.cdgmm(X_hat, psi['levels'][0])
         Y_fr_sub = backend.subsample_fourier(Y_fr_hat, 2 ** k_fr)
         Y_fr = backend.ifft(Y_fr_sub)
@@ -318,7 +315,7 @@ def time_averaging(U_2, backend, phi_f, log2_stride):
     return {**U_2, 'coef': S_2}
 
 
-def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
+def frequency_averaging(U_2, backend, phi_fr_f, log2_stride_fr, average_fr):
     """
     Parameters
     ----------
@@ -326,10 +323,9 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
         frequency_scattering or time_averaging
     backend : module
     phi_fr_f : dictionary. Frequential low-pass filter in Fourier domain.
-    oversampling_fr : int >=0
-        Yields joint time-frequency scattering coefficients with a frequential
-        stride max(1, 2**(log2_F-oversampling_fr)). Raising oversampling_fr
-        by one halves the stride, until reaching a stride of 1.
+    log2_stride_fr : int >=0
+        yields coefficients with a frequential stride of 2**log2_stride_fr
+        if average_local_fr (see below), otherwise 2**j_fr
     average_fr : string
         Either 'local', 'global', or False.
 
@@ -364,16 +360,16 @@ def frequency_averaging(U_2, backend, phi_fr_f, oversampling_fr, average_fr):
             n1_stride = U_2['n1_max']
         elif average_fr == 'local':
             k_in = min(U_2['j_fr'][-1], log2_F)
-            k_J = max(log2_F - k_in - oversampling_fr, 0)
+            k_J = log2_stride_fr - k_in
             U_hat = backend.rfft(U_2_T)
             S_c = backend.cdgmm(U_hat, phi_fr_f['levels'][k_in])
             S_hat = backend.subsample_fourier(S_c, 2 ** k_J)
             S_2_T = backend.irfft(S_hat)
-            n1_stride = 2**max(log2_F - oversampling_fr, 0)
+            n1_stride = 2**log2_stride_fr
         S_2 = backend.swap_time_frequency(S_2_T)
         return {**U_2, 'coef': S_2, 'n1_stride': n1_stride}
     elif not average_fr:
-        n1_stride = 2**max(U_2['j_fr'][-1] - oversampling_fr, 0)
+        n1_stride = 2**max(U_2['j_fr'][-1], 0)
         return {**U_2, 'n1_stride': n1_stride}
 
 

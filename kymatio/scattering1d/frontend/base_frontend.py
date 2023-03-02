@@ -56,13 +56,15 @@ class ScatteringBase1D(ScatteringBase):
         N_input = self.shape[0]
 
         # check oversampling (NB: this will be removed in v0.5)
-        if self._oversampling < 0:
+        if self._oversampling is None:
+            pass
+        elif self._oversampling < 0:
             raise ValueError("oversampling must be nonnegative. Got: {}".format(
                 self._oversampling))
-        if not isinstance(self._oversampling, numbers.Integral):
+        elif not isinstance(self._oversampling, numbers.Integral):
             raise ValueError("oversampling must be integer. Got: {}".format(
                 self._oversampling))
-        if self._oversampling > 0:
+        elif self._oversampling > 0:
             warn("oversampling is deprecated in and will be removed in v0.5."
                 "Pass stride = 2**(J-oversampling) or "
                 "stride = 2**(log2(T)-oversampling) "
@@ -562,15 +564,17 @@ class ScatteringBase1D(ScatteringBase):
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
     def __init__(self, *, J, J_fr, shape, Q, T=None, stride=None,
-            oversampling=0, Q_fr=1, F=None, oversampling_fr=0,
+            Q_fr=1, F=None, stride_fr=None,
             out_type='array', format='joint', backend=None):
         max_order = 2
+        oversampling = None
         super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,
             stride, max_order, oversampling, out_type, backend)
         self.J_fr = J_fr
         self.Q_fr = Q_fr
-        self.F = F
-        self.oversampling_fr = oversampling_fr
+        self._F = F
+        self.oversampling_fr = 0
+        self._stride_fr = stride_fr
         self.format = format
         self._reduction = np.sum
 
@@ -592,12 +596,6 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         else:
             raise ValueError("Q_fr must be an integer or 1-tuple.")
 
-        # check F or set default
-        N_input_fr = len(self.psi1_f)
-        self.F, self.average_fr = parse_T(
-            self.F, self.J_fr, N_input_fr, T_alias='F')
-        self.log2_F = math.floor(math.log2(self.F))
-
         # Compute the minimum support to pad (ideally)
         min_to_pad_fr = 8 * min(self.F, 2 ** self.J_fr)
 
@@ -606,6 +604,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         #     by a margin of at least min_to_pad_fr
         # (2) a multiple of all subsampling factors of frequential scattering:
         #     2**1, 2**2, etc. up to 2**K_fr = (2**J_fr / 2**oversampling_fr)
+        N_input_fr = (self.J+1) * self.Q[0]
         K_fr = max(self.J_fr - self.oversampling_fr, 0)
         N_padded_fr_subsampled = (N_input_fr + min_to_pad_fr) // (2 ** K_fr)
         self._N_padded_fr = N_padded_fr_subsampled * (2 ** K_fr)
@@ -621,7 +620,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         # Check for absence of aliasing
         assert all((abs(psi1["xi"]) < 0.5/(2**psi1["j"])) for psi1 in psis_fr_f)
 
-    def scattering(self, x, stride=None):
+    def scattering(self, x):
         TimeFrequencyScatteringBase._check_runtime_args(self)
         TimeFrequencyScatteringBase._check_input(self, x)
 
@@ -634,11 +633,11 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
         U_gen = joint_timefrequency_scattering(U_0, self.backend,
             filters, self.log2_stride, (self.average=='local'),
-            self.filters_fr, self.oversampling_fr, (self.average_fr=='local'))
+            self.filters_fr, self.log2_stride_fr, (self.average_fr=='local'))
 
         S_gen = jtfs_average_and_format(U_gen, self.backend,
             self.phi_f, self.log2_stride, self.average,
-            self.filters_fr[0], self.oversampling_fr, self.average_fr,
+            self.filters_fr[0], self.log2_stride_fr, self.average_fr,
             self.out_type, self.format)
 
         # Zeroth order
@@ -659,8 +658,6 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             # 3. If there is no averaging, unpadding depends on order:
             #     3a. at order 1, unpad Y_1_fr at resolution log2_T
             #     3b. at order 2, unpad Y_2_fr at resolution j2
-            # (for simplicity, we assume oversampling=0 in the rationale above,
-            #  but the implementation below works for any value of oversampling)
             if not self.average == 'global':
                 if not self.average and len(path['n']) > 1:
                     # Case 3b.
@@ -696,10 +693,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         filters = [self.phi_f, self.psi1_f, self.psi2_f]
         U_gen = joint_timefrequency_scattering(None, self._DryBackend(),
             filters, self.log2_stride, self.average=='local',
-            self.filters_fr, self.oversampling_fr, self.average_fr=='local')
+            self.filters_fr, self.log2_stride_fr, self.average_fr=='local')
         S_gen = jtfs_average_and_format(U_gen, self._DryBackend(),
             self.phi_f, self.log2_stride, self.average,
-            self.filters_fr[0], self.oversampling_fr, self.average_fr,
+            self.filters_fr[0], self.log2_stride_fr, self.average_fr,
             self.out_type, self.format)
         S = sorted(list(S_gen), key=lambda path: (len(path['n']), path['n']))
         meta = dict(key=[path['n'] for path in S], n=[], n_fr=[], order=[])
@@ -764,10 +761,44 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
                 self.format))
 
     @property
+    def average_fr(self):
+        N_input_fr = (self.J+1) * self.Q[0]
+        return parse_T(self._F, self.J_fr, N_input_fr, T_alias='F')[1]
+
+    @property
+    def F(self):
+        N_input_fr = (self.J+1) * self.Q[0]
+        return parse_T(self._F, self.J_fr, N_input_fr, T_alias='F')[0]
+
+    @property
     def filterbank_fr(self):
         filterbank_kwargs = {
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
         return spin(anden_generator, filterbank_kwargs)
+
+    @property
+    def log2_F(self):
+        return int(math.floor(math.log2(self.F)))
+
+    @property
+    def log2_stride_fr(self):
+        if self._stride_fr is None:
+            return self.log2_F
+        if not isinstance(self._stride_fr, numbers.Integral):
+            raise ValueError("stride_fr must be integer. Got: {}".format(
+                self._stride_fr))
+        log2_stride_fr = math.log2(self._stride_fr)
+        if math.floor(log2_stride_fr) != math.ceil(log2_stride_fr):
+            raise ValueError("stride_fr must be a power of two. Got: {}".format(
+                self._stride_fr))
+        if self.average_fr in [False, "global"]:
+            raise ValueError("stride_fr={} is incompatible with F={}.".format(
+                self._stride, self._F))
+        return int(log2_stride_fr)
+
+    @property
+    def stride_fr(self):
+        return (2**self.log2_stride_fr)
 
 
 __all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
