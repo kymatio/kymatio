@@ -7,6 +7,6 @@ class ScatteringEntry1D(ScatteringEntry):
 class TimeFrequencyScatteringEntry(ScatteringEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(
-            name='JTFS', class_name='scattering1d', *args, **kwargs)
+            name='JTFS', class_name='timefrequencyscattering', *args, **kwargs)
 
 __all__ = ['ScatteringEntry1D', 'TimeFrequencyScatteringEntry']

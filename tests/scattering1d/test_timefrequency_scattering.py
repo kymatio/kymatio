@@ -130,14 +130,14 @@ def test_jtfs_create_filters(backend):
     )
 
 
-frontends = ["numpy", "torch", "tensorflow", "sklearn"]
+frontends = ["numpy", "torch", "tensorflow", "sklearn", "jax"]
 @pytest.mark.parametrize("frontend", frontends)
 def test_time_scattering_widthfirst(frontend):
     """Checks that width-first and depth-first algorithms have same output."""
     J = 5
     shape = (1024,)
     S = kymatio.Scattering1D(J, shape, frontend=frontend)
-    x = torch.zeros(shape)
+    x = torch.zeros(shape) if frontend == "torch" else np.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
     _, signal_shape = x_shape[:-1], x_shape[-1:]
@@ -163,7 +163,7 @@ def test_time_scattering_widthfirst(frontend):
     S1_depth = S.backend.stack(
         [S1_depth[key] for key in sorted(S1_depth.keys()) if len(key) == 1]
     )
-    if frontend not in ["numpy", "sklearn"]:
+    if frontend not in ["numpy", "sklearn", "jax"]:
         S1_width = S1_width.numpy()
         S1_depth = S1_depth.numpy()
     assert np.allclose(S1_width, S1_depth)
