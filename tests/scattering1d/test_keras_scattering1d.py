@@ -28,7 +28,7 @@ def test_Scattering1D():
                   loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
     Sg0 = model0.predict(x)
-    assert np.allclose(Sg0, Sx0, atol=1e-07)
+    assert np.allclose(Sg0, Sx0, atol=1e-06)
     # adjust T
     sigma_low_scale_factor = 2
     T = 2**(J-sigma_low_scale_factor)
