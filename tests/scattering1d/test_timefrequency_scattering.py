@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 import torch, tensorflow as tf
+import jax.numpy as jnp
+from jax import device_put
 
 import kymatio
 from kymatio import TimeFrequencyScattering
@@ -177,7 +179,7 @@ def test_frequency_scattering(frontend):
     shape = (4096,)
     Q = 8
     S = kymatio.Scattering1D(J=J, Q=Q, shape=shape, frontend=frontend)
-    x = torch.zeros(shape)
+    x = np.zeros(shape)
     x[shape[0] // 2] = 1
     x_shape = S.backend.shape(x)
     _, signal_shape = x_shape[:-1], x_shape[-1:]
@@ -494,7 +496,7 @@ frontends = ["numpy", "sklearn"]
 def test_jtfs_numpy_and_sklearn(frontend):
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (1024,), "Q": 3}
-    x = torch.zeros(kwargs["shape"])
+    x = np.zeros(kwargs["shape"])
     x[kwargs["shape"][0] // 2] = 1
 
     # Local averaging
@@ -579,6 +581,23 @@ def test_jtfs_torch_tf_frontends(frontend):
     Sx = S(x)
     assert isinstance(Sx, torch.Tensor) if frontend == "torch" else isinstance(Sx, tf.Tensor)
     assert Sx.ndim == 3
+
+
+frontends = ["jax"]
+@pytest.mark.parametrize("frontend", frontends)
+def test_jtfs_jax_frontend(frontend):
+    # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "shape": (8192,), "Q": 3}
+    x = np.zeros(kwargs["shape"])
+    x[kwargs["shape"][0] // 2] = 1
+    x = device_put(jnp.asarray(x))
+
+    # Local averaging
+    S = TimeFrequencyScattering(frontend=frontend, format="joint", **kwargs)
+    assert S.F == (2**S.J_fr)
+    Sx = S(x)
+    assert Sx.ndim == 3
+    assert S.backend.name == 'jax'
 
 
 frontends = ["torch", "tensorflow"]
