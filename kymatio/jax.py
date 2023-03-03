@@ -17,4 +17,4 @@ HarmonicScattering3D.__name__ = "HarmonicScattering3D"
 TimeFrequencyScattering.__module__ = "kymatio.jax"
 TimeFrequencyScattering.__name__ = "TimeFrequencyScattering"
 
-__all__ = ["Scattering1D", "Scattering2D", "HarmonicScattering3D", TimeFrequencyScattering]
+__all__ = ["Scattering1D", "Scattering2D", "HarmonicScattering3D", "TimeFrequencyScattering"]
