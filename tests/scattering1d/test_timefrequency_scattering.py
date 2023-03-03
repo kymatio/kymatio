@@ -18,6 +18,7 @@ from kymatio.scattering1d.core.timefrequency_scattering import (
 from kymatio.scattering1d.frontend.base_frontend import TimeFrequencyScatteringBase
 from kymatio.scattering1d.frontend.torch_frontend import TimeFrequencyScatteringTorch
 from kymatio.scattering1d.frontend.numpy_frontend import TimeFrequencyScatteringNumPy
+from kymatio.jax import TimeFrequencyScattering as TimeFrequencyScatteringJax
 
 
 backends = ["numpy", "torch", "tensorflow", "jax", "sklearn"]
@@ -583,9 +584,7 @@ def test_jtfs_torch_tf_frontends(frontend):
     assert Sx.ndim == 3
 
 
-frontends = ["jax"]
-@pytest.mark.parametrize("frontend", frontends)
-def test_jtfs_jax_frontend(frontend):
+def test_jtfs_jax_frontend():
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (8192,), "Q": 3}
     x = np.zeros(kwargs["shape"])
@@ -593,7 +592,7 @@ def test_jtfs_jax_frontend(frontend):
     x = device_put(jnp.asarray(x))
 
     # Local averaging
-    S = TimeFrequencyScattering(frontend=frontend, format="joint", **kwargs)
+    S = TimeFrequencyScatteringJax(format="joint", **kwargs)
     assert S.F == (2**S.J_fr)
     Sx = S(x)
     assert Sx.ndim == 3
