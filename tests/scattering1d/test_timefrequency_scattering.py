@@ -584,7 +584,7 @@ def test_jtfs_torch_tf_frontends(frontend):
     assert Sx.ndim == 3
 
 
-def test_jtfs_jax_frontend(frontend):
+def test_jtfs_jax_frontend():
     # Test __init__
     kwargs = {"J": 8, "J_fr": 3, "shape": (8192,), "Q": 3}
     x = np.zeros(kwargs["shape"])
@@ -592,7 +592,7 @@ def test_jtfs_jax_frontend(frontend):
     x = device_put(jnp.asarray(x))
 
     # Local averaging
-    S = TimeFrequencyScatteringJax(frontend=frontend, format="joint", **kwargs)
+    S = TimeFrequencyScatteringJax(format="joint", **kwargs)
     assert S.F == (2**S.J_fr)
     Sx = S(x)
     assert Sx.ndim == 3
