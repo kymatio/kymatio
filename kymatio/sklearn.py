@@ -23,4 +23,4 @@ Scattering2D.__name__ = "Scattering2D"
 HarmonicScattering3D.__module__ = "kymatio.sklearn"
 HarmonicScattering3D.__name__ = "HarmonicScattering3D"
 
-__all__ = ["Scattering1D", "Scattering2D", "HarmonicScattering3D"]
+__all__ = ["Scattering1D", "Scattering2D", "HarmonicScattering3D", "TimeFrequencyScattering"]
