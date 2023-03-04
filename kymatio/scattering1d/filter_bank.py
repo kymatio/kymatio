@@ -319,7 +319,7 @@ def spin(filterbank_fn, filterbank_kwargs):
     return spinned_fn, filterbank_kwargs
 
 
-def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.mean):
+def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.sum):
     """
     Builds in Fourier the Morlet filters used for the scattering transform.
 
@@ -352,7 +352,7 @@ def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.mean):
         Corresponds to the self.filterbank property of the scattering object.
         As of v0.3, only anden_generator is supported as filterbank_fn.
     _reduction : callable
-        either np.mean (default) or np.sum.
+        either np.sum (default) or np.mean.
 
     Returns
     -------
