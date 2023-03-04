@@ -26,8 +26,13 @@ class ScatteringBase1D(ScatteringBase):
         self.out_type = out_type
         self.backend = backend
 
+        # Will be removed in v0.5
         self._oversampling = oversampling
-        self._reduction = np.mean
+
+        # Fixes a bug (#984) in U2 energy across psi2 levels.
+        # To restore the (wrong) energy scaling of Kymatio <0.4,
+        # set this field to np.mean. Will be removed in v1.0
+        self._reduction = np.sum
 
     def build(self):
         """Set up padding and filters
