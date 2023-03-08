@@ -615,10 +615,10 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
 
     def create_filters(self):
         phi0_fr_f,= scattering_filter_factory(self._N_padded_fr,
-            self.J_fr, (), self.F, self.filterbank_fr, _reduction=np.mean)
+            self.J_fr, (), self.F, self.filterbank_fr, _reduction=np.sum)
         phi1_fr_f, psis_fr_f = scattering_filter_factory(self._N_padded_fr,
             self.J_fr, self.Q_fr, 2**self.J_fr, self.filterbank_fr,
-            _reduction=np.mean)
+            _reduction=np.sum)
         self.filters_fr = (phi0_fr_f, [phi1_fr_f] + psis_fr_f)
 
         # Check for absence of aliasing
