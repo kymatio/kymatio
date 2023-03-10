@@ -22,7 +22,7 @@ class ScatteringTorch(nn.Module):
 
     _doc_alias_name = 'forward'
 
-    _doc_alias_call = '.forward'
+    _doc_alias_call = '.forward({x})'
 
     _doc_frontend_paragraph = \
         """

@@ -14,7 +14,7 @@ class ScatteringNumPy:
 
     _doc_alias_name = '__call__'
 
-    _doc_alias_call = ''
+    _doc_alias_call = '({x})'
 
     _doc_frontend_paragraph = ''
 

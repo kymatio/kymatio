@@ -129,7 +129,7 @@ class ScatteringBase2D(ScatteringBase):
             Sx = S.scattering(x)
 
             # Equivalently, use the alias.
-            Sx = S{alias_call}(x)
+            Sx = S{alias_call}
 
         Parameters
         ----------
@@ -215,7 +215,7 @@ class ScatteringBase2D(ScatteringBase):
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
-            alias_call=cls._doc_alias_call,
+            alias_call=cls._doc_alias_call.format(x="x"),
             instantiation=instantiation,
             param_shape=param_shape,
             attrs_shape=attrs_shape,

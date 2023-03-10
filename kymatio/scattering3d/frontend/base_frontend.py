@@ -60,7 +60,7 @@ class ScatteringBase3D(ScatteringBase):
             Sx = S.scattering(x)
 
             # Equivalently, use the alias.
-            Sx = S{alias_call}(x)
+            Sx = S{alias_call}
 
         Parameters
         ----------
@@ -116,7 +116,7 @@ class ScatteringBase3D(ScatteringBase):
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
-            alias_call=cls._doc_alias_call,
+            alias_call=cls._doc_alias_call.format(x="x"),
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
         cls.scattering.__doc__ = ScatteringBase3D._doc_scattering.format(
