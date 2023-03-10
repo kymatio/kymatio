@@ -6,8 +6,7 @@ In this example we use the 1D scattering transform to represent spoken digits,
 which we then classify using a simple classifier. This shows that 1D scattering
 representations are useful for this type of problem.
 
-This dataset is automatically downloaded and preprocessed from
-https://github.com/Jakobovski/free-spoken-digit-dataset.git
+This dataset is automatically downloaded using the DeepLake dataloader.
 
 Downloading and precomputing scattering coefficients should take about 5 min.
 Running the gradient descent takes about 1 min.
@@ -49,13 +48,15 @@ from sklearn.metrics import confusion_matrix
 import matplotlib.pyplot as plt
 
 ###############################################################################
-# Finally, we import the `Scattering1D` class from the `kymatio.torch` package
-# and the `fetch_fsdd` function from `kymatio.datasets`. The `Scattering1D`
-# class is what lets us calculate the scattering transform, while the
-# `fetch_fsdd` function downloads the FSDD, if needed.
+# To download the dataset, we use the `datalake` package.
+import deeplake
+
+###############################################################################
+# Finally, we import the `Scattering1D` class from the `kymatio.torch`
+# package. The `Scattering1D` class is what lets us calculate the scattering
+# transform.
 
 from kymatio.torch import Scattering1D
-from ...datasets import fetch_fsdd
 
 ###############################################################################
 # Pipeline setup
@@ -101,45 +102,38 @@ torch.manual_seed(42)
 # can be fed into the scattering transform and then a logistic regression
 # classifier.
 #
-# We first download the dataset. If it's already downloaded, `fetch_fsdd` will
-# simply return the information corresponding to the dataset that's already
-# on disk.
+# We first download the dataset.
 
-info_data = fetch_fsdd()
-files = info_data['files']
-path_dataset = info_data['path_dataset']
+ds = deeplake.load("hub://activeloop/spoken_mnist", verbose=False)
 
 ###############################################################################
 # Set up Tensors to hold the audio signals (`x_all`), the labels (`y_all`), and
 # whether the signal is in the train or test set (`subset`).
 
-x_all = torch.zeros(len(files), T, dtype=torch.float32, device=device)
-y_all = torch.zeros(len(files), dtype=torch.int64, device=device)
-subset = torch.zeros(len(files), dtype=torch.int64, device=device)
+x_all = torch.zeros(len(ds), T, dtype=torch.float32, device=device)
+y_all = torch.zeros(len(ds), dtype=torch.int64, device=device)
+subset = torch.zeros(len(ds), dtype=torch.int64, device=device)
 
 ###############################################################################
-# For each file in the dataset, we extract its label `y` and its index from the
-# filename. If the index is between 0 and 4, it is placed in the test set, while
-# files with larger indices are used for training. The actual signals are
-# normalized to have maximum amplitude one, and are truncated or zero-padded
-# to the desired length `T`. They are then stored in the `x_all` Tensor while
-# their labels are in `y_all`.
+# For each file in the dataset, we extract its label `y`. Each speaker repeats
+# every digit 50 times in total, so we take the first 5 of these for the test
+# set. The actual signals are normalized to have maximum amplitude one, and are
+# truncated or zero-padded to the desired length `T`. They are then stored in
+# the `x_all` Tensor while their labels are in `y_all`.
 
-for k, f in enumerate(files):
-    basename = f.split('.')[0]
+for k, sample in enumerate(ds):
+    y = sample["labels"].numpy()[0]
 
-    # Get label (0-9) of recording.
-    y = int(basename.split('_')[0])
-
-    # Index larger than 5 gets assigned to training set.
-    if int(basename.split('_')[2]) >= 5:
-        subset[k] = 0
-    else:
+    # Each speaker–digit combination is repeated 50 times so select the
+    # first 5 recordings of each set to put in test set.
+    if (k % 50) < 5:
         subset[k] = 1
+    else:
+        subset[k] = 0
 
     # Load the audio signal and normalize it.
-    _, x = wavfile.read(os.path.join(path_dataset, f))
-    x = np.asarray(x, dtype='float')
+    x = sample["audio"].numpy()[:, 0]
+    x = x.astype("float32")
     x /= np.max(np.abs(x))
 
     # Convert from NumPy array to PyTorch Tensor.
@@ -152,7 +146,7 @@ for k, f in enumerate(files):
     # If it's too short, zero-pad it.
     start = (T - x.numel()) // 2
 
-    x_all[k,start:start + x.numel()] = x
+    x_all[k, start:start + x.numel()] = x
     y_all[k] = y
 
 ###############################################################################
@@ -162,7 +156,6 @@ for k, f in enumerate(files):
 # scattering coefficients.
 
 scattering = Scattering1D(J, T, Q).to(device)
-
 
 ###############################################################################
 # Compute the scattering transform for all signals in the dataset.
@@ -174,7 +167,7 @@ Sx_all = scattering.forward(x_all)
 # scattering coefficients, which are always placed in the first channel of
 # the scattering Tensor.
 
-Sx_all = Sx_all[:,1:,:]
+Sx_all = Sx_all[:, 1:, :]
 
 ###############################################################################
 # To increase discriminability, we take the logarithm of the scattering
@@ -254,7 +247,7 @@ for e in range(num_epochs):
     # For each batch, calculate the gradient with respect to the loss and take
     # one step.
     for i in range(nbatches):
-        idx = perm[i * batch_size : (i+1) * batch_size]
+        idx = perm[i * batch_size:(i+1) * batch_size]
         model.zero_grad()
         resp = model.forward(Sx_tr[idx])
         loss = criterion(resp, y_tr[idx])
