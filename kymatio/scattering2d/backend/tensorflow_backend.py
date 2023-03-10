@@ -19,25 +19,30 @@ class Pad(object):
         self.input_size = input_size
 
     def __call__(self, x):
-        pad_size_tmp = list(self.pad_size)
-        # This handles the case where the padding is equal to the image size
-        if pad_size_tmp[0] == self.input_size[0]:
-            pad_size_tmp[0] -= 1
-            pad_size_tmp[1] -= 1
-        if pad_size_tmp[2] == self.input_size[1]:
-            pad_size_tmp[2] -= 1
-            pad_size_tmp[3] -= 1
+        pad_size = list(self.pad_size)
+
+        # Clone to avoid passing on modifications.
+        new_pad_size = list(pad_size)
+
+        # This handles the case where the padding is equal to the image size.
+        if pad_size[0] == self.input_size[0]:
+            new_pad_size[0] -= 1
+            new_pad_size[1] -= 1
+        if pad_size[2] == self.input_size[1]:
+            new_pad_size[2] -= 1
+            new_pad_size[3] -= 1
 
         paddings = [[0, 0]] * len(x.shape[:-2])
-        paddings += [[pad_size_tmp[0], pad_size_tmp[1]], [pad_size_tmp[2], pad_size_tmp[3]]]
+        paddings += [[new_pad_size[0], new_pad_size[1]], [new_pad_size[2], new_pad_size[3]]]
 
         x_padded = tf.pad(x, paddings, mode="REFLECT")
 
-        pad_size_tmp = list(self.pad_size)
-        if pad_size_tmp[0] == self.input_size[0]:
+        # Again, special handling for when padding is the same as image size.
+        if pad_size[0] == self.input_size[0]:
             x_padded = tf.concat([tf.expand_dims(x_padded[..., 1, :], axis=-2), x_padded, tf.expand_dims(x_padded[..., x_padded.shape[-2] -2, :], axis=-2)], axis=-2)
-        if pad_size_tmp[2] == self.input_size[1]:
+        if pad_size[2] == self.input_size[1]:
             x_padded = tf.concat([tf.expand_dims(x_padded[..., :, 1], axis=-1), x_padded, tf.expand_dims(x_padded[..., :,  x_padded.shape[-1]-2], axis=-1)], axis=-1)
+
         return x_padded
 
 
