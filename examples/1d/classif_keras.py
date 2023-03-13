@@ -6,8 +6,7 @@ In this example we use the 1D scattering transform to represent spoken digits,
 which we then classify using a simple classifier. This shows that 1D scattering
 representations are useful for this type of problem.
 
-This dataset is automatically downloaded and preprocessed from
-https://github.com/Jakobovski/free-spoken-digit-dataset.git
+This dataset is automatically downloaded using the DeepLake dataloader.
 
 Downloading and precomputing scattering coefficients should take about 5 min.
 Running the gradient descent takes about 1 min.
@@ -37,13 +36,15 @@ import os
 import numpy as np
 
 ###############################################################################
-# Finally, we import the `Scattering1D` class from the `kymatio.keras` package
-# and the `fetch_fsdd` function from `kymatio.datasets`. The `Scattering1D`
-# class is what lets us calculate the scattering transform, while the
-# `fetch_fsdd` function downloads the FSDD, if needed.
+# To download the dataset, we use the `datalake` package.
+import deeplake
+
+###############################################################################
+# Finally, we import the `Scattering1D` class from the `kymatio.keras`
+# package. The `Scattering1D` class is what lets us calculate the scattering
+# transform.
 
 from kymatio.keras import Scattering1D
-from ...datasets import fetch_fsdd
 
 ###############################################################################
 # Pipeline setup
@@ -76,45 +77,39 @@ log_eps = 1e-6
 # can be fed into the scattering transform and then a logistic regression
 # classifier.
 #
-# We first download the dataset. If it's already downloaded, `fetch_fsdd` will
-# simply return the information corresponding to the dataset that's already
-# on disk.
+# We first download the dataset.
 
-info_data = fetch_fsdd()
-files = info_data['files']
-path_dataset = info_data['path_dataset']
+ds = deeplake.load("hub://activeloop/spoken_mnist", verbose=False)
+ds = ds[:200]
 
 ###############################################################################
 # Set up NumPy arrays to hold the audio signals (`x_all`), the labels
 # (`y_all`), and whether the signal is in the train or test set (`subset`).
 
-x_all = np.zeros((len(files), T))
-y_all = np.zeros(len(files), dtype=np.uint8)
-subset = np.zeros(len(files), dtype=np.uint8)
+x_all = np.zeros((len(ds), T), dtype="float32")
+y_all = np.zeros(len(ds), dtype="uint8")
+subset = np.zeros(len(ds), dtype="uint8")
 
 ###############################################################################
-# For each file in the dataset, we extract its label `y` and its index from the
-# filename. If the index is between 0 and 4, it is placed in the test set, while
-# files with larger indices are used for training. The actual signals are
-# normalized to have maximum amplitude one, and are truncated or zero-padded
-# to the desired length `T`. They are then stored in the `x_all` array while
-# their labels are in `y_all`.
+# For each file in the dataset, we extract its label `y`. Each speaker repeats
+# every digit 50 times in total, so we take the first 5 of these for the test
+# set. The actual signals are normalized to have maximum amplitude one, and are
+# truncated or zero-padded to the desired length `T`. They are then stored in
+# the `x_all` array while their labels are in `y_all`.
 
-for k, f in enumerate(files):
-    basename = f.split('.')[0]
+for k, sample in enumerate(ds):
+    y = sample["labels"].numpy()[0]
 
-    # Get label (0-9) of recording.
-    y = int(basename.split('_')[0])
-
-    # Index larger than 5 gets assigned to training set.
-    if int(basename.split('_')[2]) >= 5:
-        subset[k] = 0
-    else:
+    # Each speaker–digit combination is repeated 50 times so select the
+    # first 5 recordings of each set to put in test set.
+    if (k % 50) < 5:
         subset[k] = 1
+    else:
+        subset[k] = 0
 
     # Load the audio signal and normalize it.
-    _, x = wavfile.read(os.path.join(path_dataset, f))
-    x = np.asarray(x, dtype='float')
+    x = sample["audio"].numpy()[:, 0]
+    x = x.astype("float32")
     x /= np.max(np.abs(x))
 
     # If it's too long, truncate it.
@@ -124,7 +119,7 @@ for k, f in enumerate(files):
     # If it's too short, zero-pad it.
     start = (T - len(x)) // 2
 
-    x_all[k,start:start + len(x)] = x
+    x_all[k, start:start + len(x)] = x
     y_all[k] = y
 
 ###############################################################################

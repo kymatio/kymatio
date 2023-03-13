@@ -1,9 +1,9 @@
 """
 Compute the scattering transform of a speech recording
 ======================================================
-This script loads a speech signal from the free spoken digit dataset (FSDD)
-of a man pronouncing the word "zero," computes its scattering transform, and
-displays the zeroth-, first-, and second-order scattering coefficients.
+This script loads a speech signal consisting of an excerpt from a recording of
+*Sense and Sensibility*. We then compute its scattering transform, and display
+the zeroth-, first-, and second-order scattering coefficients.
 """
 
 ###############################################################################
@@ -11,11 +11,11 @@ displays the zeroth-, first-, and second-order scattering coefficients.
 # -------------
 #
 ###############################################################################
-# To handle audio file I/O, we import `os` and `scipy.io.wavfile`.
+# To manipulate the audio signal, we first import NumPy. We also import
+# `librosa`, which allows us to automatically download the example signal.
 
 import numpy as np
-import os
-import scipy.io.wavfile
+import librosa
 
 ###############################################################################
 # We import `matplotlib` to plot the calculated scattering coefficients.
@@ -23,24 +23,19 @@ import scipy.io.wavfile
 import matplotlib.pyplot as plt
 
 ###############################################################################
-# Finally, we import the `Scattering1D` class from the `scattering` package and
-# the `fetch_fsdd` function from `scattering.datasets`. The `Scattering1D`
-# class is what lets us calculate the scattering transform, while the
-# `fetch_fsdd` function downloads the FSDD, if needed.
+# Finally, we import the `Scattering1D` class from the `scattering` package.
+# The `Scattering1D` class is what lets us calculate the scattering transform
 
 from kymatio.numpy import Scattering1D
-from ...datasets import fetch_fsdd
 
 ###############################################################################
 # Scattering setup
 # ----------------
-# First, we download the FSDD (if not already downloaded) and read in the
-# recording `0_jackson_0.wav` of a man pronouncing the word "zero".
+# First, we download the signal and extract the second second of it (the first
+# second is mostly silence).
 
-info_dataset = fetch_fsdd(verbose=True)
-
-file_path = os.path.join(info_dataset['path_dataset'], sorted(info_dataset['files'])[0])
-_, x = scipy.io.wavfile.read(file_path)
+x, sr = librosa.load(librosa.example("libri3"))
+x = x[sr:2 * sr]
 
 ###############################################################################
 # Once the recording is in memory, we normalize it.
@@ -93,23 +88,24 @@ order2 = np.where(meta['order'] == 2)
 plt.figure(figsize=(8, 2))
 plt.plot(x)
 plt.title('Original signal')
+plt.show()
 
 ###############################################################################
 # We now plot the zeroth-order scattering coefficient, which is simply an
 # average of the original signal at the scale `2**J`.
 
 plt.figure(figsize=(8, 8))
-plt.subplot(3, 1, 1)
 plt.plot(Sx[order0][0])
 plt.title('Zeroth-order scattering')
+plt.show()
 
 ###############################################################################
 # We then plot the first-order coefficients, which are arranged along time
 # and log-frequency.
 
-plt.subplot(3, 1, 2)
 plt.imshow(Sx[order1], aspect='auto')
 plt.title('First-order scattering')
+plt.show()
 
 ###############################################################################
 # Finally, we plot the second-order scattering coefficients. These are also
@@ -117,11 +113,6 @@ plt.title('First-order scattering')
 # frequency and one second-order frequency. Here, both indices are mixed along
 # the vertical axis.
 
-plt.subplot(3, 1, 3)
 plt.imshow(Sx[order2], aspect='auto')
 plt.title('Second-order scattering')
-###############################################################################
-# Display the plots!
-
-plt.tight_layout()
 plt.show()
