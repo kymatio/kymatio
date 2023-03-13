@@ -18,15 +18,16 @@ which creates both the first- and second-order filter banks.
 from kymatio.scattering1d.filter_bank import anden_generator, scattering_filter_factory
 
 ###############################################################################
-# We then import `math`, `matplotlib`, and `numpy` to display the filters.
+# We then import `matplotlib` and `numpy` to display and process the filters,
+# respectively.
 
-from math import sqrt
 import matplotlib.pyplot as plt
 import numpy as np
 
 ###############################################################################
 # Filter parameters and generation
 # --------------------------------
+#
 # The filters are defined for a certain support size `N` which corresponds to
 # the size of the input signal. The only restriction is that `N` must be a
 # power of two. Since we are not computing any scattering transforms here, we
@@ -48,7 +49,7 @@ J = 5
 # (in general, the number of non-negligible oscillations in time is proportional
 # to `Q`). For audio signals, it is often beneficial to have a large value for
 # `Q1` (between 4 and 16), since these signals are often highly oscillatory and
-#are better localized in frequency than they are in time. For the second layer,
+# are better localized in frequency than they are in time. For the second layer,
 # `Q2` is typically equal to 1 or 2. In this example, we set Q1=8 and Q2=1. Hence:
 
 Q = (8, 1)
@@ -67,7 +68,7 @@ T = 2**J
 # first-order wavelet filters (`psi1_f`), and the second-order filters
 # (`psi2_f`).
 
-filterbank = (anden_generator, {"alpha": 5, "r_psi": sqrt(1/2), "sigma0": 5})
+filterbank = (anden_generator, {"alpha": 5, "r_psi": np.sqrt(1/2), "sigma0": 5})
 phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T, filterbank)
 
 ###############################################################################
@@ -83,14 +84,13 @@ phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T, filterbank)
 ###############################################################################
 # Plot the frequency response of the filters
 # ------------------------------------------
+#
 # We are now ready to plot the frequency response of the filters.
 # We first display the lowpass filter (at full resolution) in red.
 # We then plot each of the bandpass filters in blue. Since we don't care about
 # the negative frequencies, we limit the plot to the frequency interval
 # $[0, 0.5]$.
 
-plt.figure()
-plt.rcParams.update({"text.usetex": True})
 plt.plot(np.arange(N)/N, phi_f['levels'][0], 'r')
 
 for psi_f in psi1_f:
@@ -102,13 +102,12 @@ plt.xlabel(r'$\omega$', fontsize=18)
 plt.ylabel(r'$\hat\psi_j(\omega)$', fontsize=18)
 plt.title('Frequency response of first-order filters (Q = {})'.format(Q),
           fontsize=12)
+plt.show()
 
 ###############################################################################
 # Do the same plot for the second-order filters. Note that since here `Q = 1`,
 # we obtain wavelets that have higher frequency bandwidth.
 
-plt.figure()
-plt.rcParams.update({"text.usetex": True})
 plt.plot(np.arange(N)/N, phi_f['levels'][0], 'r')
 for psi_f in psi2_f:
     plt.plot(np.arange(N)/N, psi_f['levels'][0], 'b')
@@ -117,17 +116,16 @@ plt.ylim(0, 1.2)
 plt.xlabel(r'$\omega$', fontsize=18)
 plt.ylabel(r'$\hat\psi_j(\omega)$', fontsize=18)
 plt.title('Frequency response of second-order filters (Q = 1)', fontsize=12)
+plt.show()
 
 ###############################################################################
 # Plot the filter in time domain
-# ------------------
+# ------------------------------
+#
 # The filters have been generated directly in the frequency domain to efficiently
 # compute the convolution using the fft. By applying the ifft we get the filters
 # in the time domain yielding analytic wavelets. We plot the first-order largest
 # wavelet band-pass filter here.
-
-plt.figure()
-plt.rcParams.update({"text.usetex": True})
 
 psi_time = np.fft.ifft(psi1_f[-1]['levels'][0])
 psi_real = np.real(psi_time)
@@ -140,5 +138,4 @@ plt.xlabel(r'$t$', fontsize=18)
 plt.ylabel(r'$\psi(t)$', fontsize=18)
 plt.title('First-order filter - Time domain (Q = {})'.format(Q), fontsize=12)
 plt.legend(["$\psi$_real","$\psi$_imag"])
-
 plt.show()
