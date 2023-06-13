@@ -49,6 +49,5 @@ jobs:
                   TOKEN: ${{ secrets.TOKEN }}
                   DOC_REPO: kymatio/kymatio.github.io
                   DOC_ROOT: doc/build/html
-              run: |
-                  echo "Uploading..."
+              run: "tools/push_doc.sh"
               if: ${{ github.event.inputs.upload == 'yes' }}
