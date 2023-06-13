@@ -113,3 +113,10 @@ class TestScattering2DTensorFlow:
         with pytest.raises(RuntimeError) as ve:
             scattering = Scattering2D(10, shape=(10, 10), frontend='tensorflow')
         assert 'smallest dimension' in ve.value.args[0]
+
+class TestScatteringPad2DTensorFlow:
+    @pytest.mark.parametrize('backend', backends)
+    def test_Scattering2D_pad(self, backend):
+        scattering = Scattering2D(J=5, shape=(32, 32), pre_pad=False, frontend="tensorflow", backend=backend)
+        test_im = np.ones((1,1,32,32))
+        test = scattering(test_im)
