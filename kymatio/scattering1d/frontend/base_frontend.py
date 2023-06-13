@@ -437,7 +437,7 @@ class ScatteringBase1D(ScatteringBase):
             Sx = S.scattering(x)
 
             # Equivalently, use the alias.
-            Sx = S{alias_call}(x)
+            Sx = S{alias_call}
 
         Above, the length of the signal is :math:`N = 2^{{13}} = 8192`, while the
         maximum scale of the scattering transform is set to :math:`2^J = 2^6 =
@@ -552,7 +552,7 @@ class ScatteringBase1D(ScatteringBase):
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
-            alias_call=cls._doc_alias_call,
+            alias_call=cls._doc_alias_call.format(x="x"),
             instantiation=instantiation,
             param_shape=param_shape,
             attrs_shape=attrs_shape,

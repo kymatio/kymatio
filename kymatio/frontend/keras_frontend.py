@@ -21,7 +21,7 @@ class ScatteringKeras(Layer):
 
     _doc_alias_name = 'call'
 
-    _doc_alias_call = ''
+    _doc_alias_call = '({x})'
 
     _doc_frontend_paragraph = \
         """

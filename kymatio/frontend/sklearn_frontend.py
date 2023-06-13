@@ -7,10 +7,10 @@ class ScatteringTransformerMixin(BaseEstimator, TransformerMixin):
         return self
 
     def predict(self, x):
-        n_samples = x.shape[0]
+        batch_shape = x.shape[:-1]
         x = x.reshape((-1,) + self.shape)
         Sx = self.scattering(x)
-        Sx = Sx.reshape(n_samples, -1)
+        Sx = Sx.reshape(batch_shape + (-1,))
 
         return Sx
 
@@ -21,7 +21,7 @@ class ScatteringTransformerMixin(BaseEstimator, TransformerMixin):
 
     _doc_alias_name = 'predict'
 
-    _doc_alias_call = '.predict'
+    _doc_alias_call = '.predict({x}.flatten())'
 
     _doc_frontend_paragraph = \
         """
@@ -31,7 +31,7 @@ class ScatteringTransformerMixin(BaseEstimator, TransformerMixin):
         extension, it can be included as part of a scikit-learn `Pipeline`.
         """
 
-    _doc_sample = 'np.random.randn(np.prod({shape}))'
+    _doc_sample = 'np.random.randn({shape})'
 
     _doc_has_shape = True
 
