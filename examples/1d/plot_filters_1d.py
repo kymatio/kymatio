@@ -68,7 +68,7 @@ T = 2**J
 # first-order wavelet filters (`psi1_f`), and the second-order filters
 # (`psi2_f`).
 
-filterbank = (anden_generator, {"alpha": 5, "r_psi": np.sqrt(1/2), "sigma0": 5})
+filterbank = (anden_generator, {"alpha": 5, "r_psi": np.sqrt(1/2), "sigma0": 0.1})
 phi_f, psi1_f, psi2_f = scattering_filter_factory(N, J, Q, T, filterbank)
 
 ###############################################################################
