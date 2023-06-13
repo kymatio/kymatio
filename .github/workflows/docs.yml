@@ -1,7 +1,12 @@
 name: Kymatio build and upload docs
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: 'Upload to GitHub pages (yes or no)'
+        default: 'no'
+        required: true
 
 jobs:
     docs:
@@ -26,13 +31,17 @@ jobs:
                               torchvision==0.12.0+cpu \
                               -f https://download.pytorch.org/whl/torch_stable.html
             - name: Set up Kymatio
-              run: python3 setup.py develop
+              run: python3 -m pip install -e .
             - name: Generate documentation
               run: |
                   pushd doc
                   make clean
                   make html
                   popd
+            - name: Upload artifact
+              uses: actions/upload-artifact@v3
+              with:
+                path: doc/build/html
             - name: Upload to GitHub pages
               env:
                   GITHUB_ACTOR: ${{ github.actor }}
@@ -40,4 +49,6 @@ jobs:
                   TOKEN: ${{ secrets.TOKEN }}
                   DOC_REPO: kymatio/kymatio.github.io
                   DOC_ROOT: doc/build/html
-              run: "tools/push_doc.sh"
+              run: |
+                  echo "Uploading..."
+              if: ${{ github.event.inputs.upload == 'yes' }}
