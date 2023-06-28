@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.2.2-devel-ubuntu20.04
+FROM nvidia/cuda:11.7.1-devel-ubuntu20.04
 
 RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
 
@@ -26,7 +26,7 @@ RUN python3 -m pip install \
       'numpy>=1.16' \
       scipy \
       configparser \
-      'torchvision==0.8.2' \
+      torchvision \
       torch \
       jaxlib \
       jax \
