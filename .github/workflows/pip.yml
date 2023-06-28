@@ -10,11 +10,11 @@ jobs:
 
         strategy:
             matrix:
-                python-version: ['3.7', '3.8', '3.9']
-                pytorch-version: ['1.10', '1.11']
+                python-version: ['3.8', '3.9', '3.10']
+                pytorch-version: ['1.13', '2.0']
                 include:
-                    - python-version: '3.10'
-                      pytorch-version: '1.11'
+                  - python-version: '3.7'
+                    pytorch-version: '1.13'
 
         steps:
             - uses: actions/checkout@v1
@@ -27,14 +27,14 @@ jobs:
                   python3 -m pip install --upgrade pip
                   python3 -m pip install pytest pytest-cov
 
-                  if [ ${{ matrix.pytorch-version }} == '1.10' ]; then
-                      pip install torch==1.10.1+cpu \
-                                  torchvision==0.11.2+cpu \
-                                  -f https://download.pytorch.org/whl/torch_stable.html
-                  elif [ ${{ matrix.pytorch-version }} == '1.11' ]; then
-                      pip install torch==1.11.0+cpu \
-                                  torchvision==0.12.0+cpu \
-                                  -f https://download.pytorch.org/whl/torch_stable.html
+                  if [ ${{ matrix.pytorch-version }} == '1.13' ]; then
+                      pip install torch==1.13.1+cpu \
+                                  torchvision==0.14.1+cpu \
+                                  --extra-index-url https://download.pytorch.org/whl/cpu
+                  elif [ ${{ matrix.pytorch-version }} == '2.0' ]; then
+                      pip install torch==2.0.0+cpu \
+                                  torchvision==0.15.1+cpu \
+                                  --index-url https://download.pytorch.org/whl/cpu
                   fi
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
