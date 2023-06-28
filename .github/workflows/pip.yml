@@ -15,7 +15,8 @@ jobs:
                 include:
                   - python-version: '3.7'
                     pytorch-version: '1.13'
-
+                  - python-version: '3.11'
+                    pytorch-version: '2.0'
         steps:
             - uses: actions/checkout@v1
             - name: Set up Python ${{ matrix.python-version }}
