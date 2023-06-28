@@ -10,8 +10,11 @@ jobs:
 
         strategy:
             matrix:
-                python-version: ['3.7', '3.8', '3.9', '3.10']
-                pytorch-version: ['1.10', '1.11']
+                python-version: ['3.8', '3.9', '3.10']
+                pytorch-version: ['1.13', '2.0']
+                include:
+                  - python-version: '3.7'
+                    pytorch-version: '1.13'
 
         env:
             CONDA_ENV: test-env-py${{ matrix.python-version }}-torch${{ matrix.pytorch-version }}
