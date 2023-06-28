@@ -1,7 +1,5 @@
 FROM nvidia/cuda:11.7.1-devel-ubuntu20.04
 
-RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub
-
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
       libcudnn8 \
