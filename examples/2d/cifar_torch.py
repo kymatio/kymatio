@@ -168,9 +168,8 @@ if __name__ == '__main__':
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9,
                                         weight_decay=0.0005)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.2)
-    for epoch in range(0, 90):
-        if epoch%20==0:
-            scheduler.step()
 
+    for epoch in range(0, 90):
         train(model, device, train_loader, optimizer, epoch+1, scattering)
+        scheduler.step()
         test(model, device, test_loader, scattering)
