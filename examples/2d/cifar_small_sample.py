@@ -228,13 +228,11 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9,
                                         weight_decay=0.0005)
     M = args.learning_schedule_multi
-    drops = [60*M,120*M,160*M]
+    drops = [0, 60*M,120*M,160*M]
+    scheduler = torch.optim.MultiStepLR(optimizer, drops, gamma=0.2)
     for epoch in range(0, 200*M):
-        if epoch in drops or epoch==0:
-            for param_group in optimizer.param_groups:
-                param_group['lr'] *= 0.2
-
         train(model, device, train_loader, optimizer, epoch+1, scattering)
+        scheduler.step()
         if epoch%10==0:
             test(model, device, test_loader, scattering)
 
