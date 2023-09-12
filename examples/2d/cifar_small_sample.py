@@ -228,7 +228,7 @@ def main():
     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9,
                                         weight_decay=0.0005)
     M = args.learning_schedule_multi
-    drops = [0, 60*M,120*M,160*M]
+    drops = [60*M,120*M,160*M]
     scheduler = torch.optim.MultiStepLR(optimizer, drops, gamma=0.2)
     for epoch in range(0, 200*M):
         train(model, device, train_loader, optimizer, epoch+1, scattering)
