@@ -25,7 +25,7 @@ RUN python3 -m pip install \
       scipy \
       configparser \
       torchvision \
-      torch \
+      'torch==2.0' \
       jaxlib \
       jax \
       scikit-cuda \
