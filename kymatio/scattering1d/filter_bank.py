@@ -402,3 +402,7 @@ def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.sum):
         'N': N}
 
     return tuple([phi_f] + psis_f)
+
+
+def default_filterbank():
+    return (scatnet_generator, {"alpha": 5, "r_psi": np.sqrt(1/2), "sigma0": 0.1})
