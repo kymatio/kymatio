@@ -199,7 +199,7 @@ We wish to thank the Scientific Computing Core at the Flatiron Institute for the
 
 We would also like to thank École Normale Supérieure for their support.
 
-[![ENS](https://www.ens.fr/sites/default/files/inline-images/logo.jpg)](https://www.ens.fr/)
+[![ENS](https://kymat.io/_static/ens_logo.jpg)](https://www.ens.fr/)
 
 ## Kymatio
 
