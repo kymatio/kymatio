@@ -38,8 +38,8 @@ jobs:
                                   torchvision==0.14.1+cpu \
                                   --extra-index-url https://download.pytorch.org/whl/cpu
                   elif [ ${{ matrix.pytorch-version }} == '2.0' ]; then
-                      pip install torch==2.0.0+cpu \
-                                  torchvision==0.15.1+cpu \
+                      pip install torch==2.0.1+cpu \
+                                  torchvision==0.15.2+cpu \
                                   --index-url https://download.pytorch.org/whl/cpu
                   fi
                   python3 -m pip install "tensorflow>=2.0.0a"
