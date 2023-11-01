@@ -17,11 +17,10 @@ class ScatteringTensorFlow(tf.Module):
 
     _doc_alias_call = ''
 
-    _doc_frontend_paragraph = \
-        """
+    _doc_frontend_paragraph = r"""
+
         This class inherits from `tf.Module`. As a result, it has all the
-        same capabilities as a standard TensorFlow `Module`.
-        """
+        same capabilities as a standard TensorFlow `Module`."""
 
     _doc_sample = 'np.random.randn({shape})'
 

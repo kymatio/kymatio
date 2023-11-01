@@ -39,8 +39,7 @@ class ScatteringBase3D(ScatteringBase):
     r"""The 3D solid harmonic scattering transform
 
         This class implements solid harmonic scattering on a 3D input image.
-        For details see https://arxiv.org/abs/1805.00571.
-        {frontend_paragraph}
+        For details see https://arxiv.org/abs/1805.00571.{frontend_paragraph}
 
         Example
         -------
