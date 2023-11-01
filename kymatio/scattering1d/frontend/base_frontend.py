@@ -458,8 +458,12 @@ class ScatteringBase1D(ScatteringBase):
             i.e. Q = (Q1, Q2), where Q1 and Q2 are the number of wavelets per
             octave for the first and second order, respectively.
         T : int
-            temporal support of low-pass filter, controlling amount of imposed
-            time-shift invariance and maximum subsampling
+            The temporal support of low-pass filter, controlling amount of imposed
+            time-shift invariance and maximum subsampling.:
+        stride : int
+            The stride with which the scattering transform is sampled.
+            When set to `1`, no subsampling is performed. Must be a power of
+            two. Defaults to `2 ** J`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
@@ -471,7 +475,9 @@ class ScatteringBase1D(ScatteringBase):
             performance. However, this may reduce precision in the
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
-            may be modified after object creation. Defaults to `0`.
+            may be modified after object creation. Defaults to `0`. This
+            parameter is deprecated and will be removed in v0.5. Please use
+            `stride` instead.
         {param_vectorize}
         Attributes
         ----------
