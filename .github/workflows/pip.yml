@@ -13,8 +13,6 @@ jobs:
                 python-version: ['3.8', '3.9', '3.10']
                 pytorch-version: ['1.13', '2.0']
                 include:
-                  - python-version: '3.7'
-                    pytorch-version: '1.13'
                   - python-version: '3.11'
                     pytorch-version: '2.0'
         steps:
@@ -40,8 +38,7 @@ jobs:
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
 
-                  # Ensure py37 support.
-                  python3 -m pip install "jax<=0.4.19" "jaxlib<=0.4.19"
+                  python3 -m pip install jax jaxlib
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt
