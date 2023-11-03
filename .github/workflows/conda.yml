@@ -44,6 +44,13 @@ jobs:
 
                   conda run -n ${CONDA_ENV} python3 -m pip install jaxlib jax
 
+                  # Ensure py37 support.
+                  if [ ${{ matrix.python-version }} == '3.7' ]; then
+                      conda run -n ${CONDA_ENV} python3 -m pip install "jax<=0.3.25" "jaxlib<=0.3.25"
+                  else
+                      conda run -n ${CONDA_ENV} python3 -m pip install jax jaxlib
+                  fi
+
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt
             - name: Set up Kymatio

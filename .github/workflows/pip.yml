@@ -41,7 +41,11 @@ jobs:
                   python3 -m pip install scikit-learn
 
                   # Ensure py37 support.
-                  python3 -m pip install "jax<=0.4.19" "jaxlib<=0.4.19"
+                  if [ ${{ matrix.python-version }} == '3.7' ]; then
+                      python3 -m pip install "jax<=0.3.25" "jaxlib<=0.3.25"
+                  else
+                      python3 -m pip install jax jaxlib
+                  fi
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt
