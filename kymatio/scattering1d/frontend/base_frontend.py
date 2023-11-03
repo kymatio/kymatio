@@ -507,6 +507,14 @@ class ScatteringBase1D(ScatteringBase):
             param_vectorize=param_vectorize,
             attr_vectorize=attr_vectorize,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
+        # Sphinx will not show docstrings for inherited methods, so we add a
+        # dummy method here that will just call the super.
+
+        if not "scattering" in cls.__dict__:
+            def _scattering(self, x):
+                return super(cls, self).scattering(x)
+
+            setattr(cls, "scattering", _scattering)
 
         cls.scattering.__doc__ = ScatteringBase1D._doc_scattering.format(
             array=cls._doc_array,

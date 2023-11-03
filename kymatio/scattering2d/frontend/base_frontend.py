@@ -219,6 +219,15 @@ class ScatteringBase2D(ScatteringBase):
             attr_out_type=attr_out_type,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
 
+        # Sphinx will not show docstrings for inherited methods, so we add a
+        # dummy method here that will just call the super.
+        if not "scattering" in cls.__dict__:
+            def _scattering(self, x):
+                return super(cls, self).scattering(x)
+
+            setattr(cls, "scattering", _scattering)
+
+
         cls.scattering.__doc__ = ScatteringBase2D._doc_scattering.format(
             array=cls._doc_array,
             n=cls._doc_array_n)
