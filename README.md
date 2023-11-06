@@ -4,7 +4,7 @@ Kymatio: Wavelet scattering in Python
 Kymatio is an implementation of the wavelet scattering transform in the Python programming language, suitable for large-scale numerical experiments in signal processing and machine learning.
 Scattering transforms are translation-invariant signal representations implemented as convolutional networks whose filters are not learned, but fixed (as wavelet filters).
 
-[![PyPI](https://img.shields.io/badge/Python-3.7%2C_3.8%2C_3.9%2C_3.10-blue.svg)](https://pypi.org/project/kymatio/)
+[![PyPI](https://img.shields.io/badge/Python-3.8%2C_3.9%2C_3.10-blue.svg)](https://pypi.org/project/kymatio/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 ![Build status](https://github.com/kymatio/kymatio/actions/workflows/pip.yml/badge.svg)
 [![Downloads](https://pepy.tech/badge/kymatio)](https://pepy.tech/project/kymatio)
