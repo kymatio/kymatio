@@ -73,7 +73,7 @@ setup_info = dict(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     license=LICENSE,
     packages=find_packages(exclude=('test',)),
     install_requires=REQUIREMENTS,
