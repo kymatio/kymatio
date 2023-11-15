@@ -568,9 +568,9 @@ class ScatteringBase1D(ScatteringBase):
 
 
 class TimeFrequencyScatteringBase(ScatteringBase1D):
-    def __init__(self, *, J, J_fr, shape, Q, T=None, stride=None,
+    def __init__(self, J, J_fr, Q, shape, T=None, stride=None,
             Q_fr=1, F=None, stride_fr=None,
-            out_type='array', format='joint', backend=None):
+            out_type='array', format='time', backend=None):
         max_order = 2
         oversampling = None
         super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,

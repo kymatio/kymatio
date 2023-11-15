@@ -36,11 +36,10 @@ class TimeFrequencyScatteringTensorFlow(
 ):
     def __init__(
         self,
-        *,
         J,
         J_fr,
-        shape,
         Q,
+        shape,
         T=None,
         stride=None,
         Q_fr=1,
@@ -48,7 +47,7 @@ class TimeFrequencyScatteringTensorFlow(
         stride_fr=None,
         out_type="array",
         backend="tensorflow",
-        format="joint",
+        format="time",
         name="TimeFrequencyScattering"
     ):
         ScatteringTensorFlow.__init__(self, name=name)
@@ -56,8 +55,8 @@ class TimeFrequencyScatteringTensorFlow(
             self,
             J=J,
             J_fr=J_fr,
-            shape=shape,
             Q=Q,
+            shape=shape,
             T=T,
             stride=stride,
             Q_fr=Q_fr,
