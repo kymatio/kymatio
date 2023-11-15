@@ -505,12 +505,12 @@ def test_jtfs_numpy_and_sklearn(frontend):
     assert S.F == (2**S.J_fr)
     Sx = S(x)
     assert isinstance(Sx, np.ndarray)
-    assert Sx.ndim == 3
+    assert Sx.ndim == 2
 
     # Global averaging
     S = TimeFrequencyScattering(frontend=frontend, T="global", **kwargs)
     Sx = S(x)
-    assert Sx.ndim == 3
+    assert Sx.ndim == 2
     assert Sx.shape[-1] == 1
 
     # Dictionary output
@@ -521,7 +521,7 @@ def test_jtfs_numpy_and_sklearn(frontend):
     # List output
     S = TimeFrequencyScattering(frontend=frontend, out_type="list", T=0, F=0, **kwargs)
     Sx = S(x)
-    assert all([path["coef"].ndim == 2 for path in Sx if path["order"] > 0])
+    assert all([path["coef"].ndim == 1 for path in Sx if path["order"] > 0])
 
     # meta()
     meta = S.meta()
