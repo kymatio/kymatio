@@ -758,5 +758,179 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
     def stride_fr(self):
         return (2**self.log2_stride_fr)
 
+    _doc_instantiation_shape = {True:
+                                'S = TimeFrequencyScattering(J_time, J_freq, Q, N)',
+                                False:
+                                'S = TimeFrequencyScattering(J_time, J_freq, Q)'}
+
+    _doc_class = \
+    r"""The joint time-frequency scattering transform (JTFS)
+
+        The joint time-frequency scattering transform first decomposes a
+        signal in frequency using a wavelet filter bank, then computes a
+        second wavelet decomposition in this time-frequency domain using a
+        2D wavelet transform. In particular, given a 1D signal $x(t)$,
+        we define the scalogram
+
+            $X(t, \lambda) = |x \star \psi_\lambda(t)|,$
+
+        where $\star$ denotes convolution and $\psi_\lambda(t)$ is a wavelet
+        centered at frequency $2^\lambda$, that is, centered at log-frequency
+        $\lambda$. The scattering transform may now be written as
+
+            $S_J x = [S_J^{{(0)}} x, S_J^{{(1)}} x, S_J^{{(2)}} x]$
+
+        where
+
+            $S_J^{{(0)}} x(t) = x \star \phi_J(t)$,
+
+            $S_J^{{(1)}} x(t, \lambda) = X \star \Phi_{{T,F}}(t, \lambda)$
+
+            $S_J^{{(2)}} x(t, \lambda, \mu, \ell, s) = |X \star \Psi_{{\mu,
+            \ell, s}}| \star \Phi_{{T,F}}(t, \lambda)$
+
+        Here, $\Phi_{{T,F}}(t, \lambda)$ is a lowpass filter with extent $T$
+        in time and $F$ in log-frequency, while $\Psi_{{\mu, \ell, s}}(t,
+        \lambda)$ is a two-dimensional wavelet with time frequency $2^\mu$,
+        quefrency $2^\ell$ and direction $s$ ($1$ for up, $-1$ for down).
+
+        The `TimeFrequencyScattering` class implements the joint
+        time-frequency scattering transform for a given set of filters whose
+        parameters are specified at initialization.{frontend_paragraph}
+
+        Given an input `{array}` `x` of shape `(B, N)`, where `B` is the
+        number of signals to transform (the batch size) and `N` is the length
+        of the signal, we compute its scattering transform by passing it to
+        the `scattering` method (or calling the alias `{alias_name}`). Note
+        that `B` can be one, in which case it may be omitted, giving an input
+        of shape `(N,)`.
+
+        Example
+        -------
+        ::
+
+            # Set the parameters of the scattering transform.
+            J_time = 6
+            J_freq = 2
+            N = 2 ** 13
+            Q = 8
+
+            # Generate a sample signal.
+            x = {sample}
+
+            # Define a TimeFrequencyScattering object.
+            {instantiation}
+
+            # Calculate the scattering transform.
+            Sx = S.scattering(x)
+
+            # Equivalently, use the alias.
+            Sx = S{alias_call}
+
+        Above, the length of the signal is $N = 2^{{13}} = 8192$, while the
+        maximum time scale of the transform is set to
+        $2^{{J_{{\text{{time}}}}}} = 2^6 = 64$ and the maximum frequency scale
+        is set to $2^{{J_{{\text{{freq}}}}}} = 2^2 = 4$. The time-frequency
+        resolution of the first-order wavelets :math:`\psi_\lambda(t)` is set
+        to `Q = 8` wavelets per octave. The second-order wavelets $\Psi_{{\mu,
+        \ell, s}}(t, \lambda)$ default to one wavelet per octave in both the
+        time and log-frequency axes.
+
+        Parameters
+        ----------
+        J : int
+            The maximum log-scale in time of the scattering transform. In
+            other words, the maximum time scale is given by $2^J$.
+        J_fr : int
+            The maximum log-scale in log-frequency of the scattering
+            transform. In other words, the maximum log-frequency scale is
+            given by $2^{{J_\text{{fr}}}}$, measured in number of filters, where
+            $Q$ filters (see below) make up an octave.
+        Q : int or tuple
+            By default, Q (int) is the number of wavelets per octave for the first
+            order and second order has one wavelet per octave in time. This
+            default value can be modified by passing Q as a tuple with two values,
+            i.e. `Q = (Q1, Q2)`, where `Q1` and `Q2` are the number of wavelets per
+            octave for the first and second order, respectively.
+        T : int
+            The temporal support of low-pass filter, controlling amount of imposed
+            time-shift invariance and maximum subsampling.
+        stride : int
+            The stride with which the scattering transform is sampled.
+            When set to `1`, no subsampling is performed. Must be a power of
+            two. Defaults to `2 ** J`.
+        Q_fr : int
+            The number of wavelets per octave in frequency for the
+            second-order wavelets. Defaults to `1`.
+        F : int
+            The log-frequency support of low-pass filter, controlling amount
+            of imposed transposition invariance and maximum subsampling.
+            Measured in number of filters, where we have `Q1 filtersper octave
+            (see above).
+        stride_fr : int
+            The stride with which the scattering transform is sampled along
+            the log-frequency axis. When set to `1`, no subsampling is
+            performed. Must be a power of two. Defaults to `2 ** J_fr`.{param_vectorize}
+        format : str
+            Either `time` (default) or `joint`. In the former case, all
+            coefficient are mixed along the channel dimension, aggregating the
+            first-order filter index, the second-order time filter index, and
+            the second order frequency filter index. For the `joint` format,
+            the first-order filter index is separated out, yielding a stack of
+            time-frequency images indexed by the second-order time filter
+            index and the second-order frequency filter index.
+
+        Attributes
+        ----------
+        J : int
+            The maximum log-scale of the transform in time. In other words,
+            the maximum scale is given by `2 ** J`.
+        J_fr : int
+            The maximum log-scale of the transform in log-frequency. In other
+            words, the maximum scale is given by `2 ** J_fr`.
+        Q : int
+            The number of first-order wavelets per octave (second-order
+            wavelets are fixed to one wavelet per octave).{param_shape}
+        T : int
+            Temporal support of low-pass filter, controlling amount of imposed
+            time-shift invariance and maximum subsampling.
+        F : int
+            Log-frequency support of low-pass filter, controlling amount of
+            imposed transposition invariance and maximum
+            subsampling.{attrs_shape}{attr_vectorize}
+"""
+
+    _doc_scattering = \
+    """Apply the scattering transform
+
+       Given an input `{array}` of size `(B, N)`, where `B` is the batch
+       size (it can be potentially an integer or a shape) and `N` is the length
+       of the individual signals, this function computes its scattering
+       transform. If the `out_type` is set to `'array'` and `format` is set to
+       `'time'`, the output is in the form of a `{array}` of size `(B, C, N1)`,
+       where `N1` is the signal length after subsampling to the scale :math:`2^J`
+       (with the appropriate oversampling factor to reduce aliasing), and `C` is
+       the number of scattering coefficients. If `format` is set to `'joint',
+       the shape will be `(B, C, L1, N1)`, where `L1` is the number of
+       frequency indices after subsampling and `C` is the number of
+       second-order scattering coefficients. If `out_type` is set to `'list'`,
+       however, the output is a list of dictionaries, each dictionary
+       corresponding to a scattering coefficient and its associated meta
+       information. The coefficient is stored under the `'coef'` key, while
+       other keys contain additional information, such as `'j'` (the scale of
+       the filter used) and `'n`' (the filter index).
+
+       Parameters
+       ----------
+       x : {array}
+           An input `{array}` of size `(B, N)`.
+
+       Returns
+       -------
+       S : tensor or list
+           If `out_type` is `'array'` the output is a{n} `{array}` containing
+           the scattering coefficients, while if `out_type` is `'list'`, the
+           output is a list of dictionaries as described above."""
+
 
 __all__ = ['ScatteringBase1D', 'TimeFrequencyScatteringBase']
