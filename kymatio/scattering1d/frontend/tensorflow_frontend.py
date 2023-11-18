@@ -73,4 +73,7 @@ class TimeFrequencyScatteringTensorFlow(
         TimeFrequencyScatteringBase.create_filters(self)
 
 
+TimeFrequencyScatteringTensorFlow._document()
+
+
 __all__ = ["ScatteringTensorFlow1D", "TimeFrequencyScatteringTensorFlow"]

@@ -152,4 +152,7 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBas
                 n += 1
 
 
+TimeFrequencyScatteringTorch._document()
+
+
 __all__ = ["ScatteringTorch1D", "TimeFrequencyScatteringTorch"]
