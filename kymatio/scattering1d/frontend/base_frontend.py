@@ -496,7 +496,7 @@ class ScatteringBase1D(ScatteringBase):
         param_vectorize = cls._doc_param_vectorize if cls._doc_has_out_type else ''
         attr_vectorize = cls._doc_attr_vectorize if cls._doc_has_out_type else ''
 
-        cls.__doc__ = ScatteringBase1D._doc_class.format(
+        cls.__doc__ = cls._doc_class.format(
             array=cls._doc_array,
             frontend_paragraph=cls._doc_frontend_paragraph,
             alias_name=cls._doc_alias_name,
@@ -516,7 +516,7 @@ class ScatteringBase1D(ScatteringBase):
 
             setattr(cls, "scattering", _scattering)
 
-        cls.scattering.__doc__ = ScatteringBase1D._doc_scattering.format(
+        cls.scattering.__doc__ = cls._doc_scattering.format(
             array=cls._doc_array,
             n=cls._doc_array_n)
 
