@@ -39,8 +39,7 @@ class ScatteringBase3D(ScatteringBase):
     r"""The 3D solid harmonic scattering transform
 
         This class implements solid harmonic scattering on a 3D input image.
-        For details see https://arxiv.org/abs/1805.00571.
-        {frontend_paragraph}
+        For details see https://arxiv.org/abs/1805.00571.{frontend_paragraph}
 
         Example
         -------
@@ -118,6 +117,14 @@ class ScatteringBase3D(ScatteringBase):
             alias_name=cls._doc_alias_name,
             alias_call=cls._doc_alias_call.format(x="x"),
             sample=cls._doc_sample.format(shape=cls._doc_shape))
+
+        # Sphinx will not show docstrings for inherited methods, so we add a
+        # dummy method here that will just call the super.
+        if not "scattering" in cls.__dict__:
+            def _scattering(self, x):
+                return super(cls, self).scattering(x)
+
+            setattr(cls, "scattering", _scattering)
 
         cls.scattering.__doc__ = ScatteringBase3D._doc_scattering.format(
             array=cls._doc_array,

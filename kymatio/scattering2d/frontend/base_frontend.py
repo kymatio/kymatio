@@ -56,37 +56,34 @@ class ScatteringBase2D(ScatteringBase):
     _doc_instantiation_shape = {True: 'S = Scattering2D(J, (M, N))',
                                 False: 'S = Scattering2D(J)'}
 
-    _doc_param_shape = \
-    r"""shape : tuple of ints
-            Spatial support (M, N) of the input
-        """
+    _doc_param_shape = r"""
+        shape : tuple of ints
+            Spatial support (M, N) of the input."""
 
-    _doc_attrs_shape = \
-    r"""Psi : dictionary
+    _doc_attrs_shape = r"""
+        Psi : dictionary
             Contains the wavelets filters at all resolutions. See
             `filter_bank.filter_bank` for an exact description.
         Phi : dictionary
             Contains the low-pass filters at all resolutions. See
             `filter_bank.filter_bank` for an exact description.
         M_padded, N_padded : int
-             Spatial support of the padded input.
-        """
+             Spatial support of the padded input."""
 
-    _doc_param_out_type = \
-    r"""out_type : str, optional
+    _doc_param_out_type = r"""
+        out_type : str, optional
             The format of the output of a scattering transform. If set to
             `'list'`, then the output is a list containing each individual
             scattering path with meta information. Otherwise, if set to
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
-            `'array'`.
-        """
+            `'array'`."""
 
-    _doc_attr_out_type = \
-    r"""out_type : str
+    _doc_attr_out_type = r"""
+        out_type : str
             The format of the scattering output. See documentation for
-            `out_type` parameter above and the documentation for `scattering`.
-        """
+            `out_type` parameter above and the documentation for
+            `scattering`."""
 
     _doc_class = \
     r"""The 2D scattering transform
@@ -109,8 +106,8 @@ class ScatteringBase2D(ScatteringBase):
         lowpass filter, $\psi^{{(1)}}_\lambda$ is a family of bandpass filters
         and $\psi^{{(2)}}_\mu$ is another family of bandpass filters. Only
         Morlet filters are used in this implementation. Convolutions are
-        efficiently performed in the Fourier domain.
-        {frontend_paragraph}
+        efficiently performed in the Fourier domain.{frontend_paragraph}
+
         Example
         -------
         ::
@@ -134,8 +131,8 @@ class ScatteringBase2D(ScatteringBase):
         Parameters
         ----------
         J : int
-            Log-2 of the scattering scale.
-        {param_shape}L : int, optional
+            Log-2 of the scattering scale.{param_shape}
+        L : int, optional
             Number of angles used for the wavelet transform. Defaults to `8`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
@@ -145,13 +142,13 @@ class ScatteringBase2D(ScatteringBase):
             applied on the signal. If set to True, the software will assume
             the signal was padded externally. Defaults to `False`.
         backend : object, optional
-            Controls the backend which is combined with the frontend.
-        {param_out_type}
+            Controls the backend which is combined with the frontend.{param_out_type}
+
         Attributes
         ----------
         J : int
-            Log-2 of the scattering scale.
-        {param_shape}L : int, optional
+            Log-2 of the scattering scale.{param_shape}
+        L : int, optional
             Number of angles used for the wavelet transform.
         max_order : int, optional
             The maximum order of scattering coefficients to compute.
@@ -159,15 +156,14 @@ class ScatteringBase2D(ScatteringBase):
         pre_pad : boolean
             Controls the padding: if set to False, a symmetric padding is
             applied on the signal. If set to True, the software will assume
-            the signal was padded externally.
-        {attrs_shape}{attr_out_type}
+            the signal was padded externally.{attrs_shape}{attr_out_type}
+
         Notes
         -----
         The design of the filters is optimized for the value `L = 8`.
 
         The `pre_pad` flag is particularly useful when cropping bigger images
-        because this does not introduce border effects inherent to padding.
-        """
+        because this does not introduce border effects inherent to padding."""
 
     _doc_scattering = \
     """Apply the scattering transform
@@ -222,6 +218,15 @@ class ScatteringBase2D(ScatteringBase):
             param_out_type=param_out_type,
             attr_out_type=attr_out_type,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
+
+        # Sphinx will not show docstrings for inherited methods, so we add a
+        # dummy method here that will just call the super.
+        if not "scattering" in cls.__dict__:
+            def _scattering(self, x):
+                return super(cls, self).scattering(x)
+
+            setattr(cls, "scattering", _scattering)
+
 
         cls.scattering.__doc__ = ScatteringBase2D._doc_scattering.format(
             array=cls._doc_array,

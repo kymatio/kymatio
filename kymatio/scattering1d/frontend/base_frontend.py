@@ -182,7 +182,7 @@ class ScatteringBase1D(ScatteringBase):
                 the filters used at each order (padded with NaNs).
             - `'key'` : list
                 The tuples indexing the corresponding scattering coefficient
-                in the non-vectorized output.
+                for `out_type='list'`.
         """
         backend = self._DryBackend()
         filters = [self.phi_f, self.psi1_f, self.psi2_f][:(1+self.max_order)]
@@ -304,13 +304,12 @@ class ScatteringBase1D(ScatteringBase):
     _doc_instantiation_shape = {True: 'S = Scattering1D(J, N, Q)',
                                 False: 'S = Scattering1D(J, Q)'}
 
-    _doc_param_shape = \
-    r"""shape : int
-            The length of the input signals.
-        """
+    _doc_param_shape = r"""
+        shape : int
+            The length of the input signals."""
 
-    _doc_attrs_shape = \
-    r"""pad_left : int
+    _doc_attrs_shape = r"""
+        pad_left : int
             The amount of padding to the left of the signal.
         pad_right : int
             The amount of padding to the right of the signal.
@@ -326,61 +325,25 @@ class ScatteringBase1D(ScatteringBase):
             A dictionary containing all the second-order wavelet filters, each
             represented as a dictionary containing that filter at all
             resolutions. See `filter_bank.scattering_filter_factory` for an
-            exact description.
-        """
+            exact description."""
 
-    _doc_param_average = \
-    r"""average : boolean, optional
-            Determines whether the output is averaged in time or not. The
-            averaged output corresponds to the standard scattering transform,
-            while the un-averaged output skips the last convolution by
-            :math:`\phi_J(t)`.  This parameter may be modified after object
-            creation. Defaults to `True`. Deprecated in v0.3 in favour of `T`
-            and will  be removed in v0.4. Replace `average=False` by `T=0` and
-            set `T>1` or leave `T=None` for `average=True` (default).
-        """
-
-    _doc_attr_average = \
-    r"""average : boolean
-            Controls whether the output should be averaged (the standard
-            scattering transform) or not (resulting in wavelet modulus
-            coefficients). Note that to obtain unaveraged output, the
-            `vectorize` flag must be set to `False` or `out_type` must be set
-            to `'list'`. Deprecated in favor of `T`. For more details,
-            see the documentation for `scattering`.
-     """
-
-    _doc_param_vectorize = \
-    r"""vectorize : boolean, optional
-            Determines wheter to return a vectorized scattering transform
-            (that is, a large array containing the output) or a dictionary
-            (where each entry corresponds to a separate scattering
-            coefficient). This parameter may be modified after object
-            creation. Deprecated in favor of `out_type` (see below). Defaults
-            to True.
+    _doc_param_vectorize = r"""
         out_type : str, optional
             The format of the output of a scattering transform. If set to
             `'list'`, then the output is a list containing each individual
             scattering coefficient with meta information. Otherwise, if set to
             `'array'`, the output is a large array containing the
             concatenation of all scattering coefficients. Defaults to
-            `'array'`.
-        """
+            `'array'`."""
 
-    _doc_attr_vectorize = \
-    r"""vectorize : boolean
-            Controls whether the output should be vectorized into a single
-            Tensor or collected into a dictionary. Deprecated in favor of
-            `out_type`. For more details, see the documentation for
-            `scattering`.
+    _doc_attr_vectorize = r"""
         out_type : str
             Specifices the output format of the transform, which is currently
             one of `'array'` or `'list`'. If `'array'`, the output is a large
             array containing the scattering coefficients. If `'list`', the
             output is a list of dictionaries, each containing a scattering
             coefficient along with meta information. For more information, see
-            the documentation for `scattering`.
-        """
+            the documentation for `scattering`."""
 
     _doc_class = \
     r"""The 1D scattering transform
@@ -409,8 +372,8 @@ class ScatteringBase1D(ScatteringBase):
         While the wavelets are fixed, other parameters may be changed after
         the object is created, such as whether to compute all of
         :math:`S_J^{{(0)}} x`, $S_J^{{(1)}} x$, and $S_J^{{(2)}} x$ or just
-        $S_J^{{(0)}} x$ and $S_J^{{(1)}} x$.
-        {frontend_paragraph}
+        $S_J^{{(0)}} x$ and $S_J^{{(1)}} x$.{frontend_paragraph}
+
         Given an input `{array}` `x` of shape `(B, N)`, where `B` is the
         number of signals to transform (the batch size) and `N` is the length
         of the signal, we compute its scattering transform by passing it to
@@ -450,20 +413,24 @@ class ScatteringBase1D(ScatteringBase):
         ----------
         J : int
             The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by :math:`2^J`.
-        {param_shape}Q : int or tuple
+            the maximum scale is given by :math:`2^J`.{param_shape}
+        Q : int or tuple
             By default, Q (int) is the number of wavelets per octave for the first
             order and that for the second order has one wavelet per octave. This
             default value can be modified by passing Q as a tuple with two values,
             i.e. Q = (Q1, Q2), where Q1 and Q2 are the number of wavelets per
             octave for the first and second order, respectively.
         T : int
-            temporal support of low-pass filter, controlling amount of imposed
-            time-shift invariance and maximum subsampling
+            The temporal support of low-pass filter, controlling amount of imposed
+            time-shift invariance and maximum subsampling.:
+        stride : int
+            The stride with which the scattering transform is sampled.
+            When set to `1`, no subsampling is performed. Must be a power of
+            two. Defaults to `2 ** J`.
         max_order : int, optional
             The maximum order of scattering coefficients to compute. Must be
             either `1` or `2`. Defaults to `2`.
-        {param_average}oversampling : integer >= 0, optional
+        oversampling : integer >= 0, optional
             Controls the oversampling factor relative to the default as a
             power of two. Since the convolving by wavelets (or lowpass
             filters) and taking the modulus reduces the high-frequency content
@@ -471,25 +438,26 @@ class ScatteringBase1D(ScatteringBase):
             performance. However, this may reduce precision in the
             calculation. If this is not desirable, `oversampling` can be set
             to a large value to prevent too much subsampling. This parameter
-            may be modified after object creation. Defaults to `0`.
-        {param_vectorize}
+            may be modified after object creation. Defaults to `0`. This
+            parameter is deprecated and will be removed in v0.5. Please use
+            `stride` instead.{param_vectorize}
+
         Attributes
         ----------
         J : int
             The maximum log-scale of the scattering transform. In other words,
-            the maximum scale is given by `2 ** J`.
-        {param_shape}Q : int
+            the maximum scale is given by `2 ** J`.{param_shape}
+        Q : int
             The number of first-order wavelets per octave (second-order
             wavelets are fixed to one wavelet per octave).
         T : int
             temporal support of low-pass filter, controlling amount of imposed
-            time-shift invariance and maximum subsampling
-        {attrs_shape}max_order : int
+            time-shift invariance and maximum subsampling{attrs_shape}
+        max_order : int
             The maximum scattering order of the transform.
-        {attr_average}oversampling : int
+        oversampling : int
             The number of powers of two to oversample the output compared to
-            the default subsampling rate determined from the filters.
-        {attr_vectorize}"""
+            the default subsampling rate determined from the filters.{attr_vectorize}"""
 
     _doc_scattering = \
     """Apply the scattering transform
@@ -497,30 +465,15 @@ class ScatteringBase1D(ScatteringBase):
        Given an input `{array}` of size `(B, N)`, where `B` is the batch
        size (it can be potentially an integer or a shape) and `N` is the length
        of the individual signals, this function computes its scattering
-       transform. If the `vectorize` flag is set to `True` (or if it is not
-       available in this frontend), the output is in the form of a `{array}`
-       or size `(B, C, N1)`, where `N1` is the signal length after subsampling
-       to the scale :math:`2^J` (with the appropriate oversampling factor to
-       reduce aliasing), and `C` is the number of scattering coefficients. If
-       `vectorize` is set `False`, however, the output is a dictionary
-       containing `C` keys, each a tuple whose length corresponds to the
-       scattering order and whose elements are the sequence of filter indices
-       used.
-
-       Note that the `vectorize` flag has been deprecated in favor of the
-       `out_type` parameter. If this is set to `'array'` (the default), the
-       `vectorize` flag is still respected, but if not, `out_type` takes
-       precedence. The two current output types are `'array'` and `'list'`.
-       The former gives the type of output described above. If set to
-       `'list'`, however, the output is a list of dictionaries, each
-       dictionary corresponding to a scattering coefficient and its associated
-       meta information. The coefficient is stored under the `'coef'` key,
-       while other keys contain additional information, such as `'j'` (the
-       scale of the filter used) and `'n`' (the filter index).
-
-       Furthermore, if the `average` flag is set to `False`, these outputs
-       are not averaged, but are simply the wavelet modulus coefficients of
-       the filters.
+       transform. If the `out_type` is set to `'array'`, the output is in the
+       form of a `{array}` of size `(B, C, N1)`, where `N1` is the signal length
+       after subsampling to the scale :math:`2^J` (with the appropriate oversampling
+       factor to reduce aliasing), and `C` is the number of scattering coefficients.
+       If `out_type` is set to `'list'`, however, the output is a list of
+       dictionaries, each dictionary corresponding to a scattering coefficient
+       and its associated meta information. The coefficient is stored under the
+       `'coef'` key, while other keys contain additional information, such as
+       `'j'` (the scale of the filter used) and `'n`' (the filter index).
 
        Parameters
        ----------
@@ -529,13 +482,10 @@ class ScatteringBase1D(ScatteringBase):
 
        Returns
        -------
-       S : tensor or dictionary
-           If `out_type` is `'array'` and the `vectorize` flag is `True`, the
-           output is a{n} `{array}` containing the scattering coefficients,
-           while if `vectorize` is `False`, it is a dictionary indexed by
-           tuples of filter indices. If `out_type` is `'list'`, the output is
-           a list of dictionaries as described above.
-    """
+       S : tensor or list
+           If `out_type` is `'array'` the output is a{n} `{array}` containing
+           the scattering coefficients, while if `out_type` is `'list'`, the
+           output is a list of dictionaries as described above."""
 
     @classmethod
     def _document(cls):
@@ -543,8 +493,6 @@ class ScatteringBase1D(ScatteringBase):
         param_shape = cls._doc_param_shape if cls._doc_has_shape else ''
         attrs_shape = cls._doc_attrs_shape if cls._doc_has_shape else ''
 
-        param_average = cls._doc_param_average if cls._doc_has_out_type else ''
-        attr_average = cls._doc_attr_average if cls._doc_has_out_type else ''
         param_vectorize = cls._doc_param_vectorize if cls._doc_has_out_type else ''
         attr_vectorize = cls._doc_attr_vectorize if cls._doc_has_out_type else ''
 
@@ -556,11 +504,17 @@ class ScatteringBase1D(ScatteringBase):
             instantiation=instantiation,
             param_shape=param_shape,
             attrs_shape=attrs_shape,
-            param_average=param_average,
-            attr_average=attr_average,
             param_vectorize=param_vectorize,
             attr_vectorize=attr_vectorize,
             sample=cls._doc_sample.format(shape=cls._doc_shape))
+        # Sphinx will not show docstrings for inherited methods, so we add a
+        # dummy method here that will just call the super.
+
+        if not "scattering" in cls.__dict__:
+            def _scattering(self, x):
+                return super(cls, self).scattering(x)
+
+            setattr(cls, "scattering", _scattering)
 
         cls.scattering.__doc__ = ScatteringBase1D._doc_scattering.format(
             array=cls._doc_array,
