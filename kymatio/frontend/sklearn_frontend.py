@@ -23,13 +23,12 @@ class ScatteringTransformerMixin(BaseEstimator, TransformerMixin):
 
     _doc_alias_call = '.predict({x}.flatten())'
 
-    _doc_frontend_paragraph = \
-        """
+    _doc_frontend_paragraph = r"""
+
         This class inherits from `BaseEstimator` and `TransformerMixin` in
         `sklearn.base`. As a result, it supports calculating the scattering
         transform by calling the `predict` and `transform` methods. By
-        extension, it can be included as part of a scikit-learn `Pipeline`.
-        """
+        extension, it can be included as part of a scikit-learn `Pipeline`."""
 
     _doc_sample = 'np.random.randn({shape})'
 

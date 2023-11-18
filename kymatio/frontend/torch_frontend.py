@@ -24,14 +24,13 @@ class ScatteringTorch(nn.Module):
 
     _doc_alias_call = '.forward({x})'
 
-    _doc_frontend_paragraph = \
-        """
+    _doc_frontend_paragraph = r"""
+
         This class inherits from `torch.nn.Module`. As a result, it has all
         the same capabilities, including transferring the object to the GPU
         using the `cuda` or `to` methods. This object would then take GPU
         tensors as input and output the scattering coefficients of those
-        tensors.
-        """
+        tensors."""
 
     _doc_sample = 'torch.randn({shape})'
 
