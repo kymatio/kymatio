@@ -9,7 +9,7 @@ from ..core.scattering1d import scattering1d
 from ..core.timefrequency_scattering import (joint_timefrequency_scattering,
     jtfs_average_and_format)
 from ..filter_bank import (compute_temporal_support, gauss_1d,
-    anden_generator, scattering_filter_factory, spin)
+    scatnet_generator, scattering_filter_factory, spin, default_filterbank)
 from ..utils import compute_border_indices, compute_padding, parse_T
 
 
@@ -43,9 +43,11 @@ class ScatteringBase1D(ScatteringBase):
         automatically during object creation and no subsequent calls are
         therefore needed.
         """
-        self.r_psi = math.sqrt(0.5)
-        self.sigma0 = 0.1
-        self.alpha = 5.
+        _, filterbank_kwargs = default_filterbank()
+
+        self.r_psi = filterbank_kwargs["r_psi"]
+        self.sigma0 = filterbank_kwargs["sigma0"]
+        self.alpha = filterbank_kwargs["alpha"]
 
         # check input length
         if isinstance(self.shape, numbers.Integral):
@@ -251,7 +253,7 @@ class ScatteringBase1D(ScatteringBase):
     def filterbank(self):
         filterbank_kwargs = {
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
-        return (anden_generator, filterbank_kwargs)
+        return (scatnet_generator, filterbank_kwargs)
 
     @property
     def log2_stride(self):
@@ -732,7 +734,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
     def filterbank_fr(self):
         filterbank_kwargs = {
             "alpha": self.alpha, "r_psi": self.r_psi, "sigma0": self.sigma0}
-        return spin(anden_generator, filterbank_kwargs)
+        return spin(scatnet_generator, filterbank_kwargs)
 
     @property
     def log2_F(self):
