@@ -1,8 +1,50 @@
 import numpy
 import scipy.fft
 
+from .base_backend import BaseBackend, backend_types, backend_basic_math, backend_array
 
-class NumpyBackend:
+numpy_backend_function_names = [
+        "nan",
+        "moveaxis",
+        "trace",
+        "copy",
+        "transpose",
+        "arange",
+        "flip",
+        "kron",
+        #"concatenate",
+        "max",
+        "mean",
+        "sum",
+        "argmin",
+        "argmax",
+        "sign",
+        "stack",
+        "conj",
+        "diag",
+        "log",
+        "log2",
+        "tensordot",
+        "argsort",
+        "sort",
+        "dot",
+        "shape",
+    ]
+
+class NumpyBackendType(type):
+    def __getattr__(cls, name):
+        if name in backend_types:
+            return getattr(cls._np, name)
+        elif name in backend_basic_math:
+            return getattr(cls._np, name)
+        elif name in backend_array:
+            return getattr(cls._np, name)
+        elif name in numpy_backend_function_names:
+            return getattr(cls._np, name)
+        
+
+
+class NumpyBackend(BaseBackend, metaclass=NumpyBackendType):
     _np = numpy
     _fft = scipy.fft
 
@@ -103,6 +145,15 @@ class NumpyBackend:
         new_shape = batch_shape + S.shape[-n_kept_dims:]
         return S.reshape(new_shape)
 
+    # A few more, for backend enhancement, copied from tensorly
     @staticmethod
-    def shape(x):
-        return x.shape
+    def to_numpy(tensor):
+        return np.copy(tensor)
+
+    @staticmethod
+    def ndim(tensor):
+        return tensor.ndim
+
+    @staticmethod
+    def clip(tensor, a_min=None, a_max=None):
+        return np.clip(tensor, a_min, a_max)
