@@ -9,7 +9,7 @@ Based on pytorch example for CIFAR10
 import torch.optim
 from torchvision import datasets, transforms
 import torch.nn.functional as F
-from kymatio.torch import Scattering2D
+from kymatio import Scattering2D
 import torch
 import argparse
 import kymatio.datasets as scattering_datasets
