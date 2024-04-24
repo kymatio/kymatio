@@ -19,9 +19,9 @@ ScatteringNumPy1D._document()
 
 class TimeFrequencyScatteringNumPy(
         ScatteringNumPy1D, TimeFrequencyScatteringBase):
-    def __init__(self, J, J_fr, Q, shape, T=None, stride=None,
+    def __init__(self, *, J, J_fr, shape, Q, T=None, stride=None,
             Q_fr=1, F=None, stride_fr=None,
-            out_type='array', format='time', backend='numpy'):
+            out_type='array', format='joint', backend='numpy'):
         ScatteringNumPy.__init__(self)
         TimeFrequencyScatteringBase.__init__(self, J=J, J_fr=J_fr, shape=shape,
             Q=Q, T=T, stride=stride,

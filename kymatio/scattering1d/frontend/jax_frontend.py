@@ -46,17 +46,18 @@ class TimeFrequencyScatteringJax(ScatteringJax, TimeFrequencyScatteringNumPy):
 
     def __init__(
         self,
+        *,
         J,
         J_fr,
-        Q,
         shape,
+        Q,
         T=None,
         stride=None,
         Q_fr=1,
         F=None,
         stride_fr=None,
         out_type="array",
-        format="time",
+        format="joint",
         backend="jax"
     ):
 
@@ -65,8 +66,8 @@ class TimeFrequencyScatteringJax(ScatteringJax, TimeFrequencyScatteringNumPy):
             self,
             J=J,
             J_fr=J_fr,
-            Q=Q,
             shape=shape,
+            Q=Q,
             T=T,
             stride=stride,
             Q_fr=Q_fr,

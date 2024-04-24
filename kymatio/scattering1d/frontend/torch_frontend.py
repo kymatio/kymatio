@@ -86,17 +86,18 @@ ScatteringTorch1D._document()
 class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBase):
     def __init__(
         self,
+        *,
         J,
         J_fr,
-        Q,
         shape,
+        Q,
         T=None,
         stride=None,
         Q_fr=1,
         F=None,
         stride_fr=None,
         out_type="array",
-        format="time",
+        format="joint",
         backend="torch"
     ):
         ScatteringTorch.__init__(self)
@@ -104,8 +105,8 @@ class TimeFrequencyScatteringTorch(ScatteringTorch1D, TimeFrequencyScatteringBas
             self,
             J=J,
             J_fr=J_fr,
-            Q=Q,
             shape=shape,
+            Q=Q,
             T=T,
             stride=stride,
             Q_fr=Q_fr,
