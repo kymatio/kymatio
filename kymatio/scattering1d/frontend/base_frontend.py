@@ -759,9 +759,9 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
         return (2**self.log2_stride_fr)
 
     _doc_instantiation_shape = {True:
-                                'S = TimeFrequencyScattering(J_time, J_freq, Q, N)',
+                                'S = TimeFrequencyScattering(J=J_time, J_fr=J_freq, Q=Q, shape=N)',
                                 False:
-                                'S = TimeFrequencyScattering(J_time, J_freq, Q)'}
+                                'S = TimeFrequencyScattering(J=J_time, J_fr=J_freq, Q=Q)'}
 
     _doc_class = \
     r"""The joint time-frequency scattering transform (JTFS)
