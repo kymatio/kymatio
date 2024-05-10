@@ -21,7 +21,7 @@ def test_Scattering1D():
     Q = int(data['Q'])
     Sx0 = data['Sx']
     # default
-    inputs0 = Input(shape=(x.shape[-1]))
+    inputs0 = Input(shape=(x.shape[-1], ))
     sc0 = Scattering1D(J=J, Q=Q)(inputs0)
     model0 = Model(inputs0, sc0)
     model0.compile(optimizer='adam',
@@ -32,7 +32,7 @@ def test_Scattering1D():
     # adjust T
     sigma_low_scale_factor = 2
     T = 2**(J-sigma_low_scale_factor)
-    inputs1 = Input(shape=(x.shape[-1]))
+    inputs1 = Input(shape=(x.shape[-1], ))
     sc1 = Scattering1D(J=J, Q=Q, T=T)(inputs1)
     model1 = Model(inputs1, sc1)
     model1.compile(optimizer='adam',
