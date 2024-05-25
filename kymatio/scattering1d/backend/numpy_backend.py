@@ -25,7 +25,7 @@ class NumpyBackend1D(NumpyBackend):
         """
         cls.complex_check(x)
 
-        y = x.reshape(-1, k, x.shape[-1] // k)
+        y = x.reshape(x.shape[:-1] + (k, x.shape[-1] // k))
 
         res = y.mean(axis=-2)
 

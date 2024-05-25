@@ -27,9 +27,14 @@ class TensorFlowBackend1D(TensorFlowBackend):
         """
         cls.complex_check(x)
 
-        y = tf.reshape(x, (-1, k, x.shape[-1] // k))
+        shape = list(x.shape[:-1]) + [k, x.shape[-1]//k]
+        if shape[0] is None:
+            shape[0] = -1
 
-        return tf.reduce_mean(y, axis=-2)
+        y = tf.reshape(x, shape)
+        y = tf.reduce_mean(y, axis=-2)
+
+        return y
 
     @staticmethod
     def pad(x, pad_left, pad_right, mode='reflect'):

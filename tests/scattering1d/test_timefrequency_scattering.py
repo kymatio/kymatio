@@ -164,7 +164,7 @@ def test_time_scattering_widthfirst(frontend):
     assert len(S1_width) == 1
     S1_width = S1_width[(-1,)]
     S1_depth = S.backend.stack(
-        [S1_depth[key] for key in sorted(S1_depth.keys()) if len(key) == 1]
+        [S1_depth[key] for key in sorted(S1_depth.keys()) if len(key) == 1], 2
     )
     if frontend not in ["numpy", "sklearn", "jax"]:
         S1_width = S1_width.numpy()
@@ -190,7 +190,7 @@ def test_frequency_scattering(frontend):
     average_local = True
     S_gen = scattering1d(U_0, S.backend, filters, S.log2_stride, average_local)
     S_1_dict = {path["n"]: path["coef"] for path in S_gen if len(path["n"]) == 1}
-    S_1 = S.backend.stack([S_1_dict[key] for key in sorted(S_1_dict.keys())])
+    S_1 = S.backend.stack([S_1_dict[key] for key in sorted(S_1_dict.keys())], 2)
     X = {"coef": S_1, "n1_max": len(S_1_dict), "n": (-1,), "j": (-1,)}
 
     # Define scattering object
@@ -294,7 +294,7 @@ def _jtfs_test_routine(S, backend, shape):
 
         # Check that padding is sufficient
         midpoint = (path["n1_max"] + S._N_padded_fr) // (2 * stride_fr)
-        avg_value = np.mean(np.abs(path["coef"][midpoint, :]))
+        avg_value = np.mean(np.abs(path["coef"][..., midpoint, :]))
         assert avg_value < 1e-5
 
         # Check that averaged coefficients have the right temporal stride
@@ -319,7 +319,7 @@ def _jtfs_test_routine(S, backend, shape):
 
         # Check that padding is sufficient
         midpoint = (path["n1_max"] + S._N_padded_fr) // (2 * stride_fr)
-        avg_value = np.mean(np.abs(path["coef"][midpoint, :]))
+        avg_value = np.mean(np.abs(path["coef"][..., midpoint, :]))
         assert avg_value < 1e-5
 
     # Test frequential averaging
@@ -567,12 +567,12 @@ def test_jtfs_torch_tf_frontends(frontend):
     x[kwargs["shape"][0] // 2] = 1
 
     # format='time'
-    S = TimeFrequencyScattering(frontend="torch", T=None, F=0, format="time", **kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, T=None, F=0, format="time", **kwargs)
     Sx = S(x)
     assert Sx.ndim == 2
 
     # format='time' with global averaging
-    S = TimeFrequencyScattering(frontend="torch", T="global", F=0, format="time", **kwargs)
+    S = TimeFrequencyScattering(frontend=frontend, T="global", F=0, format="time", **kwargs)
     Sx = S(x)
     assert Sx.ndim == 2
 
@@ -610,14 +610,14 @@ def test_F(frontend):
     x[kwargs["shape"][0] // 2] = 1
 
     # default F
-    jtfs0 = TimeFrequencyScattering(frontend="torch", format="joint", **kwargs)
+    jtfs0 = TimeFrequencyScattering(frontend=frontend, format="joint", **kwargs)
 
     # explicit F
-    jtfs1 = TimeFrequencyScattering(frontend="torch", format="joint", F=2**kwargs['J_fr'], **kwargs)
+    jtfs1 = TimeFrequencyScattering(frontend=frontend, format="joint", F=2**kwargs['J_fr'], **kwargs)
 
     Sx0 = jtfs0(x)
     Sx1 = jtfs1(x)
-    assert torch.equal(Sx0, Sx1)
+    assert torch.equal(Sx0, Sx1) if frontend == "torch" else tf.reduce_all(tf.equal(Sx0,Sx1))
     assert Sx0.shape == Sx1.shape
 
     """ non-default F smaller than 2**J_fr. This checks that the subsampling
