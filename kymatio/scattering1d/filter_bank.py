@@ -251,7 +251,7 @@ def compute_xi_max(Q):
     return xi_max
 
 
-def anden_generator(J, Q, sigma0, r_psi, **unused_kwargs):
+def scatnet_generator(J, Q, sigma0, r_psi, **unused_kwargs):
     """
     Yields the center frequencies and bandwidths of a filterbank, in compliance
     with the ScatNet package. Center frequencies follow a geometric progression
@@ -350,7 +350,7 @@ def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.sum):
         filterbank_fn should take J and Q as positional arguments and
         **filterbank_kwargs as optional keyword arguments.
         Corresponds to the self.filterbank property of the scattering object.
-        As of v0.3, only anden_generator is supported as filterbank_fn.
+        As of v0.3, only scatnet_generator is supported as filterbank_fn.
     _reduction : callable
         either np.sum (default) or np.mean.
 
@@ -402,3 +402,7 @@ def scattering_filter_factory(N, J, Q, T, filterbank, _reduction=np.sum):
         'N': N}
 
     return tuple([phi_f] + psis_f)
+
+
+def default_filterbank():
+    return (scatnet_generator, {"alpha": 5, "r_psi": np.sqrt(1/2), "sigma0": 0.1})
