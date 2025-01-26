@@ -83,11 +83,20 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
     #TODO: how do we implement this without #839 implemented?
     #right now uses ScatteringKeras1D calculation
     def compute_output_shape(self, input_shape):
-        input_shape = tensor_shape.TensorShape(input_shape).as_list()
-        nc = self.S.output_size()
-        k0 = max(self.J - self._oversampling, 0)
-        ln = self.S.ind_end[k0] - self.S.ind_start[k0]
-        output_shape = [input_shape[0], nc, ln]
+        if self.format == 'joint':
+            meta = self.meta()
+            S1_meta = meta['n'][0]
+            N_freq = len(S1_meta[0])
+            N_jtfs = len(meta[’n’])
+            k0 = max(self.J - self._oversampling, 0)
+            N_time = self.S.ind_end[k0] - self.S.ind_start[k0]
+            output_shape = [input_shape[0], N_jtfs, N_freq, N_time]
+        else:
+            input_shape = tensor_shape.TensorShape(input_shape).as_list()
+            nc = self.S.output_size()
+            k0 = max(self.J - self._oversampling, 0)
+            ln = self.S.ind_end[k0] - self.S.ind_start[k0]
+            output_shape = [input_shape[0], nc, ln]
         return tensor_shape.TensorShape(output_shape)
 
     def get_config(self):
