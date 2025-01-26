@@ -9,8 +9,7 @@ import numpy as np
 import scipy.fftpack
 
 import jax.numpy as jnp
-from jax import random, device_put
-import jax.config as config 
+from jax import random, device_put, config
 
 key = random.PRNGKey(0)
 
