@@ -35,7 +35,7 @@ jobs:
                   conda create -q -n ${CONDA_ENV} python=${{ matrix.python-version }}
             - name: Install dependencies
               run: |
-                  conda install -n ${CONDA_ENV} -c conda-forge numpy=1.24.0 scipy pytest pytest-cov
+                  conda install -n ${CONDA_ENV} numpy scipy pytest pytest-cov
                   conda install -n ${CONDA_ENV} pytorch=${{ matrix.pytorch-version }} torchvision cpuonly -c pytorch
 
                   conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip
@@ -47,6 +47,8 @@ jobs:
 
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt
+                  conda remove -n ${CONDA_ENV} --force numpy
+                  conda install -n ${CONDA_ENV} -c conda-forge numpy=1.24.0 
             - name: Set up Kymatio
               run: conda run -n ${CONDA_ENV} python3 setup.py develop
             - name: Test
