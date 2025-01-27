@@ -49,6 +49,7 @@ jobs:
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt
+                  python3 -m pip install --upgrade --force-reinstall numpy==1.24.0
             - name: Set up Kymatio
               run: python3 setup.py develop
             - name: Test
