@@ -10,18 +10,12 @@ from tensorflow.python.framework import tensor_shape
 class ScatteringKeras1D(ScatteringKeras, ScatteringBase1D):
     def __init__(self, J, Q=1, T=None, max_order=2, oversampling=0):
         ScatteringKeras.__init__(self)
-        self.J = J
-        self._Q = Q
-        self._T = T
-        self._max_order = 2
-        self._oversampling = 0
-        self.out_type = 'array'
-        self.backend = None
+        ScatteringBase1D.__init__(self, J, None, Q=Q, T=T, max_order=2, oversampling=0, out_type='array')
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
         self.S = ScatteringTensorFlow1D(J=self.J, shape=shape,
-            Q=self._Q, T=self._T, max_order=self._max_order,
+            Q=self._Q, T=self._T, max_order=self.max_order,
             oversampling=self._oversampling)
         ScatteringKeras.build(self, input_shape)
 
@@ -49,12 +43,13 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
         Q_fr=1,
         F=None,
         stride_fr=None,
-        out_type="array",
-        format="time",
-        backend="tensorflow",):
+        #out_type="array",
+        format="time"):
+        #backend="tensorflow",):
 
         ScatteringKeras.__init__(self)
-
+        #TimeFrequencyScatteringBase()
+        #replace the below code with the above function. 
         self.J=J
         self.J_fr=J_fr
         self._Q=Q
@@ -64,11 +59,12 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
         self._Q_fr=Q_fr
         self._F=F
         self._stride_fr=stride_fr
-        self.out_type=out_type
+        self.out_type="array"
         self.format = format
         #WHAT SHOULD THIS BE? 
         self._oversampling = 0
-        self.backend=backend
+        self.max_order = 2
+        #self.backend=backend
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
