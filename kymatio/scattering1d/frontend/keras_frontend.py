@@ -2,8 +2,8 @@ from ...frontend.keras_frontend import ScatteringKeras
 from ...scattering1d.frontend.base_frontend import ScatteringBase1D, TimeFrequencyScatteringBase
 
 from kymatio.tensorflow import Scattering1D as ScatteringTensorFlow1D
-
 from kymatio.tensorflow import TimeFrequencyScattering as TimeFrequencyScatteringTensorFlow
+
 from tensorflow.python.framework import tensor_shape
 
 
@@ -43,41 +43,45 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
         J,
         J_fr,
         Q,
-        shape,
+        #shape,
         T=None,
         stride=None,
         Q_fr=1,
         F=None,
         stride_fr=None,
         out_type="array",
+        format="time",
         backend="tensorflow",):
 
         ScatteringKeras.__init__(self)
 
-        self.J=J,
-        self.J_fr=J_fr,
-        self.Q=Q,
-        self.shape=shape,
-        self.T=T,
-        self.stride=stride,
-        self.Q_fr=Q_fr,
-        self.F=F,
-        self.stride_fr=stride_fr,
-        self.out_type=out_type,
-        self.backend=backend,
+        self.J=J
+        self.J_fr=J_fr
+        self._Q=Q
+        #self.shape=shape,
+        self._T=T
+        self._stride=stride
+        self._Q_fr=Q_fr
+        self._F=F
+        self._stride_fr=stride_fr
+        self.out_type=out_type
+        self.format = format
+        #WHAT SHOULD THIS BE? 
+        self._oversampling = 0
+        self.backend=backend
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
         self.S = TimeFrequencyScatteringTensorFlow(
         J=self.J,
         J_fr=self.J_fr,
-        Q=self.Q,
-        shape=self.shape,
-        T=self.T,
-        stride=self.stride,
-        Q_fr=self.Q_fr,
-        F=self.F,
-        stride_fr=self.stride_fr)
+        Q=self._Q,
+        shape=shape,
+        T=self._T,
+        stride=self._stride,
+        Q_fr=self._Q_fr,
+        F=self._F,
+        stride_fr=self._stride_fr)
         ScatteringKeras.build(self, input_shape)
 
     #TODO: how do we implement this without #839 implemented?
@@ -87,7 +91,7 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
             meta = self.meta()
             S1_meta = meta['n'][0]
             N_freq = len(S1_meta[0])
-            N_jtfs = len(meta[’n’])
+            N_jtfs = len(meta['n'])
             k0 = max(self.J - self._oversampling, 0)
             N_time = self.S.ind_end[k0] - self.S.ind_start[k0]
             output_shape = [input_shape[0], N_jtfs, N_freq, N_time]
