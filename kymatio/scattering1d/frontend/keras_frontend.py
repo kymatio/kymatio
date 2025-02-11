@@ -69,6 +69,9 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
+        self.shape = shape
+        super(TimeFrequencyScatteringBase, self).build()
+        super(TimeFrequencyScatteringBase, self).create_filters()
         self.S = TimeFrequencyScatteringTensorFlow(
         J=self.J,
         J_fr=self.J_fr,
@@ -85,8 +88,12 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
     #right now uses ScatteringKeras1D calculation
     def compute_output_shape(self, input_shape):
         if self.format == 'joint':
-            meta = self.meta()
-            S1_meta = meta['n'][0]
+            meta = self.S.meta()
+            
+            S1_meta = meta['n']#[0]
+            print(meta['n'])
+            print(meta['n'][0])
+            #print(
             N_freq = len(S1_meta[0])
             N_jtfs = len(meta['n'])
             k0 = max(self.J - self._oversampling, 0)
