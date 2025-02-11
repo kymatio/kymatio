@@ -37,35 +37,16 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
         J,
         J_fr,
         Q,
-        #shape,
         T=None,
         stride=None,
         Q_fr=1,
         F=None,
         stride_fr=None,
-        #out_type="array",
         format="time"):
-        #backend="tensorflow",):
 
         ScatteringKeras.__init__(self)
         TimeFrequencyScatteringBase.__init__(self, J, J_fr, Q, None, T, stride,
                 Q_fr, F, stride_fr, 'array', format)
-#        self._oversampling = 0
-#        #replace the below code with the above function. 
-#        self.J=J
-#        self.J_fr=J_fr
-#        self._Q=Q
-#        #self.shape=shape,
-#        self._T=T
-#        self._stride=stride
-#        self._Q_fr=Q_fr
-#        self._F=F
-#        self._stride_fr=stride_fr
-#        self.out_type="array"
-#        self.format = format
-#        #WHAT SHOULD THIS BE? 
-#        self.max_order = 2
-#        #self.backend=backend
 
     def build(self, input_shape):
         shape = tuple(tensor_shape.TensorShape(input_shape).as_list()[-1:])
@@ -84,16 +65,11 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
         stride_fr=self._stride_fr)
         ScatteringKeras.build(self, input_shape)
 
-    #TODO: how do we implement this without #839 implemented?
-    #right now uses ScatteringKeras1D calculation
     def compute_output_shape(self, input_shape):
         if self.format == 'joint':
             meta = self.S.meta()
             
-            S1_meta = meta['n']#[0]
-            print(meta['n'])
-            print(meta['n'][0])
-            #print(
+            S1_meta = meta['n']
             N_freq = len(S1_meta[0])
             N_jtfs = len(meta['n'])
             k0 = max(self.J - self._oversampling, 0)
@@ -102,8 +78,6 @@ class TimeFrequencyScatteringKeras(ScatteringKeras, TimeFrequencyScatteringBase)
         else:
             input_shape = tensor_shape.TensorShape(input_shape).as_list()
             nc = self.S.output_size()
-            print(self._oversampling)
-            print(self.J, self.oversampling)
             k0 = max(self.J - self._oversampling, 0)
             ln = self.S.ind_end[k0] - self.S.ind_start[k0]
             output_shape = [input_shape[0], nc, ln]
