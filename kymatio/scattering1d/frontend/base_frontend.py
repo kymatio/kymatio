@@ -526,7 +526,7 @@ class TimeFrequencyScatteringBase(ScatteringBase1D):
             Q_fr=1, F=None, stride_fr=None,
             out_type='array', format='time', backend=None):
         max_order = 2
-        oversampling = None
+        oversampling = 0
         super(TimeFrequencyScatteringBase, self).__init__(J, shape, Q, T,
             stride, max_order, oversampling, out_type, backend)
         self.J_fr = J_fr

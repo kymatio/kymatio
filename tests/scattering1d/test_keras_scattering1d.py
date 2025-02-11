@@ -6,6 +6,7 @@ import os
 import numpy as np
 import io
 import sys
+import tensorflow as tf
 
 def test_Scattering1D():
     """
@@ -136,5 +137,59 @@ def test_TimeFrequencyScattering():
     sc0 = TimeFrequencyScattering(J=J, J_fr=0, Q=Q)
     sc0.build(inputs0.shape)
     assert sc0.compute_output_shape(inputs0.shape)[-1] == 8
+
+
+from kymatio.scattering1d.frontend.tensorflow_frontend import TimeFrequencyScatteringTensorFlow
+from kymatio.scattering1d.frontend.tensorflow_frontend import ScatteringTensorFlow1D
+import torch
+
+def test_jtfs_torch_tf_frontends():
+    # Test __init__
+    kwargs = {"J": 8, "J_fr": 3, "Q": 3}
+    shape = (8192,)
+    x = np.zeros((1, 8192,))
+    x[:, shape[0] // 2] = 1
+    print(type(x))
+    tf.compat.v1.enable_eager_execution()  # Fixes eager execution
+    x = tf.convert_to_tensor(x)
+    inputs0 = Input(shape=(x.shape[-1], ))
+    # format='time'
+    S = TimeFrequencyScattering(T=None, F=0, format="time", **kwargs)(inputs0)
+    model0 = Model(inputs0, S)
+    model0.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    Sx = model0.predict(x)
+    print(Sx.shape)
+    print(type(Sx))
+    assert Sx.ndim == 3
+
+    # format='time' with global averaging
+    inputs1 = Input(shape=(x.shape[-1], ))
+    S = TimeFrequencyScattering(T="global", F=0, format="time", **kwargs)(inputs1)
+    model1 = Model(inputs1, S)
+    model1.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    Sx = model1.predict(x)
+    print(Sx.shape)
+    print(type(Sx))
+    assert Sx.ndim == 3
+
+    # Local averaging
+    inputs2 = Input(shape=(x.shape[-1], ))
+    S = TimeFrequencyScattering(format="joint", **kwargs)(inputs2)
+    model2 = Model(inputs2, S)
+    model2.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    Sx = model1.predict(x)
+
+    assert S.F == (2**S.J_fr)
+    print(Sx.shape)
+    print(type(Sx))
+    Sx = S(x)
+    assert isinstance(Sx, torch.Tensor) if frontend == "torch" else isinstance(Sx, tf.Tensor)
+    assert Sx.ndim == 4
 
 
