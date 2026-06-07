@@ -1,0 +1,9 @@
+.. include:: _preamble.rst
+
+Version 0.4.0
+=============
+
+**Changelog**
+
+- |Feature| Add a Keras frontend for ``TimeFrequencyScattering``, completing joint time-frequency scattering (JTFS) support across the NumPy, scikit-learn, PyTorch, TensorFlow, Keras and Jax frontends. :pr:`1059` by :user:`Muawiz Chaudhary <MuawizChaudhary>`
+- |Documentation| Add a joint time-frequency scattering example to the 1D gallery. :pr:`1059`
