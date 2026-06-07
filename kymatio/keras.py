@@ -8,7 +8,6 @@ Scattering1D.__name__ = "Scattering1D"
 TimeFrequencyScattering.__module__ = "kymatio.keras"
 TimeFrequencyScattering.__name__ = "TimeFrequencyScattering"
 
-
 Scattering2D.__module__ = "kymatio.keras"
 Scattering2D.__name__ = "Scattering2D"
 

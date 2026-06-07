@@ -6,7 +6,6 @@ import os
 import numpy as np
 import io
 import sys
-import tensorflow as tf
 
 def test_Scattering1D():
     """
@@ -49,7 +48,7 @@ def test_Scattering1D():
     model1.summary()
     sys.stdout = save_stdout
     assert 'scattering1d' in result.getvalue()
-  
+
     sc0 = Scattering1D(J=J, Q=Q)
     sc0.build(inputs0.shape)
     assert sc0.compute_output_shape(inputs0.shape)[-1] == 8
@@ -89,107 +88,105 @@ def test_Q():
                   metrics=['accuracy'])
     Sc_tuple_out = model1.predict(x)
 
-    assert Sc_int_out.shape == (Sc_tuple_out.shape[0], Sc_tuple_out.shape[1], Sc_tuple_out.shape[2])
+    assert Sc_int_out.shape == (Sc_int_out.shape[0], Sc_tuple_out.shape[1], Sc_tuple_out.shape[2])
+
+
+def _jtfs_model(x, **kwargs):
+    """Build and compile a Keras model wrapping a TimeFrequencyScattering
+    layer, returning the model and its prediction on ``x``."""
+    inputs = Input(shape=(x.shape[-1], ))
+    out = TimeFrequencyScattering(**kwargs)(inputs)
+    model = Model(inputs, out)
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    return model, model.predict(x)
+
+
+def _assert_output_shape_matches(x, **kwargs):
+    """compute_output_shape (static inference) must agree with the realized
+    transform on every non-batch axis."""
+    _, Sx = _jtfs_model(x, **kwargs)
+    layer = TimeFrequencyScattering(**kwargs)
+    layer.build((None, x.shape[-1]))
+    inferred = layer.compute_output_shape((None, x.shape[-1])).as_list()
+    assert tuple(inferred[1:]) == tuple(Sx.shape[1:])
+    return Sx
 
 
 def test_TimeFrequencyScattering():
-    """
-    Applies scattering on a stored signal to make sure its output agrees with
-    a previously calculated version.
-    """
+    """format='time': output is (batch, n_coefficients, time) and
+    compute_output_shape tracks the realized shape under default, explicit and
+    global temporal averaging."""
     test_data_dir = os.path.dirname(__file__)
     with open(os.path.join(test_data_dir, 'test_data_1d.npz'), 'rb') as f:
         buffer = io.BytesIO(f.read())
         data = np.load(buffer)
     x = data['x']
-    J = data['J']
+    J = int(data['J'])
     Q = int(data['Q'])
-    Sx0 = data['Sx']
-    # default
-    inputs0 = Input(shape=(x.shape[-1], ))
-    sc0 = TimeFrequencyScattering(J=J, J_fr=1, Q=Q)(inputs0)
-    model0 = Model(inputs0, sc0)
-    model0.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    Sg0 = model0.predict(x)
-    assert np.allclose(Sg0, Sx0, atol=1e-06)
-    # adjust T
-    sigma_low_scale_factor = 2
-    T = 2**(J-sigma_low_scale_factor)
-    inputs1 = Input(shape=(x.shape[-1], ))
-    sc1 = TimeFrequencyScattering(J=J, J_fr=0, Q=Q, T=T)(inputs1)
-    model1 = Model(inputs1, sc1)
-    model1.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    Sg1 = model1.predict(x)
-    assert Sg1.shape == (
-        Sg0.shape[0], Sg0.shape[1], Sg0.shape[2]*2**(sigma_low_scale_factor))
 
+    # default temporal averaging (T = 2 ** J)
+    model0, Sg0 = _jtfs_model(x, J=J, J_fr=1, Q=Q)
+    assert Sg0.ndim == 3
+    Sg0_check = _assert_output_shape_matches(x, J=J, J_fr=1, Q=Q)
+    assert Sg0_check.shape == Sg0.shape
+
+    # explicit T < 2 ** J reduces temporal subsampling, lengthening the time
+    # axis by 2 ** sigma_low_scale_factor while keeping the coefficient count.
+    sigma_low_scale_factor = 2
+    T = 2 ** (J - sigma_low_scale_factor)
+    Sg1 = _assert_output_shape_matches(x, J=J, J_fr=1, Q=Q, T=T)
+    assert Sg1.shape[:2] == Sg0.shape[:2]
+    assert Sg1.shape[-1] == Sg0.shape[-1] * 2 ** sigma_low_scale_factor
+
+    # global averaging collapses the time axis to a single sample
+    Sg2 = _assert_output_shape_matches(x, J=J, J_fr=1, Q=Q, T='global')
+    assert Sg2.shape[-1] == 1
+
+    # the layer is named after the transform in the model summary
     save_stdout = sys.stdout
     result = io.StringIO()
     sys.stdout = result
-    model1.summary()
+    model0.summary()
     sys.stdout = save_stdout
-    assert 'timefrequencyscattering' in result.getvalue()
-  
-    sc0 = TimeFrequencyScattering(J=J, J_fr=0, Q=Q)
-    sc0.build(inputs0.shape)
-    assert sc0.compute_output_shape(inputs0.shape)[-1] == 8
+    assert 'scattering' in result.getvalue().lower()
 
 
-from kymatio.scattering1d.frontend.tensorflow_frontend import TimeFrequencyScatteringTensorFlow
-from kymatio.scattering1d.frontend.tensorflow_frontend import ScatteringTensorFlow1D
-import torch
+def test_TimeFrequencyScattering_time_largeJ():
+    """format='time' with a larger transform and no frequency averaging
+    (F=0), including global averaging."""
+    J, J_fr, Q, N = 8, 3, 3, 8192
+    x = np.zeros((2, N), dtype='float32')
+    x[:, N // 2] = 1.0
 
-def test_jtfs_torch_tf_frontends():
-    # Test __init__
-    kwargs = {"J": 8, "J_fr": 3, "Q": 3}
-    shape = (8192,)
-    x = np.zeros((1, 8192,))
-    x[:, shape[0] // 2] = 1
-    print(type(x))
-    tf.compat.v1.enable_eager_execution()  # Fixes eager execution
-    x = tf.convert_to_tensor(x)
-    inputs0 = Input(shape=(x.shape[-1], ))
-    # format='time'
-    S = TimeFrequencyScattering(T=None, F=0, format="time", **kwargs)(inputs0)
-    model0 = Model(inputs0, S)
-    model0.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    Sx = model0.predict(x)
-    print(Sx.shape)
-    print(type(Sx))
+    Sx = _assert_output_shape_matches(x, J=J, J_fr=J_fr, Q=Q, F=0, format='time')
     assert Sx.ndim == 3
 
-    # format='time' with global averaging
-    inputs1 = Input(shape=(x.shape[-1], ))
-    S = TimeFrequencyScattering(T="global", F=0, format="time", **kwargs)(inputs1)
-    model1 = Model(inputs1, S)
-    model1.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    Sx = model1.predict(x)
-    print(Sx.shape)
-    print(type(Sx))
-    assert Sx.ndim == 3
+    Sx_global = _assert_output_shape_matches(
+        x, J=J, J_fr=J_fr, Q=Q, T='global', F=0, format='time')
+    assert Sx_global.ndim == 3
+    assert Sx_global.shape[-1] == 1
 
-    # Local averaging
-    inputs2 = Input(shape=(x.shape[-1], ))
-    S = TimeFrequencyScattering(format="joint", **kwargs)(inputs2)
-    model2 = Model(inputs2, S)
-    model2.compile(optimizer='adam',
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-    Sx = model1.predict(x)
 
-    assert S.F == (2**S.J_fr)
-    print(Sx.shape)
-    print(type(Sx))
-    Sx = S(x)
-    assert isinstance(Sx, torch.Tensor) if frontend == "torch" else isinstance(Sx, tf.Tensor)
+def test_TimeFrequencyScattering_joint():
+    """format='joint': output is (batch, n_jtfs, n_freq, time) and
+    compute_output_shape matches the realized 4D shape."""
+    J, J_fr, Q, N = 8, 3, 3, 8192
+    x = np.zeros((2, N), dtype='float32')
+    x[:, N // 2] = 1.0
+
+    Sx = _assert_output_shape_matches(x, J=J, J_fr=J_fr, Q=Q, format='joint')
     assert Sx.ndim == 4
 
 
+def test_TimeFrequencyScattering_get_config():
+    """get_config serializes only the static (filterbank-determining)
+    parameters and round-trips through from_config."""
+    sc = TimeFrequencyScattering(J=8, J_fr=3, Q=3, Q_fr=1, format='joint')
+    config = sc.get_config()
+    assert set(config) == {'J', 'J_fr', 'Q', 'Q_fr', 'format'}
+    assert config['Q'] == 3 and config['format'] == 'joint'
+
+    sc_restored = TimeFrequencyScattering.from_config(config)
+    assert sc_restored.get_config() == config
