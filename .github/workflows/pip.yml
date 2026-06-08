@@ -9,6 +9,7 @@ jobs:
         runs-on: ubuntu-22.04
 
         strategy:
+            fail-fast: false
             matrix:
                 python-version: ['3.8', '3.9', '3.10']
                 pytorch-version: ['1.10', '1.13', '2.0']
@@ -45,7 +46,7 @@ jobs:
                   python3 -m pip install "tensorflow>=2.0.0a"
                   python3 -m pip install scikit-learn
 
-                  python3 -m pip install jax jaxlib
+                  python3 -m pip install jax jaxlib -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt

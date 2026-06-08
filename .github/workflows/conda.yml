@@ -9,6 +9,7 @@ jobs:
         runs-on: ubuntu-22.04
 
         strategy:
+            fail-fast: false
             matrix:
                 python-version: ['3.8', '3.9', '3.10']
                 pytorch-version: ['1.10', '1.13', '2.0']
@@ -35,7 +36,7 @@ jobs:
                   conda create -q -n ${CONDA_ENV} python=${{ matrix.python-version }}
             - name: Install dependencies
               run: |
-                  conda install -n ${CONDA_ENV} numpy scipy pytest pytest-cov
+                  conda install -n ${CONDA_ENV} numpy "scipy<1.15" pytest pytest-cov
                   conda install -n ${CONDA_ENV} pytorch=${{ matrix.pytorch-version }} torchvision cpuonly -c pytorch
 
                   conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip
@@ -43,7 +44,7 @@ jobs:
                   conda run -n ${CONDA_ENV} python3 -m pip install "tensorflow>=2.0.0a"
                   conda run -n ${CONDA_ENV} python3 -m pip install scikit-learn
 
-                  conda run -n ${CONDA_ENV} python3 -m pip install jaxlib jax
+                  conda run -n ${CONDA_ENV} python3 -m pip install jaxlib jax -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt
