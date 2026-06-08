@@ -41,10 +41,10 @@ jobs:
 
                   conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip
 
-                  conda run -n ${CONDA_ENV} python3 -m pip install "tensorflow>=2.0.0a"
+                  conda run -n ${CONDA_ENV} python3 -m pip install "tensorflow==2.13.1"
                   conda run -n ${CONDA_ENV} python3 -m pip install scikit-learn
 
-                  conda run -n ${CONDA_ENV} python3 -m pip install jaxlib jax -f https://storage.googleapis.com/jax-releases/jax_releases.html
+                  conda run -n ${CONDA_ENV} python3 -m pip install "jaxlib==0.4.13" "jax==0.4.13" -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements.txt
                   conda run -n ${CONDA_ENV} python3 -m pip install -r requirements_optional.txt

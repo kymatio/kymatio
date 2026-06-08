@@ -43,10 +43,10 @@ jobs:
                                   torchvision==0.15.2+cpu \
                                   --index-url https://download.pytorch.org/whl/cpu
                   fi
-                  python3 -m pip install "tensorflow>=2.0.0a"
+                  python3 -m pip install "tensorflow==2.13.1"
                   python3 -m pip install scikit-learn
 
-                  python3 -m pip install jax jaxlib -f https://storage.googleapis.com/jax-releases/jax_releases.html
+                  python3 -m pip install "jax==0.4.13" "jaxlib==0.4.13" -f https://storage.googleapis.com/jax-releases/jax_releases.html
 
                   python3 -m pip install -r requirements.txt
                   python3 -m pip install -r requirements_optional.txt
