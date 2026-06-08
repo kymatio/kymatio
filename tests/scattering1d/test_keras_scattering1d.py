@@ -7,6 +7,11 @@ import numpy as np
 import io
 import sys
 
+from kymatio.scattering1d.frontend.tensorflow_frontend import (
+    TimeFrequencyScatteringTensorFlow)
+from kymatio.scattering1d.frontend.numpy_frontend import (
+    TimeFrequencyScatteringNumPy)
+
 def test_Scattering1D():
     """
     Applies scattering on a stored signal to make sure its output agrees with
@@ -190,3 +195,53 @@ def test_TimeFrequencyScattering_get_config():
 
     sc_restored = TimeFrequencyScattering.from_config(config)
     assert sc_restored.get_config() == config
+
+
+def _jtfs_frontend_outputs(x, **kwargs):
+    """Compute the JTFS of ``x`` with the Keras, TensorFlow and NumPy frontends
+    using identical parameters, returning the three outputs as NumPy arrays.
+
+    The Keras layer wraps the TensorFlow transform, whereas the NumPy frontend
+    is an independent backend -- so agreement validates both the Keras wrapper
+    and cross-backend numerical consistency.
+    """
+    N = x.shape[-1]
+    inputs = Input(shape=(N,))
+    model = Model(inputs, TimeFrequencyScattering(**kwargs)(inputs))
+    model.compile(optimizer='adam',
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+    keras_out = model.predict(x)
+    tf_out = np.asarray(TimeFrequencyScatteringTensorFlow(shape=(N,), **kwargs)(x))
+    np_out = np.asarray(TimeFrequencyScatteringNumPy(shape=(N,), **kwargs)(x))
+    return keras_out, tf_out, np_out
+
+
+def _assert_frontends_agree(x, **kwargs):
+    keras_out, tf_out, np_out = _jtfs_frontend_outputs(x, **kwargs)
+    assert keras_out.shape == tf_out.shape == np_out.shape, (
+        keras_out.shape, tf_out.shape, np_out.shape)
+    assert np.allclose(keras_out, tf_out, rtol=1e-4, atol=1e-5), \
+        "keras vs tensorflow max|diff|={}".format(np.abs(keras_out - tf_out).max())
+    assert np.allclose(keras_out, np_out, rtol=1e-4, atol=1e-5), \
+        "keras vs numpy max|diff|={}".format(np.abs(keras_out - np_out).max())
+    return keras_out
+
+
+def test_TimeFrequencyScattering_matches_tf_and_numpy_time():
+    """The Keras ``format='time'`` output matches the TensorFlow and NumPy
+    frontends, under both default (local) and global temporal averaging."""
+    rng = np.random.RandomState(0)
+    N = 2 ** 12
+    x = rng.randn(2, N).astype('float32')
+    _assert_frontends_agree(x, J=6, J_fr=2, Q=8, format='time')
+    _assert_frontends_agree(x, J=6, J_fr=2, Q=8, T='global', format='time')
+
+
+def test_TimeFrequencyScattering_matches_tf_and_numpy_joint():
+    """The Keras ``format='joint'`` (4D) output matches the TensorFlow and
+    NumPy frontends."""
+    rng = np.random.RandomState(0)
+    N = 2 ** 12
+    x = rng.randn(2, N).astype('float32')
+    _assert_frontends_agree(x, J=6, J_fr=2, Q=8, format='joint')
