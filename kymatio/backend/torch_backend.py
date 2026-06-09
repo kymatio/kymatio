@@ -2,6 +2,10 @@ import torch
 from torch.autograd import Function
 
 
+from .base_backend import BaseBackend, backend_types, backend_basic_math, backend_array
+
+
+
 class ModulusStable(Function):
     """Stable complex modulus
 
@@ -227,6 +231,157 @@ class TorchBackend:
         new_shape = batch_shape + S.shape[-n_kept_dims:]
         return S.reshape(new_shape)
 
+
+    # Add for new backend enhancement effort, copied and pasted from 
+    # https://github.com/tensorly/tensorly/blob/main/tensorly/backend/pytorch_backend.py
+
+
     @staticmethod
-    def shape(x):
-        return x.shape
+    def shape(tensor):
+        return tuple(tensor.shape)
+
+    @staticmethod
+    def ndim(tensor):
+        return tensor.dim()
+
+    @staticmethod
+    def arange(start, stop=None, step=1.0, *args, **kwargs):
+        if stop is None:
+            return torch.arange(
+                start=0.0, end=float(start), step=float(step), *args, **kwargs
+            )
+        else:
+            return torch.arange(float(start), float(stop), float(step), *args, **kwargs)
+
+    @staticmethod
+    def clip(tensor, a_min=None, a_max=None, inplace=False):
+        if inplace:
+            return torch.clip(tensor, a_min, a_max, out=tensor)
+        else:
+            return torch.clip(tensor, a_min, a_max)
+
+    ## This one seems wrong
+    # @staticmethod
+    # def all(tensor):
+    #     return torch.sum(tensor != 0)
+
+    def transpose(self, tensor, axes=None):
+        axes = axes or list(range(self.ndim(tensor)))[::-1]
+        return tensor.permute(*axes)
+
+    @staticmethod
+    def copy(tensor):
+        return tensor.clone()
+
+    @staticmethod
+    def norm(tensor, order=None, axis=None):
+        # pytorch does not accept `None` for any keyword arguments. additionally,
+        # pytorch doesn't seems to support keyword arguments in the first place
+        kwds = {}
+        if axis is not None:
+            kwds["dim"] = axis
+        if order and order != "inf":
+            kwds["p"] = order
+
+        if order == "inf":
+            res = torch.max(torch.abs(tensor), **kwds)
+            if axis is not None:
+                return res[0]  # ignore indices output
+            return res
+        return torch.norm(tensor, **kwds)
+
+    @staticmethod
+    def dot(a, b):
+        if a.ndim > 2 and b.ndim > 2:
+            return torch.tensordot(a, b, dims=([-1], [-2]))
+        if not a.ndim or not b.ndim:
+            return a * b
+        return torch.matmul(a, b)
+
+    @staticmethod
+    def tensordot(a, b, axes=2, **kwargs):
+        return torch.tensordot(a, b, dims=axes, **kwargs)
+
+    @staticmethod
+    def mean(tensor, axis=None):
+        if axis is None:
+            return torch.mean(tensor)
+        else:
+            return torch.mean(tensor, dim=axis)
+
+    @staticmethod
+    def sum(tensor, axis=None, keepdims=False):
+        if axis is None:
+            axis = tuple(range(tensor.ndim))
+        return torch.sum(tensor, dim=axis, keepdim=keepdims)
+
+    @staticmethod
+    def max(tensor, axis=None):
+        if axis is None:
+            return torch.max(tensor)
+        else:
+            return torch.max(tensor, dim=axis)[0]
+
+    @staticmethod
+    def flip(tensor, axis=None):
+        if isinstance(axis, int):
+            axis = [axis]
+
+        if axis is None:
+            return torch.flip(tensor, dims=[i for i in range(tensor.ndim)])
+        else:
+            return torch.flip(tensor, dims=axis)
+
+    # @staticmethod
+    # def concatenate(tensors, axis=0):
+    #     return torch.cat(tensors, dim=axis)
+
+    @staticmethod
+    def argmin(input, axis=None):
+        return torch.argmin(input, dim=axis)
+
+    @staticmethod
+    def argsort(input, axis=None):
+        return torch.argsort(input, dim=axis)
+
+    @staticmethod
+    def argmax(input, axis=None):
+        return torch.argmax(input, dim=axis)
+
+    @staticmethod
+    def stack(arrays, axis=0):
+        return torch.stack(arrays, dim=axis)
+
+    @staticmethod
+    def diag(tensor, k=0):
+        return torch.diag(tensor, diagonal=k)
+
+    @staticmethod
+    def sort(tensor, axis):
+        if axis is None:
+            tensor = tensor.flatten()
+            axis = -1
+
+        return torch.sort(tensor, dim=axis).values
+
+
+
+# Now add all the functions that are unchanged
+# by just adding them in programmatically
+
+remaining_funcs = [
+        "nan",
+        "is_tensor",
+        "trace",
+        "conj",
+        "finfo",
+        "log2",
+        "digamma",
+    ]
+
+for func_name in backend_types + backend_basic_math + backend_array + remaining_funcs:
+    if not hasattr(TorchBackend, func_name):
+        setattr(TorchBackend, func_name, getattr(torch, func_name))
+    else:
+        raise ValueError(f"Function {func_name} already exists in TorchBackend")
+    
