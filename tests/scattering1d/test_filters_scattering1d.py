@@ -2,7 +2,8 @@
 Testing all functions in filters_bank
 """
 
-from kymatio.scattering1d.filter_bank import (adaptive_choice_P, anden_generator,
+from kymatio.scattering1d.filter_bank import (adaptive_choice_P,
+        scatnet_generator,
     compute_sigma_psi, compute_temporal_support, compute_xi_max, morlet_1d,
     get_max_dyadic_subsampling, gauss_1d, spin)
 import numpy as np
@@ -132,8 +133,8 @@ def test_spin():
     J = 5
     Q = 1
     filterbank_kwargs = {"alpha": 5, "r_psi": math.sqrt(0.5), "sigma0": 0.1}
-    unspinned_xisigmas = list(anden_generator(J, Q, **filterbank_kwargs))
-    spinned_generator, spinned_kwargs = spin(anden_generator, filterbank_kwargs)
+    unspinned_xisigmas = list(scatnet_generator(J, Q, **filterbank_kwargs))
+    spinned_generator, spinned_kwargs = spin(scatnet_generator, filterbank_kwargs)
     spinned_xisigmas = list(spinned_generator(J, Q, **spinned_kwargs))
     assert len(spinned_xisigmas) == (2*len(unspinned_xisigmas))
     assert spinned_xisigmas[0][0] == -spinned_xisigmas[J+1][0]

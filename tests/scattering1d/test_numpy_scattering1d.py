@@ -1,6 +1,6 @@
 import pytest
 from kymatio import Scattering1D
-from kymatio.scattering1d.filter_bank import scattering_filter_factory, anden_generator
+from kymatio.scattering1d.filter_bank import scattering_filter_factory, scatnet_generator
 import math
 import os
 import sys
@@ -92,7 +92,7 @@ class TestScattering1DNumpy:
         Js = [5]
 
         filterbank_kwargs = {"alpha": 5, "r_psi": math.sqrt(1/2), "sigma0": 0.1}
-        filterbank = (anden_generator, filterbank_kwargs)
+        filterbank = (scatnet_generator, filterbank_kwargs)
 
         for j in Js:
             J = j
