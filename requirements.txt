@@ -1,5 +1,5 @@
 numpy
-scipy<1.15  # scipy.special.sph_harm removed in scipy>=1.15; sph_harm_y port pending (gh-1053 follow-up)
+scipy<1.15
 appdirs
 configparser
 packaging
