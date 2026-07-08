@@ -36,7 +36,7 @@ jobs:
                   conda create -q -n ${CONDA_ENV} python=${{ matrix.python-version }}
             - name: Install dependencies
               run: |
-                  conda install -n ${CONDA_ENV} numpy "scipy<1.15" pytest pytest-cov
+                  conda install -n ${CONDA_ENV} numpy "scipy>=1.17" pytest pytest-cov
                   conda install -n ${CONDA_ENV} pytorch=${{ matrix.pytorch-version }} torchvision cpuonly -c pytorch
 
                   conda run -n ${CONDA_ENV} python3 -m pip install --upgrade pip

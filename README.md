@@ -59,7 +59,7 @@ Andreux M., Angles T., Exarchakis G., Leonarduzzi R., Rochette G., Thiry L., Zar
 Kymatio requires:
 
 * Python (>= 3.7)
-* SciPy (>= 0.13)
+* SciPy (>= 1.17)
 
 
 ### Standard installation
