@@ -238,6 +238,38 @@ def test_solid_harmonic_scattering(device, backend):
 
 @pytest.mark.parametrize("device", devices)
 @pytest.mark.parametrize("backend", backends)
+def test_gradient_finite_for_sparse_input(device, backend):
+    """A sparse float32 input must not produce NaN gradients.
+
+    Wherever a voxel is far enough from any nonzero signal that the wavelet's
+    Gaussian tail underflows float32, the sum of squares inside the
+    rotation-covariant modulus is exactly zero. A bare ``torch.sqrt`` there has
+    an infinite backward, which the preceding ``x ** 2`` turns into
+    ``0 * inf = NaN``; the backward of the first-order ``ifft`` is a global
+    FFT, so a single such element makes the entire gradient NaN while the
+    forward value stays finite and nothing raises.
+    """
+    if backend.name.endswith('_skcuda') and device == "cpu":
+        pytest.skip("The skcuda backend does not support CPU tensors.")
+
+    shape = (32, 32, 32)
+
+    x = torch.zeros((1,) + shape, dtype=torch.float32, device=device)
+    x[0, 2:6, 2:6, 2:6] = 1.0
+    x.requires_grad_(True)
+
+    scattering = HarmonicScattering3D(J=2, shape=shape, L=2, sigma_0=1.0,
+                                      integral_powers=[1.0],
+                                      backend=backend).to(device)
+    Sx = scattering(x)
+    assert torch.isfinite(Sx).all()
+
+    Sx.sum().backward()
+    assert torch.isfinite(x.grad).all()
+
+
+@pytest.mark.parametrize("device", devices)
+@pytest.mark.parametrize("backend", backends)
 def test_larger_scales(device, backend):
     if backend.name.endswith('_skcuda') and device == "cpu":
         pytest.skip("The skcuda backend does not support CPU tensors.")

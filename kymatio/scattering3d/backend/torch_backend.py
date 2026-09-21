@@ -3,6 +3,7 @@ import warnings
 
 from collections import namedtuple
 from packaging import version
+from torch.autograd import Function
 
 from ...backend.torch_backend import TorchBackend
 
@@ -68,6 +69,36 @@ else:
         return torch.fft(input, 3)
 
 
+class SqrtStable(Function):
+    """Square root whose gradient is defined at zero.
+
+    ``torch.sqrt``'s backward is ``grad / (2 * sqrt(u))``, which is ``inf`` at
+    ``u == 0``; the ``x ** 2`` backward preceding it then turns that into
+    ``0 * inf = NaN``. Sums of squares do reach exactly zero in float32 --
+    wherever a voxel is far enough from any nonzero signal that the wavelet's
+    Gaussian tail underflows -- and a single such element poisons the whole
+    gradient, because the backward of the first-order ``ifft`` is a global FFT.
+
+    At zero this returns the zero subgradient instead, which is a valid
+    subgradient of ``|z|`` there. Same convention as ``ModulusStable``, whose
+    backward carries the comment "Special case at 0 where we return a
+    subgradient containing 0"; that class is only used on the
+    ``rotation_covariant=False`` path.
+    """
+    @staticmethod
+    def forward(ctx, u):
+        output = torch.sqrt(u)
+        ctx.save_for_backward(output)
+        return output
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        output, = ctx.saved_tensors
+        grad_input = grad_output / (2 * output)
+        grad_input.masked_fill_(output == 0, 0)
+        return grad_input
+
+
 class TorchBackend3D(TorchBackend):
     @staticmethod
     def stack(arrays, L):
@@ -121,7 +152,7 @@ class TorchBackend3D(TorchBackend):
             module = (x ** 2).sum(-1, keepdim=True)
         else:
             module = module ** 2 + (x ** 2).sum(-1, keepdim=True)
-        return torch.sqrt(module)
+        return SqrtStable.apply(module)
 
     @staticmethod
     def compute_integrals(input_array, integral_powers):
