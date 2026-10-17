@@ -1,0 +1,5 @@
+Version 0.4.0 (unreleased)
+=========================
+
+- |Fix| Preserve temporal and frequential averaging settings when scikit-learn
+  clones scattering estimators, including global pooling and oversampling.
